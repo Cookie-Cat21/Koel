@@ -119,11 +119,13 @@ async def test_crossing_fires_telegram_once(storage: Storage) -> None:
 
 @pytest.mark.asyncio
 async def test_kill_restart_no_double_send(storage: Storage) -> None:
-    """Claim succeeds, send fails; later cycle retries once then never duplicates."""
+    """CORE-001 / TEST-INT-001: claim+failed send still disarms; one eventual delivery."""
     user_id = await storage.ensure_user(telegram_id=9_001_002)
     await storage.upsert_stock("KILL.N0000", "KILL CO")
     await storage.add_watch(user_id, "KILL.N0000")
-    await storage.create_alert_rule(user_id, "KILL.N0000", AlertType.PRICE_BELOW, 50.0)
+    rule = await storage.create_alert_rule(
+        user_id, "KILL.N0000", AlertType.PRICE_BELOW, 50.0
+    )
     await storage.insert_snapshot(
         PriceSnapshot(
             symbol="KILL.N0000",
@@ -159,9 +161,14 @@ async def test_kill_restart_no_double_send(storage: Storage) -> None:
     )
     poller = Poller(settings, storage, FakeCSE([cross]), flaky_send)  # type: ignore[arg-type]
     events = await poller.run_once(force=True)
-    assert events == []  # send failed (claim + same-cycle retry)
+    # Claim succeeds even when Telegram fails — event may be non-empty.
+    assert len(events) == 1
+    assert events[0].rule_id == rule.id
     assert attempts["n"] == 2
     assert sent_ok == []
+    alerts = await storage.list_alerts(user_id)
+    assert len(alerts) == 1
+    assert alerts[0].armed is False
 
     # Restart mid-cycle recovery: retry unsent → send once
     poller2 = Poller(settings, storage, FakeCSE([]), flaky_send)  # type: ignore[arg-type]
