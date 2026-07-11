@@ -53,3 +53,23 @@ Starter list of libraries and patterns for the CSE Telegram alerting stack. Pref
 ## Compliance framing
 
 Bot copy involving prices should include a short “not financial advice” disclaimer (SEC Sri Lanka Part V market misconduct framing — informational tool only).
+
+## Web phase (OUT OF SCOPE for v1)
+
+Chime v1 is Telegram-only. Do not build a web dashboard, landing page, or
+component library integration yet. The bookmarks below are deferred for a
+possible later UI phase — treat them as reference only, not implementation
+targets:
+
+- HyperUI
+- daisyUI
+- Tremor
+- React Bits
+- 21st.dev
+- Shadcnblocks (free)
+- Cult UI
+- Watermelon UI
+- Aceternity
+
+If/when a web surface is explicitly in scope, pick from these then; until
+then, ignore.
