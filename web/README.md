@@ -35,4 +35,18 @@ Open [http://localhost:3000/login](http://localhost:3000/login).
 
 `POST /api/v1/auth/demo` with `{ "telegram_id": number }` mints a signed
 HttpOnly `chime_session` cookie bound to `users.id`, plus CSRF material
-(`chime_csrf` + `csrf_token` in JSON). See `docs/adr/001-dash-auth.md`.
+(`chime_csrf` + `csrf_token` in JSON). Login is CSRF-exempt; all other
+mutations (including `POST /api/v1/auth/logout`) require matching
+`X-CSRF-Token`. See `docs/adr/001-dash-auth.md`.
+
+## Read APIs (session required)
+
+| Method | Path |
+|---|---|
+| `GET` | `/api/v1/me` |
+| `GET` | `/api/v1/watchlist` |
+| `GET` | `/api/v1/alerts` |
+| `GET` | `/api/v1/alerts/history` |
+| `GET` | `/api/v1/health` |
+
+Shapes follow `docs/factory/API_CONTRACT_V1.md`. Data from `DATABASE_URL` only.
