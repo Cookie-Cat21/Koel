@@ -170,7 +170,7 @@ async def test_disclosure_poll_fetches_only_disclosure_symbols() -> None:
     storage.get_previous_state = AsyncMock(
         return_value=PreviousPriceState(price=None)
     )
-    storage.insert_disclosure_if_new = AsyncMock(return_value=None)
+    storage.upsert_disclosure = AsyncMock()
     storage.unsent_alerts = AsyncMock(return_value=[])
 
     cse = AsyncMock()

@@ -222,11 +222,11 @@ class Poller:
 
             symbol_rules = [r for r in disclosure_rules if r.symbol == symbol]
             for disc in disclosures:
-                inserted = await self.storage.insert_disclosure_if_new(disc)
-                if inserted is None:
-                    continue
-                # Historical rows are filtered by rule.created_at in the engine
-                events = evaluate_disclosure_rules(disclosure=inserted, rules=symbol_rules)
+                # Always upsert + evaluate. Crash between insert and claim used to
+                # permanently skip (insert_if_new → None). Claim uniqueness
+                # prevents duplicate Telegram sends; created_at gates history.
+                stored = await self.storage.upsert_disclosure(disc)
+                events = evaluate_disclosure_rules(disclosure=stored, rules=symbol_rules)
                 for event in filter_fireable(events):
                     claimed = await self._claim_and_send(event)
                     if claimed:

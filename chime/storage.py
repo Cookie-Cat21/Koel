@@ -167,8 +167,13 @@ class Storage:
             move_fired_keys=move_keys,
         )
 
-    async def insert_disclosure_if_new(self, disc: Disclosure) -> Disclosure | None:
-        """Insert disclosure; return it with id if newly inserted, else None."""
+    async def upsert_disclosure(self, disc: Disclosure) -> Disclosure:
+        """Insert or update disclosure; always return it with a DB id.
+
+        ON CONFLICT updates title so RETURNING id always yields a row — callers
+        can re-evaluate rules after a crash between insert and claim without
+        permanently skipping the disclosure.
+        """
         await self.upsert_stock(disc.symbol, disc.company_name)
         async with self._pool.connection() as conn:
             row = await (
@@ -178,7 +183,8 @@ class Storage:
                         external_id, symbol, title, category, url, company_name,
                         published_at, seen_at
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (external_id, symbol) DO NOTHING
+                    ON CONFLICT (external_id, symbol) DO UPDATE SET
+                        title = EXCLUDED.title
                     RETURNING id
                     """,
                     (
@@ -193,9 +199,16 @@ class Storage:
                     ),
                 )
             ).fetchone()
-        if row is None:
-            return None
+        assert row is not None
         return disc.model_copy(update={"id": int(_as_row(row)["id"])})
+
+    async def insert_disclosure_if_new(self, disc: Disclosure) -> Disclosure | None:
+        """Compat wrapper — prefer upsert_disclosure.
+
+        Always returns the stored disclosure with id (never None). Claim
+        uniqueness + created_at gating handle dedupe / historical backfill.
+        """
+        return await self.upsert_disclosure(disc)
 
     async def ensure_user(self, telegram_id: int) -> int:
         async with self._pool.connection() as conn:
