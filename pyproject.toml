@@ -40,13 +40,15 @@ addopts = "-q --cov=chime.rules --cov-report=term-missing --cov-fail-under=85"
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+# Align with CI (actions/setup-python 3.12); runtime still allows >=3.11.
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
-python_version = "3.11"
+# Align with CI (actions/setup-python 3.12); runtime still allows >=3.11.
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
