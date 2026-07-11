@@ -99,7 +99,10 @@ def build_scoreboard(existing: dict) -> dict:
         if num >= 2:
             out[f"epoch{num}_done"] = done
 
-    out["note"] = "Literal 5T git commits rejected; scoreboard is factory_score clusters"
+    out["note"] = (
+        "Literal 5T git commits rejected; portfolio_score == chime node while "
+        "Chime is the only enrolled factory"
+    )
     # Drop stale session notes if present — machine counts are source of truth.
     out.pop("sessions", None)
     return out
