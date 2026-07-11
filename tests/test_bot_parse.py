@@ -1,28 +1,93 @@
-"""Bot parse helpers — normalize_symbol and START_TEXT."""
+"""Bot parse helpers — normalize_symbol, parse_alert_args, START/HELP budgets."""
 
 from __future__ import annotations
 
-from chime.bot import START_TEXT, normalize_symbol
-from chime.domain import disclaimer
+import pytest
+
+from chime.bot import (
+    HELP_TEXT,
+    START_TEXT,
+    normalize_symbol,
+    parse_alert_args,
+)
+from chime.domain import AlertType, disclaimer
 
 
-def test_normalize_symbol_accepts_jkh() -> None:
-    assert normalize_symbol("JKH.N0000") == "JKH.N0000"
-    assert normalize_symbol("  jkh.n0000  ") == "JKH.N0000"
-    assert normalize_symbol("COMB") == "COMB"
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("JKH.N0000", "JKH.N0000"),
+        ("  jkh.n0000  ", "JKH.N0000"),
+        ("COMB", "COMB"),
+        ("samp.N0000", "SAMP.N0000"),
+    ],
+)
+def test_normalize_symbol_accepts(raw: str, expected: str) -> None:
+    assert normalize_symbol(raw) == expected
 
 
-def test_normalize_symbol_rejects_empty_and_junk() -> None:
-    assert normalize_symbol("") is None
-    assert normalize_symbol("   ") is None
-    assert normalize_symbol("!!!") is None
-    assert normalize_symbol("this-is-not-a-symbol") is None
-    assert normalize_symbol("A" * 20) is None
+@pytest.mark.parametrize(
+    "raw",
+    ["", "   ", "!!!", "this-is-not-a-symbol", "A" * 20],
+)
+def test_normalize_symbol_rejects(raw: str) -> None:
+    assert normalize_symbol(raw) is None
+
+
+@pytest.mark.parametrize(
+    "args,alert_type,threshold",
+    [
+        (["JKH.N0000", "above", "100"], AlertType.PRICE_ABOVE, 100.0),
+        (["JKH.N0000", "below", "50.5"], AlertType.PRICE_BELOW, 50.5),
+        (["COMB.N0000", "move", "5"], AlertType.DAILY_MOVE, 5.0),
+        (["SAMP.N0000", "move", "1,000"], AlertType.DAILY_MOVE, 1000.0),
+        (["HNB.N0000", "disclosure"], AlertType.DISCLOSURE, None),
+        (["JKH.N0000", "announcement"], AlertType.DISCLOSURE, None),
+    ],
+)
+def test_parse_alert_args_variants(
+    args: list[str],
+    alert_type: AlertType,
+    threshold: float | None,
+) -> None:
+    parsed, err = parse_alert_args(args)
+    assert err is None
+    assert parsed is not None
+    assert parsed.alert_type == alert_type
+    assert parsed.threshold == threshold
+
+
+@pytest.mark.parametrize(
+    "args,needle",
+    [
+        ([], "couldn't parse"),
+        (["JKH.N0000"], "couldn't parse"),
+        (["JKH.N0000", "above"], "need a number"),
+        (["JKH.N0000", "above", "nope"], "must be a number"),
+        (["JKH.N0000", "below", "-1"], "positive"),
+        (["JKH.N0000", "sideways", "1"], "didn't catch that alert type"),
+    ],
+)
+def test_parse_alert_args_kind_errors(args: list[str], needle: str) -> None:
+    parsed, err = parse_alert_args(args)
+    assert parsed is None
+    assert err is not None
+    assert needle.lower() in err.lower()
 
 
 def test_start_text_is_short_and_mentions_colombo_disclaimer() -> None:
-    # Roughly ≤ 3 conceptual paragraphs / blocks (split on blank lines)
-    blocks = [b for b in START_TEXT.strip().split("\n\n") if b.strip()]
-    assert len(blocks) <= 3
+    lines = [ln for ln in START_TEXT.strip().splitlines() if ln.strip()]
+    assert len(lines) <= 3
     assert "Colombo" in START_TEXT
-    assert disclaimer() in START_TEXT or "Not financial advice" in START_TEXT
+    assert "/help" in START_TEXT
+    assert disclaimer() in START_TEXT
+    assert "Not financial advice" in START_TEXT
+
+
+def test_help_text_lists_commands_within_12_lines() -> None:
+    lines = [ln for ln in HELP_TEXT.strip().splitlines() if ln.strip()]
+    assert len(lines) <= 12
+    assert "/watch SYMBOL" in HELP_TEXT
+    assert "/alert SYMBOL disclosure" in HELP_TEXT
+    assert "/cancel ALERT_ID" in HELP_TEXT
+    assert "/help" in HELP_TEXT

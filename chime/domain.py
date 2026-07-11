@@ -101,8 +101,21 @@ class PreviousPriceState(BaseModel):
     move_fired_keys: set[str] = Field(default_factory=set)
 
 
+DISCLOSURE_TITLE_MAX = 120
+
+
 def disclaimer() -> str:
     return "Not financial advice — informational only."
+
+
+def truncate_disclosure_title(title: str, max_len: int = DISCLOSURE_TITLE_MAX) -> str:
+    """Truncate long filing titles so Telegram alert bodies stay readable."""
+    t = title.strip()
+    if len(t) <= max_len:
+        return t
+    if max_len <= 1:
+        return "…"
+    return t[: max_len - 1].rstrip() + "…"
 
 
 def format_alert_message(event: AlertEvent) -> str:
@@ -113,7 +126,7 @@ def format_alert_message(event: AlertEvent) -> str:
     if event.current_price is not None:
         lines.append(f"Price: {event.current_price:.2f} LKR")
     if event.disclosure_title:
-        lines.append(f"Disclosure: {event.disclosure_title}")
+        lines.append(f"Disclosure: {truncate_disclosure_title(event.disclosure_title)}")
     if event.disclosure_url:
         lines.append(event.disclosure_url)
     lines.append("")

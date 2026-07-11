@@ -22,6 +22,11 @@ def _clear_rate_limits() -> None:
     reset_cmd_rate_limits()
 
 
+def test_rate_limit_reply_includes_retry_hint() -> None:
+    assert "Try again" in RATE_LIMIT_REPLY
+    assert "minute" in RATE_LIMIT_REPLY
+
+
 def test_allow_command_sliding_window() -> None:
     tid = 42
     assert allow_command(tid, limit=3, now=100.0) is True

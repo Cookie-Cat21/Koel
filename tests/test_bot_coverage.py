@@ -12,6 +12,7 @@ from chime.bot import (
     allow_command,
     cmd_alert,
     cmd_cancel,
+    cmd_help,
     cmd_myalerts,
     cmd_mywatchlist,
     cmd_start,
@@ -76,6 +77,7 @@ def _snap(symbol: str = "JKH.N0000") -> PriceSnapshot:
     "handler,args",
     [
         (cmd_start, []),
+        (cmd_help, []),
         (cmd_watch, ["JKH.N0000"]),
         (cmd_unwatch, ["JKH.N0000"]),
         (cmd_alert, ["JKH.N0000", "above", "100"]),
@@ -114,8 +116,20 @@ async def test_cmd_start_registers_and_explains() -> None:
     storage.ensure_user.assert_awaited_once_with(1001)
     reply = update.effective_message.reply_text.await_args.args[0]
     assert "Chime watches" in reply
-    assert "/watch SYMBOL" in reply
+    assert "/help" in reply
+    assert "/watch SYMBOL" not in reply  # command dump is /help only
     assert disclaimer() in reply
+    assert len([ln for ln in reply.strip().splitlines() if ln.strip()]) <= 3
+
+
+@pytest.mark.asyncio
+async def test_cmd_help_lists_commands() -> None:
+    update, context = _make_update_context()
+    await cmd_help(update, context)
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "/watch SYMBOL" in reply
+    assert "/alert SYMBOL disclosure" in reply
+    assert len([ln for ln in reply.strip().splitlines() if ln.strip()]) <= 12
 
 
 @pytest.mark.asyncio
@@ -130,6 +144,7 @@ async def test_cmd_watch_usage_and_bad_symbol() -> None:
     await cmd_watch(update2, context2)
     reply = update2.effective_message.reply_text.await_args.args[0]
     assert "doesn't look like a CSE symbol" in reply
+    assert "JKH.N0000" in reply
 
 
 @pytest.mark.asyncio
@@ -198,13 +213,15 @@ async def test_cmd_alert_validation_errors() -> None:
     cse = AsyncMock()
     update, context = _make_update_context(args=["JKH.N0000"], storage=storage, cse=cse)
     await cmd_alert(update, context)
-    assert "Usage:" in update.effective_message.reply_text.await_args.args[0]
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "couldn't parse" in reply.lower()
+    assert "/alert SYMBOL above" in reply
 
     update2, context2 = _make_update_context(
         args=["JKH.N0000", "above"], storage=storage, cse=cse
     )
     await cmd_alert(update2, context2)
-    assert "Usage: /alert SYMBOL above" in update2.effective_message.reply_text.await_args.args[0]
+    assert "need a number" in update2.effective_message.reply_text.await_args.args[0].lower()
 
     update3, context3 = _make_update_context(
         args=["JKH.N0000", "above", "nope"], storage=storage, cse=cse
@@ -222,7 +239,15 @@ async def test_cmd_alert_validation_errors() -> None:
         args=["JKH.N0000", "sideways", "1"], storage=storage, cse=cse
     )
     await cmd_alert(update5, context5)
-    assert "Unknown alert kind" in update5.effective_message.reply_text.await_args.args[0]
+    reply5 = update5.effective_message.reply_text.await_args.args[0]
+    assert "didn't catch that alert type" in reply5.lower()
+    assert "above" in reply5
+
+    update6, context6 = _make_update_context(args=["!!!", "above", "1"], storage=storage, cse=cse)
+    await cmd_alert(update6, context6)
+    reply6 = update6.effective_message.reply_text.await_args.args[0]
+    assert "doesn't look like a CSE symbol" in reply6
+    assert "JKH.N0000" in reply6
 
 
 @pytest.mark.asyncio

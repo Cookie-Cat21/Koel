@@ -1,6 +1,6 @@
 """Telegram bot — the only user-facing surface for v1.
 
-Commands: /start, /watch, /unwatch, /alert, /cancel, /myalerts, /mywatchlist.
+Commands: /start, /help, /watch, /unwatch, /alert, /cancel, /myalerts, /mywatchlist.
 Alert dispatch happens from the poller via notify.send_message.
 """
 
@@ -10,6 +10,7 @@ import os
 import re
 import time
 from collections import defaultdict, deque
+from dataclasses import dataclass
 from typing import Any
 
 from telegram import Update
@@ -27,7 +28,21 @@ SYMBOL_RE = re.compile(r"^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$")
 # Per telegram_id sliding-window timestamps (monotonic seconds). No DB.
 _cmd_timestamps: dict[int, deque[float]] = defaultdict(deque)
 _RATE_WINDOW_SECONDS = 60.0
-RATE_LIMIT_REPLY = "Slow down — try again in a minute."
+RATE_LIMIT_REPLY = (
+    "Slow down — you've hit the command rate limit. Try again in a minute."
+)
+
+BAD_SYMBOL_HINT = (
+    "That doesn't look like a CSE symbol. Try something like JKH.N0000 or COMB.N0000."
+)
+ALERT_USAGE = (
+    "I couldn't parse that alert. Try one of:\n"
+    "/alert SYMBOL above PRICE\n"
+    "/alert SYMBOL below PRICE\n"
+    "/alert SYMBOL move PERCENT\n"
+    "/alert SYMBOL disclosure\n"
+    "Example: /alert JKH.N0000 above 100"
+)
 
 
 def reset_cmd_rate_limits() -> None:
@@ -80,14 +95,17 @@ def _env_cmd_rate_per_minute() -> int:
         return 20
     return int(raw)
 
+
+# ≤3 lines including NFA; command dump lives on /help only (WS-014 / E7-B02).
 START_TEXT = (
     "Chime watches the Colombo Stock Exchange and pings you on Telegram "
-    "when a price or daily-move alert fires — no app or browser tab required.\n\n"
-    "Disclosures need an explicit /alert SYMBOL disclosure.\n\n"
+    "when a price or daily-move alert fires — no app or browser tab required.\n"
+    "Disclosures need an explicit /alert SYMBOL disclosure. See /help for commands.\n"
     f"{disclaimer()}"
 )
 
-HELP_HINT = (
+# ≤12 lines (E7-B01).
+HELP_TEXT = (
     "Commands:\n"
     "/watch SYMBOL\n"
     "/unwatch SYMBOL\n"
@@ -97,8 +115,18 @@ HELP_HINT = (
     "/alert SYMBOL disclosure\n"
     "/cancel ALERT_ID\n"
     "/myalerts\n"
-    "/mywatchlist"
+    "/mywatchlist\n"
+    "/help"
 )
+
+# Back-compat alias for older imports / docs.
+HELP_HINT = HELP_TEXT
+
+
+@dataclass(frozen=True)
+class ParsedAlert:
+    alert_type: AlertType
+    threshold: float | None
 
 
 def normalize_symbol(raw: str) -> str | None:
@@ -107,6 +135,46 @@ def normalize_symbol(raw: str) -> str | None:
         return None
     # CSE common shares often use .N0000 — accept bare ticker and common forms
     return s
+
+
+def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
+    """Parse /alert args after the command. Returns (parsed, kind_error).
+
+    Caller validates/normalizes ``args[0]`` as the symbol. On error, parsed is
+    None and kind_error is a user-facing message.
+    """
+    if len(args) < 2:
+        return None, ALERT_USAGE
+    kind = args[1].lower()
+    if kind in ("above", "below", "move"):
+        if len(args) < 3:
+            return None, (
+                f"Almost — need a number after {kind}. "
+                f"Example: /alert JKH.N0000 {kind} 5"
+            )
+        try:
+            threshold = float(args[2].replace(",", ""))
+        except ValueError:
+            return None, (
+                "The threshold must be a number. "
+                f"Example: /alert JKH.N0000 {kind} 100"
+            )
+        if threshold <= 0:
+            return None, (
+                "Threshold must be a positive number. "
+                f"Example: /alert JKH.N0000 {kind} 5"
+            )
+        if kind == "above":
+            return ParsedAlert(AlertType.PRICE_ABOVE, threshold), None
+        if kind == "below":
+            return ParsedAlert(AlertType.PRICE_BELOW, threshold), None
+        return ParsedAlert(AlertType.DAILY_MOVE, threshold), None
+    if kind in ("disclosure", "announcement"):
+        return ParsedAlert(AlertType.DISCLOSURE, None), None
+    return None, (
+        "I didn't catch that alert type. Use above, below, move, or disclosure — "
+        "e.g. /alert JKH.N0000 above 100"
+    )
 
 
 async def _user_id(storage: Storage, update: Update) -> int | None:
@@ -135,7 +203,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     storage: Storage = context.application.bot_data["storage"]
     await _user_id(storage, update)
     if update.effective_message:
-        await update.effective_message.reply_text(f"{START_TEXT}\n\n{HELP_HINT}")
+        await update.effective_message.reply_text(START_TEXT)
+
+
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if await _rate_limited(update, context):
+        return
+    if update.effective_message:
+        await update.effective_message.reply_text(HELP_TEXT)
 
 
 async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -146,13 +221,13 @@ async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_message:
         return
     if not context.args:
-        await update.effective_message.reply_text("Usage: /watch SYMBOL\nExample: /watch JKH.N0000")
+        await update.effective_message.reply_text(
+            "Usage: /watch SYMBOL\nExample: /watch JKH.N0000"
+        )
         return
     symbol = normalize_symbol(context.args[0])
     if symbol is None:
-        await update.effective_message.reply_text(
-            "That doesn't look like a CSE symbol. Try e.g. JKH.N0000 or COMB.N0000."
-        )
+        await update.effective_message.reply_text(BAD_SYMBOL_HINT)
         return
     status, info = await _lookup_symbol(cse, symbol)
     if status == "upstream":
@@ -180,11 +255,13 @@ async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not update.effective_message:
         return
     if not context.args:
-        await update.effective_message.reply_text("Usage: /unwatch SYMBOL")
+        await update.effective_message.reply_text(
+            "Usage: /unwatch SYMBOL\nExample: /unwatch JKH.N0000"
+        )
         return
     symbol = normalize_symbol(context.args[0])
     if symbol is None:
-        await update.effective_message.reply_text("That doesn't look like a CSE symbol.")
+        await update.effective_message.reply_text(BAD_SYMBOL_HINT)
         return
     user_id = await _user_id(storage, update)
     assert user_id is not None
@@ -210,48 +287,19 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_message:
         return
     args = context.args or []
-    if len(args) < 2:
-        await update.effective_message.reply_text(
-            "Usage:\n"
-            "/alert SYMBOL above PRICE\n"
-            "/alert SYMBOL below PRICE\n"
-            "/alert SYMBOL move PERCENT\n"
-            "/alert SYMBOL disclosure"
-        )
+    if not args:
+        await update.effective_message.reply_text(ALERT_USAGE)
         return
     symbol = normalize_symbol(args[0])
     if symbol is None:
-        await update.effective_message.reply_text("That doesn't look like a CSE symbol.")
+        await update.effective_message.reply_text(BAD_SYMBOL_HINT)
         return
-    kind = args[1].lower()
-    threshold: float | None = None
-    alert_type: AlertType
-
-    if kind in ("above", "below", "move"):
-        if len(args) < 3:
-            await update.effective_message.reply_text(f"Usage: /alert SYMBOL {kind} NUMBER")
-            return
-        try:
-            threshold = float(args[2].replace(",", ""))
-        except ValueError:
-            await update.effective_message.reply_text("The threshold must be a number.")
-            return
-        if threshold <= 0:
-            await update.effective_message.reply_text("Threshold must be positive.")
-            return
-        if kind == "above":
-            alert_type = AlertType.PRICE_ABOVE
-        elif kind == "below":
-            alert_type = AlertType.PRICE_BELOW
-        else:
-            alert_type = AlertType.DAILY_MOVE
-    elif kind in ("disclosure", "announcement"):
-        alert_type = AlertType.DISCLOSURE
-    else:
-        await update.effective_message.reply_text(
-            "Unknown alert kind. Use above, below, move, or disclosure."
-        )
+    parsed, err = parse_alert_args(args)
+    if err is not None or parsed is None:
+        await update.effective_message.reply_text(err or ALERT_USAGE)
         return
+    alert_type = parsed.alert_type
+    threshold = parsed.threshold
 
     status, info = await _lookup_symbol(cse, symbol)
     if status == "upstream":
@@ -384,6 +432,7 @@ def build_application(
         cmd_rate_per_minute if cmd_rate_per_minute is not None else _env_cmd_rate_per_minute()
     )
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("watch", cmd_watch))
     app.add_handler(CommandHandler("unwatch", cmd_unwatch))
     app.add_handler(CommandHandler("alert", cmd_alert))

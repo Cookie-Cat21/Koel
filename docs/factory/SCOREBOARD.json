@@ -7,9 +7,9 @@
   "epoch": 8,
   "branch": "cursor/epoch2-agentic-loop-cb19",
   "clean_streak": 0,
-  "lifetime_factory_score": 42,
-  "lifetime_proper_commits": 42,
-  "lifetime_clusters_closed": 42,
+  "lifetime_factory_score": 58,
+  "lifetime_proper_commits": 58,
+  "lifetime_clusters_closed": 58,
   "epoch2_done": 16,
   "epoch3_done": 10,
   "open_board": "docs/factory/EPOCH8_BOARD.md",
@@ -17,7 +17,7 @@
   "note": "Literal 5T git commits rejected; scoreboard is factory_score clusters",
   "epoch4_done": 9,
   "epoch5_done": 7,
-  "epoch6_done": 0,
-  "epoch7_done": 0,
+  "epoch6_done": 8,
+  "epoch7_done": 8,
   "epoch8_done": 0
 }

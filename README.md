@@ -38,6 +38,10 @@ make up && make migrate
 | `python -m chime both` | Bot + poller in one process |
 | `python -m chime tick --force` | One poll cycle (ignores market hours) |
 
+Bot and `both` start Telegram long-polling with `drop_pending_updates=True`, so
+queued messages from downtime are discarded on restart (avoids replaying stale
+`/watch` / `/alert` commands after a deploy).
+
 ## Latency SLO
 
 Alert **claim → Telegram send** is instrumented (`alert_latency_ms`) and targeted
