@@ -18,6 +18,16 @@ python -m chime migrate
 python -m chime both   # or: bot | poller | tick --force
 ```
 
+## Local Postgres
+
+`docker-compose.yml` runs Postgres 16 (`chime` / `chime` / db `chime` on `:5432`).
+
+```bash
+make up && make migrate
+```
+
+`make down` stops the container. `make help` lists all targets. Point `DATABASE_URL` at it (see `.env.example`).
+
 ## Commands
 
 | Command | What it does |

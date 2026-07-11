@@ -1,7 +1,17 @@
 # Thin DX entrypoint for Chime local ops.
 PYTHON ?= python3
 
-.PHONY: install lint typecheck test migrate up-db down-db
+.PHONY: help install lint typecheck test migrate up-db down-db up down
+
+help:
+	@echo "Chime local targets:"
+	@echo "  make install     Install package + dev deps"
+	@echo "  make lint        Run ruff"
+	@echo "  make typecheck   Run mypy"
+	@echo "  make test        Run pytest"
+	@echo "  make up / up-db  Start local Postgres (docker compose)"
+	@echo "  make down / down-db  Stop local Postgres"
+	@echo "  make migrate     Apply SQL migrations"
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -23,3 +33,7 @@ up-db:
 
 down-db:
 	docker compose down
+
+up: up-db
+
+down: down-db
