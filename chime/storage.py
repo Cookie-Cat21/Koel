@@ -667,11 +667,10 @@ class Storage:
         send can proceed outside any advisory lock. Concurrent claimers skip
         already-locked or still-leased rows.
         """
-        async with self._pool.connection() as conn:
-            async with conn.transaction():
-                rows = await (
-                    await conn.execute(
-                        """
+        async with self._pool.connection() as conn, conn.transaction():
+            rows = await (
+                await conn.execute(
+                    """
                         WITH picked AS (
                             SELECT
                                 al.id,
@@ -709,9 +708,9 @@ class Storage:
                         )
                         SELECT * FROM leased
                         """,
-                        (limit, lease_seconds),
-                    )
-                ).fetchall()
+                    (limit, lease_seconds),
+                )
+            ).fetchall()
         return _as_rows(rows)
 
     async def health_check(self) -> bool:
