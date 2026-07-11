@@ -24,6 +24,29 @@ def test_cross_above_threshold_fires() -> None:
     assert fireable[0].event_key == f"move:{rule.id}:{day}"
 
 
+def test_daily_move_exact_threshold_boundary() -> None:
+    """E11-Q01: |pct| == thr fires; just-below does not (crossing semantics)."""
+    rule = make_rule(type=AlertType.DAILY_MOVE, threshold=5.0)
+    # Exact: prev 4.9 → curr 5.0
+    fire_exact = filter_fireable(
+        evaluate_price_rules(
+            snapshot=make_snapshot(price=105.0, change_pct=5.0),
+            previous=make_previous(price=104.9, change_pct=4.9),
+            rules=[rule],
+        )
+    )
+    assert len(fire_exact) == 1
+    # Just below: prev 4.8 → curr 4.999 does not cross 5.0
+    no_fire = filter_fireable(
+        evaluate_price_rules(
+            snapshot=make_snapshot(price=104.999, change_pct=4.999),
+            previous=make_previous(price=104.8, change_pct=4.8),
+            rules=[rule],
+        )
+    )
+    assert no_fire == []
+
+
 def test_cross_below_threshold_down_fires() -> None:
     rule = make_rule(type=AlertType.DAILY_MOVE, threshold=2.5)
     snap = make_snapshot(price=95.0, change_pct=-2.5)
