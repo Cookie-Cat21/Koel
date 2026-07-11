@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: chime
+      POSTGRES_PASSWORD: chime
+      POSTGRES_DB: chime
+    volumes:
+      - chime_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chime -d chime"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  chime_pgdata:

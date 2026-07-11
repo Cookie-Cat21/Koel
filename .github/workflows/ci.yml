@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    name: lint-typecheck-unit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package + dev deps
+        run: pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Mypy
+        run: mypy chime
+
+      - name: Pytest (unit; no DATABASE_URL required)
+        run: pytest
+        env:
+          # Ensure DB-backed tests skip in the unit job
+          DATABASE_URL: ""
+
+  integration:
+    name: migrate-and-db-tests
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    defaults:
+      run:
+        working-directory: .
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chime
+          POSTGRES_PASSWORD: chime
+          POSTGRES_DB: chime
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chime -d chime"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://chime:chime@localhost:5432/chime
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package + dev deps
+        run: pip install -e ".[dev]"
+
+      - name: Apply migrations
+        run: python -m chime.migrate
+
+      - name: Pytest (including DB tests)
+        run: pytest
