@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from chime.adapters.cse import (
     ANNOUNCEMENTS_PAGE,
@@ -11,6 +12,8 @@ from chime.adapters.cse import (
     announcement_to_disclosure,
     trade_row_to_snapshot,
 )
+
+_COLOMBO = ZoneInfo("Asia/Colombo")
 
 
 def test_trade_row_to_snapshot_maps_fields() -> None:
@@ -89,7 +92,7 @@ def test_announcement_falls_back_to_id_field() -> None:
 
 
 def test_announcement_uses_date_of_announcement_when_created_date_null() -> None:
-    """WS-001: parse dateOfAnnouncement like '30 Jun 2026' when createdDate is null."""
+    """WS-001: parse dateOfAnnouncement like '30 Jun 2026' as Colombo midnight → UTC."""
     row = AnnouncementRow(
         announcementId=42,
         announcementCategory="Financial",
@@ -98,7 +101,10 @@ def test_announcement_uses_date_of_announcement_when_created_date_null() -> None
     )
     disc = announcement_to_disclosure(row, symbol="JKH.N0000")
     assert disc is not None
-    assert disc.published_at == datetime(2026, 6, 30, 0, 0, 0, tzinfo=UTC)
+    # Asia/Colombo midnight (UTC+5:30) → 2026-06-29 18:30:00 UTC
+    expected = datetime(2026, 6, 30, 0, 0, 0, tzinfo=_COLOMBO).astimezone(UTC)
+    assert disc.published_at == expected
+    assert disc.published_at == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
 
 
 def test_announcement_undated_still_epoch_fail_closed() -> None:

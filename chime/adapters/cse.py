@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any, cast
+from zoneinfo import ZoneInfo
 
 import httpx
 import structlog
@@ -24,6 +25,8 @@ from chime.circuit import CircuitBreaker, CircuitOpenError
 from chime.domain import Disclosure, PriceSnapshot
 
 log = structlog.get_logger(__name__)
+
+_COLOMBO = ZoneInfo("Asia/Colombo")
 
 DEFAULT_HEADERS = {
     "User-Agent": (
@@ -134,7 +137,11 @@ _DATE_OF_ANNOUNCEMENT_FORMATS = (
 
 
 def _parse_date_of_announcement(value: str | None) -> datetime | None:
-    """Parse CSE dateOfAnnouncement strings to UTC midnight; None if unparseable."""
+    """Parse CSE dateOfAnnouncement as Asia/Colombo midnight, converted to UTC.
+
+    Calendar-only strings (no time) are local midnight in Colombo, not UTC midnight.
+    Returns None if unparseable.
+    """
     if value is None:
         return None
     text = value.strip()
@@ -142,7 +149,8 @@ def _parse_date_of_announcement(value: str | None) -> datetime | None:
         return None
     for fmt in _DATE_OF_ANNOUNCEMENT_FORMATS:
         try:
-            return datetime.strptime(text, fmt).replace(tzinfo=UTC)
+            naive = datetime.strptime(text, fmt)
+            return naive.replace(tzinfo=_COLOMBO).astimezone(UTC)
         except ValueError:
             continue
     return None
