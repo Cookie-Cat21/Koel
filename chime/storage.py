@@ -271,20 +271,20 @@ class Storage:
         alert_type: AlertType,
         threshold: float | None,
     ) -> AlertRule:
+        """Create or return an identical active rule (idempotent under concurrency).
+
+        Avoids deactivate-then-insert TOCTOU where a parallel caller could
+        deactivate the rule id we already returned to the user.
+        """
         symbol = symbol.strip().upper()
         await self.upsert_stock(symbol)
         await self.add_watch(user_id, symbol)
         async with self._pool.connection() as conn:
-            # Deactivate any existing identical active rule first
-            await conn.execute(
-                """
-                UPDATE alert_rules
-                SET active = FALSE
-                WHERE user_id = %s AND symbol = %s AND type = %s
-                  AND COALESCE(threshold, -1) = COALESCE(%s, -1) AND active
-                """,
-                (user_id, symbol, alert_type.value, threshold),
+            existing = await self._fetch_active_rule(
+                conn, user_id, symbol, alert_type, threshold
             )
+            if existing is not None:
+                return existing
             try:
                 row = await (
                     await conn.execute(
@@ -297,14 +297,12 @@ class Storage:
                     )
                 ).fetchone()
             except UniqueViolation:
-                # Concurrent identical insert won the partial unique index —
-                # roll back this txn and return the survivor's active rule.
                 await conn.rollback()
-                existing = await self._fetch_active_rule(
+                raced = await self._fetch_active_rule(
                     conn, user_id, symbol, alert_type, threshold
                 )
-                if existing is not None:
-                    return existing
+                if raced is not None:
+                    return raced
                 raise
             user = await (
                 await conn.execute(

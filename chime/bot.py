@@ -130,6 +130,10 @@ async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if deactivated:
             msg += f" Deactivated {deactivated} alert(s)."
         await update.effective_message.reply_text(msg)
+    elif deactivated:
+        await update.effective_message.reply_text(
+            f"{symbol} wasn't on your watchlist, but deactivated {deactivated} orphan alert(s)."
+        )
     else:
         await update.effective_message.reply_text(f"{symbol} wasn't on your watchlist.")
 

@@ -23,7 +23,10 @@ async def send_message(bot: Bot, chat_id: int, text: str) -> bool:
         await bot.send_message(chat_id=chat_id, text=text, disable_web_page_preview=False)
         return True
     except RetryAfter as exc:
-        await asyncio.sleep(_retry_delay_seconds(exc.retry_after) + 0.5)
+        # Cap sleep so a RetryAfter storm cannot pin the poller advisory lock
+        # for unbounded wall time; leave message_sent=False for later retry.
+        delay = min(_retry_delay_seconds(exc.retry_after), 30.0)
+        await asyncio.sleep(delay + 0.5)
         try:
             await bot.send_message(chat_id=chat_id, text=text)
             return True

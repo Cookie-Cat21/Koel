@@ -78,3 +78,18 @@ async def test_unwatch_deactivates_rules_for_symbol() -> None:
     reply = update.effective_message.reply_text.await_args.args[0]
     assert "Removed JKH.N0000" in reply
     assert "Deactivated 2 alert(s)." in reply
+
+
+@pytest.mark.asyncio
+async def test_unwatch_orphan_rules_honest_message() -> None:
+    storage = AsyncMock()
+    storage.ensure_user = AsyncMock(return_value=42)
+    storage.remove_watch = AsyncMock(return_value=False)
+    storage.deactivate_rules_for_symbol = AsyncMock(return_value=1)
+
+    update, context = _make_update_context(args=["JKH.N0000"], storage=storage)
+    await cmd_unwatch(update, context)
+
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "wasn't on your watchlist" in reply
+    assert "orphan alert" in reply
