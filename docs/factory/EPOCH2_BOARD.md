@@ -16,7 +16,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 | E2-C03 | Claim+disarm single DB transaction | OPEN | |
 | E2-C04 | Persist delivered-guard (survive restart) — `message_sent` optimistic or delivery lease | OPEN | |
 | E2-C05 | Unsent SKIP LOCKED / lease so RetryAfter need not hold advisory lock | OPEN | |
-| E2-C06 | tradeSummary miss → health flag / log watched_missing | OPEN | |
+| E2-C06 | tradeSummary miss → health flag / log watched_missing | DONE | `_poll_prices`: `watched_missing` + `watched_symbols_missing` log; `price_ok=False` |
 | E2-C07 | Dead-letter user/ops notify (bot message or structured alert) | OPEN | |
 
 ## OPS

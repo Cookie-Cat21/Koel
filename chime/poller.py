@@ -97,6 +97,8 @@ class Poller:
         self.price_poll_ok: bool = True
         self.disclosure_poll_ok: bool = True
         self.lock_held_skip: bool = False
+        # Watched symbols absent from the latest tradeSummary (E2-C06).
+        self.watched_missing: list[str] = []
         # When True, _claim_and_send queues PendingSend instead of sending inline
         # (set for the locked section of run_once).
         self._queue_sends: bool = False
@@ -196,6 +198,7 @@ class Poller:
     async def _poll_prices(self) -> tuple[list[AlertEvent], bool]:
         symbols = await self.storage.watched_symbols()
         if not symbols:
+            self.watched_missing = []
             log.info("poll_no_watchlist")
             return [], True
 
@@ -210,12 +213,23 @@ class Poller:
 
         wanted = set(symbols)
         snaps = [s for s in all_snaps if s.symbol in wanted]
+        present = {s.symbol for s in snaps}
+        missing = sorted(wanted - present)
+        self.watched_missing = missing
+        price_ok = not missing
+        if missing:
+            log.warning(
+                "watched_symbols_missing",
+                count=len(missing),
+                symbols=missing,
+            )
+
         rules = await self.storage.active_rules_for_symbols(list(wanted))
         rules_by_symbol: dict[str, list[Any]] = {}
         for rule in rules:
             rules_by_symbol.setdefault(rule.symbol, []).append(rule)
 
-        return await self._evaluate_price_snaps(snaps, rules_by_symbol), True
+        return await self._evaluate_price_snaps(snaps, rules_by_symbol), price_ok
 
     async def _evaluate_price_snaps(
         self,
