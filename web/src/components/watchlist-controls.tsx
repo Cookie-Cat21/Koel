@@ -51,6 +51,7 @@ export function WatchlistAddForm() {
 
   return (
     <form
+      id="watchlist-add"
       onSubmit={onSubmit}
       className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end"
       noValidate

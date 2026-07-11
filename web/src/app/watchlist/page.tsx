@@ -72,12 +72,13 @@ export default async function WatchlistPage() {
           />
         ) : payload.items.length === 0 ? (
           <EmptyState
-            title="No symbols yet"
+            title="Your watchlist is empty"
             description={
               <>
-                Add a CSE symbol above to start watching. Or use{" "}
+                Add a CSE symbol with the form above to start watching prices
+                and disclosures. Or use{" "}
                 <code className="font-mono text-xs">/watch SYMBOL</code> in
-                Telegram — the list stays in sync either way.
+                Telegram — Chime keeps the list in sync either way.
               </>
             }
             action={
