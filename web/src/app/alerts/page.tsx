@@ -59,8 +59,9 @@ export default async function AlertsPage({
           Alerts
         </h1>
         <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-          Active rules. Creating an alert also adds the symbol to your
-          watchlist. Pushes still go to Telegram.
+          Active rules only. Create a price, move, or disclosure alert here;
+          Chime adds the symbol to your watchlist and sends the push on
+          Telegram.
         </p>
 
         <form
@@ -114,24 +115,26 @@ export default async function AlertsPage({
           <EmptyState
             title={
               symbolFilter
-                ? `No active alerts for ${symbolFilter}`
-                : "No active alerts"
+                ? `No active rules for ${symbolFilter}`
+                : "No active rules yet"
             }
             description={
               symbolFilter ? (
                 <>
                   No matching rules for{" "}
                   <code className="font-mono text-xs">{symbolFilter}</code>.
-                  Clear the filter or create a new alert above.
+                  Clear the filter, or use the create form above to add a rule
+                  for this symbol.
                 </>
               ) : (
                 <>
-                  Create a rule above — price cross, daily move, or new
-                  disclosure. Same as{" "}
+                  Use the create form above to add a price cross, daily move, or
+                  disclosure rule. Telegram gets the push when it fires. Same
+                  command path:{" "}
                   <code className="font-mono text-xs">
                     /alert SYMBOL above PRICE
-                  </code>{" "}
-                  in Telegram; Chime pings you when it fires.
+                  </code>
+                  .
                 </>
               )
             }
@@ -141,7 +144,7 @@ export default async function AlertsPage({
                   <Link href="/alerts">Clear filter</Link>
                 </Button>
               ) : (
-                <Button asChild variant="outline">
+                <Button asChild>
                   <a href="#alert_symbol">Create an alert</a>
                 </Button>
               )
