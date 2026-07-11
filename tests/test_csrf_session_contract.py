@@ -34,10 +34,17 @@ def _npx() -> str:
     return found
 
 
+def _require_web_node_modules() -> None:
+    """tsx imports resolve `next` from web/node_modules — skip when absent (CI unit)."""
+    if not (WEB / "node_modules" / "next").is_dir():
+        pytest.skip("web/node_modules not installed (npm ci in web CI job)")
+
+
 def test_csrf_helper_and_guard_unit() -> None:
     """E10: header≠cookie→400; logout clears cookies; no session→401 before CSRF."""
     assert UNIT_MTS.is_file(), f"missing {UNIT_MTS}"
     assert (WEB / "src" / "lib" / "auth" / "csrf.ts").is_file()
+    _require_web_node_modules()
     npx = _npx()
     # ESM resolves `next` from the importing file's tree — stage under web/.
     staged = WEB / ".csrf_session_unit.mts"

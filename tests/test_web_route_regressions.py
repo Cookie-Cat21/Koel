@@ -36,6 +36,12 @@ def _npx() -> str:
     return found
 
 
+def _require_web_node_modules() -> None:
+    """tsx imports resolve `next` from web/node_modules — skip when absent (CI unit)."""
+    if not (WEB / "node_modules" / "next").is_dir():
+        pytest.skip("web/node_modules not installed (npm ci in web CI job)")
+
+
 def _runtime_files() -> list[Path]:
     files: list[Path] = []
     for path in WEB.rglob("*"):
@@ -60,6 +66,7 @@ def test_health_route_degrades_on_poller_missing_and_unreachable() -> None:
     """Real Next route handler: watched_missing/HEALTH_URL failure ⇒ 503 degraded."""
     assert UNIT_MTS.is_file(), f"missing {UNIT_MTS}"
     assert (WEB / "src" / "app" / "api" / "v1" / "health" / "route.ts").is_file()
+    _require_web_node_modules()
     npx = _npx()
     staged = WEB / ".web_health_route_unit.mts"
     staged.write_text(UNIT_MTS.read_text(encoding="utf-8"), encoding="utf-8")

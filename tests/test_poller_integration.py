@@ -164,17 +164,25 @@ async def test_kill_restart_no_double_send(storage: Storage) -> None:
     # Claim succeeds even when Telegram fails — event may be non-empty.
     assert len(events) == 1
     assert events[0].rule_id == rule.id
-    assert attempts["n"] == 2
-    assert sent_ok == []
+    # Claim-time send + same-cycle unsent drain may attempt ≥2 times; a third
+    # attempt can succeed in-cycle after unlock-before-send + retry (E12+).
+    assert attempts["n"] >= 2
     alerts = await storage.list_alerts(user_id)
     assert len(alerts) == 1
     assert alerts[0].armed is False
 
-    # Restart mid-cycle recovery: retry unsent → send once
-    poller2 = Poller(settings, storage, FakeCSE([]), flaky_send)  # type: ignore[arg-type]
-    await poller2._retry_unsent()
-    assert len(sent_ok) == 1
-    assert "crossed below" in sent_ok[0]
-
-    await poller2._retry_unsent()
-    assert len(sent_ok) == 1  # no duplicate
+    if not sent_ok:
+        # Restart mid-cycle recovery: retry unsent → send once
+        poller2 = Poller(settings, storage, FakeCSE([]), flaky_send)  # type: ignore[arg-type]
+        await poller2._retry_unsent()
+        assert len(sent_ok) == 1
+        assert "crossed below" in sent_ok[0]
+        await poller2._retry_unsent()
+        assert len(sent_ok) == 1  # no duplicate
+    else:
+        # Delivered during first run_once — still exactly one Telegram body.
+        assert len(sent_ok) == 1
+        assert "crossed below" in sent_ok[0]
+        poller2 = Poller(settings, storage, FakeCSE([]), flaky_send)  # type: ignore[arg-type]
+        await poller2._retry_unsent()
+        assert len(sent_ok) == 1  # no duplicate
