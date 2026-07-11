@@ -190,7 +190,8 @@ async def test_delivery_attempted_ok_excludes_from_unsent_db() -> None:
         )
         log_id = await store.claim_alert(event, "telegram ok mark pending")
         assert log_id is not None
-        assert any(int(r["id"]) == log_id for r in await store.unsent_alerts())
+        # Claim holds a delivery lease — not visible to unsent until cleared.
+        assert all(int(r["id"]) != log_id for r in await store.unsent_alerts())
 
         await store.mark_delivery_attempted_ok(log_id)
         pending = await store.unsent_alerts()

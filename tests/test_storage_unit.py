@@ -387,21 +387,65 @@ async def test_claim_alert_and_claim_and_disarm() -> None:
         event_key="above:100",
         snapshot_id=5,
     )
-    assert await _store(_Conn([{"id": 50}])).claim_alert(event, "hi") == 50
+    claim_conn = _Conn([{"id": 50}])
+    assert await _store(claim_conn).claim_alert(event, "hi", lease_seconds=90) == 50
+    assert "delivery_lease_until" in claim_conn.sql[0]
+    assert claim_conn.params[0] == (1, 5, "above:100", "hi", 90)
+
     assert await _store(_Conn([None])).claim_alert(event, "hi") is None
 
     conn = _Conn([{"id": 51}, None])
     store = _store(conn)
-    assert await store.claim_and_disarm(event, "hi") == 51
+    assert await store.claim_and_disarm(event, "hi", lease_seconds=60) == 51
+    assert "delivery_lease_until" in conn.sql[0]
+    assert conn.params[0][-1] == 60
     assert any("armed" in s.lower() for s in conn.sql)
 
     assert await _store(_Conn([None])).claim_and_disarm(event, "hi") is None
 
 
 @pytest.mark.asyncio
+async def test_claim_alert_lease_excludes_from_claim_unsent_batch() -> None:
+    """After claim, claim_unsent_batch SQL filters active leases; cleared on delivery_ok."""
+    event = AlertEvent(
+        rule_id=1,
+        user_id=3,
+        telegram_id=1001,
+        symbol="JKH.N0000",
+        type=AlertType.PRICE_ABOVE,
+        threshold=100.0,
+        trigger="cross",
+        current_price=101.0,
+        event_key="lease:above:100",
+        snapshot_id=5,
+    )
+
+    # claim_alert INSERT must set delivery_lease_until (blocks concurrent unsent claim).
+    claim_conn = _Conn([{"id": 77}])
+    assert await _store(claim_conn).claim_alert(event, "sending…") == 77
+    assert "delivery_lease_until" in claim_conn.sql[0]
+    assert "now() + (%s * interval '1 second')" in claim_conn.sql[0]
+    assert claim_conn.params[0][-1] == 120
+
+    # claim_unsent_batch predicate excludes non-expired leases (same as after claim).
+    batch_conn = _Conn([[]])
+    assert await _store(batch_conn).claim_unsent_batch(limit=10, lease_seconds=30) == []
+    claim_sql = batch_conn.sql[0]
+    assert "delivery_lease_until IS NULL" in claim_sql
+    assert "delivery_lease_until < now()" in claim_sql
+
+    # delivery_attempted_ok clears lease so only the durable flag keeps the row out.
+    ok_conn = _Conn([None])
+    await _store(ok_conn).mark_delivery_attempted_ok(77)
+    assert "delivery_attempted_ok = TRUE" in ok_conn.sql[0]
+    assert "delivery_lease_until = NULL" in ok_conn.sql[0]
+
+
+@pytest.mark.asyncio
 async def test_mark_sent_attempt_dead_letter_unsent_claim_batch() -> None:
-    store = _store(_Conn([None]))
-    await store.mark_delivery_attempted_ok(1)
+    ok_conn = _Conn([None])
+    await _store(ok_conn).mark_delivery_attempted_ok(1)
+    assert "delivery_lease_until = NULL" in ok_conn.sql[0]
     await _store(_Conn([None])).mark_alert_sent(1)
     assert await _store(_Conn([{"attempt_count": 3}])).mark_alert_attempt(1) == 3
     await _store(_Conn([None])).dead_letter(1)

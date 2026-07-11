@@ -522,44 +522,83 @@ class Storage:
                 self._lock_conn = None
                 self._lock_id = None
 
-    async def claim_alert(self, event: AlertEvent, message_text: str) -> int | None:
-        """Insert-first claim. Returns alert_log id if newly claimed, else None."""
+    async def claim_alert(
+        self,
+        event: AlertEvent,
+        message_text: str,
+        *,
+        lease_seconds: int = 120,
+    ) -> int | None:
+        """Insert-first claim. Returns alert_log id if newly claimed, else None.
+
+        Sets ``delivery_lease_until`` so concurrent ``claim_unsent_batch`` cannot
+        pick up the row while ``_deliver_pending`` is still sending.
+        """
         async with self._pool.connection() as conn:
             row = await (
                 await conn.execute(
                     """
                     INSERT INTO alert_log (
-                        rule_id, snapshot_id, event_key, message_sent, message_text
+                        rule_id, snapshot_id, event_key, message_sent, message_text,
+                        delivery_lease_until
                     )
-                    VALUES (%s, %s, %s, FALSE, %s)
+                    VALUES (
+                        %s, %s, %s, FALSE, %s,
+                        now() + (%s * interval '1 second')
+                    )
                     ON CONFLICT (rule_id, event_key) DO NOTHING
                     RETURNING id
                     """,
-                    (event.rule_id, event.snapshot_id, event.event_key, message_text),
+                    (
+                        event.rule_id,
+                        event.snapshot_id,
+                        event.event_key,
+                        message_text,
+                        lease_seconds,
+                    ),
                 )
             ).fetchone()
         if row is None:
             return None
         return int(_as_row(row)["id"])
 
-    async def claim_and_disarm(self, event: AlertEvent, message_text: str) -> int | None:
+    async def claim_and_disarm(
+        self,
+        event: AlertEvent,
+        message_text: str,
+        *,
+        lease_seconds: int = 120,
+    ) -> int | None:
         """Claim alert and disarm the rule in one transaction (E2-C03).
 
         Returns alert_log id if newly claimed (rule disarmed). On claim conflict
         (already claimed), skips disarm and returns None.
+
+        Sets ``delivery_lease_until`` like ``claim_alert`` so unsent drain cannot
+        double-claim during the in-flight Telegram send.
         """
         async with self._pool.connection() as conn, conn.transaction():
             row = await (
                 await conn.execute(
                     """
                     INSERT INTO alert_log (
-                        rule_id, snapshot_id, event_key, message_sent, message_text
+                        rule_id, snapshot_id, event_key, message_sent, message_text,
+                        delivery_lease_until
                     )
-                    VALUES (%s, %s, %s, FALSE, %s)
+                    VALUES (
+                        %s, %s, %s, FALSE, %s,
+                        now() + (%s * interval '1 second')
+                    )
                     ON CONFLICT (rule_id, event_key) DO NOTHING
                     RETURNING id
                     """,
-                    (event.rule_id, event.snapshot_id, event.event_key, message_text),
+                    (
+                        event.rule_id,
+                        event.snapshot_id,
+                        event.event_key,
+                        message_text,
+                        lease_seconds,
+                    ),
                 )
             ).fetchone()
             if row is None:
@@ -574,12 +613,15 @@ class Storage:
         """Record that Telegram accepted the send (before message_sent).
 
         Survives process restart when ``mark_alert_sent`` fails (E2-C04).
+        Clears the delivery lease; ``delivery_attempted_ok`` keeps the row out of
+        ``claim_unsent_batch``.
         """
         async with self._pool.connection() as conn:
             await conn.execute(
                 """
                 UPDATE alert_log
-                SET delivery_attempted_ok = TRUE
+                SET delivery_attempted_ok = TRUE,
+                    delivery_lease_until = NULL
                 WHERE id = %s
                 """,
                 (alert_log_id,),

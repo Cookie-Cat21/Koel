@@ -56,6 +56,8 @@ async def test_unsent_alerts_filters_inactive_rules(storage: Storage) -> None:
     )
     log_id = await storage.claim_alert(event, "pending while active")
     assert log_id is not None
+    # Clear claim lease so the row is visible to unsent_alerts.
+    await storage.mark_alert_attempt(log_id)
     assert any(int(r["id"]) == log_id for r in await storage.unsent_alerts())
 
     deactivated = await storage.deactivate_alert(user_id, rule.id)

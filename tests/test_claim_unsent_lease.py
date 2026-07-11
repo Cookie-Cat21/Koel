@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
@@ -169,22 +170,107 @@ async def test_claim_unsent_batch_leases_and_excludes() -> None:
             threshold=10.0,
             trigger="cross_above",
             current_price=12.0,
-            event_key=f"c05-lease-{rule.id}",
+            event_key=f"c05-lease-{rule.id}-{uuid.uuid4().hex[:8]}",
             snapshot_id=snap.id,
         )
         log_id = await store.claim_alert(event, "lease me")
         assert log_id is not None
 
+        # Fresh claim holds a delivery lease — unsent drain must not pick it up.
+        assert all(int(r["id"]) != log_id for r in await store.unsent_alerts())
+        while_leased = await store.claim_unsent_batch(limit=10, lease_seconds=120)
+        assert all(int(r["id"]) != log_id for r in while_leased)
+
+        # Expire the claim lease (failed/deferred send clears it via mark_alert_attempt).
+        await store.mark_alert_attempt(log_id)
+
         first = await store.claim_unsent_batch(limit=10, lease_seconds=120)
         assert any(int(r["id"]) == log_id for r in first)
 
-        # Active lease: not in unsent_alerts or a second claim.
+        # Active lease from claim_unsent_batch: not in unsent_alerts or a second claim.
         assert all(int(r["id"]) != log_id for r in await store.unsent_alerts())
         second = await store.claim_unsent_batch(limit=10, lease_seconds=120)
         assert all(int(r["id"]) != log_id for r in second)
 
         await store.mark_alert_sent(log_id)
         assert all(int(r["id"]) != log_id for r in await store.unsent_alerts())
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL not set")
+async def test_claim_alert_lease_blocks_claim_unsent_until_ok_or_expiry() -> None:
+    """claim_alert lease: claim_unsent_batch empty until delivery_attempted_ok / expiry."""
+    assert DATABASE_URL
+    apply_migrations(DATABASE_URL)
+    store = Storage(DATABASE_URL, min_size=1, max_size=2)
+    await store.open()
+    try:
+        user_id = await store.ensure_user(telegram_id=9_005_011)
+        await store.upsert_stock("C05C.N0000", "C05C")
+        rule = await store.create_alert_rule(
+            user_id, "C05C.N0000", AlertType.PRICE_ABOVE, 10.0
+        )
+        snap = await store.insert_snapshot(
+            PriceSnapshot(
+                symbol="C05C.N0000",
+                price=12.0,
+                previous_close=9.0,
+                ts=datetime(2026, 7, 11, 8, 10, tzinfo=UTC),
+            )
+        )
+        assert snap.id is not None
+
+        # Path A: delivery_attempted_ok clears lease and durable-excludes.
+        event_ok = AlertEvent(
+            rule_id=rule.id,
+            user_id=user_id,
+            telegram_id=9_005_011,
+            symbol="C05C.N0000",
+            type=AlertType.PRICE_ABOVE,
+            threshold=10.0,
+            trigger="cross_above",
+            current_price=12.0,
+            event_key=f"c05-claim-lease-ok-{rule.id}-{uuid.uuid4().hex[:8]}",
+            snapshot_id=snap.id,
+        )
+        log_ok = await store.claim_alert(event_ok, "in-flight send", lease_seconds=120)
+        assert log_ok is not None
+        assert all(int(r["id"]) != log_ok for r in await store.unsent_alerts())
+        assert all(
+            int(r["id"]) != log_ok
+            for r in await store.claim_unsent_batch(limit=10, lease_seconds=120)
+        )
+        await store.mark_delivery_attempted_ok(log_ok)
+        assert all(int(r["id"]) != log_ok for r in await store.unsent_alerts())
+        assert all(
+            int(r["id"]) != log_ok
+            for r in await store.claim_unsent_batch(limit=10, lease_seconds=120)
+        )
+
+        # Path B: short lease expires → claim_unsent_batch can pick the row up.
+        event_exp = AlertEvent(
+            rule_id=rule.id,
+            user_id=user_id,
+            telegram_id=9_005_011,
+            symbol="C05C.N0000",
+            type=AlertType.PRICE_ABOVE,
+            threshold=10.0,
+            trigger="cross_above",
+            current_price=12.0,
+            event_key=f"c05-claim-lease-exp-{rule.id}-{uuid.uuid4().hex[:8]}",
+            snapshot_id=snap.id,
+        )
+        log_exp = await store.claim_alert(event_exp, "lease expires", lease_seconds=1)
+        assert log_exp is not None
+        assert all(
+            int(r["id"]) != log_exp
+            for r in await store.claim_unsent_batch(limit=10, lease_seconds=120)
+        )
+        await asyncio.sleep(1.2)
+        claimed = await store.claim_unsent_batch(limit=10, lease_seconds=120)
+        assert any(int(r["id"]) == log_exp for r in claimed)
     finally:
         await store.close()
 
@@ -225,11 +311,13 @@ async def test_claim_unsent_batch_skip_locked_concurrent() -> None:
                 threshold=50.0,
                 trigger="cross_below",
                 current_price=40.0,
-                event_key=f"c05-skip-{rule.id}-{i}",
+                event_key=f"c05-skip-{rule.id}-{i}-{uuid.uuid4().hex[:8]}",
                 snapshot_id=snap.id,
             )
             log_id = await store_a.claim_alert(event, f"row-{i}")
             assert log_id is not None
+            # Clear claim lease so claim_unsent_batch can pick these up.
+            await store_a.mark_alert_attempt(log_id)
             ids.append(log_id)
 
         batch_a, batch_b = await asyncio.gather(

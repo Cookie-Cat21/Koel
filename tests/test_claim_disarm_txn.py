@@ -96,6 +96,9 @@ async def test_claim_and_disarm_runs_in_one_transaction() -> None:
     assert conn._txn.exited is True
     assert len(conn.calls) == 2
     assert "INSERT INTO alert_log" in conn.calls[0][0]
+    assert "delivery_lease_until" in conn.calls[0][0]
+    assert conn.calls[0][1] is not None
+    assert conn.calls[0][1][-1] == 120
     assert "UPDATE alert_rules SET armed" in conn.calls[1][0]
     assert conn.calls[1][1] == (False, 1)
 

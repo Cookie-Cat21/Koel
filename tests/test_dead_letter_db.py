@@ -70,13 +70,14 @@ async def test_dead_letter_excludes_from_unsent_alerts(storage: Storage) -> None
     cse = AsyncMock()
     poller = Poller(settings, storage, cse, send)
 
-    # Storage claim inserts unsent row (attempt_count=0).
+    # Storage claim inserts unsent row (attempt_count=0) with a delivery lease.
     log_id = await storage.claim_alert(event, "dead-letter db integration")
     assert log_id is not None
-    pending = await storage.unsent_alerts()
-    assert any(int(r["id"]) == log_id for r in pending)
+    # Lease blocks unsent until cleared (failed send path clears via mark_alert_attempt).
+    assert all(int(r["id"]) != log_id for r in await storage.unsent_alerts())
 
     # Poller._record_send_failure increments until MAX_SEND_ATTEMPTS → dead_letter.
+    # First failure clears the claim lease and sets attempt_count=1.
     for expected in range(1, MAX_SEND_ATTEMPTS):
         await poller._record_send_failure(log_id, rule_id=rule.id)
         row = next(r for r in await storage.unsent_alerts() if int(r["id"]) == log_id)
