@@ -51,7 +51,11 @@ mutations (including `POST /api/v1/auth/logout`) require matching
 | `POST` | `/api/v1/alerts` | CSRF; auto-watch; idempotent |
 | `DELETE` | `/api/v1/alerts/{id}` | CSRF; soft cancel |
 | `GET` | `/api/v1/alerts/history` | |
+| `GET` | `/api/v1/symbols/{symbol}` | Slim last snapshot |
+| `GET` | `/api/v1/symbols/{symbol}/snapshots` | Ascending sparkline |
+| `GET` | `/api/v1/symbols/{symbol}/disclosures` | |
 | `GET` | `/api/v1/health` | |
 
+UI: `/watchlist`, `/alerts`, `/alerts/history`, `/symbols/[symbol]`, `/health`.
 Shapes follow `docs/factory/API_CONTRACT_V1.md`. Data from `DATABASE_URL` only.
 Mutations require matching `X-CSRF-Token`.

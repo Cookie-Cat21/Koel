@@ -10,10 +10,10 @@
 |---|---|---|
 | E3-D01 | POST/DELETE watchlist (parity bot; CSRF) | DONE |
 | E3-D02 | POST alerts + cancel (idempotent create; CSRF) | DONE |
-| E3-D03 | Symbol detail page: last price + disclosures from Postgres | OPEN |
-| E3-D04 | Fire history UI page | OPEN |
-| E3-D05 | Health page (ops) from API | OPEN |
-| E3-D06 | Mobile layout pass on shell pages | OPEN |
+| E3-D03 | Symbol detail page: last price + disclosures from Postgres | DONE |
+| E3-D04 | Fire history UI page | DONE |
+| E3-D05 | Health page (ops) from API | DONE |
+| E3-D06 | Mobile layout pass on shell pages | DONE |
 
 ## QUALITY / CORE ratchet
 
