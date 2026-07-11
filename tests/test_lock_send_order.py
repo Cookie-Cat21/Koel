@@ -78,20 +78,22 @@ async def test_unlock_before_send_on_new_price_claim() -> None:
 
 
 @pytest.mark.asyncio
-async def test_unlock_before_retry_unsent_send() -> None:
-    """_retry_unsent runs after unlock — send must not see lock_held."""
+async def test_retry_unsent_reacquires_lock() -> None:
+    """Market-hours unsent drain re-locks so dual pollers cannot both send."""
     lock_held = {"value": False}
+    lock_cycles = {"n": 0}
     send_calls: list[str] = []
 
     async def try_lock(_lock_id: int) -> bool:
         lock_held["value"] = True
+        lock_cycles["n"] += 1
         return True
 
     async def unlock(_lock_id: int) -> None:
         lock_held["value"] = False
 
     async def send(chat_id: int, text: str) -> SendResult:
-        assert lock_held["value"] is False, "retry send while advisory lock held"
+        # New claims deliver unlocked; unsent retry holds lock (anti-dup).
         send_calls.append(text)
         return SendResult.OK
 
@@ -116,9 +118,12 @@ async def test_unlock_before_retry_unsent_send() -> None:
     poller = Poller(_settings(), storage, cse, send)
     await poller.run_once(force=True)
 
-    storage.advisory_unlock.assert_awaited_once()
+    # CSE phase + unsent re-lock
+    assert lock_cycles["n"] == 2
+    assert storage.advisory_unlock.await_count == 2
     assert send_calls == ["retry me"]
     storage.mark_alert_sent.assert_awaited_once_with(99)
+    assert lock_held["value"] is False
 
 
 @pytest.mark.asyncio

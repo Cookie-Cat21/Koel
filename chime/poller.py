@@ -159,11 +159,12 @@ class Poller:
             self.last_tick_at = datetime.now(UTC)
             await self.storage.advisory_unlock(POLL_LOCK_ID)
 
-        # CORE-004: Telegram I/O + unsent retry after unlock. Claim uniqueness
-        # protects against duplicate delivery if another poller races.
+        # CORE-004: Telegram I/O for this tick's new claims after unlock.
+        # Unsent backlog drain is re-serialized under the advisory lock so two
+        # pollers cannot both read/send the same message_sent=false row.
         try:
             await self._deliver_pending(pending)
-            await self._retry_unsent()
+            await self._retry_unsent_with_lock()
         except Exception as exc:
             log.exception("poll_deliver_failed", error=str(exc))
         return fired
