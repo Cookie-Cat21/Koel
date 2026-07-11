@@ -13,7 +13,7 @@ Activate via `make factory-refill` after Epoch 15.
 | E16-D01 | Nav active-state a11y for health/watchlist | DONE |
 | E16-D02 | Login error copy stays brand-tone + NFA | DONE |
 | E16-O01 | HANDOFF Epoch 15→16 refill path | OPEN |
-| E16-C01 | CSE client timeout log includes symbol when known | OPEN |
+| E16-C01 | CSE client timeout log includes symbol when known | DONE |
 | E16-A01 | SESSION_LOG Epoch 15 drain entry | OPEN |
 | E16-B01 | /unwatch not-on-list reply actionable | OPEN |
 

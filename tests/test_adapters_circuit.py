@@ -54,7 +54,7 @@ async def test_fetch_company_info_propagates_timeout(
 async def test_fetch_company_info_logs_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """E10-C01: timeout path emits cse_timeout (not silent / generic only)."""
+    """E16-C01: symbol-specific timeout logs include path and normalized symbol."""
     monkeypatch.setattr(asyncio, "sleep", AsyncMock())
     http = AsyncMock()
     http.request = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
@@ -66,6 +66,7 @@ async def test_fetch_company_info_logs_timeout(
     timeout_events = [e for e in caps if e.get("event") == "cse_timeout"]
     assert timeout_events, f"expected cse_timeout in {caps!r}"
     assert any("/companyInfoSummery" in str(e.get("path", "")) for e in timeout_events)
+    assert any(e.get("symbol") == "JKH.N0000" for e in timeout_events)
 
 
 @pytest.mark.asyncio

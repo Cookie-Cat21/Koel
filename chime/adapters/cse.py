@@ -304,8 +304,10 @@ class CSEClient:
         *,
         data: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        log_context: dict[str, Any] | None = None,
     ) -> Any:
         url = f"{self.base_url}{path}"
+        context = log_context or {}
         try:
             response = await self._client.request(
                 method,
@@ -321,10 +323,11 @@ class CSEClient:
                     path=path,
                     status=response.status_code,
                     body=response.text[:300],
+                    **context,
                 )
                 response.raise_for_status()
             if "json" not in content_type and response.text[:1] not in ("{", "["):
-                log.warning("cse_non_json", path=path, content_type=content_type)
+                log.warning("cse_non_json", path=path, content_type=content_type, **context)
                 raise httpx.HTTPStatusError(
                     "non-json response",
                     request=response.request,
@@ -333,10 +336,10 @@ class CSEClient:
             return response.json()
         except httpx.TimeoutException as exc:
             # E10-C01: distinct event so ops can filter timeout vs other soft fails
-            log.warning("cse_timeout", path=path, error=str(exc))
+            log.warning("cse_timeout", path=path, error=str(exc), **context)
             raise
         except Exception as exc:
-            log.warning("cse_request_failed", path=path, error=str(exc))
+            log.warning("cse_request_failed", path=path, error=str(exc), **context)
             raise
 
     async def _guarded(
@@ -401,6 +404,7 @@ class CSEClient:
                 "POST",
                 "/companyInfoSummery",
                 data={"symbol": symbol},
+                log_context={"symbol": symbol},
             )
             try:
                 parsed = CompanyInfoResponse.model_validate(raw)
@@ -437,6 +441,7 @@ class CSEClient:
                 "POST",
                 "/getAnnouncementByCompany",
                 data=form,
+                log_context={"symbol": symbol},
             )
             try:
                 parsed = CompanyAnnouncementResponse.model_validate(raw)
