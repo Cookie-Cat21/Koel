@@ -37,3 +37,4 @@ web/.next/
 web/out/
 web/.vercel/
 web/*.tsbuildinfo
+web/.csrf_session_unit.mts
