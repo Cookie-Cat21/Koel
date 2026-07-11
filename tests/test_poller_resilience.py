@@ -40,7 +40,7 @@ async def test_poller_survives_circuit_open() -> None:
     storage.advisory_unlock = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(side_effect=CircuitOpenError("open"))
@@ -78,7 +78,7 @@ async def test_poller_survives_junk_then_ok() -> None:
     from chime.domain import PreviousPriceState
 
     storage.get_previous_state.return_value = PreviousPriceState(price=None)
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(
@@ -124,7 +124,7 @@ async def test_disclosure_poll_skips_price_only_symbols() -> None:
     storage.get_previous_state = AsyncMock(
         return_value=PreviousPriceState(price=None)
     )
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(
@@ -171,7 +171,7 @@ async def test_disclosure_poll_fetches_only_disclosure_symbols() -> None:
         return_value=PreviousPriceState(price=None)
     )
     storage.upsert_disclosure = AsyncMock()
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(

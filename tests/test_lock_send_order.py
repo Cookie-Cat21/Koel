@@ -59,7 +59,7 @@ async def test_unlock_before_send_on_new_price_claim() -> None:
     storage.claim_and_disarm = AsyncMock(return_value=501)
     storage.mark_alert_sent = AsyncMock()
     storage.set_rule_armed = AsyncMock()
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
     storage.upsert_disclosure = AsyncMock()
 
     cse = AsyncMock()
@@ -72,15 +72,15 @@ async def test_unlock_before_send_on_new_price_claim() -> None:
     assert len(events) == 1
     storage.claim_and_disarm.assert_awaited_once()
     storage.set_rule_armed.assert_not_awaited()
-    # CSE unlock + empty unsent re-lock unlock
-    assert storage.advisory_unlock.await_count == 2
+    # CSE unlock only — unsent drain no longer re-locks (E2-C05)
+    assert storage.advisory_unlock.await_count == 1
     assert unlock_before_send == [True]
     assert lock_held["value"] is False
 
 
 @pytest.mark.asyncio
-async def test_retry_unsent_reacquires_lock() -> None:
-    """Market-hours unsent drain re-locks so dual pollers cannot both send."""
+async def test_retry_unsent_no_advisory_rehold() -> None:
+    """E2-C05: market-hours unsent drain uses claim lease, not advisory re-lock."""
     lock_held = {"value": False}
     lock_cycles = {"n": 0}
     send_calls: list[str] = []
@@ -94,7 +94,7 @@ async def test_retry_unsent_reacquires_lock() -> None:
         lock_held["value"] = False
 
     async def send(chat_id: int, text: str) -> SendResult:
-        # New claims deliver unlocked; unsent retry holds lock (anti-dup).
+        assert lock_held["value"] is False, "unsent send while advisory lock held"
         send_calls.append(text)
         return SendResult.OK
 
@@ -103,13 +103,14 @@ async def test_retry_unsent_reacquires_lock() -> None:
     storage.advisory_unlock = AsyncMock(side_effect=unlock)
     storage.watched_symbols = AsyncMock(return_value=[])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 99,
                 "rule_id": 3,
                 "telegram_id": 1001,
                 "message_text": "retry me",
+                "attempt_count": 0,
             }
         ]
     )
@@ -119,10 +120,11 @@ async def test_retry_unsent_reacquires_lock() -> None:
     poller = Poller(_settings(), storage, cse, send)
     await poller.run_once(force=True)
 
-    # CSE phase + unsent re-lock
-    assert lock_cycles["n"] == 2
-    assert storage.advisory_unlock.await_count == 2
+    # CSE phase only
+    assert lock_cycles["n"] == 1
+    assert storage.advisory_unlock.await_count == 1
     assert send_calls == ["retry me"]
+    storage.claim_unsent_batch.assert_awaited_once()
     storage.mark_alert_sent.assert_awaited_once_with(99)
     assert lock_held["value"] is False
 
@@ -179,7 +181,7 @@ async def test_disclosure_fetch_all_then_claim_no_sleep_under_lock(
     storage.upsert_disclosure = AsyncMock(return_value=disc)
     storage.claim_alert = AsyncMock(return_value=9001)
     storage.mark_alert_sent = AsyncMock()
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(
@@ -203,6 +205,6 @@ async def test_disclosure_fetch_all_then_claim_no_sleep_under_lock(
 
     assert sleep_while_locked == 0
     assert len(events) == 1
-    assert storage.advisory_unlock.await_count == 2
+    assert storage.advisory_unlock.await_count == 1
     storage.claim_alert.assert_awaited_once()
     storage.mark_alert_sent.assert_awaited_once_with(9001)

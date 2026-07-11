@@ -570,10 +570,31 @@ class Storage:
             )
             return int(_as_row(row)["id"])
 
+    async def mark_delivery_attempted_ok(self, alert_log_id: int) -> None:
+        """Record that Telegram accepted the send (before message_sent).
+
+        Survives process restart when ``mark_alert_sent`` fails (E2-C04).
+        """
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                """
+                UPDATE alert_log
+                SET delivery_attempted_ok = TRUE
+                WHERE id = %s
+                """,
+                (alert_log_id,),
+            )
+
     async def mark_alert_sent(self, alert_log_id: int) -> None:
         async with self._pool.connection() as conn:
             await conn.execute(
-                "UPDATE alert_log SET message_sent = TRUE WHERE id = %s",
+                """
+                UPDATE alert_log
+                SET message_sent = TRUE,
+                    delivery_attempted_ok = TRUE,
+                    delivery_lease_until = NULL
+                WHERE id = %s
+                """,
                 (alert_log_id,),
             )
 
@@ -584,7 +605,8 @@ class Storage:
                 await conn.execute(
                     """
                     UPDATE alert_log
-                    SET attempt_count = attempt_count + 1
+                    SET attempt_count = attempt_count + 1,
+                        delivery_lease_until = NULL
                     WHERE id = %s
                     RETURNING attempt_count
                     """,
@@ -600,13 +622,15 @@ class Storage:
             await conn.execute(
                 """
                 UPDATE alert_log
-                SET dead_lettered = TRUE
+                SET dead_lettered = TRUE,
+                    delivery_lease_until = NULL
                 WHERE id = %s
                 """,
                 (alert_log_id,),
             )
 
     async def unsent_alerts(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """List claimable unsent rows (excludes active delivery leases)."""
         async with self._pool.connection() as conn:
             rows = await (
                 await conn.execute(
@@ -617,13 +641,77 @@ class Storage:
                     JOIN users u ON u.id = ar.user_id
                     WHERE al.message_sent = FALSE
                       AND al.dead_lettered = FALSE
+                      AND al.delivery_attempted_ok = FALSE
                       AND ar.active = TRUE
+                      AND (
+                          al.delivery_lease_until IS NULL
+                          OR al.delivery_lease_until < now()
+                      )
                     ORDER BY al.fired_at
                     LIMIT %s
                     """,
                     (limit,),
                 )
             ).fetchall()
+        return _as_rows(rows)
+
+    async def claim_unsent_batch(
+        self,
+        *,
+        limit: int = 50,
+        lease_seconds: int = 120,
+    ) -> list[dict[str, Any]]:
+        """Claim unsent rows via FOR UPDATE SKIP LOCKED + delivery lease (E2-C05).
+
+        Locks and leases rows in one short transaction, then returns so Telegram
+        send can proceed outside any advisory lock. Concurrent claimers skip
+        already-locked or still-leased rows.
+        """
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                rows = await (
+                    await conn.execute(
+                        """
+                        WITH picked AS (
+                            SELECT
+                                al.id,
+                                al.rule_id,
+                                al.message_text,
+                                al.attempt_count,
+                                u.telegram_id
+                            FROM alert_log al
+                            JOIN alert_rules ar ON ar.id = al.rule_id
+                            JOIN users u ON u.id = ar.user_id
+                            WHERE al.message_sent = FALSE
+                              AND al.dead_lettered = FALSE
+                              AND al.delivery_attempted_ok = FALSE
+                              AND ar.active = TRUE
+                              AND (
+                                  al.delivery_lease_until IS NULL
+                                  OR al.delivery_lease_until < now()
+                              )
+                            ORDER BY al.fired_at
+                            LIMIT %s
+                            FOR UPDATE OF al SKIP LOCKED
+                        ),
+                        leased AS (
+                            UPDATE alert_log al
+                            SET delivery_lease_until =
+                                now() + (%s * interval '1 second')
+                            FROM picked
+                            WHERE al.id = picked.id
+                            RETURNING
+                                al.id,
+                                picked.rule_id,
+                                picked.message_text,
+                                picked.attempt_count,
+                                picked.telegram_id
+                        )
+                        SELECT * FROM leased
+                        """,
+                        (limit, lease_seconds),
+                    )
+                ).fetchall()
         return _as_rows(rows)
 
     async def health_check(self) -> bool:

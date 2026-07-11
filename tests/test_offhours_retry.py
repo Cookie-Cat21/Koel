@@ -24,7 +24,7 @@ async def test_outside_hours_still_retries_unsent() -> None:
     storage = AsyncMock()
     storage.try_advisory_lock = AsyncMock(return_value=True)
     storage.advisory_unlock = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 44,
@@ -45,14 +45,15 @@ async def test_outside_hours_still_retries_unsent() -> None:
     assert events == []
     send.assert_awaited_once_with(1001, "pending overnight")
     storage.mark_alert_sent.assert_awaited_once_with(44)
-    storage.advisory_unlock.assert_awaited_once()
+    storage.try_advisory_lock.assert_not_awaited()
+    storage.advisory_unlock.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_same_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     """If mark+dead_letter fail after OK send, same-tick retry must not re-send."""
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 55,
@@ -93,7 +94,7 @@ async def test_cross_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     storage.try_advisory_lock = AsyncMock(return_value=True)
     storage.advisory_unlock = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=[])
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 66,

@@ -78,7 +78,7 @@ async def test_claim_mark_fail_retry_succeeds_treats_as_sent() -> None:
 async def test_retry_unsent_mark_fail_dead_letters_no_attempt() -> None:
     """Retry path must use best-effort mark (H3 parity) — no bare mark_alert_sent."""
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 91,

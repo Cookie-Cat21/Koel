@@ -112,7 +112,7 @@ async def test_poller_reevaluates_existing_disclosure_after_upsert() -> None:
     storage.upsert_disclosure = AsyncMock(return_value=existing)
     storage.claim_alert = AsyncMock(return_value=9001)
     storage.mark_alert_sent = AsyncMock()
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(

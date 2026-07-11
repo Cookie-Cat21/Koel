@@ -93,7 +93,7 @@ async def test_claim_conflict_returns_false() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_failure_increments_and_dead_letters() -> None:
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 11,
@@ -120,7 +120,7 @@ async def test_retry_unsent_failure_increments_and_dead_letters() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_success_marks_sent_without_attempt() -> None:
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 12,
@@ -144,7 +144,7 @@ async def test_retry_unsent_success_marks_sent_without_attempt() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_below_max_does_not_dead_letter() -> None:
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 13,
@@ -237,7 +237,7 @@ async def test_claim_and_send_network_error_increments_attempt() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_deferred_increments_attempt() -> None:
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 14,
@@ -264,7 +264,7 @@ async def test_retry_unsent_deferred_increments_attempt() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_deferred_dead_letters_at_max() -> None:
     storage = AsyncMock()
-    storage.unsent_alerts = AsyncMock(
+    storage.claim_unsent_batch = AsyncMock(
         return_value=[
             {
                 "id": 15,

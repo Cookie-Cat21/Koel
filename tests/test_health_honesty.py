@@ -33,7 +33,7 @@ async def test_circuit_open_with_watchlist_sets_last_tick_ok_false() -> None:
     storage.advisory_unlock = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(side_effect=CircuitOpenError("open"))

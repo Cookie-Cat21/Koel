@@ -37,7 +37,7 @@ async def test_watched_missing_sets_price_ok_false(capsys: pytest.CaptureFixture
     from chime.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     # tradeSummary omits COMB and SAMP — no per-symbol fallback.
@@ -71,7 +71,7 @@ async def test_all_watched_present_clears_missing() -> None:
     from chime.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(
@@ -97,7 +97,7 @@ async def test_empty_watchlist_clears_watched_missing() -> None:
     storage.advisory_unlock = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=[])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
-    storage.unsent_alerts = AsyncMock(return_value=[])
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(return_value=[_snap("JKH.N0000")])
