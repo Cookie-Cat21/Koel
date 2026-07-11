@@ -17,16 +17,16 @@ make factory-verify   # clears DATABASE_URL (unit path)
 ## State
 
 - See `SCOREBOARD.json` for lifetime score  
-- Active board: `EPOCH13_BOARD.md` (refilled after Epoch 12 CLEAR)  
+- Active board: `EPOCH14_BOARD.md` (refilled after Epoch 13 CLEAR)  
 - Loop: `AGENTIC_LOOP.md` + `PORTFOLIO_PLAN.md` + `LONG_RUN_OPS.md`
-- Prior: Epochs 10–11 cleared on this lineage; Epoch 12 residual reliability drained
+- Prior: Epochs 10–13 cleared on this lineage; Epoch 14 is coverage + ops honesty
 
-## E12 -> E13 refill path
+## E13 -> E14 refill path
 
-Epoch 12 CLEAR -> `make factory-refill` -> Epoch 13 active. Epoch 12 drained
-8 residual reliability / ops polish items: durable TG-OK ledger, DOA display
-log, pool contention health, web health degrade, alerts history delivery
-badges, stale health copy, web regression tests, and alert_log contract docs.
+Epoch 13 CLEAR -> `make factory-refill` -> Epoch 14 active. Epoch 13 drained
+8 residual reliability / API honesty items: watched-missing health detail,
+delivery attempted OK checks, endpoint probe contracts, and final
+alert-delivery documentation polish.
 
 Canonical factory verification is `make factory-verify`, which runs the unit
 path with `DATABASE_URL=` via `scripts/factory/verify.sh`:
@@ -34,4 +34,4 @@ path with `DATABASE_URL=` via `scripts/factory/verify.sh`:
 
 ## Next wave hint
 
-Drain Epoch 13 OPEN rows only. Do not invent out-of-fence fuel.
+Drain Epoch 14 OPEN rows only. Do not invent out-of-fence fuel.
