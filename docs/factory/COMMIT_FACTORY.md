@@ -83,6 +83,9 @@ Parallelize **within** a lane; never merge conflicting files across agents in on
 AUDIT → PLAN → IMPLEMENT (≤8 agents) → VERIFY → ADVERSARIAL REVIEW → REPORT
 MAX_PASSES = 100 per lane epoch
 STOP if 2 consecutive passes have 0 findings > minor
+STOP if pass is minors-only with no quality-bar movement (anti-churn)
+Each implementer declares OWNED_FILES; path intersect across agents ⇒ fail the wave
+Verify proof must cite HEAD SHA at verify time
 ```
 
 ## 5. Planning phase (done)
