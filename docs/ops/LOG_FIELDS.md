@@ -99,8 +99,41 @@ DB column mirror: `alert_log.dead_lettered` (boolean). Grep logs with
 
 Non-empty `watched_missing` sets `price_poll_ok` false for that tick path and
 contributes to degraded health when the poller marks the tick unhealthy.
-Empty watchlist clears the list (no warning).
+Empty watchlist clears the list (no warning). Health refresh also treats a
+non-empty list as degraded on its own (HTTP **503**), even if other flags lag.
 
 **Ops action:** confirm symbol spelling / listing status; CSE trade-summary
 gaps are upstream — do not hammer the API. Non-loopback health binds omit
 detail fields by design.
+
+---
+
+## Circuit breakers (`circuits` / `cse_circuit_open`)
+
+Per-endpoint breakers live on `CSEClient` (`chime.circuit.CircuitBreaker`).
+Open circuits short-call upstream and surface as poll-leg failures.
+
+| | |
+|---|---|
+| **Log event** | `cse_circuit_open` (ERROR) when a call is rejected because the breaker is open |
+| **Health** | Loopback `/health` field `circuits` — map of endpoint → snapshot |
+
+### Snapshot fields (`circuits.<endpoint>`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string | Endpoint key (e.g. `tradeSummary`) |
+| `state` | string | `closed` \| `open` \| `half_open` |
+| `failures` | int | Consecutive failure count |
+| `fail_max` | int | Trip threshold (`CIRCUIT_FAIL_MAX`) |
+| `reset_timeout_seconds` | float | Open → half-open wait (`CIRCUIT_RESET_SECONDS`) |
+| `half_open_trial` | bool | True while a half-open probe is in flight |
+
+### Log fields (`cse_circuit_open`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `endpoint` | string | Breaker / path name |
+
+Empty `circuits` `{}` means no endpoint has been exercised yet this process.
+Dash `/health` proxies the same object when `HEALTH_URL` is set.

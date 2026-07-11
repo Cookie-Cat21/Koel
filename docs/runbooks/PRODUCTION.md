@@ -1,8 +1,9 @@
 # Production runbook — bot + poller + web
 
-How to run Chime’s three surfaces in production (or a staging VM). Compose today
-provides **Postgres only**; app processes run on the host (or a future `web`
-compose profile — Epoch 8). Prefer one poller leader per database.
+How to run Chime’s three surfaces in production (or a staging VM). Compose
+provides Postgres by default; optional **`web` profile** builds/runs the Next.js
+dash next to it (`docker compose --profile web up -d` / `make up-web`). Prefer
+one poller leader per database.
 
 ## Process list (canonical)
 
@@ -54,23 +55,28 @@ secrets out of unit files in git.
 ## Compose (current)
 
 ```bash
-docker compose up -d          # Postgres 16 only
-make migrate                  # waits for health when possible
+docker compose up -d                    # Postgres 16 only
+docker compose --profile web up -d --build   # Postgres + dash (:3000)
+# or: make up-web
+make migrate                            # waits for health when possible
 ```
 
 `DATABASE_URL=postgresql://chime:chime@localhost:5432/chime` matches compose
 defaults — **dev only**. Production must use a strong password / managed DSN
 and must not expose Postgres on `0.0.0.0` without network controls.
 
-A compose **`web` profile** (app container next to Postgres) is tracked as
-E8-O01; until then run the dashboard via the process list above.
+Compose **`web`** service (profile `web`) builds `web/Dockerfile` (Next
+standalone). Pass `DASH_SESSION_SECRET` (and demo allowlist only for lab).
+`HEALTH_URL` is optional — point at the host poller health if you want the dash
+to proxy tick detail.
 
 ## Health checks
 
 | Probe | Expect |
 |---|---|
 | `GET http://$HEALTH_HOST:$HEALTH_PORT/health` (loopback) | `200` + JSON; `503` when DB or last tick degraded |
-| Loopback field `watched_missing` | `[]` when all watched symbols appear in trade summary; non-empty list → price gaps (see [LOG_FIELDS.md](../ops/LOG_FIELDS.md)) |
+| Loopback field `watched_missing` | `[]` when all watched symbols appear in trade summary; non-empty list → **503** + price gaps (see [LOG_FIELDS.md](../ops/LOG_FIELDS.md)) |
+| Loopback field `circuits` | Per-endpoint breaker snapshots (`state`, `failures`, …) |
 | `GET /api/v1/health` (dash, session-gated) | DB ok; optional poller proxy via `HEALTH_URL` |
 
 ## Secret checklist
@@ -95,6 +101,7 @@ Structured JSON logs (structlog). Grep keys documented in
 - `alert_latency_ms` — claim→Telegram send latency (ms)
 - `alert_dead_lettered` / `dead_letter_*` — delivery exhausted
 - `watched_symbols_missing` + health `watched_missing` — trade-summary gaps
+- `cse_circuit_open` + health `circuits` — per-endpoint breaker state
 
 ## Latency honesty
 

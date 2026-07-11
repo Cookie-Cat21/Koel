@@ -168,6 +168,8 @@ async def test_refresh_both_health_db_exception_still_updates() -> None:
     poller.lock_held_skip = False
     poller.watched_missing = []
     poller.last_error = None
+    poller.cse = MagicMock()
+    poller.cse.circuit_metrics = MagicMock(return_value={})
 
     await main_mod._refresh_both_health(storage, health, poller)
 

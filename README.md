@@ -21,12 +21,16 @@ python -m chime both   # or: bot | poller | tick --force
 ## Local Postgres
 
 `docker-compose.yml` runs Postgres 16 (`chime` / `chime` / db `chime` on `:5432`).
+Optional profile **`web`** builds the Next.js dash (`make up-web` → `:3000`).
 
 ```bash
 make up && make migrate
+# optional dash:
+make up-web
 ```
 
-`make down` stops the container. `make help` lists all targets. Point `DATABASE_URL` at it (see `.env.example`).
+`make down` / `make down-web` stop the stack. `make help` lists all targets.
+Point `DATABASE_URL` at it (see `.env.example`).
 
 ## Commands
 

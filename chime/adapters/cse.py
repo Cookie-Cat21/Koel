@@ -266,6 +266,10 @@ class CSEClient:
             )
         return self._breakers[endpoint]
 
+    def circuit_metrics(self) -> dict[str, Any]:
+        """Per-endpoint breaker snapshots for loopback health (E8-C01)."""
+        return {name: breaker.snapshot() for name, breaker in self._breakers.items()}
+
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()

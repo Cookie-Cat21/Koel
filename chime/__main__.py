@@ -46,21 +46,34 @@ async def _refresh_bot_health(storage: Storage, health: HealthState) -> None:
     health.update(ok=db_ok, db_ok=db_ok, last_error=last_error)
 
 
+def _circuits_for_health(poller: Poller) -> dict[str, object]:
+    """Safe circuit snapshots for health JSON (MagicMock-safe)."""
+    cse = getattr(poller, "cse", None)
+    fn = getattr(cse, "circuit_metrics", None) if cse is not None else None
+    if not callable(fn):
+        return {}
+    raw = fn()
+    return raw if isinstance(raw, dict) else {}
+
+
 async def _refresh_both_health(storage: Storage, health: HealthState, poller: Poller) -> None:
     db_ok = False
     try:
         db_ok = await storage.health_check()
     except Exception as exc:
         log.warning("health_db_failed", error=str(exc))
+    missing = list(poller.watched_missing)
+    # E8-Q02: non-empty watched_missing is always degraded (not only via last_tick_ok).
     health.update(
-        ok=db_ok and poller.last_tick_ok,
+        ok=db_ok and poller.last_tick_ok and not missing,
         db_ok=db_ok,
         last_tick_at=poller.last_tick_at.isoformat() if poller.last_tick_at else None,
         last_tick_ok=poller.last_tick_ok,
         price_poll_ok=poller.price_poll_ok,
         disclosure_poll_ok=poller.disclosure_poll_ok,
         lock_held_skip=poller.lock_held_skip,
-        watched_missing=list(poller.watched_missing),
+        watched_missing=missing,
+        circuits=_circuits_for_health(poller),
         last_error=poller.last_error,
     )
 

@@ -1,4 +1,4 @@
-"""E5-C01: apply_migrations is idempotent when run twice.
+"""E8-Q01 / E5-C01: apply_migrations is idempotent when run twice.
 
 Requires DATABASE_URL. Skips if unset (unit CI parity).
 """

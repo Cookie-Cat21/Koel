@@ -7,9 +7,9 @@
   "epoch": 8,
   "branch": "cursor/epoch2-agentic-loop-cb19",
   "clean_streak": 0,
-  "lifetime_factory_score": 58,
-  "lifetime_proper_commits": 58,
-  "lifetime_clusters_closed": 58,
+  "lifetime_factory_score": 66,
+  "lifetime_proper_commits": 66,
+  "lifetime_clusters_closed": 66,
   "epoch2_done": 16,
   "epoch3_done": 10,
   "open_board": "docs/factory/EPOCH8_BOARD.md",
@@ -19,5 +19,5 @@
   "epoch5_done": 7,
   "epoch6_done": 8,
   "epoch7_done": 8,
-  "epoch8_done": 0
+  "epoch8_done": 8
 }

@@ -147,12 +147,14 @@ Requires authenticated session (v1). Prefer proxying poller health and/or DB pin
     "price_poll_ok": true,
     "disclosure_poll_ok": true,
     "lock_held_skip": false,
-    "last_error": null
+    "last_error": null,
+    "watched_missing": [],
+    "circuits": {}
   }
 }
 ```
 
-`status` is `"ok"` \| `"degraded"`. Omit or null `poller` when `HEALTH_URL` is unset and only DB liveness is available. Do not expose this payload anonymously without an explicit future public-liveness subset (`status` + `db_ok` only).
+`status` is `"ok"` \| `"degraded"`. Omit or null `poller` when `HEALTH_URL` is unset and only DB liveness is available. When proxying poller loopback health, forward `watched_missing` (string[]) and `circuits` (endpoint → breaker snapshot) when present. Do not expose this payload anonymously without an explicit future public-liveness subset (`status` + `db_ok` only).
 
 ---
 

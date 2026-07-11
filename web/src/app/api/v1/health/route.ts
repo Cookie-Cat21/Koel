@@ -17,6 +17,8 @@ type PollerHealth = {
   disclosure_poll_ok?: boolean;
   lock_held_skip?: boolean;
   last_error?: string | null;
+  watched_missing?: string[];
+  circuits?: Record<string, unknown>;
   [key: string]: unknown;
 };
 
@@ -90,6 +92,17 @@ export async function GET(request: NextRequest) {
             typeof body.last_error === "string" || body.last_error === null
               ? (body.last_error as string | null)
               : null,
+          watched_missing: Array.isArray(body.watched_missing)
+            ? (body.watched_missing as unknown[]).filter(
+                (s): s is string => typeof s === "string",
+              )
+            : undefined,
+          circuits:
+            body.circuits &&
+            typeof body.circuits === "object" &&
+            !Array.isArray(body.circuits)
+              ? (body.circuits as Record<string, unknown>)
+              : undefined,
         };
         // Prefer nested poller if present
         if (body.poller && typeof body.poller === "object") {
@@ -105,10 +118,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const missing =
+    poller != null && Array.isArray(poller.watched_missing)
+      ? poller.watched_missing
+      : [];
   const pollerDegraded =
     poller != null &&
     (poller.last_tick_ok === false ||
-      poller.last_error === "health_url_unreachable");
+      poller.last_error === "health_url_unreachable" ||
+      missing.length > 0);
   const status = dbOk && !pollerDegraded ? "ok" : "degraded";
   const httpStatus = status === "ok" ? 200 : 503;
 

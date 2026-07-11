@@ -6,7 +6,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -42,6 +42,17 @@ class CircuitBreaker:
             self._state = CircuitState.HALF_OPEN
             self._half_open_trial = False
         return self._state
+
+    def snapshot(self) -> dict[str, Any]:
+        """Ops-facing metrics for loopback /health details (E8-C01)."""
+        return {
+            "name": self.name,
+            "state": self.state.value,
+            "failures": self._failures,
+            "fail_max": self.fail_max,
+            "reset_timeout_seconds": self.reset_timeout,
+            "half_open_trial": self._half_open_trial,
+        }
 
     def _before_call(self) -> None:
         state = self.state

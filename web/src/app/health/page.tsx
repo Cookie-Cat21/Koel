@@ -23,6 +23,8 @@ type HealthPayload = {
     disclosure_poll_ok?: boolean;
     lock_held_skip?: boolean;
     last_error?: string | null;
+    watched_missing?: string[];
+    circuits?: Record<string, { state?: string; failures?: number }>;
   } | null;
 };
 
@@ -39,6 +41,8 @@ export default async function HealthPage() {
 
   const status = payload?.status ?? "degraded";
   const ok = status === "ok";
+  const missing = payload?.poller?.watched_missing ?? [];
+  const circuits = payload?.poller?.circuits ?? null;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -119,6 +123,43 @@ export default async function HealthPage() {
                 </dl>
               )}
             </section>
+
+            {payload.poller != null && (
+              <section className="mt-10 border-t border-border/60 pt-6">
+                <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                  Watched missing
+                </h2>
+                {missing.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    None — all watched symbols appeared in the latest trade
+                    summary.
+                  </p>
+                ) : (
+                  <ul className="mt-3 list-inside list-disc font-mono text-sm text-foreground">
+                    {missing.map((sym) => (
+                      <li key={sym}>{sym}</li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
+            {circuits != null && Object.keys(circuits).length > 0 && (
+              <section className="mt-10 border-t border-border/60 pt-6">
+                <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                  Circuits
+                </h2>
+                <dl className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  {Object.entries(circuits).map(([name, snap]) => (
+                    <Row
+                      key={name}
+                      label={name}
+                      value={`${snap?.state ?? "—"} (failures ${String(snap?.failures ?? "—")})`}
+                    />
+                  ))}
+                </dl>
+              </section>
+            )}
           </>
         )}
       </main>

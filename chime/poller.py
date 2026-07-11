@@ -744,15 +744,23 @@ async def run_poller_forever(
             except Exception as exc:
                 log.warning("health_db_failed", error=str(exc))
             tick_ok = poller.last_tick_ok
+            missing = list(poller.watched_missing)
+            circuits: dict[str, object] = {}
+            metrics = getattr(poller.cse, "circuit_metrics", None)
+            if callable(metrics):
+                raw = metrics()
+                if isinstance(raw, dict):
+                    circuits = raw
             health.update(
-                ok=db_ok and tick_ok,
+                ok=db_ok and tick_ok and not missing,
                 db_ok=db_ok,
                 last_tick_at=poller.last_tick_at.isoformat() if poller.last_tick_at else None,
                 last_tick_ok=tick_ok,
                 price_poll_ok=poller.price_poll_ok,
                 disclosure_poll_ok=poller.disclosure_poll_ok,
                 lock_held_skip=poller.lock_held_skip,
-                watched_missing=list(poller.watched_missing),
+                watched_missing=missing,
+                circuits=circuits,
                 last_error=poller.last_error,
             )
             with contextlib.suppress(TimeoutError):

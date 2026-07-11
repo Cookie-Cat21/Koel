@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -51,6 +51,8 @@ async def test_refresh_both_health_requires_tick_ok() -> None:
     poller.lock_held_skip = False
     poller.watched_missing = []
     poller.last_error = "price_fetch_failed"
+    poller.cse = MagicMock()
+    poller.cse.circuit_metrics = MagicMock(return_value={})
 
     await _refresh_both_health(storage, health, poller)
 
