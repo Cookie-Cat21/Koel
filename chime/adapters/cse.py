@@ -219,6 +219,15 @@ def announcement_to_disclosure(
         published = _ms_to_dt(row.createdDate)
     else:
         published = datetime(1970, 1, 1, tzinfo=UTC)
+        if doa is not None:
+            log.warning(
+                "cse_disclosure_doa_display_only",
+                external_id=str(external),
+                symbol=symbol.strip().upper(),
+                date_of_announcement=row.dateOfAnnouncement,
+                doa_display=doa.isoformat(),
+                published_at=published.isoformat(),
+            )
     title = row.announcementCategory or "Announcement"
     if row.remarks:
         title = f"{title}: {row.remarks}"

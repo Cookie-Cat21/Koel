@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
+from structlog.testing import capture_logs
+
 from chime.adapters.cse import (
     ANNOUNCEMENTS_PAGE,
     AnnouncementRow,
@@ -108,6 +110,35 @@ def test_announcement_doa_only_fail_closed_for_gating() -> None:
     expected_doa = datetime(2026, 6, 30, 0, 0, 0, tzinfo=_COLOMBO).astimezone(UTC)
     assert disc.doa_display == expected_doa
     assert disc.doa_display == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
+
+
+def test_announcement_doa_only_logs_display_catch_up_without_gating() -> None:
+    """E12-C02: DOA-only rows are display catch-up, not alert gating inputs."""
+    row = AnnouncementRow(
+        announcementId=47,
+        announcementCategory="Financial",
+        createdDate=None,
+        dateOfAnnouncement="10 Jul 2026",
+    )
+
+    with capture_logs() as caps:
+        disc = announcement_to_disclosure(row, symbol="jkh.n0000")
+
+    assert disc is not None
+    assert disc.published_at == datetime(1970, 1, 1, tzinfo=UTC)
+    assert disc.doa_display == datetime(2026, 7, 9, 18, 30, 0, tzinfo=UTC)
+    events = [event for event in caps if event.get("event") == "cse_disclosure_doa_display_only"]
+    assert events == [
+        {
+            "event": "cse_disclosure_doa_display_only",
+            "log_level": "warning",
+            "external_id": "47",
+            "symbol": "JKH.N0000",
+            "date_of_announcement": "10 Jul 2026",
+            "doa_display": "2026-07-09T18:30:00+00:00",
+            "published_at": "1970-01-01T00:00:00+00:00",
+        }
+    ]
 
 
 def test_announcement_doa_when_created_date_non_positive_fail_closed() -> None:
