@@ -35,8 +35,8 @@ Each DONE needs: commit SHA + verify proof in pass report.
 | E2-D02 | Demo session auth per ADR 001 | DONE | `2934773` `POST /api/v1/auth/demo`, `/login`, signed HttpOnly `chime_session` |
 | E2-D03 | CSRF bootstrap; logout requires CSRF | DONE | `c518fa6` CSRF helpers; `POST /auth/logout` requires `X-CSRF-Token`; login exempt |
 | E2-D04 | Read APIs: watchlist, alerts, fires, health (Postgres only) | DONE | `c518fa6` GET watchlist, alerts, alerts/history, health (+ me); Postgres only |
-| E2-D05 | Brand-first shell page (no fake trading terminal) | DONE | brand home/login/watchlist shell; Fraunces+Sora; teal mist atmosphere |
-| E2-D06 | THIRD_PARTY.md + dash smoke script | DONE | `docs/THIRD_PARTY.md` fonts+tw-animate; `scripts/factory/dash_smoke.sh` curls /login + /api/v1/health or demo-disabled |
+| E2-D05 | Brand-first shell page (no fake trading terminal) | DONE | `e3df622` brand home/login/watchlist; Fraunces+Sora; teal mist |
+| E2-D06 | THIRD_PARTY.md + dash smoke script | DONE | `e3df622` THIRD_PARTY fonts+tw-animate; `scripts/factory/dash_smoke.sh` |
 
 ## Wave packing (≤8 agents)
 
