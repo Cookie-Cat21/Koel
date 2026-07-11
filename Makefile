@@ -1,7 +1,7 @@
 # Thin DX entrypoint for Chime local ops.
 PYTHON ?= python3
 
-.PHONY: help install lint typecheck test test-unit migrate up-db down-db up down up-web down-web factory-status factory-verify factory-scoreboard factory-refill factory-wave
+.PHONY: help install lint typecheck test test-unit migrate up-db down-db up down up-web down-web factory-status factory-verify factory-scoreboard factory-refill factory-wave portfolio-sum
 
 help:
 	@echo "Chime local targets:"
@@ -16,7 +16,8 @@ help:
 	@echo "  make down-web    Stop profile web stack"
 	@echo "  make migrate     Apply SQL migrations (waits for compose health)"
 	@echo "  make factory-status      Board + scoreboard"
-	@echo "  make factory-verify      ruff/mypy/pytest proof"
+	@echo "  make factory-verify      ruff/mypy/pytest proof (+ portfolio_sum smoke)"
+	@echo "  make portfolio-sum       Plan A portfolio_sum.py smoke (non-fatal)"
 	@echo "  make factory-scoreboard  Refresh SCOREBOARD.json"
 	@echo "  make factory-refill      Activate next epoch if current empty"
 	@echo "  make factory-wave        Next ≤8 OPEN ids"
@@ -61,6 +62,10 @@ factory-status:
 
 factory-verify:
 	bash scripts/factory/verify.sh
+
+# E10-O01: Plan A portfolio score smoke; '-' keeps make green on stub gaps.
+portfolio-sum:
+	-$(PYTHON) scripts/factory/portfolio_sum.py
 
 factory-scoreboard:
 	$(PYTHON) scripts/factory/update_scoreboard.py --write

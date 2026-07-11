@@ -14,4 +14,10 @@ if [[ -f web/package.json ]]; then
   fi
 fi
 DATABASE_URL="${DATABASE_URL:-}" pytest -q --tb=line
+# E10-O01: portfolio_sum smoke — non-fatal (Plan A nodes stub may be empty/missing)
+if python3 scripts/factory/portfolio_sum.py; then
+  echo "portfolio_sum smoke ok"
+else
+  echo "portfolio_sum smoke failed (non-fatal)"
+fi
 echo "VERIFY_OK HEAD=$(git rev-parse HEAD)"
