@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { Sparkline } from "@/components/sparkline";
+import { Button } from "@/components/ui/button";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { requirePageSession } from "@/lib/auth/page-session";
@@ -80,12 +82,29 @@ export default async function SymbolDetailPage({
   if (!symRes.ok) {
     return (
       <Shell>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          {symbol}
-        </h1>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Could not load symbol data right now.
-        </p>
+        <EmptyState
+          title={`Couldn’t load ${symbol}`}
+          description={
+            <>
+              Chime couldn’t fetch this symbol from Postgres just now. Check
+              your connection, then try again — or open it from your{" "}
+              <Link href="/watchlist" className="underline underline-offset-4">
+                watchlist
+              </Link>
+              .
+            </>
+          }
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href={`/symbols/${encoded}`}>Try again</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link href="/watchlist">← Watchlist</Link>
+              </Button>
+            </div>
+          }
+        />
       </Shell>
     );
   }
@@ -97,6 +116,9 @@ export default async function SymbolDetailPage({
   const discs = discRes.ok
     ? ((await discRes.json()) as DisclosuresPayload)
     : { items: [] };
+
+  const snapsFailed = !snapRes.ok;
+  const discsFailed = !discRes.ok;
 
   const changePct = data.last?.change_pct ?? null;
   const changeTone =
@@ -129,7 +151,7 @@ export default async function SymbolDetailPage({
         </div>
         <Link
           href="/watchlist"
-          className="mt-3 text-sm text-muted-foreground underline-offset-4 hover:underline sm:mt-0"
+          className="mt-3 rounded-sm text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none sm:mt-0"
         >
           ← Watchlist
         </Link>
@@ -165,9 +187,22 @@ export default async function SymbolDetailPage({
             />
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No price snapshot stored yet.
-          </p>
+          <EmptyState
+            className="mt-4"
+            title="No price yet"
+            description={
+              <>
+                The poller hasn’t stored a snapshot for {data.symbol}. Once
+                market hours tick, the last price will show here. Not financial
+                advice.
+              </>
+            }
+            action={
+              <Button asChild variant="outline" size="sm">
+                <Link href="/alerts">Set an alert</Link>
+              </Button>
+            }
+          />
         )}
         {data.last?.ts ? (
           <p className="mt-3 text-xs text-muted-foreground">
@@ -182,7 +217,24 @@ export default async function SymbolDetailPage({
           Recent ticks
         </h2>
         <div className="mt-3">
-          <Sparkline points={snaps.points} />
+          {snapsFailed ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              Couldn’t load recent ticks right now.
+            </p>
+          ) : snaps.points.length < 2 ? (
+            <EmptyState
+              className="mt-1"
+              title="Not enough ticks"
+              description={
+                <>
+                  Need at least two stored snapshots for a sparkline. Chime
+                  keeps polling during market hours (09:30–14:30 SLT).
+                </>
+              }
+            />
+          ) : (
+            <Sparkline points={snaps.points} />
+          )}
         </div>
       </section>
 
@@ -190,10 +242,26 @@ export default async function SymbolDetailPage({
         <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
           Disclosures
         </h2>
-        {discs.items.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No disclosures stored for this symbol yet.
+        {discsFailed ? (
+          <p className="mt-3 text-sm text-muted-foreground" role="status">
+            Couldn’t load disclosures right now.
           </p>
+        ) : discs.items.length === 0 ? (
+          <EmptyState
+            className="mt-4"
+            title="No disclosures yet"
+            description={
+              <>
+                Nothing stored for {data.symbol}. New CSE announcements the
+                poller sees will list here with a link to the source.
+              </>
+            }
+            action={
+              <Button asChild variant="outline" size="sm">
+                <Link href="/alerts">Alert on disclosures</Link>
+              </Button>
+            }
+          />
         ) : (
           <ul className="mt-4 divide-y divide-border/60">
             {discs.items.map((item) => (
@@ -202,7 +270,7 @@ export default async function SymbolDetailPage({
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                  className="block rounded-sm text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
                   {item.title}
                 </a>
@@ -223,7 +291,11 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav />
-      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10"
+      >
         {children}
       </main>
       <NfaFooter />

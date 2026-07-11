@@ -10,7 +10,7 @@ export function Sparkline({
 }) {
   if (points.length < 2) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground" role="status">
         Not enough snapshots for a sparkline yet.
       </p>
     );
