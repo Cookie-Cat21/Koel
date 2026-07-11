@@ -72,7 +72,8 @@ async def test_unlock_before_send_on_new_price_claim() -> None:
     assert len(events) == 1
     storage.claim_alert.assert_awaited_once()
     storage.set_rule_armed.assert_any_await(rule.id, False)
-    storage.advisory_unlock.assert_awaited_once()
+    # CSE unlock + empty unsent re-lock unlock
+    assert storage.advisory_unlock.await_count == 2
     assert unlock_before_send == [True]
     assert lock_held["value"] is False
 
@@ -202,6 +203,6 @@ async def test_disclosure_fetch_all_then_claim_no_sleep_under_lock(
 
     assert sleep_while_locked == 0
     assert len(events) == 1
-    storage.advisory_unlock.assert_awaited_once()
+    assert storage.advisory_unlock.await_count == 2
     storage.claim_alert.assert_awaited_once()
     storage.mark_alert_sent.assert_awaited_once_with(9001)
