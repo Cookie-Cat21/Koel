@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from structlog.testing import capture_logs
 
 from chime.adapters.cse import CSEClient
 from chime.circuit import CircuitOpenError
@@ -47,6 +48,24 @@ async def test_fetch_company_info_propagates_timeout(
     with pytest.raises(httpx.TimeoutException):
         await client.fetch_company_info("JKH.N0000")
     assert http.request.await_count == 3  # tenacity stop_after_attempt(3)
+
+
+@pytest.mark.asyncio
+async def test_fetch_company_info_logs_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """E10-C01: timeout path emits cse_timeout (not silent / generic only)."""
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    http = AsyncMock()
+    http.request = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+    client = CSEClient(fail_max=99, reset_timeout=60.0, client=http)
+
+    with capture_logs() as caps, pytest.raises(httpx.TimeoutException):
+        await client.fetch_company_info("JKH.N0000")
+
+    timeout_events = [e for e in caps if e.get("event") == "cse_timeout"]
+    assert timeout_events, f"expected cse_timeout in {caps!r}"
+    assert any("/companyInfoSummery" in str(e.get("path", "")) for e in timeout_events)
 
 
 @pytest.mark.asyncio

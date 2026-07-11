@@ -320,6 +320,10 @@ class CSEClient:
                     response=response,
                 )
             return response.json()
+        except httpx.TimeoutException as exc:
+            # E10-C01: distinct event so ops can filter timeout vs other soft fails
+            log.warning("cse_timeout", path=path, error=str(exc))
+            raise
         except Exception as exc:
             log.warning("cse_request_failed", path=path, error=str(exc))
             raise
