@@ -1,0 +1,12 @@
+{
+  "portfolio_kpi": "A",
+  "formula": "sum_over_repos(min(proper_commits, clusters_closed))",
+  "nodes": [
+    {
+      "id": "chime",
+      "repo": "Cookie-Cat21/Chime",
+      "score_file": "docs/factory/SCOREBOARD.json",
+      "branch": "cursor/epoch2-agentic-loop-cb19"
+    }
+  ]
+}

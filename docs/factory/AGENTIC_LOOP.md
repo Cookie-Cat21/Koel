@@ -1,26 +1,29 @@
 # Chime — Agentic Factory Loop (perpetual)
 
-**Status:** Active (Epoch 2+)  
+**Status:** Active (Portfolio Plan A)  
 **Authority:** [COMMIT_FACTORY.md](COMMIT_FACTORY.md) + [CLAUDE.md](../CLAUDE.md)  
-**Aspiration:** Maximize lifetime `factory_score` with outstanding quality.  
-**Literal “5 trillion commits”:** Not a git-count target. Farming is banned. The loop’s job is unbounded *proper* throughput until product fences / backlog exhaustion.
+**Portfolio KPI:** [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) — `portfolio_score = Σ min(proper, clusters)`  
+**Long runs:** [LONG_RUN_OPS.md](LONG_RUN_OPS.md) — multi-hour session + multi-session handoff  
+**Aspiration:** Maximize lifetime / portfolio `factory_score` with outstanding quality.  
+**Banned:** Raw commit farming, trillion-count theater.
 
 ## 1. Loop (never idle while backlog remains)
 
 ```
 while True:
   1. LOAD board (epoch open items + ACCEPT-DEFER + adversarial findings)
-  2. if board empty AND 2 consecutive CLEAN passes globally:
-       STOP  # only honest terminal state
+  2. if board empty:
+       run scripts/factory/refill_board.py
+       if NO_FUEL AND clean_streak >= 2: STOP lane
   3. PLAN wave: pick ≤8 OWNED_FILES-disjoint work items (hard max 16)
   4. IMPLEMENT via parallel agents
-  5. VERIFY: ruff + mypy + pytest (+ dash smoke when web/ exists); cite HEAD SHA
+  5. VERIFY: make factory-verify; cite HEAD SHA
   6. ADVERSARIAL: ≤8 reviewers; REFUTE ⇒ fix same pass
-  7. REPORT: pass md + scorecard; update SCOREBOARD.json
-  8. if pass has 0 findings > minor: clean_streak += 1 else clean_streak = 0
-  9. if clean_streak >= 2 AND board has only ACCEPT-DEFER-human: STOP lane
-     else: open next epoch / refill board from fences (DASH features, ratchet)
-  10. NEVER stop because “N passes done” or “commit count looks big”
+  7. REPORT + update_scoreboard; push; update PR
+  8. Append SESSION_LOG line
+  9. if 0 findings > minor: clean_streak += 1 else clean_streak = 0
+  10. NEVER stop for “N waves” or “commit count looks big”
+  11. On wall-clock limit: write HANDOFF.md and exit (next session resumes)
 ```
 
 ## 2. Outstanding performance bar
@@ -62,17 +65,22 @@ When a lane CLEAN×2:
 
 | Path | Role |
 |---|---|
-| [EPOCH2_BOARD.md](EPOCH2_BOARD.md) | Open work items |
-| [passes/epoch2/](passes/epoch2/) | Pass reports |
-| [../SCOREBOARD.json](SCOREBOARD.json) | Machine-readable score |
-| `scripts/factory/loop_status.py` | Print board + score + next wave hint |
-| `scripts/factory/verify.sh` | Canonical verify proof |
+| [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) | KPI A + multi-hour / multi-repo plan |
+| [LONG_RUN_OPS.md](LONG_RUN_OPS.md) | Session heartbeat |
+| [HANDOFF.md](HANDOFF.md) | Cross-session resume |
+| `EPOCH*_BOARD.md` | Pre-seeded fuel (5+) |
+| [SCOREBOARD.json](SCOREBOARD.json) | Machine-readable score |
+| `scripts/factory/loop_status.py` | Status |
+| `scripts/factory/refill_board.py` | Anti-idle refill |
+| `scripts/factory/next_wave.py` | Wave packing |
+| `scripts/factory/verify.sh` | Canonical verify |
 
-## 6. Orchestrator prompt (every session)
+## 6. Orchestrator prompt (every session — hours)
 
-1. Read CLAUDE.md + this file + current epoch board.  
-2. Run `python scripts/factory/loop_status.py`.  
-3. Spawn ≤8 implementers on top open items (disjoint paths).  
-4. Verify + adversarial.  
-5. Commit/push/update PR.  
-6. If not global STOP → continue next wave same session when possible.
+1. Read CLAUDE.md + PORTFOLIO_PLAN + this file + HANDOFF.  
+2. `make factory-status` / `make factory-wave`.  
+3. Spawn ≤8 implementers on OPEN (disjoint paths).  
+4. `make factory-verify` + adversarial.  
+5. Commit/push/update PR; append SESSION_LOG.  
+6. If board empty → `make factory-refill` → continue.  
+7. Repeat until wall-clock → write HANDOFF (do not abandon mid-wave).
