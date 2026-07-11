@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from structlog.testing import capture_logs
 from telegram.error import NetworkError, RetryAfter, TimedOut
 
 from chime.notify import SendResult, send_message
@@ -56,6 +57,28 @@ async def test_retry_after_deferred_when_nonblocking() -> None:
     assert result is SendResult.DEFERRED
     sleep.assert_not_awaited()
     assert bot.send_message.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_nonblocking_retry_after_returns_deferred_without_retrying() -> None:
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(side_effect=[RetryAfter(60), None])
+
+    with (
+        capture_logs() as logs,
+        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        result = await send_message(bot, chat_id=1001, text="hello", block_on_retry_after=False)
+
+    assert result is SendResult.DEFERRED
+    assert bot.send_message.await_count == 1
+    sleep.assert_not_awaited()
+    assert {
+        "event": "telegram_retry_after_deferred",
+        "log_level": "warning",
+        "chat_id": 1001,
+        "retry_after": "60",
+    } in logs
 
 
 @pytest.mark.asyncio

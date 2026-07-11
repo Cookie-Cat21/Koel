@@ -8,7 +8,7 @@ scrape / cse.lk from `web/`. Activate via `make factory-refill` after Epoch 13.
 
 | ID | Item | Status |
 |---|---|---|
-| E14-Q01 | Unit: notify RetryAfter deferred nonblocking path cov | OPEN |
+| E14-Q01 | Unit: notify RetryAfter deferred nonblocking path cov | DONE |
 | E14-Q02 | Unit: poller unlock-before-send order regression | OPEN |
 | E14-D01 | Symbol not-found page brand copy + watchlist link | DONE |
 | E14-D02 | Health page: poller unreachable vs degraded distinction | OPEN |
