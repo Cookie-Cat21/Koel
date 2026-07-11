@@ -1,6 +1,6 @@
 # Epoch 13 Board — Thin polish + ops DX (pre-seed)
 
-**Status:** OPEN
+**Status:** CLEAR
 
 Fence-legal only. Theme: remaining ACCEPT-DEFER thin slices, dash copy,
 ops DX. No portfolio P&L / screener / TA / payments / native app / competitor
