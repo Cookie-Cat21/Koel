@@ -10,7 +10,7 @@ Activate via `make factory-refill` after Epoch 17.
 |---|---|---|
 | E18-Q01 | Unit: filter_fireable drops rearm-only events | DONE |
 | E18-Q02 | Unit: crossed_above/below boundary helpers | DONE |
-| E18-D01 | NfaFooter present on watchlist/alerts/health | OPEN |
+| E18-D01 | NfaFooter present on watchlist/alerts/health | DONE |
 | E18-D02 | Unwatch success toast stays Telegram-first | OPEN |
 | E18-O01 | HANDOFF Epoch 17→18 | OPEN |
 | E18-C01 | Adapter announcement URL uses announcements page anchor | OPEN |

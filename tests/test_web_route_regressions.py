@@ -97,3 +97,22 @@ def test_web_runtime_sources_do_not_import_or_call_cse_lk() -> None:
                 hits.append(f"{rel}:{lineno}: {line.strip()}")
 
     assert hits == [], "web runtime CSE references found:\n" + "\n".join(hits)
+
+
+def test_dashboard_pages_render_nfa_footer() -> None:
+    """Watchlist, alerts, and health keep the global NFA footer visible."""
+    page_paths = [
+        WEB / "src" / "app" / "watchlist" / "page.tsx",
+        WEB / "src" / "app" / "alerts" / "page.tsx",
+        WEB / "src" / "app" / "health" / "page.tsx",
+    ]
+
+    missing: list[str] = []
+    for path in page_paths:
+        source = path.read_text(encoding="utf-8")
+        if 'import { NfaFooter } from "@/components/nfa-footer";' not in source:
+            missing.append(f"{path.relative_to(ROOT)} missing import")
+        if "<NfaFooter />" not in source:
+            missing.append(f"{path.relative_to(ROOT)} missing render")
+
+    assert missing == []
