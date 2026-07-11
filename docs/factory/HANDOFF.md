@@ -10,23 +10,23 @@
 ```bash
 git pull origin cursor/epoch11-drain-cb19
 make factory-status
-# Continue OPEN items; refill when empty
+# Continue OPEN Epoch 15 items; refill when empty
 make factory-verify   # clears DATABASE_URL (unit path)
 ```
 
 ## State
 
 - See `SCOREBOARD.json` for lifetime score  
-- Active board: `EPOCH14_BOARD.md` (refilled after Epoch 13 CLEAR)  
+- Active board: `EPOCH15_BOARD.md` (refilled after Epoch 14 CLEAR)  
 - Loop: `AGENTIC_LOOP.md` + `PORTFOLIO_PLAN.md` + `LONG_RUN_OPS.md`
-- Prior: Epochs 10–13 cleared on this lineage; Epoch 14 is coverage + ops honesty
+- Prior: Epochs 10–14 cleared on this lineage; Epoch 15 is resilience proofs + thin UX/ops
 
-## E13 -> E14 refill path
+## E14 -> E15 refill path
 
-Epoch 13 CLEAR -> `make factory-refill` -> Epoch 14 active. Epoch 13 drained
-8 residual reliability / API honesty items: watched-missing health detail,
-delivery attempted OK checks, endpoint probe contracts, and final
-alert-delivery documentation polish.
+Epoch 14 CLEAR -> `make factory-refill` -> Epoch 15 active. Epoch 14 drained
+coverage and ops-honesty residuals, then Epoch 15 opened focused proof/docs/UX
+items: claim leases, dead-letter notify, tradeSummary health detail, TG-OK
+ledger docs, handoff logging, and `/cancel` copy.
 
 Canonical factory verification is `make factory-verify`, which runs the unit
 path with `DATABASE_URL=` via `scripts/factory/verify.sh`:
@@ -34,4 +34,4 @@ path with `DATABASE_URL=` via `scripts/factory/verify.sh`:
 
 ## Next wave hint
 
-Drain Epoch 14 OPEN rows only. Do not invent out-of-fence fuel.
+Drain Epoch 15 OPEN rows only. Do not invent out-of-fence fuel.
