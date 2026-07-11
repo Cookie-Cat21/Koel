@@ -14,7 +14,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 | E2-C01 | CORE-003 DOA-only: fail-closed gate when only DOA (store DOA for display) | DONE | |
 | E2-C02 | CORE-005 await in-flight tick on shutdown (timeout) | DONE | `8477cf6` await `_tick_task` (30s); `tests/test_shutdown_await.py` |
 | E2-C03 | Claim+disarm single DB transaction | DONE | `02ab32d` `claim_and_disarm` txn; price path; `tests/test_claim_disarm_txn.py` |
-| E2-C04 | Persist delivered-guard (survive restart) — `message_sent` optimistic or delivery lease | DONE | `delivery_attempted_ok`; unsent/claim exclude; `tests/test_delivery_attempted_ok.py` |
+| E2-C04 | Persist delivered-guard (survive restart) — `message_sent` optimistic or delivery lease | DONE | `3bc8b53` `delivery_attempted_ok` + unsent exclude; `tests/test_delivery_attempted_ok.py` |
 | E2-C05 | Unsent SKIP LOCKED / lease so RetryAfter need not hold advisory lock | DONE | `7b6db15` `claim_unsent_batch` + `004_delivery_lease`; `tests/test_claim_unsent_lease.py` |
 | E2-C06 | tradeSummary miss → health flag / log watched_missing | DONE | `1a1739e` `_poll_prices` + `tests/test_watched_missing.py` |
 | E2-C07 | Dead-letter user/ops notify (bot message or structured alert) | DONE | `5435635` `format_dead_letter_notify` + one-shot TG; `tests/test_dead_letter_notify.py` |
