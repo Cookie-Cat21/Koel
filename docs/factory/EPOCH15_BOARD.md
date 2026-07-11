@@ -1,6 +1,6 @@
 # Epoch 15 Board — Resilience proofs + thin UX (pre-seed)
 
-**Status:** OPEN
+**Status:** CLEAR
 
 Fence-legal only. Theme: residual resilience proofs, thin UX/ops. No portfolio
 P&L / screener / TA / payments / native app / competitor scrape / cse.lk from
