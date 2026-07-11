@@ -84,11 +84,24 @@ def test_start_text_is_short_and_mentions_colombo_disclaimer() -> None:
     assert "Not financial advice" in START_TEXT
 
 
-def test_help_text_lists_commands_within_12_lines() -> None:
+def test_help_text_lists_alert_syntax_and_nfa() -> None:
+    """E11-B01: /help lists alert forms + NFA one-liner (≤12 lines)."""
     lines = [ln for ln in HELP_TEXT.strip().splitlines() if ln.strip()]
     assert len(lines) <= 12
     assert "/watch SYMBOL" in HELP_TEXT
+    assert "/alert SYMBOL above PRICE" in HELP_TEXT
+    assert "/alert SYMBOL below PRICE" in HELP_TEXT
+    assert "/alert SYMBOL move PERCENT" in HELP_TEXT
     assert "/alert SYMBOL disclosure" in HELP_TEXT
     assert "/cancel ALERT_ID" in HELP_TEXT
     assert "/myalerts — active only" in HELP_TEXT
-    assert "/help" in HELP_TEXT
+    assert "Disclosure alerts:" in HELP_TEXT
+    assert disclaimer() in HELP_TEXT
+    assert "Not financial advice" in HELP_TEXT
+
+
+def test_start_text_includes_nfa_framing() -> None:
+    """E11-B02: /start carries not-financial-advice framing."""
+    assert disclaimer() in START_TEXT
+    assert "Not financial advice" in START_TEXT
+    assert "informational only" in START_TEXT.lower() or "Not financial advice" in START_TEXT

@@ -105,6 +105,8 @@ START_TEXT = (
 )
 
 # ≤12 lines (E7-B01). /myalerts lists active rules only (E9-B01).
+# E11-B01: alert syntax + NFA one-liner on /help.
+# E11-A01: disclosure alerts skip filings at/before rule create (fail-closed).
 HELP_TEXT = (
     "Commands:\n"
     "/watch SYMBOL\n"
@@ -116,7 +118,9 @@ HELP_TEXT = (
     "/cancel ALERT_ID\n"
     "/myalerts — active only\n"
     "/mywatchlist\n"
-    "/help"
+    "Disclosure alerts: new filings after you set the rule only "
+    "(missing publish time → no fire).\n"
+    f"{disclaimer()}"
 )
 
 # Back-compat alias for older imports / docs.
