@@ -64,6 +64,15 @@ Python · python-telegram-bot · Postgres · APScheduler · httpx
 Config via environment — see `.env.example`. Never commit `.env`.
 Third-party licenses: [THIRD_PARTY.md](THIRD_PARTY.md).
 
+## Factory / thin dashboard
+
+Quality-gated workstreams live under [docs/factory/](docs/factory/)
+([COMMIT_FACTORY.md](docs/factory/COMMIT_FACTORY.md),
+[DASH_IA.md](docs/factory/DASH_IA.md)). Telegram remains the primary
+user surface; a thin management dashboard (Next.js + Tailwind + shadcn)
+is planned as secondary — watchlist / alerts / fire history only, not a
+trading terminal.
+
 ## Disclaimer
 
 Chime relays publicly available market information. It is an information

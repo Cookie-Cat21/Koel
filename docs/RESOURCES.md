@@ -54,12 +54,21 @@ Starter list of libraries and patterns for the CSE Telegram alerting stack. Pref
 
 Bot copy involving prices should include a short “not financial advice” disclaimer (SEC Sri Lanka Part V market misconduct framing — informational tool only).
 
-## Web phase (OUT OF SCOPE for v1)
+## Thin web dashboard (greenlit — secondary to Telegram)
 
-Chime v1 is Telegram-only. Do not build a web dashboard, landing page, or
-component library integration yet. The bookmarks below are deferred for a
-possible later UI phase — treat them as reference only, not implementation
-targets:
+A minimal management UI is allowed (watchlist, alerts, fire history,
+symbol detail, poller health). Telegram remains the primary surface;
+push alerts are the product. See [`factory/DASH_IA.md`](factory/DASH_IA.md)
+and [`factory/COMMIT_FACTORY.md`](factory/COMMIT_FACTORY.md) §7.
+
+**Stack when building `web/`:** Next.js + Tailwind + [shadcn/ui](https://ui.shadcn.com/)
+only. Free/MIT components; log additions in `THIRD_PARTY.md`. Dashboard
+reads Postgres / Chime API only — no second cse.lk client from `web/`.
+
+**Still forbidden:** portfolio / P&L, tax reports, stock screener, technical
+analysis charts, payments, native app.
+
+Optional component bookmarks (reference only; prefer shadcn primitives):
 
 - HyperUI
 - daisyUI
@@ -70,6 +79,3 @@ targets:
 - Cult UI
 - Watermelon UI
 - Aceternity
-
-If/when a web surface is explicitly in scope, pick from these then; until
-then, ignore.
