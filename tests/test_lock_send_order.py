@@ -79,6 +79,71 @@ async def test_unlock_before_send_on_new_price_claim() -> None:
 
 
 @pytest.mark.asyncio
+async def test_new_claim_unlocks_before_deferred_send_attempt_mark() -> None:
+    """Regression: claimed alerts are sent and marked after advisory unlock."""
+    order: list[str] = []
+
+    async def try_lock(_lock_id: int) -> bool:
+        order.append("lock")
+        return True
+
+    async def unlock(_lock_id: int) -> None:
+        order.append("unlock")
+
+    async def claim_and_disarm(*_args: object, **_kwargs: object) -> int:
+        order.append("claim")
+        return 601
+
+    async def send(_chat_id: int, _text: str) -> SendResult:
+        order.append("send")
+        return SendResult.DEFERRED
+
+    async def mark_attempt(_log_id: int) -> int:
+        order.append("attempt")
+        return 1
+
+    async def claim_unsent_batch(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+        order.append("retry_probe")
+        return []
+
+    rule = make_rule(type=AlertType.PRICE_ABOVE, threshold=100.0, armed=True)
+    snap = PriceSnapshot(
+        symbol="JKH.N0000",
+        price=105.0,
+        previous_close=98.0,
+        ts=datetime(2026, 7, 11, 6, 0, 0, tzinfo=UTC),
+        id=42,
+    )
+
+    storage = AsyncMock()
+    storage.try_advisory_lock = AsyncMock(side_effect=try_lock)
+    storage.advisory_unlock = AsyncMock(side_effect=unlock)
+    storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
+    storage.active_rules_for_symbols = AsyncMock(return_value=[rule])
+    storage.insert_snapshot = AsyncMock(side_effect=lambda s: s)
+    storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=95.0))
+    storage.claim_and_disarm = AsyncMock(side_effect=claim_and_disarm)
+    storage.mark_alert_attempt = AsyncMock(side_effect=mark_attempt)
+    storage.mark_alert_sent = AsyncMock()
+    storage.set_rule_armed = AsyncMock()
+    storage.claim_unsent_batch = AsyncMock(side_effect=claim_unsent_batch)
+    storage.upsert_disclosure = AsyncMock()
+
+    cse = AsyncMock()
+    cse.fetch_trade_summary = AsyncMock(return_value=[snap])
+    cse.fetch_announcements_for_symbol = AsyncMock(return_value=[])
+
+    poller = Poller(_settings(), storage, cse, send)
+    events = await poller.run_once(force=True)
+
+    assert len(events) == 1
+    assert order == ["lock", "claim", "unlock", "send", "attempt", "retry_probe"]
+    storage.advisory_unlock.assert_awaited_once()
+    storage.mark_alert_attempt.assert_awaited_once_with(601)
+    storage.mark_alert_sent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_retry_unsent_no_advisory_rehold() -> None:
     """E2-C05: market-hours unsent drain uses claim lease, not advisory re-lock."""
     lock_held = {"value": False}
