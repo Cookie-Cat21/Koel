@@ -121,5 +121,13 @@ def format_alert_message(event: AlertEvent) -> str:
     return "\n".join(lines)
 
 
+def format_dead_letter_notify(symbol: str, attempts: int) -> str:
+    """One-shot user message when an alert is abandoned after delivery failures."""
+    return (
+        f"Chime could not deliver an alert for {symbol} after {attempts} tries. "
+        "Not financial advice."
+    )
+
+
 def as_dict(model: BaseModel) -> dict[str, Any]:
     return model.model_dump()

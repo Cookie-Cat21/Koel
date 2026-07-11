@@ -17,7 +17,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 | E2-C04 | Persist delivered-guard (survive restart) — `message_sent` optimistic or delivery lease | OPEN | |
 | E2-C05 | Unsent SKIP LOCKED / lease so RetryAfter need not hold advisory lock | OPEN | |
 | E2-C06 | tradeSummary miss → health flag / log watched_missing | DONE | `1a1739e` `_poll_prices` + `tests/test_watched_missing.py` |
-| E2-C07 | Dead-letter user/ops notify (bot message or structured alert) | OPEN | |
+| E2-C07 | Dead-letter user/ops notify (bot message or structured alert) | DONE | pending; `format_dead_letter_notify` + one-shot TG; `tests/test_dead_letter_notify.py` |
 
 ## OPS
 

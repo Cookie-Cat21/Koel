@@ -25,7 +25,13 @@ from apscheduler.triggers.interval import IntervalTrigger
 from chime.adapters.cse import CSEClient
 from chime.circuit import CircuitOpenError
 from chime.config import Settings
-from chime.domain import AlertEvent, Disclosure, PriceSnapshot, format_alert_message
+from chime.domain import (
+    AlertEvent,
+    Disclosure,
+    PriceSnapshot,
+    format_alert_message,
+    format_dead_letter_notify,
+)
 from chime.logging_setup import get_logger
 from chime.notify import SendResult
 from chime.rules import evaluate_disclosure_rules, evaluate_price_rules, filter_fireable
@@ -55,6 +61,7 @@ class PendingSend:
     already_claimed_new: bool
     rule_id: int | None = None
     event: AlertEvent | None = None
+    symbol: str | None = None
 
 
 def _normalize_send_result(result: SendResult | bool) -> SendResult:
@@ -62,6 +69,15 @@ def _normalize_send_result(result: SendResult | bool) -> SendResult:
     if isinstance(result, bool):
         return SendResult.OK if result else SendResult.FAILED
     return result
+
+
+def _symbol_from_alert_message(message: str) -> str | None:
+    """Best-effort parse of ``format_alert_message`` first line (``🔔 SYMBOL``)."""
+    first = (message or "").split("\n", 1)[0].strip()
+    if first.startswith("🔔"):
+        symbol = first.removeprefix("🔔").strip()
+        return symbol or None
+    return None
 
 
 def parse_hhmm(value: str) -> time:
@@ -166,8 +182,8 @@ class Poller:
             await self.storage.advisory_unlock(POLL_LOCK_ID)
 
         # CORE-004: Telegram I/O for this tick's new claims after unlock.
-        # Unsent backlog drain is re-serialized under the advisory lock so two
-        # pollers cannot both read/send the same message_sent=false row.
+        # E2-C05: unsent drain uses row leases (SKIP LOCKED) — no advisory
+        # re-hold, so RetryAfter may sleep without pinning the poll lock.
         try:
             await self._deliver_pending(pending)
             await self._retry_unsent_with_lock()
@@ -176,20 +192,16 @@ class Poller:
         return fired
 
     async def _retry_unsent_with_lock(self) -> None:
-        """Off-hours path: drain unsent under advisory lock (no CSE work)."""
-        locked = await self.storage.try_advisory_lock(POLL_LOCK_ID)
-        if not locked:
-            self.lock_held_skip = True
-            return
-        self.lock_held_skip = False
+        """Drain unsent without holding the poll advisory lock (E2-C05).
+
+        ``claim_unsent_batch`` leases rows via FOR UPDATE SKIP LOCKED so
+        concurrent pollers cannot double-send; Telegram RetryAfter sleeps
+        safely outside any advisory hold. Method name kept for call sites.
+        """
         try:
-            # Hold lock for the whole off-hours drain so two processes cannot
-            # both read the same unsent rows and double-send.
             await self._retry_unsent()
         except Exception as exc:
             log.exception("offhours_retry_failed", error=str(exc))
-        finally:
-            await self.storage.advisory_unlock(POLL_LOCK_ID)
 
     def _remember_delivered(self, log_id: int) -> None:
         self._delivered_ok_ids.add(log_id)
@@ -320,7 +332,65 @@ class Poller:
                         fired.append(event)
         return fired, not any_failure
 
-    async def _record_send_failure(self, alert_log_id: int, *, rule_id: int | None = None) -> None:
+    async def _notify_dead_letter(
+        self,
+        *,
+        telegram_id: int | None,
+        symbol: str | None,
+        attempts: int,
+        alert_log_id: int,
+        rule_id: int | None = None,
+    ) -> None:
+        """One Telegram notify after dead-letter. Failures are log-only (no retry loop)."""
+        if telegram_id is None or not symbol:
+            log.warning(
+                "dead_letter_notify_skipped",
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+                attempts=attempts,
+                has_telegram_id=telegram_id is not None,
+                has_symbol=bool(symbol),
+            )
+            return
+        text = format_dead_letter_notify(symbol, attempts)
+        try:
+            result = _normalize_send_result(await self.send(telegram_id, text))
+        except Exception:
+            log.exception(
+                "dead_letter_notify_failed",
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+                symbol=symbol,
+                attempts=attempts,
+            )
+            return
+        if result is SendResult.OK:
+            log.info(
+                "dead_letter_notify_sent",
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+                symbol=symbol,
+                attempts=attempts,
+            )
+        else:
+            # Do not bump attempt_count / dead-letter again — notify is best-effort.
+            log.warning(
+                "dead_letter_notify_failed",
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+                symbol=symbol,
+                attempts=attempts,
+                send_result=result.value,
+            )
+
+    async def _record_send_failure(
+        self,
+        alert_log_id: int,
+        *,
+        rule_id: int | None = None,
+        telegram_id: int | None = None,
+        symbol: str | None = None,
+    ) -> None:
         attempts = await self.storage.mark_alert_attempt(alert_log_id)
         if attempts >= MAX_SEND_ATTEMPTS:
             await self.storage.dead_letter(alert_log_id)
@@ -331,6 +401,13 @@ class Poller:
                 attempts=attempts,
                 reason="failed",
             )
+            await self._notify_dead_letter(
+                telegram_id=telegram_id,
+                symbol=symbol,
+                attempts=attempts,
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+            )
         else:
             log.warning(
                 "alert_send_failed",
@@ -339,7 +416,14 @@ class Poller:
                 attempts=attempts,
             )
 
-    async def _record_send_deferred(self, alert_log_id: int, *, rule_id: int | None = None) -> None:
+    async def _record_send_deferred(
+        self,
+        alert_log_id: int,
+        *,
+        rule_id: int | None = None,
+        telegram_id: int | None = None,
+        symbol: str | None = None,
+    ) -> None:
         """Bump attempt_count on RetryAfter defer; dead-letter at MAX_DEFERRED_ATTEMPTS."""
         attempts = await self.storage.mark_alert_attempt(alert_log_id)
         if attempts >= MAX_DEFERRED_ATTEMPTS:
@@ -350,6 +434,13 @@ class Poller:
                 rule_id=rule_id,
                 attempts=attempts,
                 reason="deferred",
+            )
+            await self._notify_dead_letter(
+                telegram_id=telegram_id,
+                symbol=symbol,
+                attempts=attempts,
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
             )
         else:
             log.info(
@@ -385,11 +476,17 @@ class Poller:
             already_claimed_new=True,
             rule_id=event.rule_id,
             event=event,
+            symbol=event.symbol,
         )
 
     async def _deliver_one(self, pending: PendingSend) -> None:
         """Send one claimed alert and update alert_log (OK / FAILED / DEFERRED)."""
         result = _normalize_send_result(await self.send(pending.telegram_id, pending.message))
+        symbol = pending.symbol
+        if symbol is None and pending.event is not None:
+            symbol = pending.event.symbol
+        if symbol is None:
+            symbol = _symbol_from_alert_message(pending.message)
         if result is SendResult.OK:
             # Telegram already delivered. Remember across ticks (L08-001) so a
             # mark_alert_sent outage cannot re-push every poll interval.
@@ -407,9 +504,19 @@ class Poller:
                     event_key=event_key,
                 )
         elif result is SendResult.FAILED:
-            await self._record_send_failure(pending.log_id, rule_id=pending.rule_id)
+            await self._record_send_failure(
+                pending.log_id,
+                rule_id=pending.rule_id,
+                telegram_id=pending.telegram_id,
+                symbol=symbol,
+            )
         elif result is SendResult.DEFERRED:
-            await self._record_send_deferred(pending.log_id, rule_id=pending.rule_id)
+            await self._record_send_deferred(
+                pending.log_id,
+                rule_id=pending.rule_id,
+                telegram_id=pending.telegram_id,
+                symbol=symbol,
+            )
 
     async def _deliver_pending(self, pending: list[PendingSend]) -> None:
         for item in pending:
@@ -471,7 +578,7 @@ class Poller:
         return False
 
     async def _retry_unsent(self) -> None:
-        pending = await self.storage.unsent_alerts()
+        pending = await self.storage.claim_unsent_batch()
         for row in pending:
             log_id = int(row["id"])
             if log_id in self._delivered_ok_ids:
@@ -484,6 +591,7 @@ class Poller:
                 already_claimed_new=False,
                 rule_id=int(row["rule_id"]),
                 event=None,
+                symbol=_symbol_from_alert_message(text),
             )
             await self._deliver_one(item)
 
