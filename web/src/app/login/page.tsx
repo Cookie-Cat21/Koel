@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 
 import { LoginForm } from "@/components/login-form";
 import { NfaFooter } from "@/components/nfa-footer";
+import { NfaInline } from "@/components/nfa-inline";
 import {
   getDashAuthConfig,
   publicDemoAllowlist,
@@ -13,7 +14,7 @@ import { verifySessionToken } from "@/lib/auth/session";
 
 export const metadata = {
   title: "Sign in · Chime",
-  description: "Demo sign-in for the Chime CSE alert dashboard.",
+  description: "Sign in to manage Chime CSE alerts that push to Telegram.",
 };
 
 export default async function LoginPage() {
@@ -43,11 +44,19 @@ export default async function LoginPage() {
           </Link>
         </p>
         <h1 className="chime-rise chime-rise-delay-1 mt-5 text-xl font-medium text-foreground sm:text-2xl">
-          Manage watchlists and alerts
+          CSE alerts, Telegram first
         </h1>
         <p className="chime-rise chime-rise-delay-2 mt-3 text-sm text-muted-foreground sm:text-base">
-          Telegram still delivers the push. This dashboard only reads Postgres.
+          Use this thin page to manage symbols and rules. Chime watches in the
+          background and pings Telegram when a price, move, or disclosure rule
+          fires.
         </p>
+        <ul className="chime-rise chime-rise-delay-2 mt-4 space-y-2 text-sm text-muted-foreground">
+          <li>- Price crosses above or below your threshold</li>
+          <li>- Daily moves exceed your chosen percent</li>
+          <li>- New company disclosures appear for watched symbols</li>
+        </ul>
+        <NfaInline className="chime-rise chime-rise-delay-2 mt-4" />
         <div className="chime-rise chime-rise-delay-3 mt-8">
           <LoginForm
             allowlist={allowlist}
