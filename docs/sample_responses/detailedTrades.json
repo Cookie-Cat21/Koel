@@ -1,0 +1,65 @@
+{
+  "reqDetailTrades": [
+    {
+      "id": 204,
+      "securityId": null,
+      "name": "ABANS ELECTRICALS PLC",
+      "symbol": "ABAN.N0000",
+      "price": 1148.0,
+      "qty": 7,
+      "trades": 1,
+      "change": 3.75,
+      "changePercentage": 0.32772558444395894,
+      "logoUrl": "upload_logo/642_1603172106.jpeg"
+    },
+    {
+      "id": 204,
+      "securityId": null,
+      "name": "ABANS ELECTRICALS PLC",
+      "symbol": "ABAN.N0000",
+      "price": 1147.5,
+      "qty": 10,
+      "trades": 2,
+      "change": 3.25,
+      "changePercentage": 0.28402883985143107,
+      "logoUrl": "upload_logo/642_1603172106.jpeg"
+    },
+    {
+      "id": 1845,
+      "securityId": null,
+      "name": "ABANS FINANCE PLC",
+      "symbol": "AFSL.N0000",
+      "price": 99.6,
+      "qty": 36,
+      "trades": 1,
+      "change": 0.1,
+      "changePercentage": 0.10050251256281408,
+      "logoUrl": "upload_logo/1069_1601609724.jpeg"
+    },
+    {
+      "id": 1845,
+      "securityId": null,
+      "name": "ABANS FINANCE PLC",
+      "symbol": "AFSL.N0000",
+      "price": 99.5,
+      "qty": 113,
+      "trades": 3,
+      "change": 0.0,
+      "changePercentage": 0.0,
+      "logoUrl": "upload_logo/1069_1601609724.jpeg"
+    },
+    {
+      "id": 1845,
+      "securityId": null,
+      "name": "ABANS FINANCE PLC",
+      "symbol": "AFSL.N0000",
+      "price": 97.0,
+      "qty": 61,
+      "trades": 1,
+      "change": -2.5,
+      "changePercentage": -2.512562814070352,
+      "logoUrl": "upload_logo/1069_1601609724.jpeg"
+    }
+  ],
+  "_note": "Truncated; full reqDetailTrades has 1638 rows (market-wide, not symbol-filtered despite optional body)"
+}

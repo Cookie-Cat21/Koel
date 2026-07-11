@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: chime
+      POSTGRES_PASSWORD: chime
+      POSTGRES_DB: chime
+    volumes:
+      - chime_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chime -d chime"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Optional dash next to Postgres: docker compose --profile web up -d
+  web:
+    profiles: ["web"]
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://chime:chime@postgres:5432/chime
+      DASH_SESSION_SECRET: ${DASH_SESSION_SECRET:-dev-compose-change-me}
+      DASH_DEMO_AUTH: ${DASH_DEMO_AUTH:-0}
+      DASH_DEMO_TELEGRAM_IDS: ${DASH_DEMO_TELEGRAM_IDS:-}
+      DASH_DEFAULT_TELEGRAM_ID: ${DASH_DEFAULT_TELEGRAM_ID:-}
+      # Host poller health (loopback on the machine running compose), not in-container.
+      HEALTH_URL: ${HEALTH_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  chime_pgdata:

@@ -1,0 +1,6 @@
+{
+  "_status": "NO_CONTENT",
+  "_http_status": 204,
+  "_request": "POST /api/getAnnouncementById  Content-Type: application/x-www-form-urlencoded  body: announcementId=<id>",
+  "_note": "Returns HTTP 204 with empty body for probed announcementIds from approvedAnnouncement / getAnnouncementByCompany. Detail expansion may require session cookies or a different id space; list endpoints are sufficient for Chime v1 alerts."
+}

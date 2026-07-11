@@ -18,12 +18,19 @@ reason to exist. Everything else is secondary.
 - No tax reports
 - No stock screener
 - No technical analysis charts
-- No web dashboard beyond the minimum needed to manage a watchlist
 - No native mobile app
 - No payment integration
 
+**Thin web dashboard (greenlit — secondary to Telegram):**
+A minimal management UI is allowed: watchlist, alerts, fire history, symbol
+detail (last price + disclosures), and poller health. It must not become a
+trading terminal or replace push as the primary experience. Stack when built:
+Next.js + Tailwind + shadcn/ui. See `docs/factory/COMMIT_FACTORY.md` and
+`docs/factory/DASH_IA.md`.
+
 If a feature isn't required to make "user sets an alert condition and gets
-pinged on Telegram when it fires" work end to end, it does not belong in v1.
+pinged on Telegram when it fires" work end to end — or to manage that setup
+in the thin dashboard — it does not belong in v1.
 
 ## Context / competitive landscape (for reasoning, not for building yet)
 
@@ -41,25 +48,43 @@ pinged on Telegram when it fires" work end to end, it does not belong in v1.
 
 Chime is the CSE equivalent of Tijori Alerts, not a CSE Tracker Pro clone.
 
-## Data sources (starting point — verify each endpoint still works before use)
+## Data sources (observed 2026-07-11 — see `docs/endpoint_probe_report.md`)
 
 Base: `https://www.cse.lk/api/`
 
-- `POST /companyInfoSummery` — body `{symbol}` — last price, change, market cap
-- `GET/POST /chartData` — historical price series for a symbol
-- `GET /dailyMarketSummery` — end-of-day market summary
-- `GET /allSectors` — sector list/performance
-- `GET /snpData` — S&P Sri Lanka 20 index data
-- `GET /detailedTrades` — trade-level detail
+**Convention:** Most endpoints are **POST-only** (GET → 405). Prefer
+`application/x-www-form-urlencoded` for symbol-scoped calls; empty JSON `{}`
+works for many market-wide POSTs. Send browser-like `Origin` / `Referer`.
+
+Prices / market:
+
+- `POST /companyInfoSummery` — form `symbol=` (JSON body → 400) — per-symbol
+  quote (`reqSymbolInfo`: last price, change, market cap, numeric `id`)
+- `POST /tradeSummary` — body `{}` — **best bulk poller source**; one call
+  returns all symbols (`reqTradeSummery[]`)
+- `POST /dailyMarketSummery` — body `{}` — end-of-day market aggregates
+- `POST /allSectors` — body `{}` — sector list/performance
+- `POST /snpData` — body `{}` — S&P Sri Lanka 20 (also `POST /aspiData` for ASPI)
+- `POST /detailedTrades` — market-wide trade board (not symbol-filtered)
+
+Charts (do **not** rely on `/chartData`):
+
+- `POST /chartData` — currently returns **400** for all probed payloads
+- Use `POST /companyChartDataByStock` (`stockId=` + `period=`) or
+  `POST /daysTrade` (`symbol=`) instead
+
+Announcements / disclosures:
+
+- `POST /approvedAnnouncement` — body `{}` — market-wide feed
+  (`approvedAnnouncements[]`; `symbol` often null — match via company name)
+- `POST /getAnnouncementByCompany` — form `symbol=` (optional
+  `fromDate`/`toDate` as `YYYY-MM-DD`) — **preferred for watchlists**
+- Legacy: `POST /announcements` form `symbol=` — older PDF archive shape
 
 These are reverse-engineered, undocumented, and may change or rate-limit
 without notice. Build the poller with a clean adapter layer so a broken
-endpoint is a one-file fix, not a rewrite. Log every failed call.
-
-Company disclosures/announcements: CSE publishes these on cse.lk under
-market announcements — find the underlying endpoint the same way (check
-network requests on the announcements page) before hardcoding a scraper
-against HTML, which will break on redesign.
+endpoint is a one-file fix, not a rewrite. Log every failed call. Do not
+scrape HTML; use the JSON endpoints above.
 
 ## MVP scope (v1 — this is the whole build)
 
@@ -105,7 +130,8 @@ against HTML, which will break on redesign.
   free hosting tier)
 - Simple cron / scheduled job for the poller (APScheduler or plain cron) —
   no need for Kafka/Flink-scale infra for this volume of data
-- No web framework needed for v1 unless the bot needs a companion webhook
+- Thin dashboard (when built): Next.js + Tailwind + shadcn; API over existing
+  Postgres / Chime domain — not a second CSE scraper
 
 ## Compliance notes (do not skip)
 
@@ -120,20 +146,19 @@ against HTML, which will break on redesign.
 - Rate-limit the poller politely. This is unofficial infrastructure — don't
   hammer it in a way that gets noticed or blocked.
 
-## Build order (for when implementation actually starts — not this session)
+## Build order
 
 1. Data adapter layer + verify each cse.lk endpoint still works, log real
-   sample responses to `docs/sample_responses/`
+   sample responses to `docs/sample_responses/` *(done — see probe report)*
 2. Postgres schema + migrations
 3. Poller loop writing snapshots
 4. Rule engine matching snapshots against rules
 5. Telegram bot wired to rule engine + Postgres
 6. Manual end-to-end test: set an alert, force a condition, confirm push
 
-## What to do in THIS session
+## Current status
 
-Only scaffold the repository structure and make the initial commit. Do not
-implement the poller, bot, or database logic yet — that starts in a future
-session once this plan is reviewed. This session's job is: clean folder
-structure, this file, README, .gitignore, and empty placeholder files where
-useful, committed once.
+Stage A (adapter, schema, poller, rules, bot, health) is implemented and
+hardened through Stage B Pass 4. Commit Factory planning lives under
+`docs/factory/` (100 workstreams). Keep non-goals and compliance intact;
+thin dashboard only within the fence above. Ceyfi merge is deferred.

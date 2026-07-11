@@ -1,0 +1,25 @@
+{
+  "status": "OK",
+  "statusCode": 200,
+  "content": [
+    {
+      "id": "a190afac53d99d146a5fec793bca61ee",
+      "title": "NOTICE",
+      "body": "The Opening Market Auction Call has been further extended to restore the active accounts which were suspended. Trading will commence at 11 a.m. ",
+      "status": "I"
+    },
+    {
+      "id": "305c7e91fd65a37c60e3c0999224ea0b",
+      "title": "Notice",
+      "body": "Opening Market Auction Call has been further extended.",
+      "status": "I"
+    },
+    {
+      "id": "38898e3dbe2f77cad1773c938898e42c",
+      "title": "System Maintenance Notice",
+      "body": "The CSE Mobile App and associated services including CDS Account Opening/CDS E-Connect and MyCSE portal on the CSE Website will be unavailable from 8:00 PM on 12th June 2026 until 1:00 PM 13th June 2026 due to a planned system maintenance.",
+      "status": "I"
+    }
+  ],
+  "_note": "Truncated; 50 notices"
+}

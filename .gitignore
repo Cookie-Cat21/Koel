@@ -27,3 +27,14 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# local probe artifacts
+*.bin
+
+# Next.js dashboard (web/)
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel/
+web/*.tsbuildinfo
+web/.csrf_session_unit.mts

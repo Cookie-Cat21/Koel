@@ -4,12 +4,58 @@ version = "0.1.0"
 description = "Telegram-first alerting layer for the Colombo Stock Exchange (CSE)"
 requires-python = ">=3.11"
 dependencies = [
-    "python-telegram-bot",
+    "python-telegram-bot>=21",
     "httpx",
     "apscheduler",
-    "psycopg[binary]",
+    "psycopg[binary,pool]",
     "python-dotenv",
+    "pydantic",
+    "tenacity",
+    "structlog",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+chime = "chime.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["chime*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# Package-wide gate (was chime.rules-only @ 85). Unit (DATABASE_URL=) ~88% after
+# E5-C01/C02 migrate + __main__ coverage; floor 85 toward ratchet.
+addopts = "-q --cov=chime --cov-report=term-missing --cov-fail-under=85"
+
+[tool.ruff]
+line-length = 100
+# Align with CI (actions/setup-python 3.12); runtime still allows >=3.11.
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+# Align with CI (actions/setup-python 3.12); runtime still allows >=3.11.
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+packages = ["chime"]
+
+[[tool.mypy.overrides]]
+module = ["apscheduler.*", "telegram.*"]
+ignore_missing_imports = true

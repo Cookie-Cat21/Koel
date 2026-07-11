@@ -1,0 +1,5 @@
+{
+  "_status": "FAILED",
+  "_http_status": 400,
+  "_note": "POST /api/chartData returns 400 for all probed payloads (JSON and form). Site JS still references it, but working alternatives are companyChartDataByStock (intraday ticks) and daysTrade. POST /api/charts also returns 400 in this probe."
+}
