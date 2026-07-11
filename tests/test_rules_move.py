@@ -1,11 +1,43 @@
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from chime.domain import AlertType
+from chime.domain import AlertEvent, AlertType
 from chime.rules import evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 _COLOMBO = ZoneInfo("Asia/Colombo")
+
+
+def test_filter_fireable_drops_rearm_only_events() -> None:
+    rearm = AlertEvent(
+        rule_id=1,
+        user_id=10,
+        telegram_id=1001,
+        symbol="JKH.N0000",
+        type=AlertType.PRICE_ABOVE,
+        threshold=100.0,
+        trigger="rearm",
+        current_price=98.0,
+        snapshot_id=21,
+        event_key="rearm:1:21",
+        set_armed=True,
+    )
+    fire = AlertEvent(
+        rule_id=2,
+        user_id=10,
+        telegram_id=1001,
+        symbol="JKH.N0000",
+        type=AlertType.PRICE_BELOW,
+        threshold=95.0,
+        trigger="price crossed below 95.00",
+        current_price=94.5,
+        snapshot_id=22,
+        event_key="price:2:below:95:s22",
+        set_armed=False,
+    )
+
+    assert filter_fireable([rearm]) == []
+    assert filter_fireable([rearm, fire]) == [fire]
 
 
 def test_cross_above_threshold_fires() -> None:
