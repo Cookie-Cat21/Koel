@@ -105,7 +105,8 @@ export default async function WatchlistPage() {
                 >
                   <Link
                     href={`/symbols/${encodeURIComponent(item.symbol)}`}
-                    className="group min-w-0 flex-1"
+                    className="group min-w-0 flex-1 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                    aria-label={`Open ${item.symbol} detail`}
                   >
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                       <div className="min-w-0">
