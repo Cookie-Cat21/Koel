@@ -9,19 +9,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCORE = ROOT / "docs" / "factory" / "SCOREBOARD.json"
-BOARDS = [
-    ROOT / "docs" / "factory" / "EPOCH3_BOARD.md",
-    ROOT / "docs" / "factory" / "EPOCH2_BOARD.md",
-]
+BOARD_DIR = ROOT / "docs" / "factory"
 
 
 def parse_board(text: str) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
     for line in text.splitlines():
-        if not (line.startswith("| E2-") or line.startswith("| E3-")):
+        if not line.startswith("| E"):
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 3:
+        if len(parts) < 3 or not parts[0].startswith("E"):
+            continue
+        if parts[2] not in {"OPEN", "DONE", "IN_PROGRESS", "DEFER"}:
             continue
         rows.append((parts[0], parts[1], parts[2]))
     return rows
@@ -29,23 +28,21 @@ def parse_board(text: str) -> list[tuple[str, str, str]]:
 
 def main() -> int:
     score = json.loads(SCORE.read_text()) if SCORE.exists() else {}
-    board_path = next((b for b in BOARDS if b.exists()), None)
-    if board_path is None:
-        print("NO_BOARD", file=sys.stderr)
-        return 1
-    # Prefer board with OPEN items
-    chosen = board_path
+    boards = sorted(BOARD_DIR.glob("EPOCH*_BOARD.md"), reverse=True)
+    chosen = None
     rows: list[tuple[str, str, str]] = []
-    for b in BOARDS:
-        if not b.exists():
-            continue
+    for b in boards:
         r = parse_board(b.read_text())
         if any(x[2] == "OPEN" for x in r):
             chosen = b
             rows = r
             break
-        rows = r
-        chosen = b
+    if chosen is None and boards:
+        chosen = boards[0]
+        rows = parse_board(chosen.read_text())
+    if chosen is None:
+        print("NO_BOARD", file=sys.stderr)
+        return 1
     open_items = [r for r in rows if r[2] == "OPEN"]
     done = [r for r in rows if r[2] == "DONE"]
     prog = [r for r in rows if r[2] == "IN_PROGRESS"]
@@ -61,7 +58,7 @@ def main() -> int:
     if not open_items and score.get("clean_streak", 0) >= 2:
         print("GLOBAL_STOP_CANDIDATE: board empty + CLEAN×2")
     elif not open_items:
-        print("BOARD_EMPTY: run adversarial CLEAN passes or open next epoch")
+        print("BOARD_EMPTY: run adversarial CLEAN or open next epoch")
     else:
         print("CONTINUE: spawn ≤8 agents on OPEN items (disjoint OWNED_FILES)")
     return 0
