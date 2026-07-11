@@ -22,6 +22,12 @@ jobs:
       - name: Install package + dev deps
         run: pip install -e ".[dev]"
 
+      # Factory loop status (E2-O03) — must exit 0; board/scoreboard smoke.
+      # Keep ruff/mypy/pytest below; scripts/factory/verify.sh is the local
+      # canonical verify (same tools) when citing pass reports.
+      - name: Factory status
+        run: python scripts/factory/loop_status.py
+
       - name: Ruff
         run: ruff check .
 

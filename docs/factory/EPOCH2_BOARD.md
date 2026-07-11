@@ -25,7 +25,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 |---|---|---|
 | E2-O01 | Expand cov gate beyond rules (`--cov=chime` with floors) | OPEN |
 | E2-O02 | Storage pool `max_size >= 2` guard when advisory lock used | OPEN |
-| E2-O03 | Factory verify script + loop_status in CI or make | OPEN |
+| E2-O03 | Factory verify script + loop_status in CI or make | DONE |
 
 ## DASH (largest fuel)
 
