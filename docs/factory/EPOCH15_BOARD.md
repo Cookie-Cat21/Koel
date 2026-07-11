@@ -11,7 +11,7 @@ P&L / screener / TA / payments / native app / competitor scrape / cse.lk from
 | E15-Q01 | Unit: claim_unsent lease expiry does not double-deliver | DONE |
 | E15-Q02 | Unit: dead-letter user notify path once | OPEN |
 | E15-D01 | Watchlist load-error empty state retry affordance polish | DONE |
-| E15-D02 | Alerts history empty vs error distinction copy | OPEN |
+| E15-D02 | Alerts history empty vs error distinction copy | DONE |
 | E15-O01 | HANDOFF Epoch 14→15 + SESSION_LOG append | OPEN |
 | E15-C01 | Health details include tradeSummary empty_ok flag when set | OPEN |
 | E15-A01 | Document TG-OK durable ledger path in ops runbook briefly | OPEN |

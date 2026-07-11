@@ -138,38 +138,41 @@ export default async function AlertHistoryPage({
 
         {!payload ? (
           <EmptyState
-            title="Couldn’t load history"
+            title="Couldn’t load alert history"
             description={
               <>
-                Chime couldn’t read fire history from Postgres just now. Check
-                your connection, then refresh — Telegram pushes still fire when
-                rules match.
+                Chime couldn’t read alert fire history from Postgres just now.
+                This is a load error, not an empty history. Retry the request —
+                Telegram pushes still fire when rules match.
               </>
             }
             action={
               <Button asChild variant="outline">
-                <Link href="/alerts/history">Try again</Link>
+                <Link href="/alerts/history">Retry loading history</Link>
               </Button>
             }
           />
         ) : payload.events.length === 0 ? (
           <EmptyState
             title={
-              symbolFilter ? `No fires yet for ${symbolFilter}` : "No fires yet"
+              symbolFilter
+                ? `No recorded fires for ${symbolFilter}`
+                : "No alert fires recorded yet"
             }
             description={
               symbolFilter ? (
                 <>
-                  No matching fires for{" "}
+                  The history request succeeded, but no recorded fires match{" "}
                   <code className="font-mono text-xs">{symbolFilter}</code>.
-                  Clear the filter, or wait until a rule for that symbol
-                  matches — Telegram gets the push; this list is the audit
-                  trail.
+                  Clear the filter, or wait until a rule for that symbol matches
+                  — Telegram gets the push and this audit trail records it.
                 </>
               ) : (
                 <>
-                  When a rule matches, Telegram gets the push and the fire
-                  shows up here. Create a price, move, or disclosure alert on{" "}
+                  The history request succeeded, but there are no recorded fire
+                  events yet. When a rule matches, Telegram gets the push and
+                  the fire shows up here. Create a price, move, or disclosure
+                  alert on{" "}
                   <Link
                     href="/alerts"
                     className="underline underline-offset-4"
