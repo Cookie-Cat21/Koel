@@ -11,7 +11,7 @@ tests, thin dash polish. No portfolio P&L / screener / TA / payments.
 | E10-Q02 | Logout happy-path clears session+CSRF cookies (RUN_WEB) | DONE |
 | E10-Q03 | Contract order: missing session → 401 before CSRF check (doc+test) | DONE |
 | E10-D01 | Empty disclosures state on symbol detail | DONE |
-| E10-D02 | Alerts history empty copy when no fires | OPEN |
+| E10-D02 | Alerts history empty copy when no fires | DONE |
 | E10-O01 | Makefile/factory-verify smoke for portfolio_sum.py | OPEN |
 | E10-A01 | API_CONTRACT note: 401 beats csrf_failed when both would apply | DONE |
 | E10-C01 | Adapter polite backoff / timeout error logged (unit) | OPEN |

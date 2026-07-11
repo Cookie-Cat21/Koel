@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
+import { Button } from "@/components/ui/button";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { alertTypeLabel, formatTs } from "@/lib/format";
@@ -86,15 +88,65 @@ export default async function AlertHistoryPage({
         </form>
 
         {!payload ? (
-          <p className="mt-8 text-sm text-muted-foreground">
-            Could not load fire history right now.
-          </p>
+          <EmptyState
+            title="Couldn’t load history"
+            description={
+              <>
+                Chime couldn’t read fire history from Postgres just now. Check
+                your connection, then refresh — Telegram pushes still fire when
+                rules match.
+              </>
+            }
+            action={
+              <Button asChild variant="outline">
+                <Link href="/alerts/history">Try again</Link>
+              </Button>
+            }
+          />
         ) : payload.events.length === 0 ? (
-          <p className="mt-8 text-sm text-muted-foreground">
-            No fires yet
-            {symbolFilter ? ` for ${symbolFilter}` : ""}. When a rule matches,
-            it shows up here.
-          </p>
+          <EmptyState
+            title={
+              symbolFilter ? `No fires yet for ${symbolFilter}` : "No fires yet"
+            }
+            description={
+              symbolFilter ? (
+                <>
+                  No matching fires for{" "}
+                  <code className="font-mono text-xs">{symbolFilter}</code>.
+                  Clear the filter, or wait until a rule for that symbol
+                  matches — Telegram gets the push; this list is the audit
+                  trail.
+                </>
+              ) : (
+                <>
+                  When a rule matches, Telegram gets the push and the fire
+                  shows up here. Create a price, move, or disclosure alert on{" "}
+                  <Link
+                    href="/alerts"
+                    className="underline underline-offset-4"
+                  >
+                    Alerts
+                  </Link>
+                  , or use{" "}
+                  <code className="font-mono text-xs">
+                    /alert SYMBOL above PRICE
+                  </code>{" "}
+                  in Telegram.
+                </>
+              )
+            }
+            action={
+              symbolFilter ? (
+                <Button asChild variant="outline">
+                  <Link href="/alerts/history">Clear filter</Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline">
+                  <Link href="/alerts">Create an alert</Link>
+                </Button>
+              )
+            }
+          />
         ) : (
           <ul className="mt-8 divide-y divide-border/60">
             {payload.events.map((ev) => (
