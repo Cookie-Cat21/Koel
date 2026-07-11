@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Print up to 8 OPEN item ids for the active board (wave packing aid)."""
+"""Print up to 8 OPEN item ids for the active (lowest non-staged) board."""
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -10,11 +11,19 @@ ROOT = Path(__file__).resolve().parents[2]
 FACTORY = ROOT / "docs" / "factory"
 
 
+def board_num(path: Path) -> int:
+    m = re.search(r"EPOCH(\d+)_BOARD", path.name)
+    return int(m.group(1)) if m else 10**9
+
+
 def main() -> int:
-    boards = sorted(FACTORY.glob("EPOCH*_BOARD.md"), reverse=True)
+    boards = sorted(FACTORY.glob("EPOCH*_BOARD.md"), key=board_num)
     for b in boards:
+        text = b.read_text()
+        if "**Status:** STAGED" in text:
+            continue
         open_ids: list[str] = []
-        for line in b.read_text().splitlines():
+        for line in text.splitlines():
             if not line.startswith("| E"):
                 continue
             parts = [p.strip() for p in line.strip("|").split("|")]
