@@ -6,6 +6,7 @@ import asyncio
 import os
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -14,7 +15,7 @@ from chime.config import Settings
 from chime.domain import AlertEvent, AlertType, PriceSnapshot
 from chime.migrate import apply_migrations
 from chime.notify import SendResult
-from chime.poller import Poller
+from chime.poller import DELIVERY_OK_LEDGER_ENV, MARK_DELIVERY_OK_ATTEMPTS, Poller
 from chime.storage import Storage
 from tests.conftest import claim_unsent_deque
 
@@ -97,6 +98,51 @@ async def test_retry_unsent_claims_one_at_a_time() -> None:
     assert storage.claim_unsent_batch.await_count == 3
     for call in storage.claim_unsent_batch.await_args_list:
         assert call.kwargs.get("limit") == 1
+
+
+@pytest.mark.asyncio
+async def test_retry_unsent_lease_expiry_after_ok_does_not_double_deliver(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If a lease expires after Telegram OK, durable OK reconciliation skips re-send."""
+    monkeypatch.setenv(DELIVERY_OK_LEDGER_ENV, str(tmp_path / "delivery-ok.jsonl"))
+    row = {
+        "id": 501,
+        "rule_id": 7,
+        "message_text": "lease can expire after ok",
+        "telegram_id": 1001,
+        "attempt_count": 0,
+    }
+    claims = 0
+
+    async def claim_again_after_expiry(*, limit: int = 50, lease_seconds: int = 120) -> list[dict]:
+        nonlocal claims
+        claims += 1
+        assert limit == 1
+        assert lease_seconds == 120
+        if claims <= 2:
+            return [row]
+        return []
+
+    storage = AsyncMock()
+    storage.claim_unsent_batch = AsyncMock(side_effect=claim_again_after_expiry)
+    storage.mark_delivery_attempted_ok = AsyncMock(
+        side_effect=[RuntimeError("db down")] * MARK_DELIVERY_OK_ATTEMPTS + [None]
+    )
+    storage.mark_alert_sent = AsyncMock(
+        side_effect=[RuntimeError("db down"), RuntimeError("db down"), None]
+    )
+    storage.dead_letter = AsyncMock(side_effect=RuntimeError("db down"))
+    send = AsyncMock(return_value=SendResult.OK)
+
+    poller = Poller(_settings(), storage, AsyncMock(), send)
+    await poller._retry_unsent()
+
+    send.assert_awaited_once_with(1001, "lease can expire after ok")
+    assert storage.claim_unsent_batch.await_count == 3
+    assert storage.mark_delivery_attempted_ok.await_count == MARK_DELIVERY_OK_ATTEMPTS + 1
+    assert storage.mark_alert_sent.await_count == 3
 
 
 @pytest.mark.asyncio

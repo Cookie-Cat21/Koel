@@ -8,7 +8,7 @@ P&L / screener / TA / payments / native app / competitor scrape / cse.lk from
 
 | ID | Item | Status |
 |---|---|---|
-| E15-Q01 | Unit: claim_unsent lease expiry does not double-deliver | OPEN |
+| E15-Q01 | Unit: claim_unsent lease expiry does not double-deliver | DONE |
 | E15-Q02 | Unit: dead-letter user notify path once | OPEN |
 | E15-D01 | Watchlist load-error empty state retry affordance polish | DONE |
 | E15-D02 | Alerts history empty vs error distinction copy | OPEN |
