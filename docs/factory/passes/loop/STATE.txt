@@ -1,1 +1,1 @@
-loop start 2026-07-11T12:45:21Z
+loop STOPPED 2026-07-11 — CLEAN L12 + L13
