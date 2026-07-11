@@ -1,6 +1,6 @@
 # Epoch 12 Board — Residual reliability + thin ops polish
 
-**Status:** STAGED
+**Status:** OPEN
 
 Fence-legal only. Theme: residual alert delivery reliability, health honesty,
 small dashboard ops/readability polish, and focused tests/docs. No portfolio/P&L,
