@@ -106,7 +106,7 @@ export function UnwatchButton({ symbol }: { symbol: string }) {
         toast.error(msg);
         return;
       }
-      toast.success(`Removed ${symbol} from watchlist.`);
+      toast.success(`Removed ${symbol}. Telegram pushes for it are off.`);
       router.refresh();
     } catch {
       const msg = "Network error.";
