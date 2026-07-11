@@ -26,6 +26,15 @@ class TestCrossedAboveBelow:
         assert crossed_above(None, 105.0, 100.0) is False
         assert crossed_below(None, 95.0, 100.0) is False
 
+    def test_boundary_helpers_fire_on_first_touch_only(self) -> None:
+        assert crossed_above(99.99, 100.0, 100.0) is True
+        assert crossed_above(100.0, 100.01, 100.0) is False
+        assert crossed_above(100.0, 100.0, 100.0) is False
+
+        assert crossed_below(100.01, 100.0, 100.0) is True
+        assert crossed_below(100.0, 99.99, 100.0) is False
+        assert crossed_below(100.0, 100.0, 100.0) is False
+
 
 class TestFirstSnapshotOfDay:
     def test_prev_none_must_not_fire_above(self) -> None:
