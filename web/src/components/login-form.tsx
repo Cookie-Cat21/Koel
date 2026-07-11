@@ -6,12 +6,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NFA_INLINE } from "@/lib/nfa";
 
 type Props = {
   allowlist: number[];
   defaultTelegramId: number | null;
   demoEnabled: boolean;
 };
+
+function loginError(message: string) {
+  return `${message} ${NFA_INLINE}`;
+}
 
 export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) {
   const router = useRouter();
@@ -42,7 +47,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
     try {
       const id = Number(telegramId.trim());
       if (!Number.isSafeInteger(id) || id <= 0) {
-        setError("Enter a valid Telegram ID.");
+        setError(loginError("Almost there — enter a valid Telegram ID."));
         return;
       }
       const res = await fetch("/api/v1/auth/demo", {
@@ -55,13 +60,16 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
         | { error?: { message?: string }; user?: { id: number } }
         | null;
       if (!res.ok) {
-        setError(data?.error?.message ?? `Sign-in failed (${res.status}).`);
+        const detail = data?.error?.message
+          ? `Chime couldn't sign you in: ${data.error.message}`
+          : `Chime couldn't sign you in (${res.status}). Check the allowlisted Telegram ID.`;
+        setError(loginError(detail));
         return;
       }
       router.push("/watchlist");
       router.refresh();
     } catch {
-      setError("Network error. Try again.");
+      setError(loginError("Chime couldn't reach the sign-in endpoint. Try again."));
     } finally {
       setPending(false);
     }
