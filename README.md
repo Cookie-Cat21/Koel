@@ -72,6 +72,9 @@ tests/
 Python · python-telegram-bot · Postgres · APScheduler · httpx
 
 Config via environment — see `.env.example`. Never commit `.env`.
+Production process list + secrets: [docs/runbooks/PRODUCTION.md](docs/runbooks/PRODUCTION.md).
+Log field glossary (`alert_latency_ms`, dead letter, `watched_missing`):
+[docs/ops/LOG_FIELDS.md](docs/ops/LOG_FIELDS.md).
 Third-party licenses: [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Factory / thin dashboard
