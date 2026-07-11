@@ -14,6 +14,16 @@ import { formatNumber, formatPct, formatTs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+/** Snapshots older than this are treated as stale for empty-copy (E11-D02). */
+const STALE_MS = 24 * 60 * 60 * 1000;
+
+function isStaleTs(ts: string | null | undefined): boolean {
+  if (!ts) return false;
+  const t = Date.parse(ts);
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t > STALE_MS;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -189,12 +199,13 @@ export default async function SymbolDetailPage({
         ) : (
           <EmptyState
             className="mt-4"
-            title="No price yet"
+            title="No snapshot yet"
             description={
               <>
-                The poller hasn’t stored a snapshot for {data.symbol}. Once
-                market hours tick, the last price will show here. Not financial
-                advice.
+                Chime hasn’t stored a price tick for {data.symbol}. During
+                market hours (09:30–14:30 SLT, weekdays) the poller writes
+                snapshots here. Outside those hours this stays empty until the
+                next session. Not financial advice.
               </>
             }
             action={
@@ -204,7 +215,26 @@ export default async function SymbolDetailPage({
             }
           />
         )}
-        {data.last?.ts ? (
+        {data.last && isStaleTs(data.last.ts) ? (
+          <EmptyState
+            className="mt-4"
+            title="Snapshot looks stale"
+            description={
+              <>
+                Last tick was {formatTs(data.last.ts)} (SLT) — more than a day
+                ago. If market hours have passed without a refresh, the poller
+                may be paused or this symbol wasn’t watched. Not financial
+                advice.
+              </>
+            }
+            action={
+              <Button asChild variant="outline" size="sm">
+                <Link href="/watchlist">Back to watchlist</Link>
+              </Button>
+            }
+          />
+        ) : null}
+        {data.last?.ts && !isStaleTs(data.last.ts) ? (
           <p className="mt-3 text-xs text-muted-foreground">
             As of {formatTs(data.last.ts)} (SLT)
           </p>
