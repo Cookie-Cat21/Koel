@@ -488,16 +488,45 @@ class Storage:
                 (alert_log_id,),
             )
 
+    async def mark_alert_attempt(self, alert_log_id: int) -> int:
+        """Increment attempt_count for a failed send. Returns the new count."""
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    UPDATE alert_log
+                    SET attempt_count = attempt_count + 1
+                    WHERE id = %s
+                    RETURNING attempt_count
+                    """,
+                    (alert_log_id,),
+                )
+            ).fetchone()
+        assert row is not None
+        return int(_as_row(row)["attempt_count"])
+
+    async def dead_letter(self, alert_log_id: int) -> None:
+        """Mark an unsent alert as abandoned (skip further retries)."""
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                """
+                UPDATE alert_log
+                SET dead_lettered = TRUE
+                WHERE id = %s
+                """,
+                (alert_log_id,),
+            )
+
     async def unsent_alerts(self, *, limit: int = 50) -> list[dict[str, Any]]:
         async with self._pool.connection() as conn:
             rows = await (
                 await conn.execute(
                     """
-                    SELECT al.id, al.rule_id, al.message_text, u.telegram_id
+                    SELECT al.id, al.rule_id, al.message_text, al.attempt_count, u.telegram_id
                     FROM alert_log al
                     JOIN alert_rules ar ON ar.id = al.rule_id
                     JOIN users u ON u.id = ar.user_id
-                    WHERE al.message_sent = FALSE
+                    WHERE al.message_sent = FALSE AND al.dead_lettered = FALSE
                     ORDER BY al.fired_at
                     LIMIT %s
                     """,

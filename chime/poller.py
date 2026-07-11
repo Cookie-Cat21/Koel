@@ -30,6 +30,8 @@ log = get_logger(__name__)
 
 SendFunc = Callable[[int, str], Awaitable[bool]]
 POLL_LOCK_ID = 4_201_337
+# After this many failed Telegram sends, stop retrying (message_sent stays false).
+MAX_SEND_ATTEMPTS = 5
 
 
 def parse_hhmm(value: str) -> time:
@@ -223,6 +225,24 @@ class Poller:
             await asyncio.sleep(0.15 + random.random() * 0.2)
         return fired, not any_failure
 
+    async def _record_send_failure(self, alert_log_id: int, *, rule_id: int | None = None) -> None:
+        attempts = await self.storage.mark_alert_attempt(alert_log_id)
+        if attempts >= MAX_SEND_ATTEMPTS:
+            await self.storage.dead_letter(alert_log_id)
+            log.warning(
+                "alert_dead_lettered",
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+                attempts=attempts,
+            )
+        else:
+            log.warning(
+                "alert_send_failed",
+                alert_log_id=alert_log_id,
+                rule_id=rule_id,
+                attempts=attempts,
+            )
+
     async def _claim_and_send(self, event: AlertEvent) -> bool:
         message = format_alert_message(event)
         log_id = await self.storage.claim_alert(event, message)
@@ -234,16 +254,19 @@ class Poller:
             await self.storage.mark_alert_sent(log_id)
             log.info("alert_sent", rule_id=event.rule_id, event_key=event.event_key)
             return True
-        log.warning("alert_send_failed", rule_id=event.rule_id, event_key=event.event_key)
+        await self._record_send_failure(log_id, rule_id=event.rule_id)
         return False
 
     async def _retry_unsent(self) -> None:
         pending = await self.storage.unsent_alerts()
         for row in pending:
             text = row["message_text"] or ""
+            log_id = int(row["id"])
             ok = await self.send(int(row["telegram_id"]), text)
             if ok:
-                await self.storage.mark_alert_sent(int(row["id"]))
+                await self.storage.mark_alert_sent(log_id)
+            else:
+                await self._record_send_failure(log_id, rule_id=int(row["rule_id"]))
 
     async def _scheduled_tick(self) -> None:
         jitter = random.uniform(0, self.settings.poll_jitter_seconds)
