@@ -7,9 +7,9 @@
   "epoch": 14,
   "branch": "cursor/epoch11-drain-cb19",
   "clean_streak": 0,
-  "lifetime_factory_score": 113,
-  "lifetime_proper_commits": 113,
-  "lifetime_clusters_closed": 113,
+  "lifetime_factory_score": 114,
+  "lifetime_proper_commits": 114,
+  "lifetime_clusters_closed": 114,
   "epoch2_done": 16,
   "epoch3_done": 10,
   "open_board": "docs/factory/EPOCH14_BOARD.md",
@@ -25,5 +25,5 @@
   "epoch11_done": 8,
   "epoch12_done": 8,
   "epoch13_done": 8,
-  "epoch14_done": 5
+  "epoch14_done": 6
 }

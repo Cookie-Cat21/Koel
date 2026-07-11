@@ -27,6 +27,13 @@ def test_rate_limit_reply_includes_retry_hint() -> None:
     assert "minute" in RATE_LIMIT_REPLY
 
 
+def test_rate_limit_reply_is_nfa_neutral() -> None:
+    assert "Not financial advice" in RATE_LIMIT_REPLY
+    assert "informational only" in RATE_LIMIT_REPLY
+    assert "buy" not in RATE_LIMIT_REPLY.lower()
+    assert "sell" not in RATE_LIMIT_REPLY.lower()
+
+
 def test_allow_command_sliding_window() -> None:
     tid = 42
     assert allow_command(tid, limit=3, now=100.0) is True

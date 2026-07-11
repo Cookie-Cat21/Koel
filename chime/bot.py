@@ -29,7 +29,8 @@ SYMBOL_RE = re.compile(r"^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$")
 _cmd_timestamps: dict[int, deque[float]] = defaultdict(deque)
 _RATE_WINDOW_SECONDS = 60.0
 RATE_LIMIT_REPLY = (
-    "Slow down — you've hit the command rate limit. Try again in a minute."
+    "Slow down — you've hit the command rate limit. Try again in a minute.\n"
+    f"{disclaimer()}"
 )
 
 BAD_SYMBOL_HINT = (
