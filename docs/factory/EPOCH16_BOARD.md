@@ -9,7 +9,7 @@ Activate via `make factory-refill` after Epoch 15.
 | ID | Item | Status |
 |---|---|---|
 | E16-Q01 | Unit: dual claim_unsent SKIP LOCKED no duplicate rows | DONE |
-| E16-Q02 | Unit: off-hours unsent drain still attempts delivery | OPEN |
+| E16-Q02 | Unit: off-hours unsent drain still attempts delivery | DONE |
 | E16-D01 | Nav active-state a11y for health/watchlist | OPEN |
 | E16-D02 | Login error copy stays brand-tone + NFA | OPEN |
 | E16-O01 | HANDOFF Epoch 15→16 refill path | OPEN |

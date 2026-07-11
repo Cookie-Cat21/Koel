@@ -52,6 +52,40 @@ async def test_outside_hours_still_retries_unsent() -> None:
 
 
 @pytest.mark.asyncio
+async def test_outside_hours_unsent_drain_attempts_delivery_on_failure() -> None:
+    """E16-Q02: outside market hours still attempts delivery for unsent rows."""
+    storage = AsyncMock()
+    storage.try_advisory_lock = AsyncMock(return_value=True)
+    storage.advisory_unlock = AsyncMock()
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
+            {
+                "id": 45,
+                "rule_id": 3,
+                "message_text": "try overnight",
+                "telegram_id": 1002,
+                "attempt_count": 0,
+            }
+        ]
+    )
+    storage.mark_alert_attempt = AsyncMock(return_value=1)
+    storage.dead_letter = AsyncMock()
+    send = AsyncMock(return_value=SendResult.FAILED)
+
+    poller = Poller(_settings(), storage, AsyncMock(), send)
+    with patch("chime.poller.is_market_open", return_value=False):
+        events = await poller.run_once(force=False)
+
+    assert events == []
+    send.assert_awaited_once_with(1002, "try overnight")
+    storage.mark_alert_attempt.assert_awaited_once_with(45)
+    storage.dead_letter.assert_not_awaited()
+    storage.mark_alert_sent.assert_not_awaited()
+    storage.try_advisory_lock.assert_not_awaited()
+    storage.advisory_unlock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_same_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     """If mark+dead_letter fail after OK send, same-tick retry must not re-send."""
     storage = AsyncMock()
