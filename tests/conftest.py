@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -99,3 +100,17 @@ def make_disclosure(
         published_at=published_at or ts,
         seen_at=seen_at or ts,
     )
+
+
+def claim_unsent_deque(rows: list[dict]) -> AsyncMock:
+    """Mock claim_unsent_batch that depletes rows (limit=1 loop-safe)."""
+    queue = list(rows)
+
+    async def _claim(*, limit: int = 50, lease_seconds: int = 120) -> list[dict]:
+        if not queue:
+            return []
+        batch = queue[:limit]
+        del queue[:limit]
+        return batch
+
+    return AsyncMock(side_effect=_claim)

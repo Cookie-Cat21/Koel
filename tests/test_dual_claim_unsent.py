@@ -45,12 +45,10 @@ async def test_dual_poller_claim_unsent_no_double_send() -> None:
     ]
     claimed: set[int] = set()
     claim_lock = asyncio.Lock()
-    barrier = asyncio.Barrier(2)
 
     async def claim_unsent_batch(
         *, limit: int = 50, lease_seconds: int = 120
     ) -> list[dict[str, object]]:
-        await barrier.wait()
         async with claim_lock:
             out: list[dict[str, object]] = []
             for row in rows:
@@ -59,8 +57,7 @@ async def test_dual_poller_claim_unsent_no_double_send() -> None:
                     continue
                 claimed.add(rid)
                 out.append(row)
-                # One row per claimer so both pollers participate.
-                if len(out) >= 1:
+                if len(out) >= max(1, limit):
                     break
             return out[:limit]
 

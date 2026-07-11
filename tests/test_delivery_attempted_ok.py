@@ -12,8 +12,9 @@ from chime.config import Settings
 from chime.domain import AlertEvent, AlertType, PriceSnapshot
 from chime.migrate import apply_migrations
 from chime.notify import SendResult
-from chime.poller import PendingSend, Poller
+from chime.poller import MARK_DELIVERY_OK_ATTEMPTS, PendingSend, Poller
 from chime.storage import Storage
+from tests.conftest import claim_unsent_deque
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
@@ -84,6 +85,55 @@ async def test_mark_fail_still_sets_delivery_flag() -> None:
     storage.mark_delivery_attempted_ok.assert_awaited_once_with(102)
     assert storage.mark_alert_sent.await_count == 2
     storage.dead_letter.assert_awaited_once_with(102)
+
+
+@pytest.mark.asyncio
+async def test_all_persist_fail_keeps_delivered_ok_ids_retry_skips() -> None:
+    """Telegram OK + mark_delivery, mark_sent, and dead_letter all fail.
+
+    Process must retain the id in ``_delivered_ok_ids`` so ``_retry_unsent``
+    does not re-push.
+    """
+    storage = AsyncMock()
+    storage.mark_delivery_attempted_ok = AsyncMock(
+        side_effect=RuntimeError("delivery flag down")
+    )
+    storage.mark_alert_sent = AsyncMock(side_effect=RuntimeError("mark sent down"))
+    storage.dead_letter = AsyncMock(side_effect=RuntimeError("dead letter down"))
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
+            {
+                "id": 103,
+                "rule_id": 1,
+                "message_text": "body",
+                "telegram_id": 9,
+                "attempt_count": 0,
+            }
+        ]
+    )
+    send = AsyncMock(return_value=SendResult.OK)
+
+    poller = Poller(_settings(), storage, AsyncMock(), send)
+    await poller._deliver_one(
+        PendingSend(
+            log_id=103,
+            telegram_id=9,
+            message="body",
+            already_claimed_new=True,
+            rule_id=1,
+            event=None,
+        )
+    )
+
+    assert 103 in poller._delivered_ok_ids
+    assert storage.mark_delivery_attempted_ok.await_count == MARK_DELIVERY_OK_ATTEMPTS
+    assert storage.mark_alert_sent.await_count == 2
+    # Once from delivery abandon, once from mark_sent abandon.
+    assert storage.dead_letter.await_count == 2
+
+    send.reset_mock()
+    await poller._retry_unsent()
+    send.assert_not_awaited()
 
 
 @pytest.mark.asyncio

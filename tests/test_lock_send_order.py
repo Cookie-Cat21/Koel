@@ -11,7 +11,7 @@ from chime.config import Settings
 from chime.domain import AlertType, PreviousPriceState, PriceSnapshot
 from chime.notify import SendResult
 from chime.poller import Poller
-from tests.conftest import make_disclosure, make_rule
+from tests.conftest import claim_unsent_deque, make_disclosure, make_rule
 
 
 def _settings() -> Settings:
@@ -103,8 +103,8 @@ async def test_retry_unsent_no_advisory_rehold() -> None:
     storage.advisory_unlock = AsyncMock(side_effect=unlock)
     storage.watched_symbols = AsyncMock(return_value=[])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
-    storage.claim_unsent_batch = AsyncMock(
-        return_value=[
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 99,
                 "rule_id": 3,
@@ -124,7 +124,8 @@ async def test_retry_unsent_no_advisory_rehold() -> None:
     assert lock_cycles["n"] == 1
     assert storage.advisory_unlock.await_count == 1
     assert send_calls == ["retry me"]
-    storage.claim_unsent_batch.assert_awaited_once()
+    assert storage.claim_unsent_batch.await_count == 2
+    assert storage.claim_unsent_batch.await_args_list[0].kwargs.get("limit") == 1
     storage.mark_alert_sent.assert_awaited_once_with(99)
     assert lock_held["value"] is False
 

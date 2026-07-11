@@ -9,6 +9,7 @@ import pytest
 from chime.config import Settings
 from chime.domain import AlertEvent, AlertType
 from chime.poller import Poller
+from tests.conftest import claim_unsent_deque
 
 
 def _settings() -> Settings:
@@ -78,8 +79,8 @@ async def test_claim_mark_fail_retry_succeeds_treats_as_sent() -> None:
 async def test_retry_unsent_mark_fail_dead_letters_no_attempt() -> None:
     """Retry path must use best-effort mark (H3 parity) — no bare mark_alert_sent."""
     storage = AsyncMock()
-    storage.claim_unsent_batch = AsyncMock(
-        return_value=[
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 91,
                 "rule_id": 3,

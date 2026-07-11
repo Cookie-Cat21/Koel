@@ -10,6 +10,7 @@ from chime.config import Settings
 from chime.domain import AlertEvent, AlertType, format_dead_letter_notify
 from chime.notify import SendResult
 from chime.poller import MAX_DEFERRED_ATTEMPTS, MAX_SEND_ATTEMPTS, Poller
+from tests.conftest import claim_unsent_deque
 
 
 def _settings() -> Settings:
@@ -182,7 +183,7 @@ async def test_retry_unsent_parses_symbol_for_notify() -> None:
         }
     ]
     storage.unsent_alerts = AsyncMock(return_value=batch)
-    storage.claim_unsent_batch = AsyncMock(return_value=batch)
+    storage.claim_unsent_batch = claim_unsent_deque(batch)
     storage.mark_alert_attempt = AsyncMock(return_value=MAX_SEND_ATTEMPTS)
     storage.dead_letter = AsyncMock()
     send = AsyncMock(side_effect=[SendResult.FAILED, SendResult.OK])

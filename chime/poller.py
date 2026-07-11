@@ -47,6 +47,10 @@ MAX_SEND_ATTEMPTS = 5
 # After this many deferred (RetryAfter) sends, stop retrying — same attempt_count
 # column, higher ceiling so transient flood-waits are not dead-lettered early.
 MAX_DEFERRED_ATTEMPTS = 30
+# Persist delivery_attempted_ok this many times before abandoning to memory + DL.
+MARK_DELIVERY_OK_ATTEMPTS = 3
+# Cap one-at-a-time unsent claims per drain (lease starts just before each send).
+RETRY_UNSENT_MAX = 50
 # Max time shutdown waits for an in-flight scheduled tick (CORE-005 / E2-C02).
 SHUTDOWN_TICK_TIMEOUT_SECONDS = 30.0
 
@@ -559,19 +563,33 @@ class Poller:
     ) -> bool:
         """Persist delivery_attempted_ok so restart cannot re-push (E2-C04).
 
-        Never raises. Returns True if the durable flag was written.
+        Retries before treating delivery as durably recorded. Never raises.
+        Returns True if the durable flag was written. On total failure the
+        caller still keeps ``log_id`` in ``_delivered_ok_ids``; we log
+        critical and best-effort dead-letter as a last resort.
         """
-        try:
-            await self.storage.mark_delivery_attempted_ok(log_id)
-            return True
-        except Exception:
-            log.exception(
-                "mark_delivery_attempted_ok_failed",
-                alert_log_id=log_id,
-                rule_id=rule_id,
-                event_key=event_key,
-            )
-            return False
+        for attempt in range(1, MARK_DELIVERY_OK_ATTEMPTS + 1):
+            try:
+                await self.storage.mark_delivery_attempted_ok(log_id)
+                return True
+            except Exception:
+                log.exception(
+                    "mark_delivery_attempted_ok_failed",
+                    alert_log_id=log_id,
+                    rule_id=rule_id,
+                    event_key=event_key,
+                    attempt=attempt,
+                )
+        log.critical(
+            "mark_delivery_attempted_ok_abandoned",
+            alert_log_id=log_id,
+            rule_id=rule_id,
+            event_key=event_key,
+            attempts=MARK_DELIVERY_OK_ATTEMPTS,
+        )
+        with contextlib.suppress(Exception):
+            await self.storage.dead_letter(log_id)
+        return False
 
     async def _mark_sent_best_effort(
         self,
@@ -608,8 +626,18 @@ class Poller:
         return False
 
     async def _retry_unsent(self) -> None:
-        pending = await self.storage.claim_unsent_batch()
-        for row in pending:
+        """Claim+send one unsent row at a time so each lease starts at send time.
+
+        Batch-claiming N rows then sending sequentially can let later leases
+        expire mid-drain (RetryAfter). ``limit=1`` renews the lease just before
+        each Telegram attempt; stop when the queue is empty or after
+        ``RETRY_UNSENT_MAX`` claims.
+        """
+        for _ in range(RETRY_UNSENT_MAX):
+            pending = await self.storage.claim_unsent_batch(limit=1)
+            if not pending:
+                break
+            row = pending[0]
             log_id = int(row["id"])
             if log_id in self._delivered_ok_ids:
                 continue

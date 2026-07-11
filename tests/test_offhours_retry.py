@@ -9,6 +9,7 @@ import pytest
 from chime.config import Settings
 from chime.notify import SendResult
 from chime.poller import Poller
+from tests.conftest import claim_unsent_deque
 
 
 def _settings() -> Settings:
@@ -24,8 +25,8 @@ async def test_outside_hours_still_retries_unsent() -> None:
     storage = AsyncMock()
     storage.try_advisory_lock = AsyncMock(return_value=True)
     storage.advisory_unlock = AsyncMock()
-    storage.claim_unsent_batch = AsyncMock(
-        return_value=[
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 44,
                 "rule_id": 2,
@@ -45,6 +46,7 @@ async def test_outside_hours_still_retries_unsent() -> None:
     assert events == []
     send.assert_awaited_once_with(1001, "pending overnight")
     storage.mark_alert_sent.assert_awaited_once_with(44)
+    assert storage.claim_unsent_batch.await_args_list[0].kwargs.get("limit") == 1
     storage.try_advisory_lock.assert_not_awaited()
     storage.advisory_unlock.assert_not_awaited()
 
@@ -53,8 +55,8 @@ async def test_outside_hours_still_retries_unsent() -> None:
 async def test_same_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     """If mark+dead_letter fail after OK send, same-tick retry must not re-send."""
     storage = AsyncMock()
-    storage.claim_unsent_batch = AsyncMock(
-        return_value=[
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 55,
                 "rule_id": 1,
@@ -94,8 +96,8 @@ async def test_cross_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     storage.try_advisory_lock = AsyncMock(return_value=True)
     storage.advisory_unlock = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=[])
-    storage.claim_unsent_batch = AsyncMock(
-        return_value=[
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 66,
                 "rule_id": 1,
