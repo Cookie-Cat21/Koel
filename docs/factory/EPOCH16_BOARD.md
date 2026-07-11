@@ -15,6 +15,6 @@ Activate via `make factory-refill` after Epoch 15.
 | E16-O01 | HANDOFF Epoch 15→16 refill path | OPEN |
 | E16-C01 | CSE client timeout log includes symbol when known | DONE |
 | E16-A01 | SESSION_LOG Epoch 15 drain entry | OPEN |
-| E16-B01 | /unwatch not-on-list reply actionable | OPEN |
+| E16-B01 | /unwatch not-on-list reply actionable | DONE |
 
 Never farm. One concern per commit.

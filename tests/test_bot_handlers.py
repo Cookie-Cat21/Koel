@@ -107,3 +107,19 @@ async def test_unwatch_orphan_rules_honest_message() -> None:
     reply = update.effective_message.reply_text.await_args.args[0]
     assert "wasn't on your watchlist" in reply
     assert "orphan alert" in reply
+
+
+@pytest.mark.asyncio
+async def test_unwatch_not_on_list_reply_is_actionable() -> None:
+    storage = AsyncMock()
+    storage.ensure_user = AsyncMock(return_value=42)
+    storage.unwatch_symbol = AsyncMock(return_value=(False, 0))
+
+    update, context = _make_update_context(args=["JKH.N0000"], storage=storage)
+    await cmd_unwatch(update, context)
+
+    storage.unwatch_symbol.assert_awaited_once_with(42, "JKH.N0000")
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "JKH.N0000 wasn't on your watchlist" in reply
+    assert "/mywatchlist" in reply
+    assert "/watch JKH.N0000" in reply
