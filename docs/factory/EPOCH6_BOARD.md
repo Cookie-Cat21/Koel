@@ -1,6 +1,6 @@
 # Epoch 6 Board — Dash UX depth (pre-seeded for long runs)
 
-**Status:** STAGED (open after Epoch 5)  
+**Status:** OPEN
 **Open when:** Epoch 5 clear  
 
 | ID | Item | Status |
