@@ -27,3 +27,6 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# local probe artifacts
+*.bin

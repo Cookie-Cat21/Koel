@@ -1,0 +1,39 @@
+{
+  "endpoint": "POST /api/announcements",
+  "infoAnnouncement": [
+    {
+      "announcementId": 25040,
+      "securityId": 508,
+      "title": "EMPLOYEE SHARE OPTION SCHEMES",
+      "body": null,
+      "manualDate": 1552588200000,
+      "addedDate": 1552588200000,
+      "edited": 1,
+      "deleted": 0,
+      "filePath": "uploadAnnounceFiles/5051552647765_508.pdf"
+    },
+    {
+      "announcementId": 24588,
+      "securityId": 508,
+      "title": "DIVIDEND ANNOUNCEMENT",
+      "body": "Date of Announcement: - 31.Jan.2019 \r<br>Rate of Dividend: - Rs. 2.00 per share / Second Interim\r<br>Financial Year: - 2018/2019 \r<br>Shareholder Approval: - Not Required \r<br>XD: - 12.Feb.2019 \r<br>Payment: - 22.Feb.2019",
+      "manualDate": 1548873000000,
+      "addedDate": 1548873000000,
+      "edited": 1,
+      "deleted": 0,
+      "filePath": null
+    },
+    {
+      "announcementId": 24562,
+      "securityId": 508,
+      "title": "REPURCHASE OF SHARES (NOTIFICATION ON REPURCHASE OF SHARES)",
+      "body": null,
+      "manualDate": 1548354600000,
+      "addedDate": 1548354600000,
+      "edited": 1,
+      "deleted": 0,
+      "filePath": "uploadAnnounceFiles/6781548416472_508.pdf"
+    }
+  ],
+  "_note": "Legacy per-symbol archive; full list has 162 items. Prefer getAnnouncementByCompany for newer structured announcements."
+}
