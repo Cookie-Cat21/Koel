@@ -11,7 +11,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 
 | ID | Item | Status | Notes |
 |---|---|---|---|
-| E2-C01 | CORE-003 DOA-only: fail-closed gate when only DOA (store DOA for display) | OPEN | |
+| E2-C01 | CORE-003 DOA-only: fail-closed gate when only DOA (store DOA for display) | DONE | |
 | E2-C02 | CORE-005 await in-flight tick on shutdown (timeout) | OPEN | |
 | E2-C03 | Claim+disarm single DB transaction | OPEN | |
 | E2-C04 | Persist delivered-guard (survive restart) — `message_sent` optimistic or delivery lease | OPEN | |

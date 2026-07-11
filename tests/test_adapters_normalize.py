@@ -78,6 +78,7 @@ def test_announcement_to_disclosure_builds_url_and_title() -> None:
     assert disc.company_name == "John Keells Holdings PLC"
     assert disc.seen_at == seen
     assert disc.published_at == datetime.fromtimestamp(1_720_000_000_000 / 1000.0, tz=UTC)
+    assert disc.doa_display is None
 
 
 def test_announcement_falls_back_to_id_field() -> None:
@@ -89,10 +90,11 @@ def test_announcement_falls_back_to_id_field() -> None:
     assert disc.url == f"{ANNOUNCEMENTS_PAGE}#55"
     # Missing createdDate and dateOfAnnouncement → epoch (not "now")
     assert disc.published_at == datetime(1970, 1, 1, tzinfo=UTC)
+    assert disc.doa_display is None
 
 
-def test_announcement_uses_date_of_announcement_when_created_date_null() -> None:
-    """WS-001: parse dateOfAnnouncement like '30 Jun 2026' as Colombo midnight → UTC."""
+def test_announcement_doa_only_fail_closed_for_gating() -> None:
+    """E2-C01: DOA alone must not set published_at — epoch fail-closed for alerts."""
     row = AnnouncementRow(
         announcementId=42,
         announcementCategory="Financial",
@@ -101,14 +103,15 @@ def test_announcement_uses_date_of_announcement_when_created_date_null() -> None
     )
     disc = announcement_to_disclosure(row, symbol="JKH.N0000")
     assert disc is not None
-    # Asia/Colombo midnight (UTC+5:30) → 2026-06-29 18:30:00 UTC
-    expected = datetime(2026, 6, 30, 0, 0, 0, tzinfo=_COLOMBO).astimezone(UTC)
-    assert disc.published_at == expected
-    assert disc.published_at == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
+    assert disc.published_at == datetime(1970, 1, 1, tzinfo=UTC)
+    # Asia/Colombo midnight (UTC+5:30) → 2026-06-29 18:30:00 UTC — display only
+    expected_doa = datetime(2026, 6, 30, 0, 0, 0, tzinfo=_COLOMBO).astimezone(UTC)
+    assert disc.doa_display == expected_doa
+    assert disc.doa_display == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
 
 
-def test_announcement_uses_date_of_announcement_when_created_date_non_positive() -> None:
-    """createdDate <= 0 is a null sentinel — fall through to dateOfAnnouncement."""
+def test_announcement_doa_when_created_date_non_positive_fail_closed() -> None:
+    """createdDate <= 0 is missing — DOA is display-only, published_at stays epoch."""
     row = AnnouncementRow(
         announcementId=45,
         announcementCategory="Financial",
@@ -117,11 +120,26 @@ def test_announcement_uses_date_of_announcement_when_created_date_non_positive()
     )
     disc = announcement_to_disclosure(row, symbol="JKH.N0000")
     assert disc is not None
-    assert disc.published_at == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
+    assert disc.published_at == datetime(1970, 1, 1, tzinfo=UTC)
+    assert disc.doa_display == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
+
+
+def test_announcement_created_date_preferred_doa_still_parsed() -> None:
+    """Valid createdDate gates; DOA still parsed into doa_display when present."""
+    row = AnnouncementRow(
+        announcementId=46,
+        announcementCategory="Financial",
+        createdDate=1_720_000_000_000,
+        dateOfAnnouncement="30 Jun 2026",
+    )
+    disc = announcement_to_disclosure(row, symbol="JKH.N0000")
+    assert disc is not None
+    assert disc.published_at == datetime.fromtimestamp(1_720_000_000_000 / 1000.0, tz=UTC)
+    assert disc.doa_display == datetime(2026, 6, 29, 18, 30, 0, tzinfo=UTC)
 
 
 def test_announcement_undated_still_epoch_fail_closed() -> None:
-    """WS-001: neither createdDate nor parseable dateOfAnnouncement → epoch."""
+    """Neither createdDate nor parseable dateOfAnnouncement → epoch."""
     row = AnnouncementRow(
         announcementId=43,
         announcementCategory="Other",
@@ -131,6 +149,7 @@ def test_announcement_undated_still_epoch_fail_closed() -> None:
     disc = announcement_to_disclosure(row, symbol="COMB.N0000")
     assert disc is not None
     assert disc.published_at == datetime(1970, 1, 1, tzinfo=UTC)
+    assert disc.doa_display is None
 
 
 def test_announcement_unparseable_date_of_announcement_epoch() -> None:
@@ -142,6 +161,7 @@ def test_announcement_unparseable_date_of_announcement_epoch() -> None:
     disc = announcement_to_disclosure(row, symbol="COMB.N0000")
     assert disc is not None
     assert disc.published_at == datetime(1970, 1, 1, tzinfo=UTC)
+    assert disc.doa_display is None
 
 
 def test_announcement_with_no_ids_returns_none() -> None:

@@ -52,6 +52,8 @@ class Disclosure(BaseModel):
     url: str
     published_at: datetime
     seen_at: datetime
+    # Parsed dateOfAnnouncement for logging/display only — never used for alert gating.
+    doa_display: datetime | None = None
     id: int | None = None
 
 

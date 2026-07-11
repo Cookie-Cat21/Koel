@@ -209,14 +209,16 @@ def announcement_to_disclosure(
     external = row.announcementId if row.announcementId is not None else row.id
     if external is None:
         return None
-    # Prefer createdDate (epoch ms). Treat <=0 as missing (null sentinel) so
-    # dateOfAnnouncement can run. If still unknown, epoch 1970 — never "now".
+    # Prefer createdDate (epoch ms) for published_at / alert gating.
+    # Treat <=0 as missing. DOA is never used for gating — laggy calendar
+    # strings would fire (or miss) disclosure rules incorrectly. Fail-closed
+    # to Unix epoch so rules see published_at as stale. Still parse DOA into
+    # doa_display for logging / title context.
+    doa = _parse_date_of_announcement(row.dateOfAnnouncement)
     if row.createdDate is not None and row.createdDate > 0:
         published = _ms_to_dt(row.createdDate)
     else:
-        published = _parse_date_of_announcement(row.dateOfAnnouncement) or datetime(
-            1970, 1, 1, tzinfo=UTC
-        )
+        published = datetime(1970, 1, 1, tzinfo=UTC)
     title = row.announcementCategory or "Announcement"
     if row.remarks:
         title = f"{title}: {row.remarks}"
@@ -229,6 +231,7 @@ def announcement_to_disclosure(
         url=f"{ANNOUNCEMENTS_PAGE}#{external}",
         published_at=published,
         seen_at=seen_at or datetime.now(UTC),
+        doa_display=doa,
     )
 
 
