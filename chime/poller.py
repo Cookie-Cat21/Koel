@@ -101,6 +101,8 @@ class Poller:
         # (set for the locked section of run_once).
         self._queue_sends: bool = False
         self._pending_sends: list[PendingSend] = []
+        # Process-lifetime: Telegram-OK alert_log ids. Survives ticks so a
+        # mark_alert_sent outage cannot re-push every poll (L08-001).
         self._delivered_ok_ids: set[int] = set()
 
     async def run_once(self, *, force: bool = False) -> list[AlertEvent]:
@@ -128,7 +130,6 @@ class Poller:
         pending: list[PendingSend] = []
         self._queue_sends = True
         self._pending_sends = pending
-        self._delivered_ok_ids = set()
         try:
             price_events, price_ok = await self._poll_prices()
             disc_events, disc_ok = await self._poll_disclosures()
@@ -174,7 +175,6 @@ class Poller:
             self.lock_held_skip = True
             return
         self.lock_held_skip = False
-        self._delivered_ok_ids = set()
         try:
             # Hold lock for the whole off-hours drain so two processes cannot
             # both read the same unsent rows and double-send.
@@ -183,6 +183,14 @@ class Poller:
             log.exception("offhours_retry_failed", error=str(exc))
         finally:
             await self.storage.advisory_unlock(POLL_LOCK_ID)
+
+    def _remember_delivered(self, log_id: int) -> None:
+        self._delivered_ok_ids.add(log_id)
+        # Bound memory if mark_alert_sent stays broken for a long outage.
+        if len(self._delivered_ok_ids) > 10_000:
+            # Drop an arbitrary half (set pop is fine — ids are opaque).
+            for _ in range(5_000):
+                self._delivered_ok_ids.pop()
 
     async def _poll_prices(self) -> tuple[list[AlertEvent], bool]:
         symbols = await self.storage.watched_symbols()
@@ -353,9 +361,9 @@ class Poller:
         """Send one claimed alert and update alert_log (OK / FAILED / DEFERRED)."""
         result = _normalize_send_result(await self.send(pending.telegram_id, pending.message))
         if result is SendResult.OK:
-            # Telegram already delivered. Track id so same-tick _retry_unsent
-            # cannot re-send even if mark_alert_sent / dead_letter both fail.
-            self._delivered_ok_ids.add(pending.log_id)
+            # Telegram already delivered. Remember across ticks (L08-001) so a
+            # mark_alert_sent outage cannot re-push every poll interval.
+            self._remember_delivered(pending.log_id)
             event_key = pending.event.event_key if pending.event is not None else None
             marked = await self._mark_sent_best_effort(
                 pending.log_id,
