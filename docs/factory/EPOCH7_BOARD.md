@@ -1,6 +1,6 @@
 # Epoch 7 Board — Bot UX + compliance chrome
 
-**Status:** STAGED (open after Epoch 6)  
+**Status:** OPEN
 
 | ID | Item | Status |
 |---|---|---|
