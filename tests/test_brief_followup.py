@@ -9,9 +9,16 @@ import pytest
 
 from chime.briefs import BriefSettings
 from chime.briefs.worker import claim_pending_briefs
-from chime.domain import disclaimer, format_brief_followup
+from chime.domain import AlertType, disclaimer, format_brief_followup
 from chime.notify import SendResult
+from chime.rules import _event_key_disclosure
+from tests.conftest import make_disclosure, make_rule
 from tests.test_storage_unit import _Conn, _store
+
+
+def _brief_followup_event_key(rule_id: int, external_id: str) -> str:
+    """Mirror storage.claim_brief_followups INSERT event_key shape."""
+    return f"brief_followup:{rule_id}:{external_id}"
 
 
 def _enabled_settings(**kwargs: Any) -> BriefSettings:
@@ -49,6 +56,35 @@ def test_format_brief_followup_nfa_last() -> None:
     assert "Board met; no dividend." in msg
     last = [ln for ln in msg.strip().splitlines() if ln.strip()][-1]
     assert last == disclaimer()
+
+
+def test_brief_followup_event_key_isolated_from_disclosure() -> None:
+    """Follow-up keys must not collide with primary disclosure keys.
+
+    alert_log UNIQUE(rule_id, event_key) is shared; if prefixes matched,
+    claim_brief_followups would ON CONFLICT against the primary fire and
+    silently skip the Telegram follow-up.
+    """
+    rule = make_rule(id=9, type=AlertType.DISCLOSURE, threshold=None)
+    cases = (
+        "99",
+        "ann-12345",
+        "disclosure:9:99",  # adversarial: looks like a disclosure key
+        "brief_followup:9:99",  # adversarial: looks like a follow-up key
+        "9:99",
+        "a:b:c",
+    )
+    for external_id in cases:
+        disclosure = make_disclosure(external_id=external_id)
+        primary = _event_key_disclosure(rule, disclosure)
+        followup = _brief_followup_event_key(rule.id, external_id)
+        assert primary == f"disclosure:{rule.id}:{external_id}"
+        assert followup == f"brief_followup:{rule.id}:{external_id}"
+        assert primary != followup
+        assert primary.startswith("disclosure:")
+        assert followup.startswith("brief_followup:")
+        assert not primary.startswith("brief_followup:")
+        assert not followup.startswith("disclosure:")
 
 
 @pytest.mark.asyncio
@@ -271,8 +307,8 @@ async def test_storage_claim_brief_followups_sql_gates_on_primary_alert() -> Non
     assert len(rows) == 1
     assert rows[0]["id"] == 88
     sql = conn.sql[0]
-    assert "brief_followup:" in sql
-    assert "disclosure:" in sql
+    assert "'brief_followup:' || p.rule_id::text || ':' || %s" in sql
+    assert "al.event_key = 'disclosure:' || ar.id::text || ':' || %s" in sql
     assert "ON CONFLICT (rule_id, event_key) DO NOTHING" in sql
     assert "position(%s IN al.message_text) = 0" in sql
     assert "delivery_lease_until" in sql
