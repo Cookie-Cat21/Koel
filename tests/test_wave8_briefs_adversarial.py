@@ -70,3 +70,12 @@ async def test_list_ready_briefs_excludes_already_followed_up() -> None:
     assert "NOT EXISTS" in sql
     assert "ORDER BY b.updated_at ASC" in sql
     assert conn.params[0] == (3, 5)
+
+
+def test_brief_settings_openrouter_soft_defaults_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.delenv("AI_MODEL", raising=False)
+    cfg = BriefSettings.from_env()
+    assert cfg.model == "openai/gpt-4o-mini"

@@ -90,11 +90,13 @@ class BriefSettings:
         # Soft-default model to the provider's common chat model so
         # AI_PROVIDER=groq without AI_MODEL does not burn the daily cap on
         # Gemini model ids that Groq rejects.
-        default_model = (
-            "llama-3.3-70b-versatile"
-            if provider.lower() == "groq"
-            else "gemini-2.0-flash"
-        )
+        provider_l = provider.lower()
+        if provider_l == "groq":
+            default_model = "llama-3.3-70b-versatile"
+        elif provider_l == "openrouter":
+            default_model = "openai/gpt-4o-mini"
+        else:
+            default_model = "gemini-2.0-flash"
         model_raw = os.getenv("AI_MODEL")
         if model_raw is None or not str(model_raw).strip():
             model = default_model

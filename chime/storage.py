@@ -505,7 +505,9 @@ class Storage:
 
         Covers the race where a brief became ready while the primary disclosure
         alert was still undelivered (deferred / unsent). ``claim_brief_followups``
-        remains the durable gate — this only lists candidates.
+        remains the durable gate — this only lists candidates that still have at
+        least one delivered primary without a ``brief_followup:`` row (so a
+        newest-N window cannot starve older ready briefs forever).
         """
         if limit <= 0:
             return []
@@ -527,7 +529,34 @@ class Storage:
                       AND b.brief IS NOT NULL
                       AND btrim(b.brief) <> ''
                       AND b.updated_at >= now() - (%s * interval '1 day')
-                    ORDER BY b.updated_at DESC
+                      AND EXISTS (
+                          SELECT 1
+                          FROM alert_rules ar
+                          JOIN alert_log al
+                            ON al.rule_id = ar.id
+                           AND al.event_key = 'disclosure:' || ar.id::text
+                               || ':' || d.external_id
+                          WHERE ar.active
+                            AND ar.type = 'disclosure'
+                            AND ar.symbol = d.symbol
+                            AND (al.message_sent OR al.delivery_attempted_ok)
+                            AND (
+                                al.message_text IS NULL
+                                OR position(
+                                    chr(10) || chr(10) || b.brief
+                                    || chr(10) || chr(10)
+                                    IN al.message_text
+                                ) = 0
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM alert_log fu
+                                WHERE fu.rule_id = ar.id
+                                  AND fu.event_key = 'brief_followup:'
+                                      || ar.id::text || ':' || d.external_id
+                            )
+                      )
+                    ORDER BY b.updated_at ASC
                     LIMIT %s
                     """,
                     (days, limit),
@@ -551,10 +580,11 @@ class Storage:
         double-claim. Stale ``processing`` rows older than
         ``stale_processing_minutes`` are reclaimable after a crash.
 
-        PDF grace: rows without ``disclosures.pdf_url`` are skipped until
-        ``created_at`` is older than ``pdf_grace_seconds`` so legacy enrich can
-        land before a title-only summarize burns the daily cap. ``0`` claims
-        immediately (title-only ok).
+        PDF grace: rows without a non-empty ``disclosures.pdf_url`` are skipped
+        until ``updated_at`` is older than ``pdf_grace_seconds`` so legacy enrich
+        can land before a title-only summarize burns the daily cap. Uses
+        ``updated_at`` (not ``created_at``) so ``promote_recent_skipped_briefs``
+        restarts the grace window. ``0`` claims immediately (title-only ok).
         """
         if limit <= 0:
             return []
@@ -609,8 +639,8 @@ class Storage:
                             )
                         )
                         AND (
-                            d.pdf_url IS NOT NULL
-                            OR b.created_at
+                            NULLIF(btrim(d.pdf_url), '') IS NOT NULL
+                            OR b.updated_at
                                 < now() - (%s * interval '1 second')
                         )
                         ORDER BY b.created_at ASC
