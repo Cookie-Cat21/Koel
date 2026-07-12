@@ -62,14 +62,17 @@ Prices / market:
   quote (`reqSymbolInfo`: last price, change, market cap, numeric `id`)
 - `POST /tradeSummary` — body `{}` — **best bulk poller source**; one call
   returns all symbols (`reqTradeSummery[]`)
+- `POST /marketStatus` — body `{}` — `{status}` open/closed; prefer for poller
+  gating with clock fallback (`docs/CSE_EXTERNAL_DOC_COMPARE.md`)
 - `POST /dailyMarketSummery` — body `{}` — end-of-day market aggregates
 - `POST /allSectors` — body `{}` — sector list/performance
 - `POST /snpData` — body `{}` — S&P Sri Lanka 20 (also `POST /aspiData` for ASPI)
 - `POST /detailedTrades` — market-wide trade board (not symbol-filtered)
 
-Charts (do **not** rely on `/chartData`):
+Charts (do **not** rely on `/chartData` for per-stock):
 
-- `POST /chartData` — currently returns **400** for all probed payloads
+- `POST /chartData` — form `chartId=`+`period=` can 200, but `symbol=` is
+  ignored (index-scale series). JSON body → 400.
 - Use `POST /companyChartDataByStock` (`stockId=` + `period=`) or
   `POST /daysTrade` (`symbol=`) instead
 
