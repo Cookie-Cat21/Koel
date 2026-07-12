@@ -20,7 +20,9 @@ def test_cookie_flag_helpers_shared() -> None:
     cfg = (AUTH / "config.ts").read_text(encoding="utf-8")
     assert 'COOKIE_SAME_SITE = "lax"' in cfg
     assert "export function cookieSecure()" in cfg
-    assert 'NODE_ENV === "production"' in cfg
+    # W64: typeof-guard NODE_ENV before production Secure match.
+    assert 'typeof raw === "string"' in cfg
+    assert 'raw === "production"' in cfg
 
 
 def test_session_and_csrf_set_secure_samesite() -> None:
