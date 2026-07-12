@@ -159,8 +159,12 @@ scrape HTML; use the JSON endpoints above.
 ## Current status
 
 Stage A (adapter, schema, poller, rules, bot, health) is implemented and
-hardened through Stage B Pass 4. Tijori-for-CSE Phase 1 is in progress:
-market-wide snapshot persist, thin `/market` browse (`GET /api/v1/symbols`),
-and a filing-brief stub (`AI_BRIEFS_ENABLED=0`). Commit Factory planning
-lives under `docs/factory/` (100 workstreams). Keep non-goals and compliance
-intact; thin dashboard only within the fence above. Ceyfi merge is deferred.
+hardened through Stage B Pass 4. Tijori-for-CSE multi-wave Phase 1–2 is
+largely landed (waves 1–7): market-wide snapshot persist, thin `/market`
+browse (`GET /api/v1/symbols`), sectors, disclosure PDF enrich + brief
+plumbing (live Gemini still flag/key gated — `AI_BRIEFS_ENABLED=0`
+default). Phase 3 scenario AI is not started. See
+`docs/factory/passes/TIJORI_WAVE_REPORT.md` and
+`docs/factory/TIJORI_CSE_PLAN.md`. Commit Factory planning lives under
+`docs/factory/` (100 workstreams). Keep non-goals and compliance intact;
+thin dashboard only within the fence above. Ceyfi merge is deferred.
