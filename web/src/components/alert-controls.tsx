@@ -22,6 +22,7 @@ type FieldErrors = {
   symbol?: string;
   type?: string;
   threshold?: string;
+  category?: string;
   form?: string;
 };
 
@@ -31,10 +32,12 @@ export function AlertCreateForm() {
   const [symbol, setSymbol] = useState("");
   const [type, setType] = useState<AlertType>("price_above");
   const [threshold, setThreshold] = useState("");
+  const [category, setCategory] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
 
   const needsThreshold = type !== "disclosure";
+  const showCategory = type === "disclosure";
 
   function clearField(key: keyof FieldErrors) {
     setErrors((prev) => {
@@ -64,6 +67,7 @@ export function AlertCreateForm() {
         symbol: string;
         type: AlertType;
         threshold?: number;
+        category?: string;
       } = { symbol: trimmed, type };
 
       if (needsThreshold) {
@@ -87,6 +91,11 @@ export function AlertCreateForm() {
           } else {
             body.threshold = n;
           }
+        }
+      } else {
+        const cat = category.trim();
+        if (cat) {
+          body.category = cat;
         }
       }
 
@@ -115,6 +124,8 @@ export function AlertCreateForm() {
           setErrors({ symbol: msg });
         } else if (msg.toLowerCase().includes("threshold")) {
           setErrors({ threshold: msg });
+        } else if (msg.toLowerCase().includes("category")) {
+          setErrors({ category: msg });
         } else if (msg.toLowerCase().includes("type")) {
           setErrors({ type: msg });
         } else {
@@ -125,6 +136,7 @@ export function AlertCreateForm() {
       }
       setSymbol("");
       setThreshold("");
+      setCategory("");
       toast.success(
         `Alert set for ${trimmed}. Telegram will ping when it fires.`,
       );
@@ -143,6 +155,7 @@ export function AlertCreateForm() {
     errors.symbol ??
     errors.type ??
     errors.threshold ??
+    errors.category ??
     null;
 
   return (
@@ -180,9 +193,12 @@ export function AlertCreateForm() {
             setType(nextType);
             if (nextType === "disclosure") {
               setThreshold("");
+            } else {
+              setCategory("");
             }
             clearField("type");
             clearField("threshold");
+            clearField("category");
           }}
           aria-invalid={errors.type ? true : undefined}
         >
@@ -215,6 +231,29 @@ export function AlertCreateForm() {
             }
             required
           />
+        </div>
+      ) : showCategory ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="alert_category">Category (optional)</Label>
+          <Input
+            id="alert_category"
+            name="category"
+            className="h-10"
+            placeholder="e.g. Financial Report"
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              clearField("category");
+            }}
+            autoComplete="off"
+            aria-invalid={errors.category ? true : undefined}
+            aria-describedby={
+              errors.category ? "alert_form_error" : "alert_category_hint"
+            }
+          />
+          <p id="alert_category_hint" className="text-xs text-muted-foreground">
+            Leave blank for any filing; substring match when set.
+          </p>
         </div>
       ) : (
         <div className="hidden lg:block" aria-hidden />

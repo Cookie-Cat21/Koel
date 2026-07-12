@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
@@ -48,11 +49,12 @@ export async function GET(request: NextRequest) {
       symbol: string;
       type: string;
       threshold: number | null;
+      category: string | null;
       active: boolean;
       armed: boolean;
       created_at: Date | string;
     }>(
-      `SELECT id, symbol, type, threshold, active, armed, created_at
+      `SELECT id, symbol, type, threshold, category, active, armed, created_at
        FROM alert_rules
        WHERE ${clauses.join(" AND ")}
        ORDER BY id ASC`,
@@ -70,6 +72,8 @@ export async function GET(request: NextRequest) {
           type: row.type,
           // Finite-only — NaN/±Inf threshold from a poisoned row → null.
           threshold: toFiniteNumber(row.threshold),
+          // Strip C0/C1 + cap — parity with bot storage read path.
+          category: sanitizeDisclosureCategory(row.category),
           active: Boolean(row.active),
           armed: Boolean(row.armed),
           created_at: toIso(row.created_at),
@@ -147,6 +151,22 @@ export async function POST(request: NextRequest) {
     threshold = obj.threshold;
   }
 
+  // Optional disclosure category filter (bot: /alert SYMBOL disclosure [CATEGORY]).
+  // Non-disclosure types ignore category (mirror Storage.create_alert_rule).
+  let category: string | null = null;
+  if (obj.category !== undefined && obj.category !== null) {
+    if (typeof obj.category !== "string") {
+      return jsonError(
+        400,
+        "validation_error",
+        "category must be a string when provided.",
+      );
+    }
+    if (alertType === "disclosure") {
+      category = sanitizeDisclosureCategory(obj.category);
+    }
+  }
+
   try {
     const stock = await getStock(symbol);
     if (!stock) {
@@ -158,6 +178,7 @@ export async function POST(request: NextRequest) {
       symbol,
       alertType,
       threshold,
+      category,
     );
     return jsonOk(rule, created ? 201 : 200);
   } catch (err) {

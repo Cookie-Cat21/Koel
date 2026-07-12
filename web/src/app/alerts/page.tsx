@@ -26,6 +26,7 @@ type AlertsPayload = {
     symbol: string;
     type: string;
     threshold: number | null;
+    category: string | null;
     active: boolean;
     armed: boolean;
     created_at: string | null;
@@ -169,6 +170,7 @@ export default async function AlertsPage({
                     {rule.threshold != null
                       ? ` · ${formatNumber(rule.threshold)}`
                       : ""}
+                    {rule.category ? ` · ${rule.category}` : ""}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {rule.armed ? "Armed" : "Disarmed"} ·{" "}

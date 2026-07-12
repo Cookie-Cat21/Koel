@@ -1,5 +1,7 @@
 import { Pool, type PoolClient } from "pg";
 
+import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
+import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import type { AlertType } from "@/lib/api/symbol";
 
@@ -114,6 +116,7 @@ export type AlertRuleRow = {
   symbol: string;
   type: string;
   threshold: number | null;
+  category: string | null;
   active: boolean;
   armed: boolean;
   created_at: string | null;
@@ -124,15 +127,23 @@ function mapRule(row: {
   symbol: string;
   type: string;
   threshold: number | null;
+  category: string | null;
   active: boolean;
   armed: boolean;
   created_at: Date | string;
 }): AlertRuleRow {
+  const id = Number(row.id);
   return {
-    id: Number(row.id),
+    // Non-finite ids are rare (poisoned driver); keep Number for shape parity
+    // with list routes that drop bad rows — callers still get a number.
+    id: Number.isFinite(id) ? id : Number.NaN,
     symbol: row.symbol,
     type: row.type,
-    threshold: row.threshold == null ? null : Number(row.threshold),
+    // Finite-only — NaN/±Inf threshold from a poisoned row → null.
+    threshold: toFiniteNumber(row.threshold),
+    category: sanitizeDisclosureCategory(
+      row.category == null ? null : String(row.category),
+    ),
     active: Boolean(row.active),
     armed: Boolean(row.armed),
     created_at: toIso(row.created_at),
@@ -145,24 +156,27 @@ async function fetchActiveRule(
   symbol: string,
   alertType: AlertType,
   threshold: number | null,
+  category: string | null,
 ): Promise<AlertRuleRow | null> {
   const result = await client.query<{
     id: string | number;
     symbol: string;
     type: string;
     threshold: number | null;
+    category: string | null;
     active: boolean;
     armed: boolean;
     created_at: Date | string;
   }>(
-    `SELECT id, symbol, type, threshold, active, armed, created_at
+    `SELECT id, symbol, type, threshold, category, active, armed, created_at
      FROM alert_rules
      WHERE user_id = $1 AND symbol = $2 AND type = $3
        AND COALESCE(threshold, -1) = COALESCE($4::double precision, -1)
+       AND COALESCE(category, '') = COALESCE($5, '')
        AND active
      ORDER BY id DESC
      LIMIT 1`,
-    [userId, symbol, alertType, threshold],
+    [userId, symbol, alertType, threshold, category],
   );
   const row = result.rows[0];
   return row ? mapRule(row) : null;
@@ -181,15 +195,20 @@ function isUniqueViolation(err: unknown): boolean {
  * Create alert rule mirroring Storage.create_alert_rule:
  * auto-watch, idempotent return-existing, armed=true on insert.
  * Stock must already exist (caller checks).
+ * ``category`` is for disclosure rules only (substring filter); ignored otherwise.
  */
 export async function createAlertRule(
   userId: number,
   symbol: string,
   alertType: AlertType,
   threshold: number | null,
+  category: string | null = null,
 ): Promise<{ rule: AlertRuleRow; created: boolean }> {
   const pool = getPool();
   const client = await pool.connect();
+  // Defense in depth: sanitize even if caller forgot (POST already sanitizes).
+  const cat =
+    alertType === "disclosure" ? sanitizeDisclosureCategory(category) : null;
   try {
     await client.query("BEGIN");
 
@@ -206,6 +225,7 @@ export async function createAlertRule(
       symbol,
       alertType,
       threshold,
+      cat,
     );
     if (existing) {
       await client.query("COMMIT");
@@ -218,14 +238,15 @@ export async function createAlertRule(
         symbol: string;
         type: string;
         threshold: number | null;
+        category: string | null;
         active: boolean;
         armed: boolean;
         created_at: Date | string;
       }>(
-        `INSERT INTO alert_rules (user_id, symbol, type, threshold, active, armed)
-         VALUES ($1, $2, $3, $4, TRUE, TRUE)
-         RETURNING id, symbol, type, threshold, active, armed, created_at`,
-        [userId, symbol, alertType, threshold],
+        `INSERT INTO alert_rules (user_id, symbol, type, threshold, category, active, armed)
+         VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)
+         RETURNING id, symbol, type, threshold, category, active, armed, created_at`,
+        [userId, symbol, alertType, threshold, cat],
       );
       const row = inserted.rows[0];
       if (!row) throw new Error("create_alert_rule returned no row");
@@ -242,6 +263,7 @@ export async function createAlertRule(
         symbol,
         alertType,
         threshold,
+        cat,
       );
       await client.query("COMMIT");
       if (raced) return { rule: raced, created: false };
