@@ -1,0 +1,8 @@
+{
+  "_status": "OK",
+  "_http_status": 200,
+  "_note": "Use for poller open/close with clock fallback.",
+  "response": {
+    "status": "Market Closed"
+  }
+}

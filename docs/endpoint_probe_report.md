@@ -1,6 +1,7 @@
 # CSE.lk API endpoint probe report
 
 Probed: 2026-07-11 against `https://www.cse.lk/api/`  
+Re-checked: 2026-07-12 (`marketStatus`, `chartData` form bodies) — see [CSE_EXTERNAL_DOC_COMPARE.md](CSE_EXTERNAL_DOC_COMPARE.md)  
 Test symbol: `JKH.N0000` (John Keells Holdings PLC)  
 Source: live HTTP probes + strings from the current Next.js frontend (`/_next/static/chunks/`).
 
@@ -107,18 +108,18 @@ Sample: [`sample_responses/detailedTrades.json`](sample_responses/detailedTrades
 
 ---
 
-### `POST /api/chartData` — **fails**
+### `POST /api/chartData` — **works for index-style series only** (re-probed 2026-07-12)
 
 | | |
 |---|---|
-| Status | `400` (empty body) for all probed JSON/form payloads |
+| Status | `200` with form `chartId=` + `period=`; `400` for JSON body or missing `chartId` |
 | GET | `405` |
 
-Frontend still references `chartData`, but live probes never returned 200. Use alternatives below.
+Earlier probe marked this always-400; that was incomplete. Form payloads like `chartId=1&period=1` return `[{d, v, pc}, …]`. **`symbol=` is ignored** — JKH/COMB/SAMP returned identical ~ASPI-scale values. **Do not use for per-stock charts.**
 
-Sample note: [`sample_responses/chartData.json`](sample_responses/chartData.json)
+Sample: [`sample_responses/chartData.json`](sample_responses/chartData.json)
 
-**Working alternatives:**
+**Working alternatives (per stock):**
 
 | Endpoint | Body | Notes |
 |---|---|---|
@@ -127,6 +128,19 @@ Sample note: [`sample_responses/chartData.json`](sample_responses/chartData.json
 | `POST /api/charts` | various | Referenced by frontend with `fromDate=1y&toDate=1d&period=daily` — **also 400** in this probe (may need cookies/session). |
 
 Samples: [`companyChartDataByStock.json`](sample_responses/companyChartDataByStock.json), [`daysTrade.json`](sample_responses/daysTrade.json)
+
+---
+
+### `POST /api/marketStatus` — **works** (adopt for poller gating)
+
+| | |
+|---|---|
+| Status | `200` |
+| Body | `{}` JSON or empty form |
+
+Response shape: `{ "status": "Market Closed" }` (or open-equivalent string when session is live). Chime currently gates on static `MARKET_OPEN`/`MARKET_CLOSE` clocks — wire this with clock fallback. Cross-check: [CSE_EXTERNAL_DOC_COMPARE.md](CSE_EXTERNAL_DOC_COMPARE.md).
+
+Sample: [`sample_responses/marketStatus.json`](sample_responses/marketStatus.json)
 
 ---
 

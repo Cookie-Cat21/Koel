@@ -1,5 +1,17 @@
 {
-  "_status": "FAILED",
-  "_http_status": 400,
-  "_note": "POST /api/chartData returns 400 for all probed payloads (JSON and form). Site JS still references it, but working alternatives are companyChartDataByStock (intraday ticks) and daysTrade. POST /api/charts also returns 400 in this probe."
+  "_status": "OK",
+  "_http_status": 200,
+  "_note": "Form chartId+period works; JSON body 400. symbol= is ignored \u2014 series is index-scale (~ASPI), not per-stock. Use companyChartDataByStock for symbols.",
+  "_request": "POST form chartId=1&period=1",
+  "sample_first": {
+    "d": 1783656000000,
+    "v": 21697.72,
+    "pc": null
+  },
+  "sample_last": {
+    "d": 1783674000000,
+    "v": 21773.69,
+    "pc": null
+  },
+  "truncated_count": 299
 }
