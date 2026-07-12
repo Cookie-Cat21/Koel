@@ -15,7 +15,7 @@ help:
 	@echo "  make up-web      Postgres + dash (compose --profile web)"
 	@echo "  make down-web    Stop profile web stack"
 	@echo "  make migrate     Apply SQL migrations (waits for compose health)"
-	@echo "  make tick        One poll cycle (--force); seeds /market browse"
+	@echo "  make tick        Forced poll (tick --force); seeds /market browse"
 	@echo "  make factory-status      Board + scoreboard"
 	@echo "  make factory-verify      ruff/mypy/pytest proof (+ portfolio_sum smoke)"
 	@echo "  make portfolio-sum       Plan A portfolio_sum.py smoke (non-fatal)"

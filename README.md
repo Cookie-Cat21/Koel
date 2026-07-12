@@ -94,10 +94,11 @@ Third-party licenses: [THIRD_PARTY.md](THIRD_PARTY.md).
 Quality-gated workstreams live under [docs/factory/](docs/factory/)
 ([COMMIT_FACTORY.md](docs/factory/COMMIT_FACTORY.md),
 [DASH_IA.md](docs/factory/DASH_IA.md),
-[TIJORI_CSE_PLAN.md](docs/factory/TIJORI_CSE_PLAN.md)). Telegram remains the
-primary user surface; a thin management + browse dashboard (Next.js + Tailwind
-+ shadcn) is secondary — watchlist / alerts / fire history / symbol browse
-only, not a trading terminal.
+[TIJORI_CSE_PLAN.md](docs/factory/TIJORI_CSE_PLAN.md),
+wave rollup [TIJORI_WAVE_REPORT.md](docs/factory/passes/TIJORI_WAVE_REPORT.md)).
+Telegram remains the primary user surface; a thin management + browse dashboard
+(Next.js + Tailwind + shadcn) is secondary — watchlist / alerts / fire history /
+symbol browse only, not a trading terminal.
 
 ### Dashboard runbook (`web/`)
 
