@@ -8,7 +8,7 @@ import {
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
-import type { AlertType } from "@/lib/api/symbol";
+import { isAlertType, type AlertType } from "@/lib/api/symbol";
 
 const globalForPg = globalThis as typeof globalThis & {
   __chimePgPool?: Pool;
@@ -142,11 +142,14 @@ function mapRule(row: {
   active: boolean;
   armed: boolean;
   created_at: Date | string;
-}): AlertRuleRow {
-  const id = Number(row.id);
+}): AlertRuleRow | null {
+  // Digits-only SafeInteger — Number(oversized) used to precision-lose and
+  // alias the wrong rule on create/idempotent return.
+  const id = toSafePositiveInt(row.id);
+  if (id == null || !Number.isSafeInteger(id)) return null;
+  if (!isAlertType(row.type)) return null;
   return {
-    // Unsafe / non-positive ids → NaN (JSON null) — parity with list SafeInteger.
-    id: Number.isSafeInteger(id) && id > 0 ? id : Number.NaN,
+    id,
     // Strip C0 + cap — hostile DB symbol must not balloon create/list JSON.
     symbol:
       sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "?",
@@ -262,8 +265,10 @@ export async function createAlertRule(
       );
       const row = inserted.rows[0];
       if (!row) throw new Error("create_alert_rule returned no row");
+      const mapped = mapRule(row);
+      if (!mapped) throw new Error("create_alert_rule returned non-safe rule");
       await client.query("COMMIT");
-      return { rule: mapRule(row), created: true };
+      return { rule: mapped, created: true };
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
       // Concurrent insert won — return survivor

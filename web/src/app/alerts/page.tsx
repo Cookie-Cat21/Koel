@@ -10,7 +10,13 @@ import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { Button } from "@/components/ui/button";
 import { serverApiGet } from "@/lib/api/server-fetch";
-import { normalizeSymbol } from "@/lib/api/symbol";
+import {
+  MAX_HISTORY_SYMBOL_LENGTH,
+  sanitizeDisclosureCategory,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
+import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { alertTypeLabel, formatNumber, formatTs } from "@/lib/format";
 
@@ -50,9 +56,56 @@ export default async function AlertsPage({
     qs.size > 0 ? `/api/v1/alerts?${qs.toString()}` : "/api/v1/alerts";
 
   const res = await serverApiGet(path);
-  const payload: AlertsPayload | null = res.ok
-    ? ((await res.json()) as AlertsPayload)
-    : null;
+  let payload: AlertsPayload | null = null;
+  if (res.ok) {
+    try {
+      const body: unknown = await res.json();
+      const rulesRaw =
+        body && typeof body === "object" && !Array.isArray(body)
+          ? (body as { rules?: unknown }).rules
+          : null;
+      if (Array.isArray(rulesRaw)) {
+        const rules: AlertsPayload["rules"] = [];
+        for (const row of rulesRaw) {
+          if (row == null || typeof row !== "object" || Array.isArray(row)) {
+            continue;
+          }
+          const r = row as Record<string, unknown>;
+          const id = toSafePositiveInt(r.id);
+          if (id == null) continue;
+          if (!isAlertType(r.type)) continue;
+          const symbol =
+            sanitizeDisclosureText(
+              typeof r.symbol === "string" ? r.symbol : null,
+              MAX_HISTORY_SYMBOL_LENGTH,
+            ) ?? "";
+          if (!symbol) continue;
+          const threshold =
+            typeof r.threshold === "number" && Number.isFinite(r.threshold)
+              ? r.threshold
+              : null;
+          rules.push({
+            id,
+            symbol,
+            type: r.type,
+            threshold,
+            category: sanitizeDisclosureCategory(
+              typeof r.category === "string" ? r.category : null,
+            ),
+            active: Boolean(r.active),
+            armed: Boolean(r.armed),
+            created_at:
+              typeof r.created_at === "string" && r.created_at
+                ? r.created_at
+                : null,
+          });
+        }
+        payload = { rules };
+      }
+    } catch {
+      payload = null;
+    }
+  }
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">

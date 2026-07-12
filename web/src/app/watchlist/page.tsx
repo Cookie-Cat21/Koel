@@ -9,6 +9,12 @@ import {
   UnwatchButton,
   WatchlistAddForm,
 } from "@/components/watchlist-controls";
+import {
+  MAX_HISTORY_SYMBOL_LENGTH,
+  MAX_STOCK_NAME_LENGTH,
+  MAX_STOCK_SECTOR_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
@@ -36,9 +42,61 @@ export default async function WatchlistPage() {
   await requirePageSession();
 
   const res = await serverApiGet("/api/v1/watchlist");
-  const payload: WatchlistPayload | null = res.ok
-    ? ((await res.json()) as WatchlistPayload)
-    : null;
+  let payload: WatchlistPayload | null = null;
+  if (res.ok) {
+    try {
+      const body: unknown = await res.json();
+      const itemsRaw =
+        body && typeof body === "object" && !Array.isArray(body)
+          ? (body as { items?: unknown }).items
+          : null;
+      if (Array.isArray(itemsRaw)) {
+        const items: WatchlistPayload["items"] = [];
+        for (const row of itemsRaw) {
+          if (row == null || typeof row !== "object" || Array.isArray(row)) {
+            continue;
+          }
+          const r = row as Record<string, unknown>;
+          const symbol =
+            sanitizeDisclosureText(
+              typeof r.symbol === "string" ? r.symbol : null,
+              MAX_HISTORY_SYMBOL_LENGTH,
+            ) ?? "";
+          if (!symbol) continue;
+          const price =
+            typeof r.price === "number" && Number.isFinite(r.price)
+              ? r.price
+              : null;
+          const change =
+            typeof r.change === "number" && Number.isFinite(r.change)
+              ? r.change
+              : null;
+          const change_pct =
+            typeof r.change_pct === "number" && Number.isFinite(r.change_pct)
+              ? r.change_pct
+              : null;
+          items.push({
+            symbol,
+            name: sanitizeDisclosureText(
+              typeof r.name === "string" ? r.name : null,
+              MAX_STOCK_NAME_LENGTH,
+            ),
+            sector: sanitizeDisclosureText(
+              typeof r.sector === "string" ? r.sector : null,
+              MAX_STOCK_SECTOR_LENGTH,
+            ),
+            price,
+            change,
+            change_pct,
+            ts: typeof r.ts === "string" && r.ts ? r.ts : null,
+          });
+        }
+        payload = { items };
+      }
+    } catch {
+      payload = null;
+    }
+  }
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
