@@ -31,6 +31,13 @@ type MarketItem = {
   ts: string | null;
 };
 
+/** Thin sector board row — name + change% only (not a screener). */
+type SectorItem = {
+  sector_id: number;
+  name: string;
+  change_pct: number | null;
+};
+
 /** Fail closed on non-JSON / wrong shape so a bad movers body cannot 500 the page. */
 async function readJsonPayload<T>(
   res: Response | null,
@@ -56,6 +63,35 @@ function asMarketItems(body: unknown): MarketItem[] | null {
       typeof (row as MarketItem).symbol === "string" &&
       (row as MarketItem).symbol.length > 0,
   );
+}
+
+function asSectorItems(body: unknown): SectorItem[] | null {
+  if (body == null || typeof body !== "object") return null;
+  const items = (body as { items?: unknown }).items;
+  if (!Array.isArray(items)) return null;
+  const out: SectorItem[] = [];
+  for (const row of items) {
+    if (row == null || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const name = typeof r.name === "string" ? r.name.trim() : "";
+    if (!name) continue;
+    const sectorId = typeof r.sector_id === "number" ? r.sector_id : Number(r.sector_id);
+    if (!Number.isFinite(sectorId)) continue;
+    const pctRaw = r.change_pct;
+    const change_pct =
+      pctRaw == null
+        ? null
+        : typeof pctRaw === "number"
+          ? pctRaw
+          : Number(pctRaw);
+    out.push({
+      sector_id: sectorId,
+      name,
+      change_pct:
+        change_pct != null && Number.isFinite(change_pct) ? change_pct : null,
+    });
+  }
+  return out;
 }
 
 function MoversList({
@@ -121,21 +157,24 @@ export default async function MarketPage({
   const qs = new URLSearchParams({ limit: "100", sort: "change_pct" });
   if (q) qs.set("q", q);
 
-  const [res, gainersRes, losersRes] = await Promise.all([
+  const [res, gainersRes, losersRes, sectorsRes] = await Promise.all([
     serverApiGet(`/api/v1/symbols?${qs.toString()}`),
-    // Top movers only when not searching — keeps browse discovery thin.
+    // Top movers / sectors only when not searching — keeps browse discovery thin.
     q
       ? Promise.resolve(null)
       : serverApiGet("/api/v1/market/movers?direction=up&limit=5"),
     q
       ? Promise.resolve(null)
       : serverApiGet("/api/v1/market/movers?direction=down&limit=5"),
+    q ? Promise.resolve(null) : serverApiGet("/api/v1/sectors"),
   ]);
 
   const marketItems = await readJsonPayload(res, asMarketItems);
   const gainerItems = await readJsonPayload(gainersRes, asMarketItems);
   const loserItems = await readJsonPayload(losersRes, asMarketItems);
+  const sectorItems = await readJsonPayload(sectorsRes, asSectorItems);
   const showMovers = !q && (gainerItems !== null || loserItems !== null);
+  const showSectors = !q && sectorItems !== null;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -205,6 +244,57 @@ export default async function MarketPage({
                 emptyLabel="No losers yet."
               />
             </div>
+          </section>
+        ) : null}
+
+        {showSectors ? (
+          <section className="mt-8" aria-labelledby="sectors-heading">
+            <h2
+              id="sectors-heading"
+              className="font-display text-lg font-semibold tracking-tight"
+            >
+              Sectors
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              CSE sector index change from the latest poll — not a screener.
+            </p>
+            {(sectorItems ?? []).length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No sector data yet.
+              </p>
+            ) : (
+              <ul
+                className="mt-4 divide-y divide-border/60"
+                aria-label="Sectors"
+              >
+                {(sectorItems ?? []).map((item) => {
+                  const pct = item.change_pct;
+                  const tone =
+                    pct == null
+                      ? "text-muted-foreground"
+                      : pct > 0
+                        ? "text-[oklch(0.42_0.09_165)]"
+                        : pct < 0
+                          ? "text-[oklch(0.45_0.12_25)]"
+                          : "text-muted-foreground";
+                  return (
+                    <li
+                      key={item.sector_id}
+                      className="flex items-baseline justify-between gap-2 py-2"
+                    >
+                      <span className="min-w-0 truncate text-sm text-foreground">
+                        {item.name}
+                      </span>
+                      <span
+                        className={`shrink-0 font-mono text-sm tabular-nums ${tone}`}
+                      >
+                        {formatPct(pct)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
         ) : null}
 
