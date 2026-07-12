@@ -1,12 +1,10 @@
-"""Wave44: medium+ bugs — residual SYMBOL_RE egress (no sanitize "?").
+"""Wave44: medium+ bugs — mapRule threshold cap + SYMBOL_RE egress pin.
 
-After w45 tightened alerts/watchlist pages + GET list APIs, these paths still
-soft-accepted junk symbols via sanitize ``"?"`` placeholders:
-
-1. ``mapRule`` / create-alert return must ``normalizeSymbol`` or null.
-2. History GET must ``normalizeSymbol`` and drop invalid rows.
-3. Market browse must ``normalizeSymbol`` (not sanitize-only symbols).
-4. Symbol detail GET must egress ``normalizeSymbol(row.symbol) ?? path``.
+1. ``mapRule`` must cap thresholds at ``MAX_ALERT_THRESHOLD`` (parity with
+   GET ``/api/v1/alerts``) — poisoned DB / create-return used to egress
+   ``Number.MAX_VALUE``-scale thresholds into dash JSON.
+2. Residual SYMBOL_RE egress (no sanitize ``"?"``) remains pinned for
+   mapRule / history / browse / symbol detail.
 """
 
 from __future__ import annotations
@@ -15,6 +13,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
+
+
+def test_map_rule_caps_alert_threshold() -> None:
+    source = (WEB / "src" / "lib" / "db.ts").read_text(encoding="utf-8")
+    assert "MAX_ALERT_THRESHOLD" in source
+    assert "toFiniteNumber(row.threshold)" in source
+    assert "n <= MAX_ALERT_THRESHOLD" in source
+    # Bare uncapped toFiniteNumber assign must not remain.
+    assert "threshold: toFiniteNumber(row.threshold)," not in source
 
 
 def test_map_rule_normalizes_symbol() -> None:
