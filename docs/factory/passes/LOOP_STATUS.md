@@ -2,7 +2,7 @@
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-12  
-**HEAD (pre-this-commit):** `16e93a4`  
+**HEAD (pre-this-commit):** `8c300c3`  
 **Report:** [TIJORI_WAVE_REPORT.md](TIJORI_WAVE_REPORT.md)  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)
 
@@ -12,9 +12,9 @@
 
 | Metric | Value |
 |---|---|
-| Waves completed | **25** (`wave` / `waveN` / `wN` through w25) |
-| This status push | **w26** (docs only) |
-| Commits ahead of `main` | **167** |
+| Waves completed | **27** (`wave` / `waveN` / `wN` through w27) |
+| This status push | **w28** (docs only) |
+| Commits ahead of `main` | **176** |
 | `chime` unit coverage | ✅ **100%** (wave 16 milestone — 3427 stmts / 0 miss) |
 | Horizon | **Continuing to 100 waves** (quality-gated; early STOP on CLEAN×2) |
 
@@ -37,6 +37,6 @@ Wave 16 closed the package coverage ratchet: full-package `pytest --cov=chime` a
 
 ## Next
 
-1. Spawn w26+ harden/ops lanes inside product fences (not cov padding).
+1. Spawn w28+ harden/ops lanes inside product fences (not cov padding).
 2. Keep pushing wave reports + this status as the loop advances toward 100.
 3. Prefer real user-visible / resilience gaps over doc thrash when fuel remains.
