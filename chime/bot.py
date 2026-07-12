@@ -335,13 +335,19 @@ async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     assert user_id is not None
     removed, deactivated = await storage.unwatch_symbol(user_id, symbol)
     if removed:
-        msg = f"Removed {symbol} from your watchlist."
+        # Parallel /watch tone: outcome first, then that pushes stop.
         if deactivated:
-            msg += f" Deactivated {deactivated} alert(s)."
+            msg = (
+                f"Stopped watching {symbol}. "
+                f"Deactivated {deactivated} alert(s) — no more pushes for it."
+            )
+        else:
+            msg = f"Stopped watching {symbol}. Alerts for it won't fire."
         await update.effective_message.reply_text(msg)
     elif deactivated:
         await update.effective_message.reply_text(
-            f"{symbol} wasn't on your watchlist, but deactivated {deactivated} orphan alert(s)."
+            f"{symbol} wasn't on your watchlist, but deactivated "
+            f"{deactivated} orphan alert(s) — they won't fire."
         )
     else:
         await update.effective_message.reply_text(
