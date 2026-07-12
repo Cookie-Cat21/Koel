@@ -205,6 +205,7 @@ def test_market_movers_route_static() -> None:
     assert "queryMarketBrowse" in source
     assert 'direction === "down" ? "change_pct_asc" : "change_pct"' in source
     assert "direction," in source  # pass sign filter into browse query
+    assert "browsed.filter" in source
     assert 'validation_error"' in source
     assert "direction must be up or down." in source
     assert "const DEFAULT_LIMIT = 20;" in source
@@ -228,6 +229,9 @@ def test_market_movers_route_static() -> None:
     # Market page fails closed on bad JSON / missing items[].
     assert "readJsonPayload" in market_src
     assert "asMarketItems" in market_src
+    assert "finiteOrNull" in market_src
+    # Both movers sides must succeed — do not paint API failure as empty gainers.
+    assert "gainerItems !== null && loserItems !== null" in market_src
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
         for line in source.splitlines()
@@ -385,6 +389,8 @@ def test_scenarios_dash_stub_page() -> None:
 
     assert "AI_SCENARIOS_ENABLED" in helper_src
     assert '.trim() === "1"' in helper_src
+    # Loose truthy env values must not opt in (only exact "1" after trim).
+    assert "true" in helper_src.lower()  # documented as non-enabling lookalike
     assert 'href: "/scenarios", label: "Scenarios"' in nav_src
 
     # Fence: not a portfolio / advice surface.
@@ -407,9 +413,15 @@ def test_sectors_route_static() -> None:
     assert "requireSessionAndCsrf" not in source
     assert "FROM sectors" in source
     assert "ORDER BY change_pct DESC NULLS LAST" in source
+    assert "LIMIT $1" in source
+    assert "MAX_SECTORS" in source
     assert "getPool" in source
     assert "jsonOk({ items })" in source or "jsonOk({ items" in source
     assert "toFiniteNumber(row.sector_id)" in source
+    assert 'row.name.trim()' in source or "row.name.trim()" in source
+    # Shared finite helper — do not reintroduce a local NaN-leaky copy.
+    assert 'from "@/lib/api/market-browse"' in source
+    assert "function toFiniteNumber" not in source
     # Thin fence: not a heatmap / multi-filter board (comments may negate).
     for tok in ("heatmap", "cse.lk", "allSectors"):
         hits = [

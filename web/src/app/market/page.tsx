@@ -52,43 +52,63 @@ async function readJsonPayload<T>(
   }
 }
 
+/** Coerce JSON numerics to finite numbers; strings/NaN/±Infinity → null. */
+function finiteOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Fail-closed browse rows: require a non-empty trimmed symbol and coerce
+ * numerics. Raw string change_pct must not reach formatPct (throws on toFixed).
+ */
 function asMarketItems(body: unknown): MarketItem[] | null {
-  if (body == null || typeof body !== "object") return null;
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return null;
+  }
   const items = (body as { items?: unknown }).items;
   if (!Array.isArray(items)) return null;
-  return items.filter(
-    (row): row is MarketItem =>
-      row != null &&
-      typeof row === "object" &&
-      typeof (row as MarketItem).symbol === "string" &&
-      (row as MarketItem).symbol.length > 0,
-  );
+  const out: MarketItem[] = [];
+  for (const row of items) {
+    if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
+    const r = row as Record<string, unknown>;
+    const symbol = typeof r.symbol === "string" ? r.symbol.trim() : "";
+    if (!symbol) continue;
+    const nameRaw = r.name;
+    const sectorRaw = r.sector;
+    const tsRaw = r.ts;
+    out.push({
+      symbol,
+      name: typeof nameRaw === "string" ? nameRaw : null,
+      sector: typeof sectorRaw === "string" ? sectorRaw : null,
+      price: finiteOrNull(r.price),
+      change: finiteOrNull(r.change),
+      change_pct: finiteOrNull(r.change_pct),
+      ts: typeof tsRaw === "string" && tsRaw ? tsRaw : null,
+    });
+  }
+  return out;
 }
 
 function asSectorItems(body: unknown): SectorItem[] | null {
-  if (body == null || typeof body !== "object") return null;
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return null;
+  }
   const items = (body as { items?: unknown }).items;
   if (!Array.isArray(items)) return null;
   const out: SectorItem[] = [];
   for (const row of items) {
-    if (row == null || typeof row !== "object") continue;
+    if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
     const r = row as Record<string, unknown>;
     const name = typeof r.name === "string" ? r.name.trim() : "";
     if (!name) continue;
-    const sectorId = typeof r.sector_id === "number" ? r.sector_id : Number(r.sector_id);
-    if (!Number.isFinite(sectorId)) continue;
-    const pctRaw = r.change_pct;
-    const change_pct =
-      pctRaw == null
-        ? null
-        : typeof pctRaw === "number"
-          ? pctRaw
-          : Number(pctRaw);
+    const sectorId = finiteOrNull(r.sector_id);
+    if (sectorId == null) continue;
     out.push({
       sector_id: sectorId,
       name,
-      change_pct:
-        change_pct != null && Number.isFinite(change_pct) ? change_pct : null,
+      change_pct: finiteOrNull(r.change_pct),
     });
   }
   return out;
@@ -192,8 +212,6 @@ export default async function MarketPage({
   const gainerItems = await readJsonPayload(gainersRes, asMarketItems);
   const loserItems = await readJsonPayload(losersRes, asMarketItems);
   const sectorItems = await readJsonPayload(sectorsRes, asSectorItems);
-  const showMovers = !q && (gainerItems !== null || loserItems !== null);
-  const showSectors = !q && sectorItems !== null;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -240,7 +258,7 @@ export default async function MarketPage({
           <NfaInline />
         </p>
 
-        {showMovers ? (
+        {!q && gainerItems !== null && loserItems !== null ? (
           <section className="mt-8" aria-labelledby="top-movers-heading">
             <h2
               id="top-movers-heading"
@@ -262,20 +280,20 @@ export default async function MarketPage({
               <MoversList
                 title="Gainers"
                 headingId="movers-gainers-heading"
-                items={gainerItems ?? []}
+                items={gainerItems}
                 emptyLabel="No gainers yet."
               />
               <MoversList
                 title="Losers"
                 headingId="movers-losers-heading"
-                items={loserItems ?? []}
+                items={loserItems}
                 emptyLabel="No losers yet."
               />
             </div>
           </section>
         ) : null}
 
-        {showSectors ? (
+        {!q && sectorItems !== null ? (
           <section className="mt-8" aria-labelledby="sectors-heading">
             <h2
               id="sectors-heading"

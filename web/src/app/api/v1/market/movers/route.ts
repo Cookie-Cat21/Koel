@@ -44,11 +44,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const pool = getPool();
-    const items = await queryMarketBrowse(pool, {
+    const browsed = await queryMarketBrowse(pool, {
       limit,
       offset: 0,
       sort,
       direction,
+    });
+    // Re-assert sign after finite coerce — never label a null/flat as a mover.
+    const items = browsed.filter((row) => {
+      const pct = row.change_pct;
+      if (pct == null || !Number.isFinite(pct)) return false;
+      return direction === "down" ? pct < 0 : pct > 0;
     });
 
     return jsonOk({

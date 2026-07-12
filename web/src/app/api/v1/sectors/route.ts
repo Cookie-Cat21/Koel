@@ -1,11 +1,15 @@
 import type { NextRequest } from "next/server";
 
+import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
 import { getPool } from "@/lib/db";
 
 export const runtime = "nodejs";
+
+/** Soft cap — CSE sector board is ~20 rows; bound egress if table is polluted. */
+const MAX_SECTORS = 100;
 
 type SectorRow = {
   sector_id: number | string;
@@ -21,12 +25,6 @@ type SectorRow = {
   previous_close: number | string | null;
   ts: Date | string;
 };
-
-function toFiniteNumber(value: unknown): number | null {
-  if (value == null) return null;
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : null;
-}
 
 /**
  * GET /api/v1/sectors — thin read of latest CSE sector index rows from Postgres.
@@ -44,18 +42,25 @@ export async function GET(request: NextRequest) {
               index_value, change, change_pct, volume_today, turnover_today,
               previous_close, ts
        FROM sectors
-       ORDER BY change_pct DESC NULLS LAST, symbol ASC`,
+       ORDER BY change_pct DESC NULLS LAST, symbol ASC
+       LIMIT $1`,
+      [MAX_SECTORS],
     );
 
     const items = result.rows.flatMap((row) => {
       const sector_id = toFiniteNumber(row.sector_id);
       // Drop non-finite ids — JSON.stringify(NaN) becomes null and breaks clients.
       if (sector_id == null) return [];
+      const name = typeof row.name === "string" ? row.name.trim() : "";
+      // Blank names are useless on the thin board — drop rather than egress "".
+      if (!name) return [];
+      const symbol = typeof row.symbol === "string" ? row.symbol.trim() : "";
+      if (!symbol) return [];
       return [
         {
           sector_id,
-          symbol: row.symbol,
-          name: row.name,
+          symbol,
+          name,
           index_code: row.index_code,
           index_name: row.index_name,
           index_value: toFiniteNumber(row.index_value),

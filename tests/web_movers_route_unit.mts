@@ -93,6 +93,44 @@ async function testDefaultDirectionUpAndLimit(): Promise<void> {
   assert(captured[0].params.includes(0), "params include offset 0");
 }
 
+async function testPostFilterDropsNullPctAfterFinite(): Promise<void> {
+  const { res, body } = await call("direction=up&limit=5", [
+    {
+      symbol: "JKH.N0000",
+      name: "John Keells",
+      sector: null,
+      price: "22.5",
+      change: "0.3",
+      change_pct: "1.35",
+      ts: new Date("2026-07-11T09:00:00Z"),
+    },
+    {
+      symbol: "BAD.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: null,
+      change_pct: "Infinity",
+      ts: null,
+    },
+    {
+      symbol: "FLAT.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: "0",
+      change_pct: "0",
+      ts: null,
+    },
+  ]);
+  assert(res.status === 200, `post-filter should 200, got ${res.status}`);
+  assert(Array.isArray(body.items), "items array");
+  assert(body.items!.length === 1, `only finite gainer kept, got ${body.items!.length}`);
+  const only = body.items![0] as Record<string, unknown>;
+  assert(only.symbol === "JKH.N0000", `expected JKH, got ${only.symbol}`);
+  assert(only.change_pct === 1.35, `JKH pct finite, got ${only.change_pct}`);
+}
+
 async function testDirectionDownSignFilter(): Promise<void> {
   const { res, body, captured } = await call("direction=down&limit=5");
   assert(res.status === 200, `direction=down should 200, got ${res.status}`);
@@ -210,16 +248,11 @@ async function testFiniteEgressAndNoQFilter(): Promise<void> {
     ],
   );
   assert(res.status === 200, `finite egress should 200, got ${res.status}`);
-  assert(Array.isArray(body.items) && body.items.length === 2, "two rows");
+  assert(Array.isArray(body.items) && body.items.length === 1, "only finite gainer");
   const jkh = body.items![0] as Record<string, unknown>;
   assert(jkh.price === 22.5, `JKH price finite, got ${jkh.price}`);
   assert(jkh.change_pct === 1.35, `JKH change_pct finite, got ${jkh.change_pct}`);
-  const bad = body.items![1] as Record<string, unknown>;
-  assert(bad.price === null, `non-finite price → null, got ${bad.price}`);
-  assert(
-    bad.change_pct === null,
-    `non-finite change_pct → null, got ${bad.change_pct}`,
-  );
+  assert(jkh.symbol === "JKH.N0000", "non-finite pct row dropped from movers");
   // Thin fence: movers must not accept q / LIKE search.
   assert(!captured[0].sql.includes("LIKE"), "movers must not add LIKE q filter");
   assert(!captured[0].sql.toLowerCase().includes("sector ="), "no sector filter");
@@ -234,6 +267,7 @@ async function testCaseInsensitiveDirection(): Promise<void> {
 
 async function main(): Promise<void> {
   await testDefaultDirectionUpAndLimit();
+  await testPostFilterDropsNullPctAfterFinite();
   await testDirectionDownSignFilter();
   await testInvalidDirectionRejected();
   await testLimitClampAndInvalidFallback();
