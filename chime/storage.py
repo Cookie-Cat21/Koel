@@ -31,6 +31,13 @@ def _as_rows(rows: Any) -> list[dict[str, Any]]:
     return [cast(dict[str, Any], r) for r in rows]
 
 
+# Transaction-scoped daily-cap serializer for claim_pending_briefs.
+# Distinct from poller.POLL_LOCK_ID (4_201_337): same bigint would let a
+# session poll hold block brief xact waiters on a second pool connection and
+# deadlock under max_size=2 (poll waits for pool; brief waits for advisory).
+BRIEF_CAP_LOCK_ID = 4_201_339
+
+
 class Storage:
     def __init__(self, database_url: str, *, min_size: int = 1, max_size: int = 4) -> None:
         if max_size < 2:
@@ -585,13 +592,15 @@ class Storage:
         if limit <= 0:
             return []
         grace = max(0, int(pdf_grace_seconds))
-        # Distinct from POLL_LOCK_ID; serializes brief claim + daily-cap check.
-        brief_cap_lock_id = 4_201_339
         async with self._pool.connection() as conn, conn.transaction():
             if max_briefs_per_day is not None:
+                # Must stay distinct from poller.POLL_LOCK_ID (session try-lock).
+                # Same-id would nest session hold + blocking xact wait on a pool
+                # conn and can deadlock under max_size=2. See docs/factory/passes/
+                # ADVISORY_LOCK_DEADLOCK.md (wave10 audit — not a live bug).
                 await conn.execute(
                     "SELECT pg_advisory_xact_lock(%s)",
-                    (brief_cap_lock_id,),
+                    (BRIEF_CAP_LOCK_ID,),
                 )
                 used_row = await (
                     await conn.execute(

@@ -31,6 +31,10 @@ AI_BRIEFS_ENABLED=0          # leave off in prod until Phase 2
 # AI_MODEL=gemini-2.0-flash  # groq: llama-3.3-70b-versatile; openrouter: openai/gpt-4o-mini
 ```
 
+## Advisory locks (poll vs brief claim)
+
+Poll tick uses session `pg_try_advisory_lock(4_201_337)`; brief daily-cap claim uses transaction `pg_advisory_xact_lock(4_201_339)`. Wave 10 audit: **no deadlock** between them (distinct keys; brief drain after poll unlock; claim uses `SKIP LOCKED`). Do **not** unify the IDs — same key + `max_size=2` can pool-deadlock. Detail: [ADVISORY_LOCK_DEADLOCK.md](../factory/passes/ADVISORY_LOCK_DEADLOCK.md).
+
 ## PDF enrich sleep (`PDF_ENRICH_SLEEP_SECONDS`)
 
 After alert claim, the poller fire-and-forgets legacy `POST /announcements` → `filePath` → CDN `pdf_url` enrichment **outside** the advisory lock and outside `run_once`'s await path (so sleeps never pin the tick or delay Telegram). Polite pause **before each symbol's** legacy call:

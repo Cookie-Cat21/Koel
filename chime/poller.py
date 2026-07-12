@@ -55,6 +55,8 @@ log = get_logger(__name__)
 
 # bool kept for test AsyncMocks; production send returns SendResult.
 SendFunc = Callable[[int, str], Awaitable[SendResult | bool]]
+# Session try-lock for the CSE poll tick. Distinct from storage.BRIEF_CAP_LOCK_ID
+# (4_201_339) — do not unify; see docs/factory/passes/ADVISORY_LOCK_DEADLOCK.md.
 POLL_LOCK_ID = 4_201_337
 # After this many failed Telegram sends, stop retrying (message_sent stays false).
 MAX_SEND_ATTEMPTS = 5

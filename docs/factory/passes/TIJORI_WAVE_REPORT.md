@@ -1,10 +1,10 @@
-# Tijori CSE — Waves 1–9 report
+# Tijori CSE — Waves 1–10 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-12  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … `6be6430` (+ this wave-9 report refresh)
+**Range:** `a802cb7` … wave 10 (+ advisory-lock deadlock defer)
 
 ---
 
@@ -260,6 +260,22 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
+## Wave 10 — Smoke + lock audit defer
+
+**Theme:** Tijori smoke script; poll vs brief advisory-lock deadlock audit.
+
+| SHA | Commit |
+|---|---|
+| `35b1b97` | chore(wave10): tijori smoke script |
+| _(this)_ | docs(wave10): defer poll/brief advisory lock deadlock |
+
+**Shipped**
+
+- Tijori smoke script (`chore(wave10)`).
+- Audit: poll `4_201_337` (session try) vs brief-cap `4_201_339` (xact) — **no deadlock**; pin `BRIEF_CAP_LOCK_ID` + docs ([ADVISORY_LOCK_DEADLOCK.md](ADVISORY_LOCK_DEADLOCK.md)). Do not unify IDs.
+
+---
+
 ## Commit counts
 
 | Wave | Commits (scoped) |
@@ -273,7 +289,8 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | 7 (`wave7`) | 7 |
 | 8 (`wave8`) | 9 |
 | 9 (`wave9` + this report) | 7 |
-| **Total** | **75** |
+| 10 (`wave10`) | 2+ |
+| **Total** | **77+** |
 
 ---
 
@@ -292,9 +309,10 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | Phase 3 scenario AI (beyond stub) | On-demand only; daily caps; legal review before MiroFish-style reuse |
 | Portfolio / P&L / tax / screener / TA / payments / native app | Explicit non-goals |
 | Always-on swarm / commit farming | Factory fence; stop when gates green |
+| Poll↔brief advisory deadlock “fix” | Audited non-issue; keep distinct lock IDs ([ADVISORY_LOCK_DEADLOCK.md](ADVISORY_LOCK_DEADLOCK.md)) |
 
 ### Suggested next improve-loop focus
 
-- CI green on touched Python/web paths after wave 9.
+- CI green on touched Python/web paths after wave 10.
 - Controlled briefs-on soak (not default-on in prod).
 - Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.

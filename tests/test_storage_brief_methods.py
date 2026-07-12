@@ -251,3 +251,13 @@ async def test_promote_recent_skipped_briefs_clamps_limit() -> None:
     assert await store.promote_recent_skipped_briefs(max_age_hours=6, limit=0) == 1
     # limit floored to 1
     assert conn.params[0] == (6, 1)
+
+def test_brief_cap_lock_distinct_from_poll_lock() -> None:
+    """Wave10: poll session lock and brief xact lock must stay different keys."""
+    from chime.poller import POLL_LOCK_ID
+    from chime.storage import BRIEF_CAP_LOCK_ID
+
+    assert POLL_LOCK_ID == 4_201_337
+    assert BRIEF_CAP_LOCK_ID == 4_201_339
+    assert POLL_LOCK_ID != BRIEF_CAP_LOCK_ID
+
