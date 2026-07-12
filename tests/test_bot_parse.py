@@ -105,6 +105,7 @@ def test_start_text_is_short_and_mentions_colombo_disclaimer() -> None:
     assert "Colombo" in START_TEXT
     assert "/help" in START_TEXT
     assert "Browse dash" in START_TEXT
+    assert "push stays here" in START_TEXT
     assert "[CATEGORY]" in START_TEXT
     assert "optional AI brief" in START_TEXT
     assert disclaimer() in START_TEXT
