@@ -234,7 +234,7 @@ async def test_cmd_alert_validation_errors() -> None:
         args=["JKH.N0000", "above", "nope"], storage=storage, cse=cse
     )
     await cmd_alert(update3, context3)
-    assert "must be a number" in update3.effective_message.reply_text.await_args.args[0]
+    assert "positive finite number" in update3.effective_message.reply_text.await_args.args[0].lower()
 
     update4, context4 = _make_update_context(
         args=["JKH.N0000", "above", "-1"], storage=storage, cse=cse
