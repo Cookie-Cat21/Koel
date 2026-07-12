@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
+import { normalizeSymbol } from "@/lib/api/symbol";
 
 export function WatchlistAddForm() {
   const router = useRouter();
@@ -22,14 +23,14 @@ export function WatchlistAddForm() {
     setError(null);
     setPending(true);
     try {
-      const trimmed = symbol.trim().toUpperCase();
-      if (!trimmed) {
-        setError("Enter a CSE symbol.");
+      const normalized = normalizeSymbol(symbol);
+      if (!normalized) {
+        setError("Enter a CSE symbol (e.g. JKH.N0000).");
         return;
       }
       const { ok, status, data } = await apiMutate("/api/v1/watchlist", {
         method: "POST",
-        body: { symbol: trimmed },
+        body: { symbol: normalized },
       });
       if (!ok) {
         const msg = apiErrorMessage(data, `Could not add (${status}).`);
@@ -48,8 +49,8 @@ export function WatchlistAddForm() {
           : status === 201;
       toast.success(
         created
-          ? `Watching ${trimmed}. Pushes still go to Telegram.`
-          : `Already watching ${trimmed}. Pushes still go to Telegram.`,
+          ? `Watching ${normalized}. Pushes still go to Telegram.`
+          : `Already watching ${normalized}. Pushes still go to Telegram.`,
       );
       router.refresh();
     } catch {

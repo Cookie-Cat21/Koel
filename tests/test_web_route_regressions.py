@@ -667,7 +667,8 @@ def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:
     assert "safePdfUrl" in source
     assert "safeAnnouncementUrl" in source
     assert "sanitizeBriefText" in source
-    assert "Number.isFinite(id)" in source
+    assert "Number.isSafeInteger(id)" in source
+    assert "Number.isFinite(id)" not in source
     assert "FROM disclosures d" in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")

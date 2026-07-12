@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
-import { ALERT_TYPES, type AlertType } from "@/lib/api/symbol";
+import {
+  ALERT_TYPES,
+  type AlertType,
+  normalizeSymbol,
+} from "@/lib/api/symbol";
 
 const TYPE_OPTIONS: { value: AlertType; label: string }[] = [
   { value: "price_above", label: "Above price" },
@@ -55,8 +59,8 @@ export function AlertCreateForm() {
     setPending(true);
     try {
       const next: FieldErrors = {};
-      const trimmed = symbol.trim().toUpperCase();
-      if (!trimmed) {
+      const normalized = normalizeSymbol(symbol);
+      if (!normalized) {
         next.symbol = "Enter a CSE symbol (e.g. JKH.N0000).";
       }
       if (!ALERT_TYPES.includes(type)) {
@@ -68,7 +72,7 @@ export function AlertCreateForm() {
         type: AlertType;
         threshold?: number;
         category?: string;
-      } = { symbol: trimmed, type };
+      } = { symbol: normalized ?? "", type };
 
       if (needsThreshold) {
         const raw = threshold.trim();
@@ -138,7 +142,7 @@ export function AlertCreateForm() {
       setThreshold("");
       setCategory("");
       toast.success(
-        `Alert set for ${trimmed}. Telegram will ping when it fires.`,
+        `Alert set for ${normalized}. Telegram will ping when it fires.`,
       );
       router.refresh();
     } catch {
