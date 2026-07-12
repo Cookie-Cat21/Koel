@@ -217,6 +217,25 @@ async def test_persist_market_snapshots_skips_blank_symbols() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("price", [float("nan"), float("inf"), float("-inf")])
+async def test_persist_market_snapshots_skips_nonfinite_prices(price: float) -> None:
+    """Defense in depth: NaN/±Inf must not reach price_snapshots (storage.py:145)."""
+    store = _store(_Conn([]))
+    assert await store.persist_market_snapshots([_snap(symbol="BAD.N0000", price=price)]) == []
+
+    conn = _Conn([None, [{"id": 4}]])
+    store = _store(conn)
+    out = await store.persist_market_snapshots(
+        [
+            _snap(symbol="BAD.N0000", price=price),
+            _snap(symbol="COMB.N0000", price=90.0),
+        ]
+    )
+    assert len(out) == 1 and out[0].symbol == "COMB.N0000" and out[0].id == 4
+    assert conn.params[1][1] == [90.0]
+
+
+@pytest.mark.asyncio
 async def test_insert_snapshot_rejects_blank_symbol() -> None:
     store = _store(_Conn([]))
     with pytest.raises(ValueError, match="invalid snapshot symbol"):
