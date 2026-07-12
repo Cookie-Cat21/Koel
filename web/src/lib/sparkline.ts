@@ -10,10 +10,21 @@ export type FiniteSparklinePoint = { ts: string | null; price: number };
  */
 export const MAX_SPARKLINE_POINTS = 200;
 
+/**
+ * Cap absolute price magnitude (parity ``MAX_FORMAT_ABS_VALUE``).
+ * Hostile finite extremes (e.g. ``1e308``) used to enter SVG span math and
+ * balloon ``toFixed`` polyline coordinates.
+ */
+export const MAX_SPARKLINE_ABS_PRICE = 1e15;
+
 const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/;
 
 function isFinitePrice(price: unknown): price is number {
-  return typeof price === "number" && Number.isFinite(price);
+  return (
+    typeof price === "number" &&
+    Number.isFinite(price) &&
+    Math.abs(price) <= MAX_SPARKLINE_ABS_PRICE
+  );
 }
 
 /**
@@ -29,7 +40,7 @@ function sanitizeSparklineTs(raw: unknown): string | null {
   return trimmed;
 }
 
-/** Drop null / NaN / ±Inf prices so SVG coords stay finite. */
+/** Drop null / NaN / ±Inf / absurd-magnitude prices so SVG coords stay finite. */
 export function finiteSparklinePoints(points: Point[]): FiniteSparklinePoint[] {
   const out: FiniteSparklinePoint[] = [];
   // Hostile / wrong-shape callers must not throw on non-iterable input.

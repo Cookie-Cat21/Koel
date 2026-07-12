@@ -17,6 +17,8 @@ export const metadata = {
 
 /** Health timestamps older than this need explicit ops attention. */
 const STALE_HEALTH_AGE_MS = 24 * 60 * 60 * 1000;
+/** Cap age label digits — extreme past timestamps used to balloon ``Nd``. */
+const MAX_HEALTH_AGE_DAYS = 9_999;
 const HEALTH_UI_STRING_MAX = 512;
 const HEALTH_UI_WATCHED_MAX = 64;
 const HEALTH_UI_CIRCUITS_MAX = 32;
@@ -459,6 +461,8 @@ function formatAge(age: TimestampAge | null): string {
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
   const minutes = totalMinutes % 60;
 
+  // Fail closed — extreme past ISO used to render multi-million-day labels.
+  if (days > MAX_HEALTH_AGE_DAYS) return `>${MAX_HEALTH_AGE_DAYS}d`;
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;

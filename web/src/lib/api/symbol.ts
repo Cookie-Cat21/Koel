@@ -6,7 +6,9 @@ export const SYMBOL_RE = /^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$/;
  * from ``decodeURIComponent`` — fail closed to ``null`` so API routes return
  * 400 instead of an unhandled 500.
  */
-export function safeDecodeURIComponent(raw: string): string | null {
+export function safeDecodeURIComponent(raw: unknown): string | null {
+  // Fail closed — non-strings used to coerce via ToString into junk paths.
+  if (typeof raw !== "string") return null;
   try {
     return decodeURIComponent(raw);
   } catch {
