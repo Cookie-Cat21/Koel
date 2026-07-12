@@ -125,7 +125,7 @@ Stack when implementing: **Next.js + Tailwind + shadcn/ui** only; free/MIT compo
 | [ORCHESTRATOR_PROMPTS.md](ORCHESTRATOR_PROMPTS.md) | Copy-paste Cloud Agent prompts |
 | [METRICS.md](METRICS.md) | Proper-commit taxonomy, scorecards, KPIs |
 | [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) | Multi-repo KPI A; Chime is node 1 |
-| [SCALE_10K.md](SCALE_10K.md) | Active target: portfolio_score ≥ 10K; raw-count farming rejected |
+| [CHIME_HORIZON.md](CHIME_HORIZON.md) | What Chime is / does / can be; active 2K–3K score band |
 | [DASH_IA.md](DASH_IA.md) | Thin dashboard IA + API sketch |
 | [workstreams/INDEX.md](workstreams/INDEX.md) | WS-001…WS-100 catalog |
 | [workstreams/WAVE*.md](workstreams/) | Per-wave planning outputs |

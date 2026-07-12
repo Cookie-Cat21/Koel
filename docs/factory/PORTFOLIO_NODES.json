@@ -1,8 +1,10 @@
 {
   "portfolio_kpi": "A",
-  "portfolio_target": 10000,
+  "portfolio_target": 2500,
+  "portfolio_target_floor": 2000,
+  "portfolio_target_stretch": 3000,
   "formula": "sum_over_repos(min(proper_commits, clusters_closed))",
-  "scale_plan": "docs/factory/SCALE_10K.md",
+  "scale_plan": "docs/factory/CHIME_HORIZON.md",
   "nodes": [
     {
       "id": "chime",
