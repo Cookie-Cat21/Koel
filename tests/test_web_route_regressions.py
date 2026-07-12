@@ -133,6 +133,8 @@ def test_symbols_list_route_requires_snapshots_and_session() -> None:
     assert route.is_file()
     source = route.read_text(encoding="utf-8")
     assert "requireSession" in source
+    # Safe GET: session only — must not demand CSRF.
+    assert "requireSessionAndCsrf" not in source
     assert "INNER JOIN LATERAL" in source
     assert "LEFT JOIN LATERAL" not in source
     assert "price_snapshots" in source
@@ -164,10 +166,16 @@ def test_symbols_list_query_validation_static() -> None:
     assert "s.symbol ASC" in source
     assert "INNER JOIN LATERAL" in source
     assert "LEFT JOIN LATERAL" not in source
+    mq = WEB / "src" / "lib" / "api" / "market-query.ts"
+    assert mq.is_file()
+    mq_src = mq.read_text(encoding="utf-8")
+    assert "MAX_MARKET_Q_LENGTH = 64" in mq_src
+    assert "escapeLikePattern" in mq_src
+    assert "normalizeMarketQuery" in mq_src
 
 
 def test_symbols_list_query_validation_unit() -> None:
-    """Runtime: clamp limit, whitelist sort, INNER JOIN SQL, empty board items[]."""
+    """Runtime: session/CSRF/LIKE escape/info disclosure + clamp/whitelist."""
     assert UNIT_SYMBOLS_MTS.is_file(), f"missing {UNIT_SYMBOLS_MTS}"
     assert (WEB / "src" / "app" / "api" / "v1" / "symbols" / "route.ts").is_file()
     _require_web_node_modules()
@@ -202,6 +210,7 @@ def test_market_page_and_nav_browse_link() -> None:
     market_src = market.read_text(encoding="utf-8")
     assert "/api/v1/symbols" in market_src
     assert "NfaInline" in market_src
+    assert "requirePageSession" in market_src
     assert "normalizeMarketQuery" in market_src
     assert 'role="search"' in market_src
     assert "maxLength={MAX_MARKET_Q_LENGTH}" in market_src

@@ -47,12 +47,18 @@ function makeRequest(query = ""): NextRequest {
   });
 }
 
-function installDbPool(rows: Record<string, unknown>[] = []): CapturedQuery[] {
+function installDbPool(
+  rows: Record<string, unknown>[] = [],
+  mode: "ok" | "throw" = "ok",
+): CapturedQuery[] {
   process.env.DATABASE_URL = "postgres://unit.test/chime";
   const captured: CapturedQuery[] = [];
   (globalThis as typeof globalThis & { __chimePgPool?: unknown }).__chimePgPool = {
     query: async (sql: string, params: unknown[] = []) => {
       captured.push({ sql, params });
+      if (mode === "throw") {
+        throw new Error("postgres://secret-user:secret-pass@db.internal/chime boom");
+      }
       assert(
         sql.includes("INNER JOIN LATERAL"),
         "browse SQL must INNER JOIN LATERAL latest snapshots",
@@ -175,6 +181,42 @@ async function testSessionRequired(): Promise<void> {
 }
 
 
+
+async function testGetDoesNotRequireCsrf(): Promise<void> {
+  installDbPool();
+  process.env.DASH_SESSION_SECRET = SECRET;
+  // Session cookie only — no X-CSRF-Token / chime_csrf. Safe GET must succeed.
+  const res = await symbolsGet(makeRequest("limit=1"));
+  assert(res.status === 200, `GET without CSRF must 200, got ${res.status}`);
+  const body = await readBody(res);
+  assert(body.error === undefined, "GET without CSRF must not csrf_failed");
+}
+
+async function testDbErrorDoesNotDiscloseInternals(): Promise<void> {
+  installDbPool([], "throw");
+  process.env.DASH_SESSION_SECRET = SECRET;
+  const res = await symbolsGet(makeRequest(""));
+  const body = await readBody(res);
+  assert(res.status === 503, `db failure → 503, got ${res.status}`);
+  const code =
+    typeof body.error === "object" && body.error !== null
+      ? body.error.code
+      : undefined;
+  const message =
+    typeof body.error === "object" && body.error !== null
+      ? body.error.message
+      : undefined;
+  assert(code === "degraded", `expected degraded, got ${code}`);
+  assert(
+    message === "Database unavailable.",
+    `stable message, got ${message}`,
+  );
+  const dumped = JSON.stringify(body);
+  assert(!dumped.includes("secret-pass"), "must not leak DSN password");
+  assert(!dumped.includes("db.internal"), "must not leak DB host");
+  assert(!dumped.includes("postgres://"), "must not leak connection string");
+}
+
 async function testLikeMetacharEscape(): Promise<void> {
   const raw = "a%b_c\\d";
   const { res, body, captured } = await call(`q=${encodeURIComponent(raw)}`);
@@ -225,8 +267,10 @@ async function main(): Promise<void> {
   await testSortWhitelist();
   await testEmptyBoardReturnsEmptyItems();
   await testSessionRequired();
+  await testGetDoesNotRequireCsrf();
   await testLikeMetacharEscape();
   await testQueryLengthCapAndOffsetClamp();
+  await testDbErrorDoesNotDiscloseInternals();
   console.log("WEB_SYMBOLS_ROUTE_UNIT_OK");
 }
 
