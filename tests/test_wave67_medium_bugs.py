@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from chime.briefs import BriefSettings
 from chime.briefs.provider import GeminiBriefProvider, make_brief_provider
 
@@ -57,9 +59,6 @@ def test_pdf_extract_piece_isinstance_guard() -> None:
     chunk = src.split("piece = page.extract_text()", 1)[1].split("remaining =", 1)[0]
     assert "isinstance(piece, str)" in chunk
     assert "if piece and piece.strip():" not in chunk
-
-
-import pytest
 
 
 @pytest.mark.asyncio
