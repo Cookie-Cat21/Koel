@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MAX_HISTORY_EVENT_KEY_LENGTH,
+  MAX_HISTORY_SYMBOL_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
@@ -111,14 +116,21 @@ export async function GET(request: NextRequest) {
     const events = result.rows.flatMap((row) => {
       const id = toSafeInt(row.id, Number.NaN);
       const rule_id = toSafeInt(row.rule_id, Number.NaN);
-      // Drop non-finite ids — JSON.stringify(NaN) becomes null and breaks clients.
-      if (!Number.isFinite(id) || !Number.isFinite(rule_id)) return [];
+      // Drop non-safe ids — JSON.stringify(NaN) becomes null and breaks clients;
+      // unsafe ints lose precision and can alias the wrong fire row.
+      if (!Number.isSafeInteger(id) || !Number.isSafeInteger(rule_id)) return [];
+      if (id <= 0 || rule_id <= 0) return [];
       const attempts = toSafeInt(row.attempt_count, 0);
+      const symbol =
+        sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "?";
+      const event_key =
+        sanitizeDisclosureText(row.event_key, MAX_HISTORY_EVENT_KEY_LENGTH) ??
+        "";
       return [
         {
           id,
           rule_id,
-          symbol: row.symbol,
+          symbol,
           type: row.type,
           fired_at: toIso(row.fired_at),
           message_sent: Boolean(row.message_sent),
@@ -133,7 +145,7 @@ export async function GET(request: NextRequest) {
                   ? "sent"
                   : "retrying",
           message_text: sanitizeHistoryMessage(row.message_text),
-          event_key: row.event_key,
+          event_key,
         },
       ];
     });

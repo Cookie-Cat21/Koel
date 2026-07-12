@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
 
     const rules = result.rows.flatMap((row) => {
       const id = Number(row.id);
-      // Drop non-finite ids — JSON.stringify(NaN) becomes null.
-      if (!Number.isFinite(id)) return [];
+      // Drop non-safe ids — JSON.stringify(NaN) becomes null; unsafe ints
+      // lose precision and can alias the wrong rule.
+      if (!Number.isSafeInteger(id) || id <= 0) return [];
       return [
         {
           id,

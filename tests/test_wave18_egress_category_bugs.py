@@ -104,7 +104,7 @@ def test_history_route_finite_ids_and_message_sanitize() -> None:
     source = route.read_text(encoding="utf-8")
     assert "sanitizeHistoryMessage" in source
     assert "HISTORY_MESSAGE_TEXT_MAX" in source
-    assert "Number.isFinite(id)" in source
+    assert "Number.isSafeInteger(id)" in source
     assert "toSafeInt" in source
     # Ban raw Number(row.attempt_count) without finite guard.
     assert "attempt_count: Number(row.attempt_count)" not in source
@@ -114,7 +114,7 @@ def test_history_route_finite_ids_and_message_sanitize() -> None:
 def test_alerts_get_drops_nonfinite_ids() -> None:
     route = WEB / "src" / "app" / "api" / "v1" / "alerts" / "route.ts"
     source = route.read_text(encoding="utf-8")
-    assert "Number.isFinite(id)" in source
+    assert "Number.isSafeInteger(id)" in source
     assert "flatMap" in source
 
 

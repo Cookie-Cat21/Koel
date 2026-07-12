@@ -5,6 +5,11 @@
 
 import type { Pool } from "pg";
 
+import {
+  MAX_STOCK_NAME_LENGTH,
+  MAX_STOCK_SECTOR_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { escapeLikePattern } from "@/lib/api/market-query";
 import { toIso } from "@/lib/api/time";
 
@@ -115,8 +120,8 @@ export async function queryMarketBrowse(
 
   return result.rows.map((row) => ({
     symbol: row.symbol,
-    name: row.name,
-    sector: row.sector,
+    name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
+    sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
     price: toFiniteNumber(row.price),
     change: toFiniteNumber(row.change),
     change_pct: toFiniteNumber(row.change_pct),

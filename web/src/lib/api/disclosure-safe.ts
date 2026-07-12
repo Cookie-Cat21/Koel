@@ -22,6 +22,11 @@ export const MAX_DISCLOSURE_TITLE_LENGTH = 500;
 export const MAX_DISCLOSURE_CATEGORY_LENGTH = 64;
 export const MAX_DISCLOSURE_COMPANY_LENGTH = 200;
 export const MAX_DISCLOSURE_EXTERNAL_ID_LENGTH = 128;
+/** Stock name / sector / history event_key egress caps. */
+export const MAX_STOCK_NAME_LENGTH = 200;
+export const MAX_STOCK_SECTOR_LENGTH = 64;
+export const MAX_HISTORY_EVENT_KEY_LENGTH = 256;
+export const MAX_HISTORY_SYMBOL_LENGTH = 32;
 
 const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/;
 

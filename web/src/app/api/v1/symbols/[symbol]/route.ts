@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MAX_STOCK_NAME_LENGTH,
+  MAX_STOCK_SECTOR_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
@@ -67,8 +72,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return jsonOk({
       symbol: row.symbol,
-      name: row.name,
-      sector: row.sector,
+      name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
+      sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
       last,
     });
   } catch (err) {

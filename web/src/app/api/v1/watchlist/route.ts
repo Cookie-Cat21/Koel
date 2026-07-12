@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MAX_STOCK_NAME_LENGTH,
+  MAX_STOCK_SECTOR_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import { normalizeSymbol } from "@/lib/api/symbol";
@@ -52,8 +57,9 @@ export async function GET(request: NextRequest) {
 
     const items = result.rows.map((row) => ({
       symbol: row.symbol,
-      name: row.name,
-      sector: row.sector,
+      // Strip C0/C1 + cap — hostile stock name/sector must not balloon JSON.
+      name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
+      sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
       // Finite-only egress (parity with movers/browse) — NaN/±Inf → null.
       price: toFiniteNumber(row.price),
       change: toFiniteNumber(row.change),
