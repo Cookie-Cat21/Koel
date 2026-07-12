@@ -39,6 +39,17 @@ HttpOnly `chime_session` cookie bound to `users.id`, plus CSRF material
 mutations (including `POST /api/v1/auth/logout`) require matching
 `X-CSRF-Token`. See `docs/adr/001-dash-auth.md`.
 
+## CSRF (dash mutations)
+
+Double-submit cookie: login (and optional `GET /me` refresh) sets
+non-HttpOnly `chime_csrf`. Every other mutating `/api/v1/*` call must send
+the same value as `X-CSRF-Token` (UI uses `apiMutate` in
+`src/lib/api/client-fetch.ts`). Session is validated **before** CSRF —
+no/invalid session → `401 unauthorized` even if CSRF is also wrong; never
+`400 csrf_failed` without a valid session. Header≠cookie (or missing
+header) with a valid session → `400 csrf_failed`. Curl contract:
+`scripts/factory/test_csrf_contract.md`.
+
 ## APIs (session required)
 
 | Method | Path | Notes |
@@ -58,7 +69,6 @@ mutations (including `POST /api/v1/auth/logout`) require matching
 
 UI: `/watchlist`, `/alerts`, `/alerts/history`, `/symbols/[symbol]`, `/health`.
 Shapes follow `docs/factory/API_CONTRACT_V1.md`. Data from `DATABASE_URL` only.
-Mutations require matching `X-CSRF-Token`.
 
 ## Security headers
 
