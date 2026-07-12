@@ -1,10 +1,10 @@
-# Tijori CSE — Waves 1–27 report
+# Tijori CSE — Waves 1–31 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-12  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … wave 27 (post-100% harden → soft ~100)
+**Range:** `a802cb7` … wave 31 (post-100% harden → soft ~100)
 
 ---
 
@@ -23,7 +23,7 @@ Matches the plan constraint note in [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md).
 
 ## Verdict
 
-Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX/a11y polish, adversarial grace/storage close, env-example completeness, storage brief-method coverage, and a Phase 3 scenario stub fence (`AI_SCENARIOS_ENABLED=0`). Wave 10 hardens briefs ops (smoke, rate limits, CDN requeue, poller/disclosure coverage) and audits poll↔brief advisory locks as a non-issue. Wave 11 aligns `/brief` empty-state test copy with AI-off messaging. Wave 12 records parallelism honesty (plus follow-on fix/docs/test lanes). Wave 13 closes browse API examples, env sync, Telegram/dash URL egress caps, web adversarial harden, and coverage pushes (migrate / storage / CSE / poller / bot). Wave 14 ships coverage/harden lanes (web regress, health/circuit, config/migrate, main, rules format fuzz, worker) plus fail-closed non-finite float env knobs. Wave 15 adds `make tijori-report`, briefs extra-install docs, help-budget / web movers / briefs / residual coverage, and ops-knob harden. **Wave 16 milestone:** full-package `pytest --cov=chime` at **100%** (3427 stmts / 0 miss) — coverage ratchet complete; post-milestone CSE pacing, brief egress, NFA chrome, and integration-collect harden. **Wave 17** closes post-100% harden (loop status, storage NaN defense, CSE pace concurrency, login a11y, factory verify, health proxy timeout, DL/`myalerts`/lease floor, finite price egress). **Wave 18** hardens dash/ops (brief-queue health UI, category cancel, watchlist duplicate soft flag, sparkline finite filter, category confirm / history egress / nested health). **Wave 19** documents dash CSRF, aligns `/unwatch` copy, adds dash disclosure category, and hardens history/watchlist/browse egress. **Wave 20** advances loop status + report, START browse note, and cancel-id / category-read / dash egress harden. **Wave 21** hardens alerts history/list/forms symbol filters (`normalizeSymbol` / `invalid_symbol`), disclosure SafeInteger ids, and logout hard-redirect UX. **Wave 22** pushes loop status + symbol not-found Browse link (late sectors/alerts/health egress pin). **Wave 23** hardens sectors/health/browse egress + safe ids and rolls the report. **Wave 24** points `/market` empty state at `make tick` / poller seed. **Wave 25** hard-redirects mid-use 401 / missing CSRF to `/login?expired=1` and pins egress harden. **Wave 26** advances loop status. **Wave 27** hardens toIso/delivery/SafeInteger egress and appends this rollup toward soft ~100 — not cov gap-fill. Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **stub only** — no LLM wiring yet.
+Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX/a11y polish, adversarial grace/storage close, env-example completeness, storage brief-method coverage, and a Phase 3 scenario stub fence (`AI_SCENARIOS_ENABLED=0`). Wave 10 hardens briefs ops (smoke, rate limits, CDN requeue, poller/disclosure coverage) and audits poll↔brief advisory locks as a non-issue. Wave 11 aligns `/brief` empty-state test copy with AI-off messaging. Wave 12 records parallelism honesty (plus follow-on fix/docs/test lanes). Wave 13 closes browse API examples, env sync, Telegram/dash URL egress caps, web adversarial harden, and coverage pushes (migrate / storage / CSE / poller / bot). Wave 14 ships coverage/harden lanes (web regress, health/circuit, config/migrate, main, rules format fuzz, worker) plus fail-closed non-finite float env knobs. Wave 15 adds `make tijori-report`, briefs extra-install docs, help-budget / web movers / briefs / residual coverage, and ops-knob harden. **Wave 16 milestone:** full-package `pytest --cov=chime` at **100%** (3427 stmts / 0 miss) — coverage ratchet complete; post-milestone CSE pacing, brief egress, NFA chrome, and integration-collect harden. **Wave 17** closes post-100% harden (loop status, storage NaN defense, CSE pace concurrency, login a11y, factory verify, health proxy timeout, DL/`myalerts`/lease floor, finite price egress). **Wave 18** hardens dash/ops (brief-queue health UI, category cancel, watchlist duplicate soft flag, sparkline finite filter, category confirm / history egress / nested health). **Wave 19** documents dash CSRF, aligns `/unwatch` copy, adds dash disclosure category, and hardens history/watchlist/browse egress. **Wave 20** advances loop status + report, START browse note, and cancel-id / category-read / dash egress harden. **Wave 21** hardens alerts history/list/forms symbol filters (`normalizeSymbol` / `invalid_symbol`), disclosure SafeInteger ids, and logout hard-redirect UX. **Wave 22** pushes loop status + symbol not-found Browse link (late sectors/alerts/health egress pin). **Wave 23** hardens sectors/health/browse egress + safe ids and rolls the report. **Wave 24** points `/market` empty state at `make tick` / poller seed (late history/watchlist/login SafeInteger pin). **Wave 25** hard-redirects mid-use 401 / missing CSRF to `/login?expired=1` and pins egress harden. **Wave 26** advances loop status (late mapRule/alerts/watchlist fail-closed pin). **Wave 27** hardens toIso/delivery/SafeInteger egress and rolls the report. **Wave 28** restores web `tsc` (`BigInt()` / sanitize string guards) + loop status. **Wave 29** hardens demo auth telegram_id / allowlist via digits-only `toSafePositiveInt`. **Wave 30** keeps alert-form disclosure category a11y (`aria-describedby` / maxLength / `aria-busy`). **Wave 31** appends this rollup toward soft ~100 — not cov gap-fill. Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **stub only** — no LLM wiring yet.
 
 | Track | Status |
 |---|---|
@@ -31,7 +31,7 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | Phase 2 Tijori core | ◐ mostly done — live LLM still off until keyed |
 | Phase 3 scenario AI | ◐ stub fence only (`AI_SCENARIOS_ENABLED=0`) |
 | `chime` unit coverage | ✅ **100%** (wave 16 milestone) |
-| Improve-loop / CI on touched paths | ongoing — wave 27 post-100% harden → soft ~100 loops |
+| Improve-loop / CI on touched paths | ongoing — wave 31 post-100% harden → soft ~100 loops |
 
 ---
 
@@ -587,18 +587,20 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
-## Wave 24 — Market empty tick hint
+## Wave 24 — Market empty tick hint (+ late history/login pin)
 
-**Theme:** Point `/market` empty state at operator seed path (`make tick` / poller) so browse emptiness is actionable — not a dead “check back later.”
+**Theme:** Point `/market` empty state at operator seed path (`make tick` / poller) so browse emptiness is actionable — not a dead “check back later.” Late history/watchlist/login SafeInteger pin.
 
 | SHA | Commit |
 |---|---|
 | `de41fad` | docs/feat(w24): market empty tick hint push |
+| `d8c2b0c` | fix(w24): history fail-closed, watchlist decode, login ids |
 
 **Shipped**
 
 - `/market` empty copy: run `make tick` (or leave poller/both running) to seed browse, then refresh; Health still the persistence path.
 - `DASH_IA.md` + [TIJORI.md](../../runbooks/TIJORI.md) empty-board notes aligned; pin in `tests/test_web_route_regressions.py`.
+- Late pin: history page JSON SafeInteger ids + sanitized symbol/event_key + allowlisted `delivery_status`; watchlist DELETE symbol decode; demo login digits-only `toSafePositiveInt` — `tests/test_wave24_medium_bugs.py`.
 
 ---
 
@@ -618,17 +620,19 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
-## Wave 26 — Loop status push
+## Wave 26 — Loop status push (+ late mapRule/fail-closed pin)
 
-**Theme:** Honest loop-status advance after waves 24–25 (STOP on CLEAN×2; no empty farming).
+**Theme:** Honest loop-status advance after waves 24–25 (STOP on CLEAN×2; no empty farming). Late mapRule SafeInteger + alerts/watchlist fail-closed parse.
 
 | SHA | Commit |
 |---|---|
 | `b1ddfa0` | docs(w26): loop status push |
+| `f1bf191` | fix(w26): mapRule safe ids, alerts/watchlist fail-closed |
 
 **Shipped**
 
 - [LOOP_STATUS.md](LOOP_STATUS.md) — waves-completed through w25; this status push **w26**; horizon still soft ~100.
+- Late pin: digits-only SafeInteger + `isAlertType` in `mapRule` (no `Number()` precision-loss alias); fail-closed alerts/watchlist page JSON parse — `tests/test_wave26_medium_bugs.py`.
 
 ---
 
@@ -639,13 +643,73 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | SHA | Commit |
 |---|---|
 | `a3ba2fc` | fix(w27): toIso/delivery/safe-int egress harden |
-| _(this)_ | docs(w27): report push |
+| `31363ff` | docs(w27): report push |
 
 **Shipped**
 
 - Fail-closed `toIso` (no raw unparseable timestamp echo); honest `delivered_unmarked` history status + UI; capped history OFFSET; digits-only SafeInteger id/attempt helpers (`safe-int.ts`); `ensureUser` SafeInteger gate; market symbol sanitize; SafeInteger browse limits.
 - Pin: `tests/test_wave27_medium_bugs.py`.
 - `TIJORI_WAVE_REPORT.md` — close wave 22 late egress pin + wave 23 inventory SHAs; append waves 24–27 toward soft ~100.
+
+---
+
+## Wave 28 — Web tsc restore + loop status
+
+**Theme:** Restore web `tsc --noEmit` after SafeInteger helpers; honest loop-status advance (STOP on CLEAN×2; no empty farming).
+
+| SHA | Commit |
+|---|---|
+| `8c300c3` | fix(w28): restore web tsc — BigInt() and sanitize string guards |
+| `8a249c0` | docs(w28): loop status push |
+
+**Shipped**
+
+- `safe-int.ts`: prefer `BigInt(0)` over `0n` literal so TS target stays happy; market/sectors browse only pass strings into `sanitizeDisclosureText`.
+- [LOOP_STATUS.md](LOOP_STATUS.md) — waves-completed through w27; this status push **w28**; horizon still soft ~100.
+
+---
+
+## Wave 29 — Demo auth SafeInteger
+
+**Theme:** Demo auth telegram_id / allowlist must not precision-lose oversized/float/sci-notation values into an allowlisted session mint.
+
+| SHA | Commit |
+|---|---|
+| `0e596d4` | fix(w29): demo auth push |
+
+**Shipped**
+
+- `POST /api/v1/auth/demo` + `getDashAuthConfig` allowlist/default parse via digits-only `toSafePositiveInt` (no bare `Number(...)` / `isSafeInteger` gate alone).
+- Pin: `tests/test_wave29_medium_bugs.py`.
+
+---
+
+## Wave 30 — Alert form a11y
+
+**Theme:** Disclosure category field stays announced when invalid; length-capped; busy submit announced.
+
+| SHA | Commit |
+|---|---|
+| `39169a8` | fix(w30): alert form a11y push |
+
+**Shipped**
+
+- Alert create form: keep `alert_category_hint` in `aria-describedby` when invalid; `maxLength={DISCLOSURE_CATEGORY_MAX}`; submit `aria-busy` while pending.
+- `DASH_IA.md` + `tests/test_web_route_regressions.py` pin the contract.
+
+---
+
+## Wave 31 — Report rollup
+
+**Theme:** Docs lane append waves 28–31 toward soft ~100 (STOP on CLEAN×2; no empty farming). Close late w24/w26 inventory SHAs.
+
+| SHA | Commit |
+|---|---|
+| _(this)_ | docs(w31): report push |
+
+**Shipped**
+
+- `TIJORI_WAVE_REPORT.md` — close wave 24 late history/login pin + wave 26 late mapRule pin; append waves 28–31 toward soft ~100.
 
 ---
 
@@ -676,10 +740,14 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | 21 (`w21`) | 3 (history/forms filter + logout + disclosure ids) |
 | 22 (`w22`) | 3 (loop status + not-found Browse + late egress pin) |
 | 23 (`w23`) | 2 (egress harden + report rollup) |
-| 24 (`w24`) | 1 (market empty tick hint) |
+| 24 (`w24`) | 2 (market empty tick hint + late history/login pin) |
 | 25 (`w25`) | 2 (session expiry + egress pin) |
-| 26 (`w26`) | 1 (loop status) |
+| 26 (`w26`) | 2 (loop status + late mapRule/fail-closed pin) |
 | 27 (`w27`) | 2 (egress harden + report rollup) |
+| 28 (`w28`) | 2 (web tsc restore + loop status) |
+| 29 (`w29`) | 1 (demo auth SafeInteger) |
+| 30 (`w30`) | 1 (alert form a11y) |
+| 31 (`w31`) | 1 (report rollup) |
 | **Total** | **100+** |
 
 ---
@@ -704,7 +772,7 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ### Suggested next improve-loop focus
 
-- Wave 27+ post-100% harden/ops only (STOP early on CLEAN×2); do not farm commits to pad loops.
+- Wave 31+ post-100% harden/ops only (STOP early on CLEAN×2); do not farm commits to pad loops.
 - Optionally raise `--cov-fail-under` toward 100 once CI owners agree (measured 100% already).
 - Controlled briefs-on soak (not default-on in prod).
 - Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.
