@@ -14,7 +14,7 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
-/** Shared shell chrome for route `loading.tsx` (watchlist / alerts). */
+/** Shared shell chrome for route `loading.tsx` (lists, browse, health, symbol). */
 export function ListPageSkeleton({
   titleWidth = "w-40",
   rows = 5,

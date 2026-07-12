@@ -209,12 +209,28 @@ def test_alert_create_category_a11y_contract() -> None:
 
 
 def test_list_loading_skeleton_keeps_nfa_footer() -> None:
-    """Watchlist/alerts loading shells keep NFA footer while content pulses."""
+    """Every route loading.tsx keeps NFA footer while content pulses."""
     skeleton = WEB / "src" / "components" / "skeleton.tsx"
     source = skeleton.read_text(encoding="utf-8")
     assert 'import { NfaFooter } from "@/components/nfa-footer";' in source
     assert "<NfaFooter />" in source
     assert "ListPageSkeleton" in source
+
+    loading_files = sorted((WEB / "src" / "app").rglob("loading.tsx"))
+    assert loading_files, "expected at least one route loading.tsx"
+    missing: list[str] = []
+    for path in loading_files:
+        text = path.read_text(encoding="utf-8")
+        uses_shared = "ListPageSkeleton" in text
+        has_footer = (
+            'import { NfaFooter } from "@/components/nfa-footer";' in text
+            and "<NfaFooter />" in text
+        )
+        if not (uses_shared or has_footer):
+            missing.append(str(path.relative_to(ROOT)))
+    assert missing == [], "loading.tsx missing NFA footer chrome:\n" + "\n".join(
+        missing
+    )
 
 
 def test_symbols_list_route_requires_snapshots_and_session() -> None:
