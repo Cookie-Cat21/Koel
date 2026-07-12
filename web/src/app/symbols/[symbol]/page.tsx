@@ -278,8 +278,14 @@ export default async function SymbolDetailPage({
         </div>
       </section>
 
-      <section className="mt-8 border-t border-border/60 pt-6">
-        <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+      <section
+        className="mt-8 border-t border-border/60 pt-6"
+        aria-labelledby="disclosures-heading"
+      >
+        <h2
+          id="disclosures-heading"
+          className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+        >
           Disclosures
         </h2>
         {discsFailed ? (
@@ -328,7 +334,10 @@ export default async function SymbolDetailPage({
           />
         ) : (
           <>
-            <ul className="mt-4 divide-y divide-border/60">
+            <ul
+              className="mt-4 divide-y divide-border/60"
+              aria-labelledby="disclosures-heading"
+            >
               {discs.items.map((item) => {
                 const href = safeFilingHref(item.pdf_url, item.url);
                 const pdfOk = Boolean(safePdfUrl(item.pdf_url));
@@ -336,6 +345,7 @@ export default async function SymbolDetailPage({
                   item.brief,
                   item.brief_status,
                 );
+                const briefHeadingId = `disclosure-brief-${item.id}`;
                 const titleClass =
                   "block rounded-sm text-sm font-medium text-foreground underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none";
                 return (
@@ -353,6 +363,7 @@ export default async function SymbolDetailPage({
                             (PDF)
                           </span>
                         ) : null}
+                        <span className="sr-only"> (opens in new tab)</span>
                       </a>
                     ) : (
                       <span className={titleClass}>
@@ -364,9 +375,21 @@ export default async function SymbolDetailPage({
                       {item.category ? ` · ${item.category}` : ""}
                     </p>
                     {briefText ? (
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                        {briefText}
-                      </p>
+                      <div
+                        className="mt-2"
+                        role="group"
+                        aria-labelledby={briefHeadingId}
+                      >
+                        <p
+                          id={briefHeadingId}
+                          className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                        >
+                          Filing brief
+                        </p>
+                        <p className="mt-1 text-sm leading-relaxed text-foreground/90">
+                          {briefText}
+                        </p>
+                      </div>
                     ) : null}
                   </li>
                 );

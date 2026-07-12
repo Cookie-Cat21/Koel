@@ -69,7 +69,8 @@ No nested app shell beyond a single top nav: Browse · Watchlist · Alerts · Hi
 - Title: symbol + name + sector
 - Last snapshot block: price, change, change_pct, volume, ts
 - Sparkline: recent `price_snapshots` (price vs ts only — not TA)
-- Disclosures list: published_at · title · category · external link
+- Disclosures list: published_at · title · category · external link; list uses `aria-labelledby` the Disclosures heading; filing links announce opens-in-new-tab
+- Ready AI brief: labelled “Filing brief” group (`role="group"` + `aria-labelledby`) under the filing row — plain text only when `brief_status === ready`
 - Shortcuts: Add to watchlist · New alert for this symbol
 
 ### `/health`

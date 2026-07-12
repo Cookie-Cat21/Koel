@@ -527,6 +527,13 @@ def test_symbol_page_prefers_pdf_and_shows_ready_brief() -> None:
     assert "NfaInline" in source
     assert "NfaFooter" in source
     assert '"processing"' in source
+    # W16 a11y: disclosures list labelled by heading; ready brief is a named group.
+    assert 'id="disclosures-heading"' in source
+    assert 'aria-labelledby="disclosures-heading"' in source
+    assert 'role="group"' in source
+    assert "Filing brief" in source
+    assert "disclosure-brief-" in source
+    assert "(opens in new tab)" in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
         for line in source.splitlines()
