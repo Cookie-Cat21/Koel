@@ -6,6 +6,7 @@
 import type { Pool } from "pg";
 
 import {
+  MAX_HISTORY_SYMBOL_LENGTH,
   MAX_STOCK_NAME_LENGTH,
   MAX_STOCK_SECTOR_LENGTH,
   sanitizeDisclosureText,
@@ -118,13 +119,20 @@ export async function queryMarketBrowse(
     params,
   );
 
-  return result.rows.map((row) => ({
-    symbol: row.symbol,
-    name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
-    sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
-    price: toFiniteNumber(row.price),
-    change: toFiniteNumber(row.change),
-    change_pct: toFiniteNumber(row.change_pct),
-    ts: toIso(row.ts),
-  }));
+  return result.rows.flatMap((row) => {
+    const symbol =
+      sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "";
+    if (!symbol) return [];
+    return [
+      {
+        symbol,
+        name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
+        sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
+        price: toFiniteNumber(row.price),
+        change: toFiniteNumber(row.change),
+        change_pct: toFiniteNumber(row.change_pct),
+        ts: toIso(row.ts),
+      },
+    ];
+  });
 }

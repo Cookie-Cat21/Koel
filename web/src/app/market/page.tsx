@@ -103,10 +103,17 @@ function asSectorItems(body: unknown): SectorItem[] | null {
     const r = row as Record<string, unknown>;
     const name = typeof r.name === "string" ? r.name.trim() : "";
     if (!name) continue;
-    const sectorId = finiteOrNull(r.sector_id);
-    if (sectorId == null) continue;
+    const sectorIdRaw = finiteOrNull(r.sector_id);
+    // SafeInteger only — floats / unsafe ints must not become React keys.
+    if (
+      sectorIdRaw == null ||
+      !Number.isSafeInteger(sectorIdRaw) ||
+      sectorIdRaw <= 0
+    ) {
+      continue;
+    }
     out.push({
-      sector_id: sectorId,
+      sector_id: sectorIdRaw,
       name,
       change_pct: finiteOrNull(r.change_pct),
     });

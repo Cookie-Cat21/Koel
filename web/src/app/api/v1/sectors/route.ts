@@ -1,5 +1,12 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MAX_SECTOR_INDEX_CODE_LENGTH,
+  MAX_SECTOR_INDEX_NAME_LENGTH,
+  MAX_SECTOR_NAME_LENGTH,
+  MAX_SECTOR_SYMBOL_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
@@ -26,6 +33,13 @@ type SectorRow = {
   ts: Date | string;
 };
 
+function toSafeSectorId(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  // Drop non-safe / non-positive ids — floats and unsafe ints alias wrong rows.
+  if (!Number.isSafeInteger(n) || n <= 0) return null;
+  return n;
+}
+
 /**
  * GET /api/v1/sectors — thin read of latest CSE sector index rows from Postgres.
  * Populated only when poller runs with SECTORS_INGEST=1. Session required;
@@ -48,21 +62,29 @@ export async function GET(request: NextRequest) {
     );
 
     const items = result.rows.flatMap((row) => {
-      const sector_id = toFiniteNumber(row.sector_id);
-      // Drop non-finite ids — JSON.stringify(NaN) becomes null and breaks clients.
+      const sector_id = toSafeSectorId(row.sector_id);
       if (sector_id == null) return [];
-      const name = typeof row.name === "string" ? row.name.trim() : "";
+      const name = sanitizeDisclosureText(row.name, MAX_SECTOR_NAME_LENGTH);
       // Blank names are useless on the thin board — drop rather than egress "".
       if (!name) return [];
-      const symbol = typeof row.symbol === "string" ? row.symbol.trim() : "";
+      const symbol = sanitizeDisclosureText(
+        row.symbol,
+        MAX_SECTOR_SYMBOL_LENGTH,
+      );
       if (!symbol) return [];
       return [
         {
           sector_id,
           symbol,
           name,
-          index_code: row.index_code,
-          index_name: row.index_name,
+          index_code: sanitizeDisclosureText(
+            row.index_code,
+            MAX_SECTOR_INDEX_CODE_LENGTH,
+          ),
+          index_name: sanitizeDisclosureText(
+            row.index_name,
+            MAX_SECTOR_INDEX_NAME_LENGTH,
+          ),
           index_value: toFiniteNumber(row.index_value),
           change: toFiniteNumber(row.change),
           change_pct: toFiniteNumber(row.change_pct),

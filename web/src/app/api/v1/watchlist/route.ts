@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import {
+  MAX_HISTORY_SYMBOL_LENGTH,
   MAX_STOCK_NAME_LENGTH,
   MAX_STOCK_SECTOR_LENGTH,
   sanitizeDisclosureText,
@@ -55,17 +56,24 @@ export async function GET(request: NextRequest) {
       [gated.session.user_id],
     );
 
-    const items = result.rows.map((row) => ({
-      symbol: row.symbol,
-      // Strip C0/C1 + cap — hostile stock name/sector must not balloon JSON.
-      name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
-      sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
-      // Finite-only egress (parity with movers/browse) — NaN/±Inf → null.
-      price: toFiniteNumber(row.price),
-      change: toFiniteNumber(row.change),
-      change_pct: toFiniteNumber(row.change_pct),
-      ts: toIso(row.ts),
-    }));
+    const items = result.rows.flatMap((row) => {
+      const symbol =
+        sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "";
+      if (!symbol) return [];
+      return [
+        {
+          symbol,
+          // Strip C0/C1 + cap — hostile stock name/sector must not balloon JSON.
+          name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
+          sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
+          // Finite-only egress (parity with movers/browse) — NaN/±Inf → null.
+          price: toFiniteNumber(row.price),
+          change: toFiniteNumber(row.change),
+          change_pct: toFiniteNumber(row.change_pct),
+          ts: toIso(row.ts),
+        },
+      ];
+    });
 
     return jsonOk({ items });
   } catch (err) {
@@ -106,7 +114,11 @@ export async function POST(request: NextRequest) {
 
     const created = await addWatch(gated.session.user_id, symbol);
     return jsonOk(
-      { symbol: stock.symbol, name: stock.name, created },
+      {
+        symbol,
+        name: sanitizeDisclosureText(stock.name, MAX_STOCK_NAME_LENGTH),
+        created,
+      },
       created ? 201 : 200,
     );
   } catch (err) {

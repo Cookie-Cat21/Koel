@@ -1,6 +1,10 @@
 import type { NextRequest } from "next/server";
 
-import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
+import {
+  MAX_HISTORY_SYMBOL_LENGTH,
+  sanitizeDisclosureCategory,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
@@ -66,10 +70,13 @@ export async function GET(request: NextRequest) {
       // Drop non-safe ids — JSON.stringify(NaN) becomes null; unsafe ints
       // lose precision and can alias the wrong rule.
       if (!Number.isSafeInteger(id) || id <= 0) return [];
+      if (!isAlertType(row.type)) return [];
       return [
         {
           id,
-          symbol: row.symbol,
+          symbol:
+            sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ??
+            "?",
           type: row.type,
           // Finite-only — NaN/±Inf threshold from a poisoned row → null.
           threshold: toFiniteNumber(row.threshold),

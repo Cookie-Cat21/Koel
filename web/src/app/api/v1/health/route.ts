@@ -50,6 +50,10 @@ type PollerHealth = {
 /** Cap hostile HEALTH_URL strings so ops UI / JSON cannot balloon. */
 export const HEALTH_STRING_MAX = 512;
 export const HEALTH_WATCHED_MISSING_MAX = 64;
+/** Bound circuit map size from a hostile HEALTH_URL body. */
+export const HEALTH_CIRCUITS_MAX = 32;
+
+const CIRCUIT_STATES = new Set(["closed", "open", "half_open"]);
 
 /** Parse loopback health `brief_queue` (fail-soft; omit empty). */
 export function parseBriefQueue(raw: unknown): BriefQueueHint | undefined {
@@ -114,6 +118,47 @@ function sanitizeWatchedMissing(raw: unknown): string[] | undefined {
   return out;
 }
 
+
+/**
+ * Allowlist circuit snapshots only — never raw-spread a hostile nested map
+ * (unbounded keys / string payloads can balloon the ops JSON).
+ */
+export function sanitizeCircuits(
+  raw: unknown,
+): Record<string, Record<string, unknown>> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (Object.keys(out).length >= HEALTH_CIRCUITS_MAX) break;
+    const name = sanitizeHealthString(key);
+    if (!name || name.length > 64) continue;
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const src = value as Record<string, unknown>;
+    const entry: Record<string, unknown> = {};
+    const cName = sanitizeHealthString(src.name);
+    if (cName) entry.name = cName.length > 64 ? cName.slice(0, 64) : cName;
+    const state = sanitizeHealthString(src.state);
+    if (state && CIRCUIT_STATES.has(state)) entry.state = state;
+    for (const numKey of [
+      "failures",
+      "fail_max",
+      "reset_timeout_seconds",
+    ] as const) {
+      const v = src[numKey];
+      if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+        entry[numKey] = v;
+      }
+    }
+    if (typeof src.half_open_trial === "boolean") {
+      entry.half_open_trial = src.half_open_trial;
+    }
+    if (Object.keys(entry).length > 0) {
+      out[name] = entry;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /**
  * Pick typed poller fields only — never raw-spread a nested `body.poller`
  * (that overwrote sanitized booleans / watched_missing with hostile shapes).
@@ -126,10 +171,12 @@ export function sanitizePollerHealth(raw: unknown): PollerHealth | null {
   const poller: PollerHealth = {};
 
   if ("last_tick_at" in body) {
-    poller.last_tick_at =
-      typeof body.last_tick_at === "string" || body.last_tick_at === null
-        ? (body.last_tick_at as string | null)
-        : null;
+    if (body.last_tick_at === null) {
+      poller.last_tick_at = null;
+    } else {
+      const tick = sanitizeHealthString(body.last_tick_at);
+      poller.last_tick_at = tick === undefined ? null : tick;
+    }
   }
   if (typeof body.last_tick_ok === "boolean") {
     poller.last_tick_ok = body.last_tick_ok;
@@ -149,12 +196,9 @@ export function sanitizePollerHealth(raw: unknown): PollerHealth | null {
   if ("watched_missing" in body) {
     poller.watched_missing = sanitizeWatchedMissing(body.watched_missing) ?? [];
   }
-  if (
-    body.circuits &&
-    typeof body.circuits === "object" &&
-    !Array.isArray(body.circuits)
-  ) {
-    poller.circuits = body.circuits as Record<string, unknown>;
+  const circuits = sanitizeCircuits(body.circuits);
+  if (circuits) {
+    poller.circuits = circuits;
   }
   const brief = parseBriefQueue(body.brief_queue);
   if (brief) {
@@ -205,8 +249,9 @@ export async function GET(request: NextRequest) {
         unknown
       > | null;
       if (body && typeof body === "object") {
-        if (typeof body.started_at === "string") {
-          startedAt = body.started_at;
+        const started = sanitizeHealthString(body.started_at);
+        if (started) {
+          startedAt = started;
         }
         // Sanitize top-level + nested separately — never raw-spread nested
         // (hostile HEALTH_URL used to overwrite typed booleans / watched_missing).

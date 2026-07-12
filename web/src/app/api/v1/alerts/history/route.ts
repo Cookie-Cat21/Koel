@@ -5,7 +5,7 @@ import {
   MAX_HISTORY_SYMBOL_LENGTH,
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
-import { normalizeSymbol } from "@/lib/api/symbol";
+import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
       // unsafe ints lose precision and can alias the wrong fire row.
       if (!Number.isSafeInteger(id) || !Number.isSafeInteger(rule_id)) return [];
       if (id <= 0 || rule_id <= 0) return [];
+      if (!isAlertType(row.type)) return [];
       const attempts = toSafeInt(row.attempt_count, 0);
       const symbol =
         sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "?";

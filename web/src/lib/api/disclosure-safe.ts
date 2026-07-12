@@ -27,6 +27,11 @@ export const MAX_STOCK_NAME_LENGTH = 200;
 export const MAX_STOCK_SECTOR_LENGTH = 64;
 export const MAX_HISTORY_EVENT_KEY_LENGTH = 256;
 export const MAX_HISTORY_SYMBOL_LENGTH = 32;
+/** Sector board string egress caps (thin /api/v1/sectors). */
+export const MAX_SECTOR_NAME_LENGTH = 200;
+export const MAX_SECTOR_SYMBOL_LENGTH = 32;
+export const MAX_SECTOR_INDEX_CODE_LENGTH = 32;
+export const MAX_SECTOR_INDEX_NAME_LENGTH = 200;
 
 const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/;
 

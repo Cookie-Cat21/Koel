@@ -543,8 +543,14 @@ def test_sectors_route_static() -> None:
     assert "MAX_SECTORS" in source
     assert "getPool" in source
     assert "jsonOk({ items })" in source or "jsonOk({ items" in source
-    assert "toFiniteNumber(row.sector_id)" in source
-    assert 'row.name.trim()' in source or "row.name.trim()" in source
+    assert "toSafeSectorId" in source or "Number.isSafeInteger" in source
+    assert "sanitizeDisclosureText" in source
+    assert "MAX_SECTOR_NAME_LENGTH" in source
+    # Ban raw trim-only name/symbol egress (controls + length must be stripped).
+    assert "row.name.trim()" not in source
+    assert "row.symbol.trim()" not in source
+    assert "index_code: row.index_code" not in source
+    assert "index_name: row.index_name" not in source
     # Shared finite helper — do not reintroduce a local NaN-leaky copy.
     assert 'from "@/lib/api/market-browse"' in source
     assert "function toFiniteNumber" not in source

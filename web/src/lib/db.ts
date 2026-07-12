@@ -1,6 +1,10 @@
 import { Pool, type PoolClient } from "pg";
 
-import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
+import {
+  MAX_HISTORY_SYMBOL_LENGTH,
+  sanitizeDisclosureCategory,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toIso } from "@/lib/api/time";
 import type { AlertType } from "@/lib/api/symbol";
@@ -134,10 +138,11 @@ function mapRule(row: {
 }): AlertRuleRow {
   const id = Number(row.id);
   return {
-    // Non-finite ids are rare (poisoned driver); keep Number for shape parity
-    // with list routes that drop bad rows — callers still get a number.
-    id: Number.isFinite(id) ? id : Number.NaN,
-    symbol: row.symbol,
+    // Unsafe / non-positive ids → NaN (JSON null) — parity with list SafeInteger.
+    id: Number.isSafeInteger(id) && id > 0 ? id : Number.NaN,
+    // Strip C0 + cap — hostile DB symbol must not balloon create/list JSON.
+    symbol:
+      sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "?",
     type: row.type,
     // Finite-only — NaN/±Inf threshold from a poisoned row → null.
     threshold: toFiniteNumber(row.threshold),
