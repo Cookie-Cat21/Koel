@@ -34,5 +34,8 @@ export function csrfTokensMatch(
 export function readCsrfCookie(
   cookies: { get: (name: string) => { value: string } | undefined },
 ): string | undefined {
-  return cookies.get(CSRF_COOKIE)?.value;
+  const raw = cookies.get(CSRF_COOKIE)?.value;
+  // Fail closed — multi-MB forged cookies must not reach compare / Buffer.
+  if (raw != null && raw.length > MAX_CSRF_TOKEN_LENGTH) return undefined;
+  return raw;
 }

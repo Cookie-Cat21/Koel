@@ -1,3 +1,4 @@
+import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 import { headers } from "next/headers";
 
 /**
@@ -102,6 +103,13 @@ export const SERVER_API_TIMEOUT_MS = 10_000;
 export const SERVER_API_BODY_MAX_BYTES = 1_048_576;
 
 /**
+ * Cap Cookie header forwarded into loopback SSR fetch.
+ * Minted session+csrf cookies are well under 1KB; a multi-MB Cookie used to
+ * amplify into the internal fetch and pressure the SSR worker.
+ */
+export const SERVER_API_COOKIE_MAX_CHARS = 4_096;
+
+/**
  * Server-side GET to our own /api/v1/* with the incoming session cookie.
  * Pages stay thin; route handlers own Postgres + auth.
  *
@@ -109,7 +117,8 @@ export const SERVER_API_BODY_MAX_BYTES = 1_048_576;
  * ``DASH_INTERNAL_ORIGIN`` — never client ``Host`` (session cookie must not
  * leave the process). ``redirect: "error"`` so Cookie cannot follow off-box.
  * Bound timeout + body bytes so a stuck / hostile route cannot hang or OOM
- * the SSR worker (parity with HEALTH_URL proxy bounds).
+ * the SSR worker (parity with HEALTH_URL proxy bounds). Cap Cookie header
+ * length; force ``application/json`` Content-Type (never reflect upstream).
  */
 export async function serverApiGet(path: string): Promise<Response> {
   if (!isSafeServerApiPath(path)) {
@@ -118,7 +127,15 @@ export async function serverApiGet(path: string): Promise<Response> {
 
   const h = await headers();
   // Cookie header only — do not derive fetch URL from client Host / XFH.
-  const cookie = h.get("cookie") ?? "";
+  const cookieRaw = h.get("cookie") ?? "";
+  // Fail closed — overlong Cookie must not amplify into the loopback fetch.
+  if (cookieRaw.length > SERVER_API_COOKIE_MAX_CHARS) {
+    return new Response(JSON.stringify({ error: { code: "degraded" } }), {
+      status: 502,
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+    });
+  }
+  const cookie = cookieRaw;
   const url = `${resolveInternalOrigin()}${path}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), SERVER_API_TIMEOUT_MS);
@@ -134,6 +151,17 @@ export async function serverApiGet(path: string): Promise<Response> {
       redirect: "error",
       signal: ctrl.signal,
     });
+    // Early-reject claimed Content-Length before allocating the body buffer.
+    const lenHeader = res.headers.get("content-length");
+    if (lenHeader != null && lenHeader.trim()) {
+      const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
+      if (claimed < 0 || claimed > SERVER_API_BODY_MAX_BYTES) {
+        return new Response(JSON.stringify({ error: { code: "degraded" } }), {
+          status: 502,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        });
+      }
+    }
     // Bound body before page parsers call ``res.json()`` — huge payloads OOM SSR.
     const rawText = await res.text().catch(() => "");
     if (rawText.length > SERVER_API_BODY_MAX_BYTES) {
@@ -142,12 +170,11 @@ export async function serverApiGet(path: string): Promise<Response> {
         headers: { "Content-Type": "application/json; charset=utf-8" },
       });
     }
-    const contentType =
-      res.headers.get("content-type") ?? "application/json; charset=utf-8";
+    // Force JSON — never reflect a hostile upstream Content-Type into pages.
     return new Response(rawText, {
       status: res.status,
       statusText: res.statusText,
-      headers: { "Content-Type": contentType },
+      headers: { "Content-Type": "application/json; charset=utf-8" },
     });
   } catch {
     return new Response(JSON.stringify({ error: { code: "degraded" } }), {

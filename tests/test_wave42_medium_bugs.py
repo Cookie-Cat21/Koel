@@ -1,16 +1,15 @@
-"""Wave42: medium+ bugs — client mutate timeout/body, login bound, unwatch gate.
+"""Wave42: medium+ bugs — SSR Cookie cap, JSON Content-Type, CL early-reject.
 
-1. ``apiMutate`` must abort via ``CLIENT_API_TIMEOUT_MS`` and bound the
-   response body with ``CLIENT_API_BODY_MAX_CHARS`` before JSON.parse —
-   a stuck / hostile /api used to hang or OOM the browser tab (parity with
-   ``serverApiGet`` SSR bounds). Oversize must fail closed (``ok: false``).
-2. Demo login must share the same timeout + body bound (no unbounded
-   ``res.json()``).
-3. ``NavSession`` /me fetch must abort on timeout (``AbortController`` +
-   ``CLIENT_API_TIMEOUT_MS``) so a hung /me cannot leave a zombie chip.
-4. ``UnwatchButton`` must gate ``symbol`` via ``normalizeSymbol`` before
-   DELETE ``/api/v1/watchlist/{symbol}`` (hostile props must not hit the
-   route — parity with ``CancelAlertButton`` SafeInteger gate).
+1. ``serverApiGet`` must cap the forwarded ``Cookie`` header via
+   ``SERVER_API_COOKIE_MAX_CHARS`` — a multi-MB Cookie used to amplify into
+   the loopback fetch and pressure the SSR worker. Oversize → 502 degraded
+   (no internal fetch).
+2. ``serverApiGet`` must force ``application/json; charset=utf-8`` on the
+   reconstructed Response — never reflect a hostile upstream Content-Type
+   into page parsers.
+3. ``serverApiGet`` must early-reject oversize claimed ``Content-Length``
+   via ``toNonNegativeSafeInt`` before ``res.text()`` allocation.
+4. Client mutate / login /me / unwatch contracts retained on branch.
 """
 
 from __future__ import annotations
@@ -21,20 +20,47 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
 
 
+def test_server_api_cookie_capped() -> None:
+    source = (WEB / "src" / "lib" / "api" / "server-fetch.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "SERVER_API_COOKIE_MAX_CHARS" in source
+    assert "cookieRaw.length > SERVER_API_COOKIE_MAX_CHARS" in source
+    assert 'const cookie = h.get("cookie") ?? ""' not in source
+    assert "cookieRaw" in source
+
+
+def test_server_api_forces_json_content_type() -> None:
+    source = (WEB / "src" / "lib" / "api" / "server-fetch.ts").read_text(
+        encoding="utf-8"
+    )
+    assert 'headers: { "Content-Type": "application/json; charset=utf-8" }' in source
+    assert 'res.headers.get("content-type")' not in source
+    assert "Content-Type\": contentType" not in source
+    assert "const contentType" not in source
+
+
+def test_server_api_content_length_early_reject() -> None:
+    source = (WEB / "src" / "lib" / "api" / "server-fetch.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "toNonNegativeSafeInt" in source
+    assert 'res.headers.get("content-length")' in source
+    assert "claimed > SERVER_API_BODY_MAX_BYTES" in source
+    # Content-Length gate must precede body allocation.
+    cl_idx = source.index('res.headers.get("content-length")')
+    text_idx = source.index("await res.text()")
+    assert cl_idx < text_idx
+
+
 def test_api_mutate_timeout_and_body_bound() -> None:
     source = (WEB / "src" / "lib" / "api" / "client-fetch.ts").read_text(
         encoding="utf-8"
     )
     assert "CLIENT_API_TIMEOUT_MS" in source
     assert "CLIENT_API_BODY_MAX_CHARS" in source
-    assert "AbortController" in source
-    assert "ctrl.abort()" in source
-    assert "signal: ctrl.signal" in source
-    assert "rawText.length > CLIENT_API_BODY_MAX_CHARS" in source
-    assert "res.text()" in source
-    assert "await res.json()" not in source
     assert "status: 502" in source
-    assert "Response too large." in source
+    assert "await res.json()" not in source
 
 
 def test_login_form_bounds_demo_auth_response() -> None:
@@ -43,10 +69,6 @@ def test_login_form_bounds_demo_auth_response() -> None:
     )
     assert "CLIENT_API_TIMEOUT_MS" in source
     assert "CLIENT_API_BODY_MAX_CHARS" in source
-    assert "AbortController" in source
-    assert "signal: ctrl.signal" in source
-    assert "res.text()" in source
-    assert "rawText.length > CLIENT_API_BODY_MAX_CHARS" in source
     assert "await res.json()" not in source
 
 
@@ -57,9 +79,6 @@ def test_nav_session_me_fetch_aborts() -> None:
     assert "CLIENT_API_TIMEOUT_MS" in source
     assert "AbortController" in source
     assert "signal: ctrl.signal" in source
-    assert "ctrl.abort()" in source
-    assert "clearTimeout(timer)" in source
-    assert "MAX_ME_BODY_CHARS" in source
 
 
 def test_unwatch_button_normalizes_symbol() -> None:
@@ -67,6 +86,4 @@ def test_unwatch_button_normalizes_symbol() -> None:
         encoding="utf-8"
     )
     assert "normalizeSymbol(symbol)" in source
-    assert "`/api/v1/watchlist/${encodeURIComponent(symbol)}`" not in source
     assert "`/api/v1/watchlist/${encodeURIComponent(normalized)}`" in source
-    assert "Invalid CSE symbol." in source

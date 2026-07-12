@@ -1,17 +1,11 @@
-"""Wave41: medium+ bugs — client mutate timeout/body, login bound, unwatch gate.
+"""Wave41: medium+ bugs — CSRF cookie cap, mapRule threshold, SSR CL early-reject.
 
-1. ``apiMutate`` must abort via ``CLIENT_API_TIMEOUT_MS`` and bound the
-   response body with ``CLIENT_API_BODY_MAX_CHARS`` before JSON.parse —
-   a stuck / hostile /api used to hang or OOM the browser tab (parity with
-   ``serverApiGet`` SSR bounds). Oversize must fail closed (``ok: false``,
-   status 502).
-2. Demo login must share the same timeout + body bound (no unbounded
-   ``res.json()``); oversize surfaces ``response too large``.
-3. ``NavSession`` /me fetch must abort on timeout (``AbortController`` +
-   ``CLIENT_API_TIMEOUT_MS``) so a hung /me cannot leave a zombie chip.
-4. ``UnwatchButton`` must gate ``symbol`` via ``normalizeSymbol`` before
-   DELETE ``/api/v1/watchlist/{symbol}`` (hostile props must not hit the
-   route — parity with ``CancelAlertButton`` SafeInteger gate).
+1. ``readCsrfCookie`` must reject overlong cookie values before compare
+   (parity with browser CSRF decode / ``MAX_CSRF_TOKEN_LENGTH``).
+2. ``mapRule`` must cap thresholds via ``MAX_ALERT_THRESHOLD`` so create /
+   idempotent JSON cannot balloon with ``Number.MAX_VALUE`` from a poisoned row.
+3. ``serverApiGet`` must early-reject oversized ``Content-Length`` before
+   ``res.text()`` allocates (defense in depth with the existing body char cap).
 """
 
 from __future__ import annotations
@@ -22,53 +16,30 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
 
 
-def test_api_mutate_timeout_and_body_bound() -> None:
-    source = (WEB / "src" / "lib" / "api" / "client-fetch.ts").read_text(
+def test_read_csrf_cookie_length_capped() -> None:
+    source = (WEB / "src" / "lib" / "auth" / "csrf.ts").read_text(
         encoding="utf-8"
     )
-    assert "CLIENT_API_TIMEOUT_MS" in source
-    assert "CLIENT_API_BODY_MAX_CHARS" in source
-    assert "AbortController" in source
-    assert "ctrl.abort()" in source
-    assert "signal: ctrl.signal" in source
-    assert "rawText.length > CLIENT_API_BODY_MAX_CHARS" in source
-    assert "res.text()" in source
-    assert "await res.json()" not in source
-    assert "status: 502" in source
-    assert "Response too large." in source
+    assert "MAX_CSRF_TOKEN_LENGTH" in source
+    assert "raw.length > MAX_CSRF_TOKEN_LENGTH" in source
+    assert "return undefined" in source
+    # Must not return uncapped cookie values straight from cookies.get.
+    assert "return cookies.get(CSRF_COOKIE)?.value;" not in source
 
 
-def test_login_form_bounds_demo_auth_response() -> None:
-    source = (WEB / "src" / "components" / "login-form.tsx").read_text(
+def test_map_rule_caps_alert_threshold() -> None:
+    source = (WEB / "src" / "lib" / "db.ts").read_text(encoding="utf-8")
+    assert "MAX_ALERT_THRESHOLD" in source
+    assert "toFiniteNumber(row.threshold)" in source
+    assert "n <= MAX_ALERT_THRESHOLD" in source
+
+
+def test_server_api_get_content_length_early_reject() -> None:
+    source = (WEB / "src" / "lib" / "api" / "server-fetch.ts").read_text(
         encoding="utf-8"
     )
-    assert "CLIENT_API_TIMEOUT_MS" in source
-    assert "CLIENT_API_BODY_MAX_CHARS" in source
-    assert "AbortController" in source
-    assert "signal: ctrl.signal" in source
-    assert "res.text()" in source
-    assert "rawText.length > CLIENT_API_BODY_MAX_CHARS" in source
-    assert "response too large" in source
-    assert "await res.json()" not in source
-
-
-def test_nav_session_me_fetch_aborts() -> None:
-    source = (WEB / "src" / "components" / "nav-session.tsx").read_text(
-        encoding="utf-8"
-    )
-    assert "CLIENT_API_TIMEOUT_MS" in source
-    assert "AbortController" in source
-    assert "signal: ctrl.signal" in source
-    assert "ctrl.abort()" in source
-    assert "clearTimeout(timer)" in source
-    assert "MAX_ME_BODY_CHARS" in source
-
-
-def test_unwatch_button_normalizes_symbol() -> None:
-    source = (WEB / "src" / "components" / "watchlist-controls.tsx").read_text(
-        encoding="utf-8"
-    )
-    assert "normalizeSymbol(symbol)" in source
-    assert "`/api/v1/watchlist/${encodeURIComponent(symbol)}`" not in source
-    assert "`/api/v1/watchlist/${encodeURIComponent(normalized)}`" in source
-    assert "Invalid CSE symbol." in source
+    assert 'res.headers.get("content-length")' in source
+    assert "SERVER_API_BODY_MAX_BYTES" in source
+    assert "claimed > SERVER_API_BODY_MAX_BYTES" in source
+    # Existing body bound after text() must remain.
+    assert "rawText.length > SERVER_API_BODY_MAX_BYTES" in source
