@@ -32,6 +32,23 @@ const ToastContext = createContext<ToastApi | null>(null);
 
 const AUTO_DISMISS_MS = 4500;
 
+/**
+ * Cap toast copy so a misbuilt caller / hostile API error cannot balloon
+ * the live region (parity with ``MAX_API_ERROR_MESSAGE_LENGTH``).
+ */
+export const MAX_TOAST_MESSAGE_LENGTH = 300;
+
+const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/g;
+
+/** Strip controls + length-cap before rendering toast text. */
+export function sanitizeToastMessage(raw: string): string {
+  const cleaned = raw.replace(CTRL_RE, "").trim();
+  if (!cleaned) return "Something went wrong.";
+  return cleaned.length > MAX_TOAST_MESSAGE_LENGTH
+    ? cleaned.slice(0, MAX_TOAST_MESSAGE_LENGTH).trimEnd()
+    : cleaned;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -48,7 +65,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const push = useCallback(
     (message: string, tone: ToastTone = "info") => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setItems((prev) => [...prev.slice(-3), { id, message, tone }]);
+      // Fail closed — never render uncapped / control-laden toast copy.
+      const safe = sanitizeToastMessage(
+        typeof message === "string" ? message : "Something went wrong.",
+      );
+      setItems((prev) => [...prev.slice(-3), { id, message: safe, tone }]);
       const t = setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
       timers.current.set(id, t);
     },
