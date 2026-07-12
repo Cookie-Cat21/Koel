@@ -60,12 +60,20 @@ def test_api_mutate_rejects_absolute_paths_and_caps_egress() -> None:
     source = (WEB / "src" / "lib" / "api" / "client-fetch.ts").read_text(
         encoding="utf-8"
     )
-    assert 'path.startsWith("/")' in source
-    assert 'path.startsWith("//")' in source
-    assert 'path.includes("://")' in source
-    assert "apiMutate path must be root-relative" in source
+    assert "isSafeClientApiPath" in source
+    assert 'pathOnly.startsWith("/api/v1/")' in source
+    assert "apiMutate path must be root-relative /api/v1/*" in source
     assert "MAX_CSRF_TOKEN_LENGTH" in source
     assert "MAX_API_ERROR_MESSAGE_LENGTH" in source
+
+
+def test_nav_session_created_at_to_iso() -> None:
+    source = (WEB / "src" / "components" / "nav-session.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert "toIso(r.created_at)" in source
+    assert "MAX_CSRF_TOKEN_LENGTH" in source
+    assert 'typeof r.created_at === "string" && r.created_at ? r.created_at' not in source
 
 
 def test_csrf_max_length_shared_via_config() -> None:

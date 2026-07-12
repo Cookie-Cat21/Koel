@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
+import { toIso } from "@/lib/api/time";
+import { MAX_CSRF_TOKEN_LENGTH } from "@/lib/auth/config";
 import { redirectToLogin } from "@/lib/auth/session-redirect";
 
 type MePayload = {
@@ -16,7 +18,8 @@ type MePayload = {
 
 /**
  * Fail-closed /me parse — digits-only SafeInteger ids. Hostile JSON must not
- * mint a chip with precision-lost telegram_id aliases.
+ * mint a chip with precision-lost telegram_id aliases. Timestamps via toIso;
+ * CSRF material length-capped (parity with cookie decode).
  */
 function parseMePayload(body: unknown): MePayload | null {
   if (body == null || typeof body !== "object" || Array.isArray(body)) {
@@ -26,14 +29,19 @@ function parseMePayload(body: unknown): MePayload | null {
   const id = toSafePositiveInt(r.id);
   const telegram_id = toSafePositiveInt(r.telegram_id);
   if (id == null || telegram_id == null) return null;
-  const created_at =
-    typeof r.created_at === "string" && r.created_at ? r.created_at : "";
+  const created_at = toIso(r.created_at);
   if (!created_at) return null;
+  let csrf_token: string | undefined;
+  if (typeof r.csrf_token === "string" && r.csrf_token) {
+    if (r.csrf_token.length <= MAX_CSRF_TOKEN_LENGTH) {
+      csrf_token = r.csrf_token;
+    }
+  }
   return {
     id,
     telegram_id,
     created_at,
-    csrf_token: typeof r.csrf_token === "string" ? r.csrf_token : undefined,
+    csrf_token,
   };
 }
 

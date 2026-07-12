@@ -55,6 +55,21 @@ function unauthorizedBody(): { error: { code: string; message: string } } {
 }
 
 /**
+ * Browser mutation paths must stay under ``/api/v1/`` — reject absolute /
+ * scheme-relative / ``..`` / off-API paths that used to ship X-CSRF-Token to
+ * arbitrary same-origin routes (parity with server ``isSafeServerApiPath``).
+ */
+export function isSafeClientApiPath(path: string): boolean {
+  if (!path.startsWith("/") || path.startsWith("//")) return false;
+  if (path.includes("://") || path.includes("\\") || path.includes("..")) {
+    return false;
+  }
+  if (/[\u0000-\u001F\u007F]/.test(path)) return false;
+  const pathOnly = path.split("?", 1)[0] ?? path;
+  return pathOnly === "/api/v1" || pathOnly.startsWith("/api/v1/");
+}
+
+/**
  * Browser mutation against /api/v1 with credentials + X-CSRF-Token.
  * Login is the only CSRF-exempt mutation — do not use this for demo auth.
  *
@@ -71,28 +86,15 @@ export async function apiMutate(
     authRedirect?: boolean;
   },
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  // Fail closed — absolute / scheme-relative paths would leak X-CSRF-Token
-  // off-origin (credentials stay same-origin, but the header still ships).
-  if (!path.startsWith("/") || path.startsWith("//") || path.includes("://")) {
+  // Fail closed — absolute / off-/api/v1 paths would leak X-CSRF-Token.
+  if (!isSafeClientApiPath(path)) {
     return {
       ok: false,
       status: 400,
       data: {
         error: {
           code: "validation_error",
-          message: "apiMutate path must be root-relative.",
-        },
-      },
-    };
-  }
-  if (path.includes("..") || path.includes("\\")) {
-    return {
-      ok: false,
-      status: 400,
-      data: {
-        error: {
-          code: "validation_error",
-          message: "apiMutate path must be root-relative.",
+          message: "apiMutate path must be root-relative /api/v1/*.",
         },
       },
     };
