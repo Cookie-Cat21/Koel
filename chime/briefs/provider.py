@@ -78,7 +78,9 @@ class _HttpBriefProviderBase:
         Truncates the *inner* filing body so a small ``AI_MAX_INPUT_CHARS``
         cannot chop ``<<<END_FILING>>>`` and trigger a broken re-wrap.
         """
-        body = (text or "").replace("\x00", "").strip()
+        if not isinstance(text, str):
+            raise ValueError("summarize requires non-empty text")
+        body = text.replace("\x00", "").strip()
         if not body:
             raise ValueError("summarize requires non-empty text")
         max_chars = resolve_positive_int_cap(

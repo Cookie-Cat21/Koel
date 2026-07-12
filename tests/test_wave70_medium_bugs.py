@@ -1,4 +1,4 @@
-"""Wave70: medium+ bugs — config/poller/guardrails/browse/session guards.
+"""Wave70: medium+ bugs — config/poller/guardrails/browse/session + disclosure.
 
 1. ``Settings`` env helpers must isinstance-guard getenv returns — non-string
    mocks used to throw on ``.strip`` / ``.upper`` / ``.rstrip`` mid boot.
@@ -9,18 +9,25 @@
 4. ``queryMarketBrowse`` must typeof-guard ``opts.q`` before ``.trim``.
 5. ``requirePageSession`` must typeof-guard cookie value before verify /
    expired redirect (parity ``verifySessionToken``).
+6. Disclosure eval / brief sanitize / DoA parse must isinstance-guard before
+   ``.strip`` / ``.replace`` (non-strings used to raise mid rule fire / brief).
 """
 
 from __future__ import annotations
 
-from datetime import time
+from datetime import UTC, datetime, time
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from chime.adapters.cse import _parse_date_of_announcement
+from chime.briefs import BriefSettings
+from chime.briefs.provider import GeminiBriefProvider
 from chime.config import Settings
+from chime.domain import AlertRule, AlertType, Disclosure
 from chime.poller import _symbol_from_alert_message, parse_hhmm
+from chime.rules import _disclosure_category_matches, evaluate_disclosure_rules
 from chime.scenarios.guardrails import (
     GuardrailViolation,
     assert_safe_scenario_output,
@@ -108,3 +115,73 @@ def test_require_page_session_cookie_typeof_guard() -> None:
     assert "LOGIN_EXPIRED_PATH" in chunk
     # Bare truthy cookie (no typeof) must not decide expired redirect alone.
     assert "redirect(raw ? LOGIN_EXPIRED_PATH" not in chunk
+
+
+def _rule(**kwargs: object) -> AlertRule:
+    base = dict(
+        id=1,
+        user_id=1,
+        telegram_id=1,
+        symbol="JKH.N0000",
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category=None,
+        active=True,
+        armed=True,
+        created_at=datetime(2020, 1, 1, tzinfo=UTC),
+    )
+    base.update(kwargs)
+    return AlertRule.model_construct(**base)  # type: ignore[arg-type]
+
+
+def _disclosure(**kwargs: object) -> Disclosure:
+    base = dict(
+        external_id="ext-1",
+        symbol="JKH.N0000",
+        title="t",
+        url="https://www.cse.lk/announcements",
+        published_at=datetime(2024, 6, 1, tzinfo=UTC),
+        seen_at=datetime(2024, 6, 1, tzinfo=UTC),
+        category="Financial",
+    )
+    base.update(kwargs)
+    return Disclosure.model_construct(**base)  # type: ignore[arg-type]
+
+
+def test_disclosure_category_and_external_id_isinstance_guards() -> None:
+    rule = _rule(category=123)
+    disc = _disclosure()
+    # Non-string category → treat as unrestricted match
+    assert _disclosure_category_matches(rule, disc) is True
+
+    bad = _disclosure(external_id=999)
+    assert evaluate_disclosure_rules(disclosure=bad, rules=[_rule()]) == []
+
+    src = (ROOT / "chime" / "rules.py").read_text(encoding="utf-8")
+    assert "isinstance(rule.category, str)" in src
+    assert "isinstance(disclosure.external_id, str)" in src
+
+
+def test_brief_sanitize_user_text_rejects_non_strings() -> None:
+    provider = GeminiBriefProvider(BriefSettings(enabled=True, api_key="k"))
+    with pytest.raises(ValueError, match="non-empty"):
+        provider._sanitize_user_text(123)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="non-empty"):
+        provider._sanitize_user_text(None)  # type: ignore[arg-type]
+    out = provider._sanitize_user_text("hello filing")
+    assert "<<<FILING>>>" in out and "hello filing" in out
+
+    src = (ROOT / "chime" / "briefs" / "provider.py").read_text(encoding="utf-8")
+    chunk = src.split("def _sanitize_user_text")[1].split("class GeminiBriefProvider")[0]
+    assert "isinstance(text, str)" in chunk
+
+
+def test_parse_date_of_announcement_rejects_non_strings() -> None:
+    assert _parse_date_of_announcement(123) is None  # type: ignore[arg-type]
+    assert _parse_date_of_announcement(True) is None  # type: ignore[arg-type]
+    assert _parse_date_of_announcement(None) is None
+    assert _parse_date_of_announcement("30 Jun 2026") is not None
+
+    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    body = src.split("def _parse_date_of_announcement")[1].split("\ndef ")[0]
+    assert "isinstance(value, str)" in body

@@ -350,7 +350,7 @@ def _parse_date_of_announcement(value: str | None) -> datetime | None:
     Calendar-only strings (no time) are local midnight in Colombo, not UTC midnight.
     Returns None if unparseable.
     """
-    if value is None:
+    if not isinstance(value, str):
         return None
     text = value.strip()
     if not text:

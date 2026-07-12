@@ -223,7 +223,10 @@ def evaluate_price_rules(
 
 def _disclosure_category_matches(rule: AlertRule, disclosure: Disclosure) -> bool:
     """If rule.category is set, require disclosure.category contains it (case-insensitive)."""
-    needle = (rule.category or "").strip()
+    # Non-string category → treat as unrestricted (filter only; never throw).
+    if not isinstance(rule.category, str):
+        return True
+    needle = rule.category.strip()
     if not needle:
         return True
     haystack = disclosure.category
@@ -257,7 +260,7 @@ def evaluate_disclosure_rules(
     Weird / unconvertible timestamps fail closed (never raise).
     """
     events: list[AlertEvent] = []
-    if not (disclosure.external_id or "").strip():
+    if not isinstance(disclosure.external_id, str) or not disclosure.external_id.strip():
         return events
     published = _safe_utc_aware(disclosure.published_at)
     if published is None:
