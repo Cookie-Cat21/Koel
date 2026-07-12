@@ -9,6 +9,12 @@ import { getPool } from "@/lib/db";
 
 export const runtime = "nodejs";
 
+function toSafeId(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isSafeInteger(n) || n <= 0) return null;
+  return n;
+}
+
 /**
  * GET /api/v1/me — current user from session; re-issues CSRF material.
  */
@@ -31,10 +37,17 @@ export async function GET(request: NextRequest) {
       return jsonError(401, "unauthorized", "Authentication required.");
     }
 
+    const id = toSafeId(row.id);
+    const telegram_id = toSafeId(row.telegram_id);
+    // Fail closed: non-finite / unsafe ids would JSON as null and break clients.
+    if (id == null || telegram_id == null) {
+      return jsonError(503, "degraded", "Database unavailable.");
+    }
+
     const csrf = mintCsrfToken();
     const res = jsonOk({
-      id: Number(row.id),
-      telegram_id: Number(row.telegram_id),
+      id,
+      telegram_id,
       created_at: toIso(row.created_at),
       csrf_token: csrf,
     });

@@ -420,6 +420,22 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+def parse_cancel_alert_id(raw: str) -> int | None:
+    """Parse ``/cancel`` alert id; reject non-digits and oversize ints.
+
+    Hostile input like ``9``×10k used to become a multi-KB Telegram body and a
+    pathological DB param. Digits-only + ≤18 digits stays under bigint range and
+    keeps confirm/error replies well under Telegram's 4096 limit.
+    """
+    cleaned = raw.lstrip("#").strip()
+    if not cleaned.isdigit() or len(cleaned) > 18:
+        return None
+    rule_id = int(cleaned)
+    if rule_id <= 0:
+        return None
+    return rule_id
+
+
 async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if await _rate_limited(update, context):
         return
@@ -429,27 +445,35 @@ async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not context.args:
         await update.effective_message.reply_text(CANCEL_USAGE)
         return
-    raw = context.args[0].lstrip("#")
-    try:
-        rule_id = int(raw)
-    except ValueError:
-        await update.effective_message.reply_text(
-            "Alert id must be a number. Usage: /cancel ALERT_ID"
-        )
-        return
-    if rule_id <= 0:
-        await update.effective_message.reply_text(
-            "Alert id must be a positive number. Usage: /cancel ALERT_ID"
-        )
+    rule_id = parse_cancel_alert_id(context.args[0])
+    if rule_id is None:
+        # Distinguish empty/zero from garbage for actionable copy.
+        cleaned = context.args[0].lstrip("#").strip()
+        if (
+            cleaned.isdigit()
+            and len(cleaned) <= 18
+            and int(cleaned) <= 0
+        ):
+            await update.effective_message.reply_text(
+                "Alert id must be a positive number. Usage: /cancel ALERT_ID"
+            )
+        else:
+            await update.effective_message.reply_text(
+                "Alert id must be a number. Usage: /cancel ALERT_ID"
+            )
         return
     user_id = await _user_id(storage, update)
     assert user_id is not None
     ok = await storage.deactivate_alert(user_id, rule_id)
     if ok:
-        await update.effective_message.reply_text(f"Cancelled alert #{rule_id}.")
+        await update.effective_message.reply_text(
+            _clamp_telegram_message(f"Cancelled alert #{rule_id}.")
+        )
     else:
         await update.effective_message.reply_text(
-            f"No active alert #{rule_id} found. Check /myalerts."
+            _clamp_telegram_message(
+                f"No active alert #{rule_id} found. Check /myalerts."
+            )
         )
 
 

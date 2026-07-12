@@ -1,10 +1,15 @@
 import type { NextRequest } from "next/server";
 
 import {
+  MAX_DISCLOSURE_CATEGORY_LENGTH,
+  MAX_DISCLOSURE_COMPANY_LENGTH,
+  MAX_DISCLOSURE_EXTERNAL_ID_LENGTH,
+  MAX_DISCLOSURE_TITLE_LENGTH,
   normalizeBriefStatus,
   safeAnnouncementUrl,
   safePdfUrl,
   sanitizeBriefText,
+  sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
@@ -80,15 +85,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
       // Drop non-finite ids — JSON.stringify(NaN) becomes null.
       if (!Number.isFinite(id)) return [];
       const brief_status = normalizeBriefStatus(row.brief_status);
+      // Title/category/company/external_id: strip controls + cap (hostile DB
+      // text must not balloon JSON or leak C0 into the dash).
+      const title =
+        sanitizeDisclosureText(row.title, MAX_DISCLOSURE_TITLE_LENGTH) ?? "";
       return [
         {
           id,
-          external_id: row.external_id,
-          title: row.title,
-          category: row.category,
+          external_id:
+            sanitizeDisclosureText(
+              row.external_id,
+              MAX_DISCLOSURE_EXTERNAL_ID_LENGTH,
+            ) ?? "",
+          title,
+          category: sanitizeDisclosureText(
+            row.category,
+            MAX_DISCLOSURE_CATEGORY_LENGTH,
+          ),
           url: safeAnnouncementUrl(row.url),
           published_at: toIso(row.published_at),
-          company_name: row.company_name,
+          company_name: sanitizeDisclosureText(
+            row.company_name,
+            MAX_DISCLOSURE_COMPANY_LENGTH,
+          ),
           pdf_url: safePdfUrl(row.pdf_url),
           brief: sanitizeBriefText(row.brief, brief_status),
           brief_status,

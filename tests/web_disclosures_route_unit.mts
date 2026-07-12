@@ -20,6 +20,8 @@ type DisclosureItem = {
   id?: number;
   external_id?: string;
   title?: string;
+  category?: string | null;
+  company_name?: string | null;
   url?: string | null;
   pdf_url?: string | null;
   brief?: string | null;
@@ -218,12 +220,12 @@ async function testBriefOnlyWhenReadyAndStripsControls(): Promise<void> {
       },
       {
         id: 81,
-        external_id: "b2",
-        title: "Ready brief",
-        category: null,
+        external_id: "b2\u0000evil",
+        title: "Ready brief\u0000 with NUL",
+        category: "Fin\u0000ancial\nReport",
         url: SAFE_URL,
         published_at: new Date("2026-07-10T04:00:00Z"),
-        company_name: null,
+        company_name: "Acme\u0000 Corp",
         pdf_url: null,
         brief: "Plain summary\u0000 with NUL",
         brief_status: "ready",
@@ -260,6 +262,10 @@ async function testBriefOnlyWhenReadyAndStripsControls(): Promise<void> {
   assert(pending.brief_status === "pending", "pending status kept");
   assert(ready.brief === "Plain summary with NUL", `controls stripped, got ${JSON.stringify(ready.brief)}`);
   assert(ready.brief_status === "ready", "ready status kept");
+  assert(ready.title === "Ready brief with NUL", `title controls stripped, got ${JSON.stringify(ready.title)}`);
+  assert(ready.category === "FinancialReport", `category controls stripped, got ${JSON.stringify(ready.category)}`);
+  assert(ready.company_name === "Acme Corp", `company controls stripped, got ${JSON.stringify(ready.company_name)}`);
+  assert(ready.external_id === "b2evil", `external_id controls stripped, got ${JSON.stringify(ready.external_id)}`);
   assert(failed.brief === null, "failed brief must not egress");
   assert(failed.brief_status === "failed", "failed status kept");
   assert(processing.brief === null, "processing brief must not egress");

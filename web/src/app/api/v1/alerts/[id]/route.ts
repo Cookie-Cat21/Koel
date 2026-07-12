@@ -17,8 +17,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!gated.ok) return gated.response;
 
   const { id: rawId } = await context.params;
+  // Digits-only + SafeInteger: reject 1e21 / precision-loss ids that could
+  // cancel the wrong row (Number.isInteger alone accepts unsafe ints).
+  if (!/^\d{1,15}$/.test(rawId)) {
+    return jsonError(400, "validation_error", "Invalid alert id.");
+  }
   const ruleId = Number(rawId);
-  if (!Number.isInteger(ruleId) || ruleId <= 0) {
+  if (!Number.isSafeInteger(ruleId) || ruleId <= 0) {
     return jsonError(400, "validation_error", "Invalid alert id.");
   }
 

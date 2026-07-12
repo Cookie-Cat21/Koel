@@ -1764,9 +1764,11 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule:
     created = row.get("created_at")
     if created is not None and not isinstance(created, datetime):
         created = datetime.fromisoformat(str(created))
-    cat = row.get("category")
-    if cat is not None:
-        cat = str(cat).strip() or None
+    # Legacy / poisoned rows may still hold C0 controls or oversize categories —
+    # sanitize on read so matching + Telegram egress share one egress bar.
+    cat = sanitize_disclosure_category(
+        None if row.get("category") is None else str(row.get("category"))
+    )
     return AlertRule(
         id=int(row["id"]),
         user_id=int(row["user_id"]),
