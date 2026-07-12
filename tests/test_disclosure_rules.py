@@ -136,3 +136,73 @@ def test_naive_published_at_before_aware_created_at_no_fire() -> None:
     )
     disc = make_disclosure(published_at=datetime(2026, 7, 11, 11, 0, 0))  # naive
     assert evaluate_disclosure_rules(disclosure=disc, rules=[rule]) == []
+
+
+def test_disclosure_category_filter_match_fires() -> None:
+    rule = make_rule(
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category="Financial",
+        created_at=_RULE_CREATED,
+    )
+    disc = make_disclosure(category="Financial Report", title="Q1 Results")
+    events = evaluate_disclosure_rules(disclosure=disc, rules=[rule])
+    assert len(events) == 1
+
+
+def test_disclosure_category_filter_case_insensitive() -> None:
+    rule = make_rule(
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category="financial",
+        created_at=_RULE_CREATED,
+    )
+    disc = make_disclosure(category="FINANCIAL REPORT")
+    events = evaluate_disclosure_rules(disclosure=disc, rules=[rule])
+    assert len(events) == 1
+
+
+def test_disclosure_category_filter_mismatch_no_fire() -> None:
+    rule = make_rule(
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category="Dividend",
+        created_at=_RULE_CREATED,
+    )
+    disc = make_disclosure(category="Financial Report")
+    assert evaluate_disclosure_rules(disclosure=disc, rules=[rule]) == []
+
+
+def test_disclosure_category_filter_missing_disclosure_category_no_fire() -> None:
+    rule = make_rule(
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category="Financial",
+        created_at=_RULE_CREATED,
+    )
+    disc = make_disclosure(category=None)
+    assert evaluate_disclosure_rules(disclosure=disc, rules=[rule]) == []
+
+
+def test_disclosure_no_category_filter_matches_any() -> None:
+    rule = make_rule(
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category=None,
+        created_at=_RULE_CREATED,
+    )
+    disc = make_disclosure(category="Anything")
+    events = evaluate_disclosure_rules(disclosure=disc, rules=[rule])
+    assert len(events) == 1
+
+
+def test_disclosure_blank_category_filter_treated_as_any() -> None:
+    rule = make_rule(
+        type=AlertType.DISCLOSURE,
+        threshold=None,
+        category="   ",
+        created_at=_RULE_CREATED,
+    )
+    disc = make_disclosure(category=None)
+    events = evaluate_disclosure_rules(disclosure=disc, rules=[rule])
+    assert len(events) == 1

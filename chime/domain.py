@@ -70,6 +70,9 @@ class AlertRule(BaseModel):
     symbol: str
     type: AlertType
     threshold: float | None = None
+    # Disclosure rules only: optional case-insensitive substring filter on
+    # Disclosure.category. None = match any category (backward compatible).
+    category: str | None = None
     active: bool = True
     armed: bool = True
     created_at: datetime | None = None

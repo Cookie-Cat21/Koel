@@ -147,6 +147,7 @@ HELP_HINT = HELP_TEXT
 class ParsedAlert:
     alert_type: AlertType
     threshold: float | None
+    category: str | None = None
 
 
 def normalize_symbol(raw: str) -> str | None:
@@ -190,7 +191,8 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
             return ParsedAlert(AlertType.PRICE_BELOW, threshold), None
         return ParsedAlert(AlertType.DAILY_MOVE, threshold), None
     if kind in ("disclosure", "announcement"):
-        return ParsedAlert(AlertType.DISCLOSURE, None), None
+        category = " ".join(args[2:]).strip() or None
+        return ParsedAlert(AlertType.DISCLOSURE, None, category), None
     return None, (
         "I didn't catch that alert type.\n"
         f"{ALERT_USAGE}"
@@ -323,6 +325,7 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     alert_type = parsed.alert_type
     threshold = parsed.threshold
+    category = parsed.category
 
     status, info = await _lookup_symbol(cse, symbol)
     if status == "upstream":
@@ -338,10 +341,17 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = await _user_id(storage, update)
     assert user_id is not None
     await storage.upsert_stock(symbol, info.name)
-    rule = await storage.create_alert_rule(user_id, symbol, alert_type, threshold)
+    rule = await storage.create_alert_rule(
+        user_id, symbol, alert_type, threshold, category=category
+    )
 
     if alert_type == AlertType.DISCLOSURE:
-        desc = f"new disclosure for {symbol}"
+        if rule.category:
+            desc = (
+                f"new disclosure for {symbol} matching category '{rule.category}'"
+            )
+        else:
+            desc = f"new disclosure for {symbol}"
     elif alert_type == AlertType.DAILY_MOVE:
         desc = f"{symbol} daily move ≥ {threshold:g}%"
     elif alert_type == AlertType.PRICE_ABOVE:
@@ -409,7 +419,10 @@ async def cmd_myalerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     lines = ["Your alerts:"]
     for r in rules:
         if r.type == AlertType.DISCLOSURE:
-            lines.append(f"#{r.id} {r.symbol} disclosure")
+            if r.category:
+                lines.append(f"#{r.id} {r.symbol} disclosure {r.category}")
+            else:
+                lines.append(f"#{r.id} {r.symbol} disclosure")
         elif r.type == AlertType.DAILY_MOVE:
             lines.append(f"#{r.id} {r.symbol} move {r.threshold:g}%")
         elif r.type == AlertType.PRICE_ABOVE:

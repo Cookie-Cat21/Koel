@@ -129,3 +129,20 @@ def test_start_text_includes_nfa_framing() -> None:
     assert disclaimer() in START_TEXT
     assert "Not financial advice" in START_TEXT
     assert "informational only" in START_TEXT.lower() or "Not financial advice" in START_TEXT
+
+
+@pytest.mark.parametrize(
+    "args,category",
+    [
+        (["HNB.N0000", "disclosure"], None),
+        (["JKH.N0000", "disclosure", "Financial"], "Financial"),
+        (["JKH.N0000", "disclosure", "Financial", "Report"], "Financial Report"),
+        (["COMB.N0000", "announcement", "Dividend"], "Dividend"),
+    ],
+)
+def test_parse_disclosure_category_args(args: list[str], category: str | None) -> None:
+    parsed, err = parse_alert_args(args)
+    assert err is None
+    assert parsed is not None
+    assert parsed.alert_type == AlertType.DISCLOSURE
+    assert parsed.category == category

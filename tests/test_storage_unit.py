@@ -595,3 +595,47 @@ def test_row_helpers_parse_iso_created() -> None:
         }
     )
     assert rule.created_at is not None
+
+
+@pytest.mark.asyncio
+async def test_create_alert_rule_disclosure_with_category() -> None:
+    inserted = {
+        "id": 12,
+        "user_id": 3,
+        "symbol": "JKH.N0000",
+        "type": "disclosure",
+        "threshold": None,
+        "category": "Financial",
+        "active": True,
+        "armed": True,
+        "created_at": "2026-07-11T06:00:00+00:00",
+    }
+    conn = _Conn([None, None, None, None, inserted, {"telegram_id": 1001}])
+    store = _store(conn)
+    rule = await store.create_alert_rule(
+        3, "JKH.N0000", AlertType.DISCLOSURE, None, category="Financial"
+    )
+    assert rule.id == 12
+    assert rule.category == "Financial"
+    insert_sql = [s for s in conn.sql if "INSERT INTO alert_rules" in s][0]
+    assert "category" in insert_sql
+    assert conn.params[-2][4] == "Financial" or any(
+        isinstance(p, tuple) and len(p) >= 5 and p[4] == "Financial" for p in conn.params
+    )
+
+
+def test_row_to_rule_strips_category() -> None:
+    disc_rule = _row_to_rule(
+        {
+            "id": 2,
+            "user_id": 2,
+            "telegram_id": 3,
+            "symbol": "JKH.N0000",
+            "type": "disclosure",
+            "threshold": None,
+            "category": "  Dividend  ",
+            "active": True,
+            "created_at": "2026-07-11T06:00:00+00:00",
+        }
+    )
+    assert disc_rule.category == "Dividend"

@@ -351,3 +351,61 @@ async def test_cmd_mywatchlist_empty_and_list() -> None:
     reply = update2.effective_message.reply_text.await_args.args[0]
     assert "Watchlist:" in reply
     assert "JKH.N0000" in reply
+
+
+@pytest.mark.asyncio
+async def test_cmd_alert_disclosure_category() -> None:
+    storage = AsyncMock()
+    storage.ensure_user = AsyncMock(return_value=42)
+    storage.upsert_stock = AsyncMock()
+
+    async def _create(
+        user_id: int,
+        symbol: str,
+        alert_type: AlertType,
+        threshold: float | None,
+        category: str | None = None,
+    ) -> AlertRule:
+        return AlertRule(
+            id=9,
+            user_id=user_id,
+            telegram_id=1001,
+            symbol=symbol,
+            type=alert_type,
+            threshold=threshold,
+            category=category,
+        )
+
+    storage.create_alert_rule = AsyncMock(side_effect=_create)
+    cse = AsyncMock()
+    cse.fetch_company_info = AsyncMock(return_value=_snap())
+    update, context = _make_update_context(
+        args=["JKH.N0000", "disclosure", "Financial"], storage=storage, cse=cse
+    )
+    await cmd_alert(update, context)
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "matching category 'Financial'" in reply
+    assert storage.create_alert_rule.await_args.kwargs.get("category") == "Financial"
+
+
+@pytest.mark.asyncio
+async def test_cmd_myalerts_shows_disclosure_category() -> None:
+    storage = AsyncMock()
+    storage.ensure_user = AsyncMock(return_value=42)
+    storage.list_alerts = AsyncMock(
+        return_value=[
+            AlertRule(
+                id=5,
+                user_id=42,
+                telegram_id=1001,
+                symbol="JKH.N0000",
+                type=AlertType.DISCLOSURE,
+                threshold=None,
+                category="Financial",
+            )
+        ]
+    )
+    update, context = _make_update_context(storage=storage)
+    await cmd_myalerts(update, context)
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "#5 JKH.N0000 disclosure Financial" in reply

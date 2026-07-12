@@ -485,18 +485,23 @@ class Storage:
         symbol: str,
         alert_type: AlertType,
         threshold: float | None,
+        category: str | None = None,
     ) -> AlertRule:
         """Create or return an identical active rule (idempotent under concurrency).
 
         Avoids deactivate-then-insert TOCTOU where a parallel caller could
         deactivate the rule id we already returned to the user.
+        ``category`` is for disclosure rules only (substring filter); ignored otherwise.
         """
         symbol = symbol.strip().upper()
+        cat = category.strip() if category and category.strip() else None
+        if alert_type != AlertType.DISCLOSURE:
+            cat = None
         await self.upsert_stock(symbol)
         await self.add_watch(user_id, symbol)
         async with self._pool.connection() as conn:
             existing = await self._fetch_active_rule(
-                conn, user_id, symbol, alert_type, threshold
+                conn, user_id, symbol, alert_type, threshold, cat
             )
             if existing is not None:
                 return existing
@@ -504,17 +509,19 @@ class Storage:
                 row = await (
                     await conn.execute(
                         """
-                        INSERT INTO alert_rules (user_id, symbol, type, threshold, active, armed)
-                        VALUES (%s, %s, %s, %s, TRUE, TRUE)
-                        RETURNING id, user_id, symbol, type, threshold, active, armed, created_at
+                        INSERT INTO alert_rules
+                            (user_id, symbol, type, threshold, category, active, armed)
+                        VALUES (%s, %s, %s, %s, %s, TRUE, TRUE)
+                        RETURNING id, user_id, symbol, type, threshold, category,
+                                  active, armed, created_at
                         """,
-                        (user_id, symbol, alert_type.value, threshold),
+                        (user_id, symbol, alert_type.value, threshold, cat),
                     )
                 ).fetchone()
             except UniqueViolation:
                 await conn.rollback()
                 raced = await self._fetch_active_rule(
-                    conn, user_id, symbol, alert_type, threshold
+                    conn, user_id, symbol, alert_type, threshold, cat
                 )
                 if raced is not None:
                     return raced
@@ -538,6 +545,7 @@ class Storage:
             symbol=r["symbol"],
             type=AlertType(r["type"]),
             threshold=r["threshold"],
+            category=r.get("category"),
             active=bool(r["active"]),
             armed=bool(r["armed"]),
             created_at=created,
@@ -550,6 +558,7 @@ class Storage:
         symbol: str,
         alert_type: AlertType,
         threshold: float | None,
+        category: str | None = None,
     ) -> AlertRule | None:
         row = await (
             await conn.execute(
@@ -558,11 +567,13 @@ class Storage:
                 FROM alert_rules ar
                 JOIN users u ON u.id = ar.user_id
                 WHERE ar.user_id = %s AND ar.symbol = %s AND ar.type = %s
-                  AND COALESCE(ar.threshold, -1) = COALESCE(%s, -1) AND ar.active
+                  AND COALESCE(ar.threshold, -1) = COALESCE(%s, -1)
+                  AND COALESCE(ar.category, '') = COALESCE(%s, '')
+                  AND ar.active
                 ORDER BY ar.id DESC
                 LIMIT 1
                 """,
-                (user_id, symbol, alert_type.value, threshold),
+                (user_id, symbol, alert_type.value, threshold, category),
             )
         ).fetchone()
         if row is None:
@@ -986,6 +997,9 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule:
     created = row.get("created_at")
     if created is not None and not isinstance(created, datetime):
         created = datetime.fromisoformat(str(created))
+    cat = row.get("category")
+    if cat is not None:
+        cat = str(cat).strip() or None
     return AlertRule(
         id=int(row["id"]),
         user_id=int(row["user_id"]),
@@ -993,6 +1007,7 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule:
         symbol=row["symbol"],
         type=AlertType(row["type"]),
         threshold=row.get("threshold"),
+        category=cat,
         active=bool(row["active"]),
         armed=bool(row.get("armed", True)),
         created_at=created,

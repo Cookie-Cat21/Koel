@@ -197,6 +197,17 @@ def evaluate_price_rules(
     return events
 
 
+def _disclosure_category_matches(rule: AlertRule, disclosure: Disclosure) -> bool:
+    """If rule.category is set, require disclosure.category contains it (case-insensitive)."""
+    needle = (rule.category or "").strip()
+    if not needle:
+        return True
+    haystack = disclosure.category
+    if haystack is None:
+        return False
+    return needle.casefold() in haystack.casefold()
+
+
 def evaluate_disclosure_rules(
     *,
     disclosure: Disclosure,
@@ -206,6 +217,7 @@ def evaluate_disclosure_rules(
 
     Skips announcements published at or before the rule's created_at so historical
     backfill never floods Telegram. Missing rule.created_at fails closed (no fire).
+    Optional rule.category filters by case-insensitive substring on disclosure.category.
     """
     events: list[AlertEvent] = []
     published = _as_utc_aware(disclosure.published_at)
@@ -221,6 +233,8 @@ def evaluate_disclosure_rules(
             continue
         created = _as_utc_aware(rule.created_at)
         if published <= created:
+            continue
+        if not _disclosure_category_matches(rule, disclosure):
             continue
         events.append(
             AlertEvent(
