@@ -30,6 +30,10 @@ export function mintSessionToken(
   secret: string,
   ttlSeconds: number = SESSION_TTL_SECONDS,
 ): { token: string; payload: SessionPayload } {
+  // Fail closed — float / ≤0 / unsafe ids must not mint a signed session.
+  if (!Number.isSafeInteger(userId) || userId <= 0) {
+    throw new Error("userId must be a positive SafeInteger");
+  }
   const payload: SessionPayload = {
     user_id: userId,
     exp: Math.floor(Date.now() / 1000) + ttlSeconds,

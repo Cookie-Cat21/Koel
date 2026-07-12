@@ -2,7 +2,8 @@
 
 1. History page must not ``as HistoryPayload`` cast — SafeInteger ids,
    sanitize symbol/event_key, allowlist delivery_status, drop unknown types.
-2. DELETE /watchlist/{symbol} must decodeURIComponent like other symbol routes.
+2. DELETE /watchlist/{symbol} must safe-decode the path segment (w33:
+   ``normalizeSymbolParam`` — malformed ``%`` must not ``URIError`` 500).
 3. Login demo form must parse telegram_id via digits-only toSafePositiveInt
    (Number() precision-loss before SafeInteger check).
 """
@@ -30,7 +31,8 @@ def test_watchlist_delete_decodes_symbol() -> None:
         WEB / "src" / "app" / "api" / "v1" / "watchlist" / "[symbol]" / "route.ts"
     )
     source = route.read_text(encoding="utf-8")
-    assert "normalizeSymbol(decodeURIComponent(raw))" in source
+    # w33: safeDecode via normalizeSymbolParam (URIError → 400).
+    assert "normalizeSymbolParam(raw)" in source
 
 
 def test_login_form_uses_digits_only_telegram_id() -> None:

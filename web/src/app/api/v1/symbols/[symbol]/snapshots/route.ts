@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
-import { normalizeSymbol } from "@/lib/api/symbol";
+import { normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
@@ -20,7 +20,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;
-  const symbol = normalizeSymbol(decodeURIComponent(raw));
+  // safeDecode — malformed % sequences must 400, not URIError 500.
+  const symbol = normalizeSymbolParam(raw);
   if (!symbol) {
     return jsonError(400, "invalid_symbol", "Invalid symbol.");
   }

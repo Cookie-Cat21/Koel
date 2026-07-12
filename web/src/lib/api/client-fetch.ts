@@ -15,7 +15,12 @@ export function readBrowserCsrf(): string | null {
   for (const part of document.cookie.split(";")) {
     const trimmed = part.trim();
     if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
+      // Malformed % sequences must not throw URIError mid-mutation.
+      try {
+        return decodeURIComponent(trimmed.slice(prefix.length));
+      } catch {
+        return null;
+      }
     }
   }
   return null;

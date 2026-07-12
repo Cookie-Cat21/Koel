@@ -1,7 +1,11 @@
+import { MAX_ISO_INPUT_LENGTH } from "@/lib/api/time";
+
 /** True only for finite number primitives (rejects string/NaN/±Infinity). */
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
+
+const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/;
 
 /** Format a number for display; empty when nullish or non-finite. */
 export function formatNumber(
@@ -24,8 +28,12 @@ export function formatPct(value: number | null | undefined): string {
 }
 
 export function formatTs(iso: string | null | undefined): string {
+  // Parity with toIso: reject overlong / control-laden timestamp strings.
   if (typeof iso !== "string" || !iso) return "—";
-  const d = new Date(iso);
+  const trimmed = iso.trim();
+  if (!trimmed || trimmed.length > MAX_ISO_INPUT_LENGTH) return "—";
+  if (CTRL_RE.test(trimmed)) return "—";
+  const d = new Date(trimmed);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-LK", {
     dateStyle: "medium",

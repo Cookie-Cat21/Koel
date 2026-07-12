@@ -24,7 +24,7 @@ import {
 } from "@/lib/api/disclosure-safe";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
-import { normalizeSymbol } from "@/lib/api/symbol";
+import { normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
@@ -51,7 +51,8 @@ export async function generateMetadata({
   params: Promise<{ symbol: string }>;
 }) {
   const { symbol: raw } = await params;
-  const symbol = normalizeSymbol(decodeURIComponent(raw)) ?? raw;
+  // Fail closed — never echo hostile / undecodable raw into <title>.
+  const symbol = normalizeSymbolParam(raw) ?? "Symbol";
   return {
     title: `${symbol} · Chime`,
     description: `Last price and disclosures for ${symbol}.`,
@@ -218,7 +219,8 @@ export default async function SymbolDetailPage({
   await requirePageSession();
 
   const { symbol: raw } = await params;
-  const symbol = normalizeSymbol(decodeURIComponent(raw));
+  // safeDecode — malformed % sequences → notFound (not URIError 500).
+  const symbol = normalizeSymbolParam(raw);
   if (!symbol) {
     notFound();
   }
