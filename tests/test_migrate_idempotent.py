@@ -1,7 +1,8 @@
 """E8-Q01 / E5-C01: apply_migrations is idempotent when run twice.
 
-Also pins wave3 migration 005/006 presence (unit; no DB required).
-Idempotent apply requires DATABASE_URL and skips if unset (unit CI parity).
+Also pins wave3 migration 005/006 presence and wave12 continuum 001–008
+(unit; no DB required). Idempotent apply requires DATABASE_URL and skips if
+unset (unit CI parity).
 """
 
 from __future__ import annotations
@@ -16,6 +17,31 @@ from chime.config import migrations_dir
 from chime.migrate import apply_migrations
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+# Wave12 continuum pin: no gaps / renames through sectors ingest.
+EXPECTED_MIGRATIONS_001_008 = [
+    "001_initial.sql",
+    "002_alert_log_attempts.sql",
+    "003_delivery_attempted_ok.sql",
+    "004_delivery_lease.sql",
+    "005_disclosure_briefs.sql",
+    "006_alert_rule_category.sql",
+    "007_brief_processing_status.sql",
+    "008_sectors.sql",
+]
+
+
+def test_migrations_001_through_008_continuum() -> None:
+    """Migrations 001–008 exist as an unbroken ordered continuum (wave12)."""
+    files = sorted(p.name for p in migrations_dir().glob("*.sql") if p.is_file())
+    assert files, "expected SQL migrations under db/migrations"
+    assert all(re.match(r"^\d{3}_.+\.sql$", name) for name in files)
+    assert files == sorted(files)
+    assert files[:8] == EXPECTED_MIGRATIONS_001_008
+    for name in EXPECTED_MIGRATIONS_001_008:
+        path = migrations_dir() / name
+        assert path.is_file(), f"missing migration file: {name}"
+        assert path.stat().st_size > 0, f"empty migration file: {name}"
 
 
 def test_migration_filenames_ordered_and_wave3_presence() -> None:
