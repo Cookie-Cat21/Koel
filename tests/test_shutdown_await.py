@@ -1,4 +1,8 @@
-"""E2-C02 / CORE-005: shutdown awaits in-flight scheduled tick (with timeout)."""
+"""E2-C02 / CORE-005: shutdown awaits in-flight scheduled tick (with timeout).
+
+Wave4: also drains shielded PDF enrich / brief push background tasks so
+``storage.close()`` does not race lock-holding fire-and-forget work.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from chime.config import Settings
-from chime.poller import SHUTDOWN_TICK_TIMEOUT_SECONDS, Poller
+from chime.poller import SHUTDOWN_TICK_TIMEOUT_SECONDS, PendingPdfEnrich, Poller
 
 
 def _settings() -> Settings:
@@ -57,6 +61,7 @@ async def test_shutdown_returns_quickly_when_no_tick() -> None:
     elapsed = time.monotonic() - t0
 
     assert elapsed < 0.5
+    assert poller._background_closed is True
 
 
 @pytest.mark.asyncio
@@ -146,3 +151,132 @@ async def test_shutdown_stops_scheduler_then_awaits_tick() -> None:
 
 def test_shutdown_timeout_constant() -> None:
     assert SHUTDOWN_TICK_TIMEOUT_SECONDS == 30.0
+
+
+@pytest.mark.asyncio
+async def test_shutdown_awaits_pdf_enrich_without_cancelling() -> None:
+    """Timeout must not cancel PDF enrich (holds enrich lock / pool borrow)."""
+    poller = _poller()
+    cancelled = False
+    started = asyncio.Event()
+
+    async def slow_pdf() -> None:
+        nonlocal cancelled
+        async with poller._pdf_enrich_lock:
+            started.set()
+            try:
+                await asyncio.sleep(60)
+            except asyncio.CancelledError:
+                cancelled = True
+                raise
+
+    task = asyncio.create_task(slow_pdf(), name="chime_pdf_enrich")
+    poller._pdf_enrich_tasks.add(task)
+    task.add_done_callback(poller._pdf_enrich_tasks.discard)
+    await started.wait()
+
+    with patch("chime.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0.05):
+        await poller.shutdown()
+
+    assert cancelled is False
+    assert poller._background_closed is True
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+@pytest.mark.asyncio
+async def test_shutdown_awaits_brief_drain_and_logs_exceptions() -> None:
+    """Brief drain failures are logged; shutdown still closes background gate."""
+    poller = _poller()
+    started = asyncio.Event()
+
+    async def boom() -> None:
+        async with poller._brief_drain_lock:
+            started.set()
+            await asyncio.sleep(0.05)
+            raise RuntimeError("brief boom")
+
+    task = asyncio.create_task(boom(), name="chime_brief_drain")
+    poller._brief_drain_tasks.add(task)
+    task.add_done_callback(poller._brief_drain_tasks.discard)
+    await started.wait()
+
+    await poller.shutdown()
+
+    assert task.done()
+    assert poller._background_closed is True
+    assert not poller._brief_drain_tasks
+
+
+@pytest.mark.asyncio
+async def test_shutdown_rejects_late_pdf_and_brief_schedules() -> None:
+    """After drain, late tick must not spawn work that races storage.close()."""
+    poller = _poller()
+    await poller.shutdown()
+
+    poller._schedule_pdf_enrichment(
+        [PendingPdfEnrich(disclosure_id=1, symbol="JKH.N0000", external_id="1")]
+    )
+    assert not poller._pdf_enrich_tasks
+
+    with patch("chime.poller.briefs_enabled", return_value=True):
+        poller._schedule_brief_drain()
+    assert not poller._brief_drain_tasks
+
+
+@pytest.mark.asyncio
+async def test_brief_drain_coalesces_while_lock_held() -> None:
+    """Second schedule while drain owns the lock does not stack tasks."""
+    poller = _poller()
+    release = asyncio.Event()
+    started = asyncio.Event()
+
+    async def hold_lock() -> None:
+        async with poller._brief_drain_lock:
+            started.set()
+            await release.wait()
+
+    task = asyncio.create_task(hold_lock())
+    poller._brief_drain_tasks.add(task)
+    task.add_done_callback(poller._brief_drain_tasks.discard)
+    await started.wait()
+
+    with patch("chime.poller.briefs_enabled", return_value=True):
+        poller._schedule_brief_drain()
+    assert len(poller._brief_drain_tasks) == 1
+
+    release.set()
+    await task
+
+
+@pytest.mark.asyncio
+async def test_shutdown_drains_pdf_then_late_brief_from_same_window() -> None:
+    """Shutdown re-scans so a brief task spawned mid-drain is still awaited."""
+    poller = _poller()
+    order: list[str] = []
+    brief_started = asyncio.Event()
+
+    async def pdf_then_spawn_brief() -> None:
+        order.append("pdf")
+        await asyncio.sleep(0.05)
+
+        async def brief() -> None:
+            order.append("brief")
+            brief_started.set()
+
+        t = asyncio.create_task(brief(), name="chime_brief_drain")
+        poller._brief_drain_tasks.add(t)
+        t.add_done_callback(poller._brief_drain_tasks.discard)
+
+    pdf_task = asyncio.create_task(pdf_then_spawn_brief(), name="chime_pdf_enrich")
+    poller._pdf_enrich_tasks.add(pdf_task)
+    pdf_task.add_done_callback(poller._pdf_enrich_tasks.discard)
+
+    await poller.shutdown()
+
+    assert order == ["pdf", "brief"]
+    assert brief_started.is_set()
+    assert poller._background_closed is True
+    assert not poller._pdf_enrich_tasks
+    assert not poller._brief_drain_tasks

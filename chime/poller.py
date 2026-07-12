@@ -187,6 +187,9 @@ class Poller:
         self._pdf_enrich_batches_started: int = 0
         self._brief_drain_tasks: set[asyncio.Task[Any]] = set()
         self._brief_drain_lock = asyncio.Lock()
+        # After shutdown finishes draining background work, reject new schedules
+        # so a shielded late tick cannot race storage.close() (wave4).
+        self._background_closed = False
 
     def pdf_enrich_health_snapshot(self) -> dict[str, int]:
         """In-memory PDF enrich queue counters for health details."""
@@ -198,15 +201,36 @@ class Poller:
 
     async def await_pdf_enrichment(self) -> None:
         """Drain in-flight PDF enrich tasks (tests / shutdown)."""
-        pending = list(self._pdf_enrich_tasks)
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
+        await self._await_background_tasks(
+            self._pdf_enrich_tasks,
+            label="pdf_enrich",
+        )
 
     async def await_brief_drain(self) -> None:
         """Drain in-flight brief worker tasks (tests / shutdown)."""
-        pending = list(self._brief_drain_tasks)
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
+        await self._await_background_tasks(
+            self._brief_drain_tasks,
+            label="brief_drain",
+        )
+
+    async def _await_background_tasks(
+        self,
+        tasks: set[asyncio.Task[Any]],
+        *,
+        label: str,
+    ) -> None:
+        """Await a snapshot of background tasks; log (do not raise) failures."""
+        pending = list(tasks)
+        if not pending:
+            return
+        results = await asyncio.gather(*pending, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                log.warning(
+                    "poller_background_task_error",
+                    kind=label,
+                    error=str(result),
+                )
 
     async def run_once(self, *, force: bool = False) -> list[AlertEvent]:
         """Single poll cycle. Returns events claimed (delivered after unlock)."""
@@ -701,6 +725,12 @@ class Poller:
         """Fire-and-forget enrich so run_once returns after alert delivery."""
         if not items:
             return
+        if self._background_closed:
+            log.warning(
+                "pdf_enrich_skipped_shutdown",
+                count=len(items),
+            )
+            return
         self._pdf_enrich_last_batch_size = len(items)
         self._pdf_enrich_batches_started += 1
         task = asyncio.create_task(
@@ -713,6 +743,13 @@ class Poller:
     def _schedule_brief_drain(self) -> None:
         """Fire-and-forget pending brief drain when AI briefs are enabled."""
         if not briefs_enabled():
+            return
+        if self._background_closed:
+            log.warning("brief_drain_skipped_shutdown")
+            return
+        # Coalesce: one in-flight drain (or waiter on the lock) is enough —
+        # avoid N tasks stacking on `_brief_drain_lock` for shutdown gathers.
+        if self._brief_drain_tasks or self._brief_drain_lock.locked():
             return
         task = asyncio.create_task(
             self._drain_briefs_safe(),
@@ -727,6 +764,8 @@ class Poller:
                 n = await claim_pending_briefs(self.storage)
                 if n:
                     log.info("brief_drain_done", processed=n)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             log.warning("brief_drain_failed", error=str(exc))
 
@@ -734,6 +773,8 @@ class Poller:
         try:
             async with self._pdf_enrich_lock:
                 await self._enrich_disclosure_pdfs(items)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             log.warning("pdf_enrich_batch_failed", error=str(exc))
 
@@ -1190,12 +1231,65 @@ class Poller:
         )
         return scheduler
 
+    async def _drain_background_on_shutdown(self) -> None:
+        """Await PDF enrich + brief drain without cancelling them on timeout.
+
+        Re-scans task sets until empty so a late ``run_once`` (shielded tick
+        still finishing) can push work and still be waited on within the
+        budget. ``asyncio.shield`` mirrors CORE-005: timeout must not cancel
+        mid-flight work that holds the enrich/brief locks or a pool borrow.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + SHUTDOWN_TICK_TIMEOUT_SECONDS
+        while True:
+            pending = [
+                t
+                for t in (*self._pdf_enrich_tasks, *self._brief_drain_tasks)
+                if not t.done()
+            ]
+            if not pending:
+                return
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                log.warning(
+                    "poller_shutdown_background_timeout",
+                    timeout_seconds=SHUTDOWN_TICK_TIMEOUT_SECONDS,
+                    pdf_enrich=len(self._pdf_enrich_tasks),
+                    brief_drain=len(self._brief_drain_tasks),
+                )
+                return
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(
+                        *[asyncio.shield(t) for t in pending],
+                        return_exceptions=True,
+                    ),
+                    timeout=remaining,
+                )
+            except TimeoutError:
+                log.warning(
+                    "poller_shutdown_background_timeout",
+                    timeout_seconds=SHUTDOWN_TICK_TIMEOUT_SECONDS,
+                    pdf_enrich=len(self._pdf_enrich_tasks),
+                    brief_drain=len(self._brief_drain_tasks),
+                )
+                return
+            for result in results:
+                if isinstance(result, Exception):
+                    log.warning(
+                        "poller_shutdown_background_error",
+                        error=str(result),
+                    )
+
     async def shutdown(self) -> None:
         """Stop the scheduler, then await any in-flight tick (bounded).
 
         ``scheduler.shutdown(wait=False)`` returns immediately; CORE-005 /
         E2-C02 require waiting for the current ``_scheduled_tick`` /
         ``run_once`` so ``storage.close()`` does not race the advisory lock.
+
+        After the tick wait, drain fire-and-forget PDF enrich / brief push
+        tasks the same way (shielded, bounded) before callers ``storage.close()``.
         """
         self._stopping.set()
         if self._scheduler is not None:
@@ -1217,25 +1311,11 @@ class Poller:
             except Exception:
                 log.exception("poller_shutdown_tick_error")
         try:
-            await asyncio.wait_for(
-                self.await_pdf_enrichment(),
-                timeout=SHUTDOWN_TICK_TIMEOUT_SECONDS,
-            )
-        except TimeoutError:
-            log.warning(
-                "poller_shutdown_pdf_enrich_timeout",
-                timeout_seconds=SHUTDOWN_TICK_TIMEOUT_SECONDS,
-            )
-        try:
-            await asyncio.wait_for(
-                self.await_brief_drain(),
-                timeout=SHUTDOWN_TICK_TIMEOUT_SECONDS,
-            )
-        except TimeoutError:
-            log.warning(
-                "poller_shutdown_brief_drain_timeout",
-                timeout_seconds=SHUTDOWN_TICK_TIMEOUT_SECONDS,
-            )
+            await self._drain_background_on_shutdown()
+        except Exception:
+            log.exception("poller_shutdown_background_error")
+        # Reject further fire-and-forget schedules (late shielded tick).
+        self._background_closed = True
         log.info("poller_stopped")
 
 
