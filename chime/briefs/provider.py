@@ -1,4 +1,4 @@
-"""LLM brief providers (Gemini + Groq HTTP).
+"""LLM brief providers (Gemini + OpenAI-compatible HTTP).
 
 ``summarize(text) -> str`` is the only Phase-2 surface. Default off:
 ``AI_BRIEFS_ENABLED`` must be ``1`` and ``AI_API_KEY`` set, or
@@ -9,6 +9,7 @@ and filing text isolated via system instruction + delimiters.
 
 ``AI_PROVIDER=gemini`` → Gemini ``generateContent``.
 ``AI_PROVIDER=groq`` → Groq OpenAI-compatible ``/chat/completions``.
+``AI_PROVIDER=openrouter`` → OpenRouter OpenAI-compatible ``/chat/completions``.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ GEMINI_GENERATE_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
 GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions"
+OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 _DEFAULT_TIMEOUT_SECONDS = 30.0
 _MAX_OUTPUT_TOKENS = 512
@@ -151,14 +153,12 @@ class GeminiBriefProvider(_HttpBriefProviderBase):
         return brief
 
 
-class GroqBriefProvider(_HttpBriefProviderBase):
-    """Groq OpenAI-compatible ``/chat/completions`` via httpx."""
+class _OpenAICompatibleBriefProvider(_HttpBriefProviderBase):
+    """Shared OpenAI-compatible ``/chat/completions`` (Groq, OpenRouter, …)."""
 
-    async def __aenter__(self) -> GroqBriefProvider:
-        return self
-
-    async def __aexit__(self, *args: object) -> None:
-        await self.aclose()
+    _chat_url: str = ""
+    _label: str = "OpenAI-compatible"
+    _log_event: str = "openai_compatible_summarize_request"
 
     async def summarize(self, text: str) -> str:
         self._require_enabled()
@@ -178,41 +178,72 @@ class GroqBriefProvider(_HttpBriefProviderBase):
             "Authorization": f"Bearer {self._settings.api_key}",
         }
         log.info(
-            "groq_summarize_request",
+            self._log_event,
             model=self._settings.model,
             input_chars=len(body),
         )
+        label = self._label
         try:
             response = await self._client.post(
-                GROQ_CHAT_COMPLETIONS_URL,
+                self._chat_url,
                 headers=headers,
                 json=payload,
                 timeout=self._timeout,
             )
         except httpx.TimeoutException as exc:
-            raise RuntimeError(f"Groq request timed out: {exc}") from exc
+            raise RuntimeError(f"{label} request timed out: {exc}") from exc
         except httpx.HTTPError as exc:
-            raise RuntimeError(f"Groq transport error: {exc}") from exc
+            raise RuntimeError(f"{label} transport error: {exc}") from exc
 
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             raise RuntimeError(
-                f"Groq HTTP {exc.response.status_code}: {exc.response.text[:300]}"
+                f"{label} HTTP {exc.response.status_code}: {exc.response.text[:300]}"
             ) from exc
 
         try:
             data = response.json()
         except (json.JSONDecodeError, ValueError) as exc:
             raise RuntimeError(
-                f"Groq response was not JSON: {response.text[:300]!r}"
+                f"{label} response was not JSON: {response.text[:300]!r}"
             ) from exc
 
         brief = _extract_openai_chat_text(data)
         if not brief:
             reason = _openai_chat_failure_reason(data)
-            raise RuntimeError(f"Groq response missing message content ({reason})")
+            raise RuntimeError(
+                f"{label} response missing message content ({reason})"
+            )
         return brief
+
+
+class GroqBriefProvider(_OpenAICompatibleBriefProvider):
+    """Groq OpenAI-compatible ``/chat/completions`` via httpx."""
+
+    _chat_url = GROQ_CHAT_COMPLETIONS_URL
+    _label = "Groq"
+    _log_event = "groq_summarize_request"
+
+    async def __aenter__(self) -> GroqBriefProvider:
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        await self.aclose()
+
+
+class OpenRouterBriefProvider(_OpenAICompatibleBriefProvider):
+    """OpenRouter OpenAI-compatible ``/chat/completions`` via httpx."""
+
+    _chat_url = OPENROUTER_CHAT_COMPLETIONS_URL
+    _label = "OpenRouter"
+    _log_event = "openrouter_summarize_request"
+
+    async def __aenter__(self) -> OpenRouterBriefProvider:
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        await self.aclose()
 
 
 def _gemini_failure_reason(data: Any) -> str:
@@ -297,6 +328,17 @@ def _extract_openai_chat_text(data: Any) -> str:
     content = message.get("content")
     if isinstance(content, str):
         return content.strip()
+    # OpenAI-compatible multimodal content: list of typed parts.
+    if isinstance(content, list):
+        chunks: list[str] = []
+        for part in content:
+            if isinstance(part, str) and part.strip():
+                chunks.append(part.strip())
+            elif isinstance(part, dict):
+                piece = part.get("text")
+                if isinstance(piece, str) and piece.strip():
+                    chunks.append(piece.strip())
+        return "\n".join(chunks).strip()
     return ""
 
 
@@ -305,13 +347,15 @@ def make_brief_provider(
     *,
     client: httpx.AsyncClient | None = None,
 ) -> BriefProvider:
-    """Build a provider from ``AI_PROVIDER`` (``gemini`` or ``groq``)."""
+    """Build a provider from ``AI_PROVIDER`` (``gemini``, ``groq``, or ``openrouter``)."""
     cfg = settings or BriefSettings.from_env()
     provider = (cfg.provider or "gemini").strip().lower()
     if provider == "gemini":
         return GeminiBriefProvider(cfg, client=client)
     if provider == "groq":
         return GroqBriefProvider(cfg, client=client)
+    if provider == "openrouter":
+        return OpenRouterBriefProvider(cfg, client=client)
     raise RuntimeError(
-        f"Unsupported AI_PROVIDER={cfg.provider!r} (gemini|groq)"
+        f"Unsupported AI_PROVIDER={cfg.provider!r} (gemini|groq|openrouter)"
     )

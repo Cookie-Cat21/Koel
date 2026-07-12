@@ -57,7 +57,8 @@ class BriefSettings:
     - ``AI_BRIEFS_ENABLED`` — ``1`` to opt in (default ``0``)
     - ``AI_PROVIDER`` — ``gemini`` or ``groq`` (default ``gemini``)
     - ``AI_API_KEY`` — required with enabled for ``briefs_enabled()``
-    - ``AI_MODEL`` — default ``gemini-2.0-flash`` (e.g. ``llama-3.3-70b-versatile`` for groq)
+    - ``AI_MODEL`` — provider soft-default when unset (``gemini-2.0-flash``;
+      ``llama-3.3-70b-versatile`` for groq)
     - ``AI_MAX_BRIEFS_PER_DAY`` — default ``50``
     - ``AI_MAX_INPUT_CHARS`` — default ``12000``
     - ``AI_HTTP_TIMEOUT_SECONDS`` — provider HTTP timeout (default ``30``)
@@ -65,7 +66,8 @@ class BriefSettings:
       pending briefs (default ``0.5``; ``0`` = no pacing)
     - ``PDF_MAX_BYTES`` — max PDF download size (default ``5242880``)
     - ``BRIEF_PDF_GRACE_SECONDS`` — wait for ``pdf_url`` before title-only
-      summarize (default ``120``; ``0`` = claim immediately)
+      summarize, keyed off brief ``updated_at`` (default ``120``; ``0`` =
+      claim immediately; promote restarts the window)
     - ``BRIEF_SKIPPED_PROMOTE_HOURS`` — when briefs are on, re-queue recent
       ``skipped`` rows as ``pending`` (default ``24``; ``0`` = off)
     """
@@ -84,11 +86,25 @@ class BriefSettings:
 
     @classmethod
     def from_env(cls) -> BriefSettings:
+        provider = os.getenv("AI_PROVIDER", "gemini").strip() or "gemini"
+        # Soft-default model to the provider's common chat model so
+        # AI_PROVIDER=groq without AI_MODEL does not burn the daily cap on
+        # Gemini model ids that Groq rejects.
+        default_model = (
+            "llama-3.3-70b-versatile"
+            if provider.lower() == "groq"
+            else "gemini-2.0-flash"
+        )
+        model_raw = os.getenv("AI_MODEL")
+        if model_raw is None or not str(model_raw).strip():
+            model = default_model
+        else:
+            model = str(model_raw).strip()
         return cls(
             enabled=os.getenv("AI_BRIEFS_ENABLED", "0").strip() == "1",
-            provider=os.getenv("AI_PROVIDER", "gemini").strip() or "gemini",
+            provider=provider,
             api_key=os.getenv("AI_API_KEY", "").strip(),
-            model=os.getenv("AI_MODEL", "gemini-2.0-flash").strip() or "gemini-2.0-flash",
+            model=model,
             max_briefs_per_day=max(0, _env_int("AI_MAX_BRIEFS_PER_DAY", 50)),
             max_input_chars=max(1, _env_int("AI_MAX_INPUT_CHARS", 12_000)),
             pdf_max_bytes=max(1, _env_int("PDF_MAX_BYTES", 5_242_880)),

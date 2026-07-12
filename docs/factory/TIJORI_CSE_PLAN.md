@@ -119,8 +119,11 @@ DISCLOSURE_BULK_FEED=0
 # Phase 2 (documented now, default off)
 AI_BRIEFS_ENABLED=0
 AI_PROVIDER=gemini
+# AI_PROVIDER=groq|openrouter
 AI_API_KEY=
 AI_MODEL=gemini-2.0-flash
+# AI_MODEL=llama-3.3-70b-versatile  # groq
+# AI_MODEL=openai/gpt-4o-mini      # openrouter
 AI_MAX_BRIEFS_PER_DAY=50
 AI_MAX_INPUT_CHARS=12000
 PDF_MAX_BYTES=5242880
