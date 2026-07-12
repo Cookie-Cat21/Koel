@@ -324,6 +324,55 @@ def test_extract_pdf_text_skips_blank_pages() -> None:
         assert extract_pdf_text(b"%PDF") == "Keep me"
 
 
+def test_extract_pdf_text_caps_chars_mid_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Soft char cap truncates mid-page and stops (pdf_extract_char_cap)."""
+    pytest.importorskip("pypdf")
+    from chime.briefs import extract as extract_mod
+
+    class _Page:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class _Reader:
+        def __init__(self, *_a: object, **_k: object) -> None:
+            self.pages = [_Page("abcdefghij"), _Page("should-not-appear")]
+
+    monkeypatch.setattr(extract_mod, "_MAX_EXTRACT_CHARS", 6)
+    with patch("pypdf.PdfReader", _Reader):
+        text = extract_pdf_text(b"%PDF")
+    assert text == "abcdef"
+    assert "should-not-appear" not in text
+
+
+def test_extract_pdf_text_stops_when_char_budget_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exact fill on page N → remaining<=0 break before page N+1."""
+    pytest.importorskip("pypdf")
+    from chime.briefs import extract as extract_mod
+
+    class _Page:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class _Reader:
+        def __init__(self, *_a: object, **_k: object) -> None:
+            # First page fills the budget exactly; second must be skipped.
+            self.pages = [_Page("123456"), _Page("OVERFLOW")]
+
+    monkeypatch.setattr(extract_mod, "_MAX_EXTRACT_CHARS", 6)
+    with patch("pypdf.PdfReader", _Reader):
+        text = extract_pdf_text(b"%PDF")
+    assert text == "123456"
+    assert "OVERFLOW" not in text
+
+
 @pytest.mark.asyncio
 async def test_claim_pending_briefs_skips_pdf_fetch_without_url() -> None:
     storage = MagicMock()
