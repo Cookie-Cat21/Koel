@@ -460,7 +460,7 @@ Both DB `id` and `external_id` are required in the payload (resolves IA↔WAVE n
 
 `pdf_url` / `brief` / `brief_status` come from `disclosures.pdf_url` LEFT JOIN
 `disclosure_briefs` (`status` exposed as `brief_status`). When no brief row exists,
-all three are `null`. `brief_status` is one of `pending` \| `ready` \| `failed` \|
+all three are `null`. `brief_status` is one of `pending` \| `processing` \| `ready` \| `failed` \|
 `skipped` when present. Dash UI prefers `pdf_url` over `url` for the filing link
 and renders `brief` only when `brief_status === "ready"`.
 

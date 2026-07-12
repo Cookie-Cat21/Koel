@@ -212,6 +212,115 @@ async def test_claim_pending_briefs_followup_fail_soft_on_notify_error() -> None
 
 
 @pytest.mark.asyncio
+async def test_claim_pending_briefs_followup_skips_mark_on_send_failed() -> None:
+    """SendResult.FAILED must not mark message_sent (retry via unsent drain)."""
+    storage = MagicMock()
+    storage.count_briefs_today = AsyncMock(return_value=0)
+    storage.claim_pending_briefs = AsyncMock(return_value=[_pending_row()])
+    storage.mark_brief_ready = AsyncMock(return_value=True)
+    storage.claim_brief_followups = AsyncMock(
+        return_value=[
+            {
+                "id": 501,
+                "rule_id": 9,
+                "telegram_id": 1001,
+                "message_text": "follow-up body",
+            }
+        ]
+    )
+    storage.mark_delivery_attempted_ok = AsyncMock()
+    storage.mark_alert_sent = AsyncMock()
+    provider = AsyncMock()
+    provider.summarize = AsyncMock(return_value="ok brief")
+
+    async def notify(_chat_id: int, _text: str) -> SendResult:
+        return SendResult.FAILED
+
+    n = await claim_pending_briefs(
+        storage,
+        settings=_enabled_settings(),
+        provider=provider,
+        notify=notify,
+        http_client=AsyncMock(),
+    )
+    assert n == 1
+    storage.mark_alert_sent.assert_not_awaited()
+    storage.mark_delivery_attempted_ok.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_claim_pending_briefs_followup_skips_mark_on_send_deferred() -> None:
+    storage = MagicMock()
+    storage.count_briefs_today = AsyncMock(return_value=0)
+    storage.claim_pending_briefs = AsyncMock(return_value=[_pending_row()])
+    storage.mark_brief_ready = AsyncMock(return_value=True)
+    storage.claim_brief_followups = AsyncMock(
+        return_value=[
+            {
+                "id": 502,
+                "rule_id": 9,
+                "telegram_id": 1001,
+                "message_text": "follow-up body",
+            }
+        ]
+    )
+    storage.mark_delivery_attempted_ok = AsyncMock()
+    storage.mark_alert_sent = AsyncMock()
+    provider = AsyncMock()
+    provider.summarize = AsyncMock(return_value="ok brief")
+
+    async def notify(_chat_id: int, _text: str) -> SendResult:
+        return SendResult.DEFERRED
+
+    n = await claim_pending_briefs(
+        storage,
+        settings=_enabled_settings(),
+        provider=provider,
+        notify=notify,
+        http_client=AsyncMock(),
+    )
+    assert n == 1
+    storage.mark_alert_sent.assert_not_awaited()
+    storage.mark_delivery_attempted_ok.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_claim_pending_briefs_followup_bool_false_not_marked() -> None:
+    storage = MagicMock()
+    storage.count_briefs_today = AsyncMock(return_value=0)
+    storage.claim_pending_briefs = AsyncMock(return_value=[_pending_row()])
+    storage.mark_brief_ready = AsyncMock(return_value=True)
+    storage.claim_brief_followups = AsyncMock(
+        return_value=[
+            {
+                "id": 503,
+                "rule_id": 9,
+                "telegram_id": 1001,
+                "message_text": "follow-up body",
+            }
+        ]
+    )
+    storage.mark_delivery_attempted_ok = AsyncMock()
+    storage.mark_alert_sent = AsyncMock()
+    provider = AsyncMock()
+    provider.summarize = AsyncMock(return_value="ok brief")
+
+    async def notify(_chat_id: int, _text: str) -> bool:
+        return False
+
+    n = await claim_pending_briefs(
+        storage,
+        settings=_enabled_settings(),
+        provider=provider,
+        notify=notify,
+        http_client=AsyncMock(),
+    )
+    assert n == 1
+    storage.mark_alert_sent.assert_not_awaited()
+    storage.mark_delivery_attempted_ok.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_claim_pending_briefs_skips_followup_when_mark_ready_false() -> None:
     storage = MagicMock()
     storage.count_briefs_today = AsyncMock(return_value=0)
@@ -310,7 +419,8 @@ async def test_storage_claim_brief_followups_sql_gates_on_primary_alert() -> Non
     assert "'brief_followup:' || p.rule_id::text || ':' || %s" in sql
     assert "al.event_key = 'disclosure:' || ar.id::text || ':' || %s" in sql
     assert "ON CONFLICT (rule_id, event_key) DO NOTHING" in sql
-    assert "position(%s IN al.message_text) = 0" in sql
+    assert "message_sent OR al.delivery_attempted_ok" in sql
+    assert "chr(10) || chr(10) || %s || chr(10) || chr(10)" in sql
     assert "delivery_lease_until" in sql
     assert conn.params[0][0] == "99"
     assert conn.params[0][1] == "JKH.N0000"

@@ -230,31 +230,48 @@ class Storage:
             )
         return out
 
-    async def delete_old_non_watchlist_snapshots(self, days: int) -> int:
+    async def delete_old_non_watchlist_snapshots(
+        self,
+        days: int,
+        *,
+        limit: int = 5_000,
+    ) -> int:
         """Delete ``price_snapshots`` older than ``days`` for non-watchlist symbols.
 
         Symbols present on any user's watchlist keep full history. ``days <= 0``
         is a no-op (returns 0). Used by optional ``SNAPSHOT_RETENTION_DAYS``.
+
+        Deletes at most ``limit`` rows per call so a large backlog cannot pin
+        the poll tick (remaining rows drain on subsequent ticks).
         """
         if days <= 0:
             return 0
+        batch = max(1, int(limit))
         async with self._pool.connection() as conn:
             row = await (
                 await conn.execute(
                     """
-                    WITH deleted AS (
-                        DELETE FROM price_snapshots ps
+                    WITH doomed AS (
+                        SELECT ps.id
+                        FROM price_snapshots ps
                         WHERE ps.ts < now() - (%s * interval '1 day')
                           AND NOT EXISTS (
                               SELECT 1
                               FROM watchlist_items w
                               WHERE w.symbol = ps.symbol
                           )
+                        ORDER BY ps.ts ASC, ps.id ASC
+                        LIMIT %s
+                    ),
+                    deleted AS (
+                        DELETE FROM price_snapshots ps
+                        USING doomed
+                        WHERE ps.id = doomed.id
                         RETURNING 1
                     )
                     SELECT COUNT(*)::int AS n FROM deleted
                     """,
-                    (days,),
+                    (days, batch),
                 )
             ).fetchone()
         if row is None:
@@ -538,12 +555,14 @@ class Storage:
     ) -> list[dict[str, Any]]:
         """Claim Telegram follow-ups for a ready brief (idempotent, no double send).
 
-        Only targets users who already have a primary disclosure alert claimed for
-        this filing (``disclosure:{rule_id}:{external_id}``). Skips recipients
-        whose primary message already includes the brief text (alert attached the
-        brief at claim time). Inserts ``brief_followup:{rule_id}:{external_id}``
-        into ``alert_log`` with a delivery lease — concurrent callers and retries
-        collide on UNIQUE(rule_id, event_key).
+        Only targets users who already have a *delivered* primary disclosure alert
+        for this filing (``disclosure:{rule_id}:{external_id}`` with
+        ``message_sent`` or ``delivery_attempted_ok``). Skips recipients whose
+        primary message already embeds the brief as its own paragraph (blank-line
+        delimited — avoids title/URL substring false skips). Inserts
+        ``brief_followup:{rule_id}:{external_id}`` into ``alert_log`` with a
+        delivery lease — concurrent callers and retries collide on
+        UNIQUE(rule_id, event_key).
         """
         ext = (external_id or "").strip()
         sym = (symbol or "").strip().upper()
@@ -567,9 +586,13 @@ class Storage:
                         WHERE ar.active
                           AND ar.type = 'disclosure'
                           AND ar.symbol = %s
+                          AND (al.message_sent OR al.delivery_attempted_ok)
                           AND (
                               al.message_text IS NULL
-                              OR position(%s IN al.message_text) = 0
+                              OR position(
+                                  chr(10) || chr(10) || %s || chr(10) || chr(10)
+                                  IN al.message_text
+                              ) = 0
                           )
                     ),
                     inserted AS (

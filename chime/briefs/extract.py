@@ -16,12 +16,17 @@ from chime.adapters.cse import allowed_cdn_pdf_url
 
 log = structlog.get_logger("chime.briefs.extract")
 
+# Soft caps so a hostile/huge CDN PDF cannot pin the brief worker on CPU/RAM.
+_MAX_PDF_PAGES = 40
+_MAX_EXTRACT_CHARS = 50_000
+
 
 def extract_pdf_text(data: bytes) -> str:
     """Extract plain text from PDF bytes.
 
     Uses ``pypdf`` when installed (``pip install 'chime[briefs]'``). Without
     it, returns ``""`` and logs once per call so the worker can fall back.
+    Caps pages (``_MAX_PDF_PAGES``) and total chars (``_MAX_EXTRACT_CHARS``).
     """
     if not data:
         return ""
@@ -37,10 +42,31 @@ def extract_pdf_text(data: bytes) -> str:
     try:
         reader = PdfReader(BytesIO(data))
         chunks: list[str] = []
-        for page in reader.pages:
+        total_chars = 0
+        for index, page in enumerate(reader.pages):
+            if index >= _MAX_PDF_PAGES:
+                log.info(
+                    "pdf_extract_page_cap",
+                    pages=_MAX_PDF_PAGES,
+                    total_pages=len(reader.pages),
+                )
+                break
             piece = page.extract_text()
             if piece and piece.strip():
-                chunks.append(piece.strip())
+                text = piece.strip()
+                remaining = _MAX_EXTRACT_CHARS - total_chars
+                if remaining <= 0:
+                    break
+                if len(text) > remaining:
+                    chunks.append(text[:remaining])
+                    total_chars += remaining
+                    log.info(
+                        "pdf_extract_char_cap",
+                        max_chars=_MAX_EXTRACT_CHARS,
+                    )
+                    break
+                chunks.append(text)
+                total_chars += len(text)
         return "\n".join(chunks).strip()
     except Exception as exc:
         log.warning("pdf_extract_failed", error=str(exc))
@@ -56,7 +82,8 @@ async def fetch_cdn_pdf(
     """GET a CSE CDN PDF with host allowlist + byte cap.
 
     Returns ``None`` when the URL fails the CDN SSRF check, the response is
-    oversized (Content-Length or streamed body), or the request errors.
+    oversized (Content-Length or streamed body), redirects away from the
+    allowlisted host, or the request errors. Redirects are never followed.
     """
     allowed = allowed_cdn_pdf_url(pdf_url)
     if allowed is None:
@@ -65,8 +92,31 @@ async def fetch_cdn_pdf(
 
     cap = max(1, int(max_bytes))
     try:
-        async with client.stream("GET", allowed) as response:
-            response.raise_for_status()
+        # follow_redirects=False: open redirects on the CDN must not SSRF.
+        async with client.stream(
+            "GET",
+            allowed,
+            follow_redirects=False,
+        ) as response:
+            status = int(getattr(response, "status_code", 0) or 0)
+            headers = getattr(response, "headers", {}) or {}
+            if status in {301, 302, 303, 307, 308} or bool(
+                getattr(response, "is_redirect", False)
+            ):
+                log.warning(
+                    "pdf_fetch_redirect_rejected",
+                    pdf_url=allowed,
+                    status_code=status,
+                    location=headers.get("location"),
+                )
+                return None
+            if status != 200:
+                log.warning(
+                    "pdf_fetch_bad_status",
+                    pdf_url=allowed,
+                    status_code=status,
+                )
+                return None
             content_length = response.headers.get("content-length")
             if content_length is not None:
                 try:

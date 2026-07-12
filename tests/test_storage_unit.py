@@ -259,7 +259,16 @@ async def test_delete_old_non_watchlist_snapshots_sql_and_count() -> None:
     assert "watchlist_items" in sql
     assert "NOT EXISTS" in sql
     assert "interval '1 day'" in sql
-    assert conn.params[0] == (7,)
+    assert "LIMIT %s" in sql
+    assert conn.params[0] == (7, 5_000)
+
+
+@pytest.mark.asyncio
+async def test_delete_old_non_watchlist_snapshots_custom_limit() -> None:
+    conn = _Conn([{"n": 3}])
+    store = _store(conn)
+    assert await store.delete_old_non_watchlist_snapshots(14, limit=100) == 3
+    assert conn.params[0] == (14, 100)
 
 
 @pytest.mark.asyncio

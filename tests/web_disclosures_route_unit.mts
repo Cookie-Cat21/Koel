@@ -240,16 +240,30 @@ async function testBriefOnlyWhenReadyAndStripsControls(): Promise<void> {
         brief: "should not leak",
         brief_status: "failed",
       },
+      {
+        id: 83,
+        external_id: "b4",
+        title: "Processing brief",
+        category: null,
+        url: SAFE_URL,
+        published_at: new Date("2026-07-10T04:00:00Z"),
+        company_name: null,
+        pdf_url: null,
+        brief: "in flight should not leak",
+        brief_status: "processing",
+      },
     ],
   });
   assert(res.status === 200, `expected 200, got ${res.status}`);
-  const [pending, ready, failed] = body.items!;
+  const [pending, ready, failed, processing] = body.items!;
   assert(pending.brief === null, "pending brief must not egress");
   assert(pending.brief_status === "pending", "pending status kept");
   assert(ready.brief === "Plain summary with NUL", `controls stripped, got ${JSON.stringify(ready.brief)}`);
   assert(ready.brief_status === "ready", "ready status kept");
   assert(failed.brief === null, "failed brief must not egress");
   assert(failed.brief_status === "failed", "failed status kept");
+  assert(processing.brief === null, "processing brief must not egress");
+  assert(processing.brief_status === "processing", "processing status kept");
 }
 
 async function testUnknownSymbol404(): Promise<void> {

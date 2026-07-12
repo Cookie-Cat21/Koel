@@ -14,9 +14,20 @@ const ANNOUNCEMENTS_HOST = ["www", "cse", "lk"].join(".");
 
 export const MAX_BRIEF_LENGTH = 4_000;
 
-const BRIEF_STATUSES = new Set(["pending", "ready", "failed", "skipped"]);
+const BRIEF_STATUSES = new Set([
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+  "skipped",
+]);
 
-export type BriefStatus = "pending" | "ready" | "failed" | "skipped";
+export type BriefStatus =
+  | "pending"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "skipped";
 
 function normalizeHttpsUrl(
   raw: string | null | undefined,

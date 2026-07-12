@@ -236,6 +236,60 @@ async def test_fetch_cdn_pdf_clamps_max_bytes_to_at_least_one() -> None:
     assert out is None
 
 
+@pytest.mark.asyncio
+async def test_fetch_cdn_pdf_rejects_redirect() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            302,
+            headers={"location": "https://evil.example/steal"},
+        )
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        out = await fetch_cdn_pdf(
+            "https://cdn.cse.lk/uploadAnnounceFiles/x.pdf",
+            max_bytes=1024,
+            client=client,
+        )
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_cdn_pdf_rejects_non_200() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text="missing")
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        out = await fetch_cdn_pdf(
+            "https://cdn.cse.lk/missing.pdf",
+            max_bytes=1024,
+            client=client,
+        )
+    assert out is None
+
+
+def test_extract_pdf_text_caps_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    pytest.importorskip("pypdf")
+    from chime.briefs import extract as extract_mod
+
+    class _Page:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class _Reader:
+        def __init__(self, *_a: object, **_k: object) -> None:
+            self.pages = [_Page(f"page-{i}") for i in range(60)]
+
+    monkeypatch.setattr(extract_mod, "_MAX_PDF_PAGES", 3)
+    with patch("pypdf.PdfReader", _Reader):
+        text = extract_pdf_text(b"%PDF")
+    assert text == 'page-0' + chr(10) + 'page-1' + chr(10) + 'page-2'
+
+
 def test_extract_pdf_text_skips_blank_pages() -> None:
     pytest.importorskip("pypdf")
 

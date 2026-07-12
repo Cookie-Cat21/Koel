@@ -20,10 +20,18 @@ from chime.briefs import BriefSettings, BriefStatus, briefs_enabled, build_brief
 from chime.briefs.extract import extract_pdf_text, fetch_cdn_pdf
 from chime.briefs.provider import BriefProvider, GeminiBriefProvider, make_brief_provider
 from chime.domain import format_brief_followup
+from chime.notify import SendResult
 
 log = structlog.get_logger("chime.briefs")
 
 BriefNotifyFunc = Callable[[int, str], Awaitable[Any]]
+
+
+def _notify_succeeded(result: Any) -> bool:
+    """True only when Telegram accepted the send (bool True or SendResult.OK)."""
+    if isinstance(result, bool):
+        return result
+    return result is SendResult.OK
 
 
 class _BriefEnqueuer(Protocol):
@@ -219,7 +227,30 @@ async def _notify_brief_followups(
             log_id = int(entry["id"])
             text = str(entry.get("message_text") or message)
             try:
-                await notify(telegram_id, text)
+                result = await notify(telegram_id, text)
+            except Exception as exc:
+                log.warning(
+                    "brief_followup_send_failed",
+                    disclosure_id=disclosure_id,
+                    symbol=symbol,
+                    telegram_id=telegram_id,
+                    alert_log_id=log_id,
+                    error=str(exc),
+                )
+                continue
+            # Only mark delivered on OK — FAILED/DEFERRED leave message_sent=False
+            # so claim_unsent_batch can retry after the delivery lease expires.
+            if not _notify_succeeded(result):
+                log.warning(
+                    "brief_followup_send_not_ok",
+                    disclosure_id=disclosure_id,
+                    symbol=symbol,
+                    telegram_id=telegram_id,
+                    alert_log_id=log_id,
+                    send_result=getattr(result, "value", result),
+                )
+                continue
+            try:
                 mark_ok = getattr(storage, "mark_delivery_attempted_ok", None)
                 mark_sent = getattr(storage, "mark_alert_sent", None)
                 if mark_ok is not None:
@@ -235,7 +266,7 @@ async def _notify_brief_followups(
                 )
             except Exception as exc:
                 log.warning(
-                    "brief_followup_send_failed",
+                    "brief_followup_mark_failed",
                     disclosure_id=disclosure_id,
                     symbol=symbol,
                     telegram_id=telegram_id,
