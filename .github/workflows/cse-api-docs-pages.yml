@@ -1,0 +1,49 @@
+name: cse-api-docs pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "cse-api-docs/site/**"
+      - "cse-api-docs/scripts/build_site.py"
+      - "cse-api-docs/catalog/**"
+      - ".github/workflows/cse-api-docs-pages.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-cse-api-docs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install + build
+        working-directory: cse-api-docs
+        run: |
+          pip install -r requirements.txt
+          python3 scripts/build_site.py
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: cse-api-docs/site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

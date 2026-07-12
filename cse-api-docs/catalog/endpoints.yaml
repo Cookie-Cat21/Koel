@@ -1,0 +1,414 @@
+# Source of truth for unofficial cse.lk API docs.
+# Base: https://www.cse.lk/api/
+# Probe with: python3 scripts/probe.py
+
+meta:
+  base_url: "https://www.cse.lk/api"
+  cdn: "https://cdn.cse.lk"
+  test_symbol: "JKH.N0000"
+  headers:
+    User-Agent: "Mozilla/5.0 (compatible; CSE-API-Docs-Probe/1.0; +https://github.com/Cookie-Cat21/Chime; educational)"
+    Origin: "https://www.cse.lk"
+    Referer: "https://www.cse.lk/"
+    Accept: "application/json"
+  delay_seconds: 0.35
+  max_sample_bytes: 12000
+
+endpoints:
+  - id: companyInfoSummery
+    path: /companyInfoSummery
+    method: POST
+    content_type: form
+    body:
+      symbol: "{{symbol}}"
+    category: prices
+    summary: Per-symbol quote (primary single-name source).
+    used_by_ui: Company profile / quote widgets
+    fails:
+      - "GET → 405"
+      - "POST JSON {symbol} → 400"
+    fields:
+      - path: reqSymbolInfo.symbol
+      - path: reqSymbolInfo.name
+      - path: reqSymbolInfo.id
+        note: Numeric stockId for companyChartDataByStock (not securityId)
+      - path: reqSymbolInfo.lastTradedPrice
+      - path: reqSymbolInfo.change
+      - path: reqSymbolInfo.changePercentage
+      - path: reqSymbolInfo.marketCap
+    expect_status: [200]
+
+  - id: tradeSummary
+    path: /tradeSummary
+    method: POST
+    content_type: json
+    body: {}
+    category: prices
+    summary: Bulk board — best poller source (all symbols in one call).
+    used_by_ui: Trade summary / market board
+    expect_status: [200]
+    truncate_list_key: reqTradeSummery
+
+  - id: marketStatus
+    path: /marketStatus
+    method: POST
+    content_type: json
+    body: {}
+    category: market
+    summary: Open/closed status string for session gating.
+    used_by_ui: Market status badge / WebSocket companion
+    expect_status: [200]
+
+  - id: marketSummery
+    path: /marketSummery
+    method: POST
+    content_type: json
+    body: {}
+    category: market
+    summary: Session aggregates (tradeVolume, shareVolume, trades).
+    expect_status: [200]
+
+  - id: dailyMarketSummery
+    path: /dailyMarketSummery
+    method: POST
+    content_type: json
+    body: {}
+    category: market
+    summary: End-of-day market aggregates history.
+    expect_status: [200]
+
+  - id: allSectors
+    path: /allSectors
+    method: POST
+    content_type: json
+    body: {}
+    category: market
+    summary: Sector index rows.
+    expect_status: [200]
+
+  - id: aspiData
+    path: /aspiData
+    method: POST
+    content_type: json
+    body: {}
+    category: indices
+    summary: All Share Price Index snapshot.
+    expect_status: [200]
+
+  - id: snpData
+    path: /snpData
+    method: POST
+    content_type: json
+    body: {}
+    category: indices
+    summary: S&P Sri Lanka 20 snapshot.
+    expect_status: [200]
+
+  - id: detailedTrades
+    path: /detailedTrades
+    method: POST
+    content_type: form
+    body: {}
+    category: prices
+    summary: Market-wide detailed trades board (not symbol-filtered in practice).
+    expect_status: [200]
+    truncate_list_key: reqDetailTrades
+
+  - id: todaySharePrice
+    path: /todaySharePrice
+    method: POST
+    content_type: json
+    body: {}
+    category: prices
+    summary: Short list (~top N) of share prices — NOT a full board. Prefer tradeSummary.
+    expect_status: [200]
+
+  - id: topGainers
+    path: /topGainers
+    method: POST
+    content_type: json
+    body: {}
+    category: leaderboards
+    summary: Top gainers (short list). Also available via WS /topic/top-gainers.
+    expect_status: [200]
+
+  - id: topLooses
+    path: /topLooses
+    method: POST
+    content_type: json
+    body: {}
+    category: leaderboards
+    summary: Top losers (API spelling Looses). WS /topic/top-looses.
+    expect_status: [200]
+
+  - id: mostActiveTrades
+    path: /mostActiveTrades
+    method: POST
+    content_type: json
+    body: {}
+    category: leaderboards
+    summary: Most active by volume. WS /topic/most-active-trades.
+    expect_status: [200]
+
+  - id: companyChartDataByStock
+    path: /companyChartDataByStock
+    method: POST
+    content_type: form
+    body:
+      stockId: "{{stock_id}}"
+      period: "1"
+    category: charts
+    summary: Per-stock intraday chart ticks (use reqSymbolInfo.id as stockId).
+    resolve_stock_id_from: companyInfoSummery
+    expect_status: [200]
+    truncate_list_key: chartData
+
+  - id: chartData
+    path: /chartData
+    method: POST
+    content_type: form
+    body:
+      chartId: "1"
+      period: "1"
+    category: charts
+    summary: Index-scale series. symbol= is IGNORED — do not use for per-stock charts.
+    fails:
+      - "POST JSON → 400"
+      - "Missing chartId → 400"
+    expect_status: [200]
+
+  - id: daysTrade
+    path: /daysTrade
+    method: POST
+    content_type: form
+    body:
+      symbol: "{{symbol}}"
+    category: charts
+    summary: Day trade tape for one symbol.
+    expect_status: [200]
+
+  - id: approvedAnnouncement
+    path: /approvedAnnouncement
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    summary: Market-wide approved announcements. symbol often null — match via company name.
+    expect_status: [200]
+    truncate_list_key: approvedAnnouncements
+
+  - id: getAnnouncementByCompany
+    path: /getAnnouncementByCompany
+    method: POST
+    content_type: form
+    body:
+      symbol: "{{symbol}}"
+      fromDate: "2026-01-01"
+      toDate: "2026-07-12"
+    category: disclosures
+    summary: Preferred per-symbol disclosures for watchlists.
+    fails:
+      - "Bad date formats (DD/MM/YYYY) → 500"
+    expect_status: [200]
+    truncate_list_key: reqCompanyAnnouncement
+
+  - id: announcements_legacy
+    path: /announcements
+    method: POST
+    content_type: form
+    body:
+      symbol: "{{symbol}}"
+    category: disclosures
+    summary: Legacy per-symbol PDF archive shape (infoAnnouncement).
+    expect_status: [200]
+    truncate_list_key: infoAnnouncement
+
+  - id: getFinancialAnnouncement
+    path: /getFinancialAnnouncement
+    method: POST
+    content_type: form
+    body: {}
+    category: disclosures
+    summary: Financial announcements feed (response key typo reqFinancialAnnouncemnets).
+    expect_status: [200]
+
+  - id: getNonComplianceAnnouncements
+    path: /getNonComplianceAnnouncements
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    expect_status: [200]
+
+  - id: getNewListingsRelatedNoticesAnnouncements
+    path: /getNewListingsRelatedNoticesAnnouncements
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    expect_status: [200]
+
+  - id: getBuyInBoardAnnouncements
+    path: /getBuyInBoardAnnouncements
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    expect_status: [200]
+
+  - id: circularAnnouncement
+    path: /circularAnnouncement
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    expect_status: [200]
+
+  - id: directiveAnnouncement
+    path: /directiveAnnouncement
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    expect_status: [200]
+
+  - id: getCOVIDAnnouncements
+    path: /getCOVIDAnnouncements
+    method: POST
+    content_type: json
+    body: {}
+    category: disclosures
+    expect_status: [200]
+
+  - id: getGeneralAnnouncementById
+    path: /getGeneralAnnouncementById
+    method: POST
+    content_type: form
+    body:
+      announcementId: "1"
+    category: disclosures
+    summary: Detail by id (empty {} for unknown ids). Used by cse.lk UI.
+    expect_status: [200, 204]
+
+  - id: getAnnouncementById
+    path: /getAnnouncementById
+    method: POST
+    content_type: form
+    body:
+      announcementId: "1"
+    category: disclosures
+    summary: Often 204 No Content — list endpoints are more reliable.
+    expect_status: [200, 204]
+
+  - id: companyProfile
+    path: /companyProfile
+    method: POST
+    content_type: form
+    body:
+      symbol: "{{symbol}}"
+    category: company
+    summary: Rich company page — directors, business summary, logo, article PDFs, contacts.
+    used_by_ui: Company profile page
+    expect_status: [200]
+
+  - id: corporateAnnouncementCategory
+    path: /corporateAnnouncementCategory
+    method: GET
+    content_type: none
+    category: meta
+    summary: Announcement category metadata (~53 rows).
+    expect_status: [200]
+
+  - id: smd_categories
+    path: /smd/categories
+    method: GET
+    content_type: none
+    category: meta
+    summary: SMD category string list.
+    expect_status: [200]
+
+  - id: notifications
+    path: /notifications
+    method: GET
+    content_type: none
+    category: meta
+    summary: Market halt / notice banners.
+    expect_status: [200]
+
+  - id: news_web
+    path: /news/web
+    method: GET
+    content_type: none
+    query:
+      top: "true"
+      type: "CN"
+      numberOfRecord: "3"
+    category: media
+    summary: Press / news. Types include CN, MR, BN (see site JS).
+    expect_status: [200]
+
+  - id: events
+    path: /events
+    method: GET
+    content_type: none
+    query:
+      eventType: "OT"
+      year: "2026"
+    category: media
+    summary: Events calendar keyed by month-ish buckets.
+    expect_status: [200]
+
+  - id: events_top
+    path: /events/top
+    method: GET
+    content_type: none
+    query:
+      top: "true"
+      year: "2026"
+      numberOfRecord: "3"
+    category: media
+    summary: Top events teaser.
+    expect_status: [200]
+
+websocket:
+  broker: "https://www.cse.lk/api/ws"
+  protocol: "STOMP over SockJS/WebSocket (site uses @stomp/stompjs)"
+  topics:
+    - /topic/aspi
+    - /topic/snp
+    - /topic/status
+    - /topic/summary
+    - /topic/today-sharePrice
+    - /topic/top-gainers
+    - /topic/top-looses
+    - /topic/most-active-trades
+    - /topic/daytrade
+  request_destinations:
+    - /app/request-aspi
+    - /app/request-snp
+    - /app/request-status
+    - /app/request-summary
+    - /app/request-today-sharePrice
+    - /app/request-top-gainers
+    - /app/request-top-looses
+    - /app/request-most-active-trades
+    - /app/request-daytrade
+  notes:
+    - "Also /user/topic/* mirrors for user-queue variants."
+    - "HTTP upgrade to /api/ws may 301; follow SockJS negotiate path as the site does."
+    - "Prefer tradeSummary HTTP for polite polling; WS is for live board UIs."
+
+auth_endpoints_observed_only:
+  note: "Documented for completeness from site JS only. Do NOT automate account creation or credential stuffing."
+  paths:
+    - signInNew
+    - signInSingle
+    - signUpOld
+    - signUpSingle
+    - verifyOtp
+    - verifyOtpSingle
+    - forgetPassword
+    - secure/checkUserLocal
+    - secure/getLoggedUser
+    - logoutUser
+    - user/profile

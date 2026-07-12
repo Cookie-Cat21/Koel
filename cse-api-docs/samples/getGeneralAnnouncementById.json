@@ -1,0 +1,14 @@
+{
+  "_probe": {
+    "id": "getGeneralAnnouncementById",
+    "url": "https://www.cse.lk/api/getGeneralAnnouncementById",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:40.056800+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": []
+    }
+  },
+  "response": {}
+}

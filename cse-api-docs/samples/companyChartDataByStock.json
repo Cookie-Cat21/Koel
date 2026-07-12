@@ -1,0 +1,65 @@
+{
+  "_probe": {
+    "id": "companyChartDataByStock",
+    "url": "https://www.cse.lk/api/companyChartDataByStock",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:32.821593+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "chartData",
+        "id"
+      ]
+    }
+  },
+  "response": {
+    "chartData": [
+      {
+        "h": 20.0,
+        "l": 20.0,
+        "o": null,
+        "s": 57199916,
+        "q": 9392,
+        "p": 20.0,
+        "c": 0.1,
+        "pc": 0.5025125628140703,
+        "t": 1783656000266,
+        "n": null,
+        "id": 57199916
+      },
+      {
+        "h": 20.0,
+        "l": 20.0,
+        "o": null,
+        "s": 57200150,
+        "q": 39,
+        "p": 20.0,
+        "c": 0.1,
+        "pc": 0.5025125628140703,
+        "t": 1783656197885,
+        "n": null,
+        "id": 57200150
+      },
+      {
+        "h": 20.0,
+        "l": 20.0,
+        "o": null,
+        "s": 57200182,
+        "q": 2,
+        "p": 20.0,
+        "c": 0.1,
+        "pc": 0.5025125628140703,
+        "t": 1783656231287,
+        "n": null,
+        "id": 57200182
+      }
+    ],
+    "id": 297,
+    "_truncated": {
+      "list_key": "chartData",
+      "kept": 3,
+      "original_len": 297
+    }
+  }
+}

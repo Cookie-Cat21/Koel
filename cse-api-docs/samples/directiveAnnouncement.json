@@ -1,0 +1,54 @@
+{
+  "_probe": {
+    "id": "directiveAnnouncement",
+    "url": "https://www.cse.lk/api/directiveAnnouncement",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:38.967504+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "reqDirectiveAnnouncement"
+      ]
+    }
+  },
+  "response": {
+    "reqDirectiveAnnouncement": [
+      {
+        "id": 14197,
+        "path": "upload_report_file/CLXzMPRt6laUkQmJ_14May2026123445GMT_1778762085032.pdf",
+        "manualDate": 1778761883000,
+        "uploadedDate": "14 May 2026 06:04:45 PM",
+        "fileText": "DIRECTIVE UNDER SECTION 16(c) OF THE SECURITIES AND EXCHANGE COMMISSION OF SRI LANKA ACT NO. 19 OF 2021"
+      },
+      {
+        "id": 14025,
+        "path": "upload_report_file/7bEhyjyVLpnTO1Zp_4Mar2026031511GMT_1772594111688.pdf",
+        "manualDate": 1772594097000,
+        "uploadedDate": "04 Mar 2026 08:45:11 AM",
+        "fileText": "SUPPLEMENTARY SERVICE PROVIDERS - SHARIAH SCHOLARS-DIRECTIVE ISSUED IN TERMS OF SECTION 16(C) OF THE SECURITIES AND EXCHANGE COMMISSION OF SRI LANKA ACT NO. 19 OF 2021 (SEC ACT)"
+      },
+      {
+        "id": 14023,
+        "path": "upload_report_file/WSizdNrJrDqj8WrO_3Mar2026091405GMT_1772529245918.pdf",
+        "manualDate": 1772529221000,
+        "uploadedDate": "03 Mar 2026 02:44:05 PM",
+        "fileText": "Whitelist Indices-Directive Issued In terms of Section 16(c) of the Securities and Exchange Commission of Sri Lanka Act No. 19 of 2021 (SEC Act)"
+      },
+      {
+        "id": 14001,
+        "path": "upload_report_file/cDa0vuXtADMtA0qV_23Feb2026072522GMT_1771831522881.pdf",
+        "manualDate": 1771831195000,
+        "uploadedDate": "23 Feb 2026 12:55:22 PM",
+        "fileText": " THE REVISED LIST OF AUDITORS-DIRECTIVE ISSUED IN TERMS OF SECTION 16(c) OF THE SECURITIES AND EXCHANGE COMMISSION OF SRI LANKA ACT NO.19 OF 2021"
+      },
+      {
+        "id": 13768,
+        "path": "upload_report_file/aIJVjPmE1eGyMJLL_30Oct2025110302GMT_1761822182808.pdf",
+        "manualDate": 1761821793000,
+        "uploadedDate": "30 Oct 2025 04:33:02 PM",
+        "fileText": "DIRECTIVE ISSUED IN TERMS OF SECTION 16(c) TOGETHER WITH SECTIONS 26(5),178(5)(a),81(3),175(1)(a) AND 175(4) OF THE SECURITIES AND EXCHANGE COMMISION OF SRI LANKA ACT NO.19 OF 2021"
+      }
+    ]
+  }
+}

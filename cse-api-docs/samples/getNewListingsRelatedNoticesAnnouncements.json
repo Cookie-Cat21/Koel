@@ -1,0 +1,23 @@
+{
+  "_probe": {
+    "id": "getNewListingsRelatedNoticesAnnouncements",
+    "url": "https://www.cse.lk/api/getNewListingsRelatedNoticesAnnouncements",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:37.330187+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "newListingRelatedAnnouncements"
+      ]
+    }
+  },
+  "response": {
+    "_truncated": true,
+    "_note": "payload exceeded 12000 bytes; keys only",
+    "keys": [
+      "newListingRelatedAnnouncements"
+    ],
+    "preview": "{\"newListingRelatedAnnouncements\": [{\"id\": 31788, \"announcementId\": 37947, \"createdDate\": \"07 Jul 2026 05:19:39 PM\", \"title\": null, \"announcementCategory\": \"NEW LISTINGS RELATED NOTICES\", \"category\": \"59\", \"company\": \"TRADING AND MARKET SURVEILLANCE\", \"remarks\": \"Nations Trust Bank PLC (“Bank”) – Basel III compliant Tier 2, Listed, Rated, Unsecured, Subordinated, Redeemable Debentures with Non-Viability Conversion feature 2026\"}, {\"id\": 31432, \"announcementId\": 37539, \"createdDate\": \"16 Jun 2026 11:48:33 AM\", \"title\": null, \"announcementCategory\": \"NEW LISTINGS RELATED NOTICES\", \"category\": \"59\", \"company\": \"TRADING AND MARKET SURVEILLANCE\", \"remarks\": \"NATIONS TRUST BANK PLC (“BANK”) – ISSUANCE OF BASEL III COMPLIANT, TIER 2, LISTED, RATED, UNSECURED, SUBORDINATED, REDEEMABLE DEBENTURES WITH NON-VIABILITY CONVERSION FEATURE 2026\"}, {\"id\": 30919, \"announcementId\": 36939, \"createdDate\": \"08 May 2026 05:02:54 PM\", \"title\": null, \"announcementCategory\": \"NEW LISTINGS RELATED NOTICES\", \"category\": \"59\", \"company\": \"TRADING AND MARKET SURVEILLANCE\", \"remarks\": \"Abans Finance PLC (“Company”) – Listed, Rated, Senior, Unsecured, Redeemable Debentures 2026\"}, {\"id\": 30776, \"announcementId\": 36794, \"createdDate\": \"28 Apr 2026 03:21:51 PM\", \"title\": null, \"announcementCategory\": \"NEW LISTINGS RELATED NOTICES\", \"category\": \"59\", \"company\": \"TRADING AND MARKET SURVEILLANCE\", \"remarks\": \"JANASHAKTHI LIMITED (“COMPANY”) – INITIAL PUBLIC OFFERING OF ORDINARY VOTING SHARES\"}, {\"id\": 30757, \"announcementId\": 36763, \"createdDate\": \"24 Apr 2026 06:56:36 PM\", \"title\": null, \"announcementCategory\": \"NEW LISTINGS RELATED NOTICES\", \"category\": \"59\", \"company\": \"TRADING AND MARKET SURVEILLANCE\", \"remarks\": \"JANASHAKTHI LIMITED – INITIAL PUBLIC OFFER 2026 – RESPONSE TO CONCERNS REGARDING BASIS OF ALLOTMENT TO NON-RETAIL INVESTORS\"}, {\"id\": 30726, \"announcementId\": 36722, \"createdDate\": \"22 Apr 2026 09:43:47 AM\", \"title\": null, \"announcementCategory\": \"NEW LISTINGS RELATED NOTICES\", \"category"
+  }
+}

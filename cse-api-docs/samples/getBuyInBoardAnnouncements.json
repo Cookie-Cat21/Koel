@@ -1,0 +1,23 @@
+{
+  "_probe": {
+    "id": "getBuyInBoardAnnouncements",
+    "url": "https://www.cse.lk/api/getBuyInBoardAnnouncements",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:37.881446+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "buyInBoardAnnouncements"
+      ]
+    }
+  },
+  "response": {
+    "_truncated": true,
+    "_note": "payload exceeded 12000 bytes; keys only",
+    "keys": [
+      "buyInBoardAnnouncements"
+    ],
+    "preview": "{\"buyInBoardAnnouncements\": [{\"id\": 31482, \"announcementId\": 37602, \"createdDate\": \"22 Jun 2026 01:47:06 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 31236, \"announcementId\": 37322, \"createdDate\": \"04 Jun 2026 01:50:48 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 31205, \"announcementId\": 37287, \"createdDate\": \"03 Jun 2026 01:54:56 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 31078, \"announcementId\": 37139, \"createdDate\": \"27 May 2026 01:51:20 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 30978, \"announcementId\": 37017, \"createdDate\": \"15 May 2026 01:55:22 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 30957, \"announcementId\": 36988, \"createdDate\": \"14 May 2026 01:52:34 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 30928, \"announcementId\": 36950, \"createdDate\": \"11 May 2026 02:02:39 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 30889, \"announcementId\": 36906, \"createdDate\": \"06 May 2026 01:50:14 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 30772, \"announcementId\": 36790, \"createdDate\": \"28 Apr 2026 01:50:41 PM\", \"title\": null, \"announcementCategory\": \"BUY-IN BOARD DISCLOSURES\", \"category\": \"60\", \"company\": \"TRADING AND MARKET SURVEILLANCE\"}, {\"id\": 30631, \"announcementId\": 36624, \"createdDate\": "
+  }
+}

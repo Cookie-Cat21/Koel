@@ -1,0 +1,18 @@
+{
+  "_probe": {
+    "id": "marketStatus",
+    "url": "https://www.cse.lk/api/marketStatus",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:26.323928+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "status"
+      ]
+    }
+  },
+  "response": {
+    "status": "Market Closed"
+  }
+}

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>todaySharePrice · CSE API Docs (unofficial)</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --panel: #1a222c;
+  --text: #e7ecf1;
+  --muted: #9aa7b5;
+  --accent: #3dbea0;
+  --bad: #e57373;
+  --ok: #81c784;
+  --border: #2a3542;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text);
+  line-height: 1.55;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header {
+  padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #152028, var(--bg));
+}
+header h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+header p { margin: 0; color: var(--muted); max-width: 52rem; }
+nav {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+  position: sticky; top: 0; z-index: 2;
+}
+main { padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.1rem; margin: 0 0 1rem;
+}
+.card h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.meta { color: var(--muted); font-size: .92rem; }
+.badge {
+  display: inline-block; font-size: .75rem; padding: .15rem .45rem;
+  border-radius: 999px; border: 1px solid var(--border); margin-right: .35rem;
+  font-family: var(--mono);
+}
+.badge.ok { color: var(--ok); border-color: #356b3d; }
+.badge.bad { color: var(--bad); border-color: #7a3b3b; }
+.badge.cat { color: var(--accent); }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+code, pre { font-family: var(--mono); font-size: .85rem; }
+pre {
+  background: #0b1015; border: 1px solid var(--border); border-radius: 8px;
+  padding: .85rem; overflow: auto; max-height: 320px;
+}
+footer { padding: 2rem 1.25rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--border); }
+h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; }
+.grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .85rem; }
+.stat b { display: block; font-size: 1.4rem; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Unofficial CSE API Docs</h1>
+  <p>Live-probed documentation for <code>https://www.cse.lk/api</code>. Not affiliated with the Colombo Stock Exchange.</p>
+</header>
+
+<nav>
+  <a href="../index.html">Home</a>
+  <a href="../endpoints/index.html">Endpoints</a>
+  <a href="../websocket.html">WebSocket</a>
+  <a href="../ethics.html">Ethics</a>
+  <a href="../examples.html">Examples</a>
+  <a href="../compare.html">vs GH0STH4CKER</a>
+  <a href="../probe.html">Last probe</a>
+</nav>
+<main>
+
+<div class="card">
+  <h2><code>POST /todaySharePrice</code></h2>
+  <p><span class="badge cat">prices</span>
+  <span class='badge ok'>probe ok</span>
+  </p>
+  <p>Short list (~top N) of share prices — NOT a full board. Prefer tradeSummary.</p>
+  <p class="meta">Used by UI: —</p>
+  <p class="meta">Last probe status: 200 · expect [200]</p>
+</div>
+<div class="card">
+  <h3>curl</h3>
+  <pre>curl -sS -X POST &#x27;https://www.cse.lk/api/todaySharePrice&#x27; \
+  -H &#x27;Content-Type: application/json&#x27; \
+  -H &#x27;Origin: https://www.cse.lk&#x27; -H &#x27;Referer: https://www.cse.lk/&#x27; \
+  -d &#x27;{}&#x27;</pre>
+</div>
+<div class="card">
+  <h3>Known failures</h3>
+  <ul><li>None recorded</li></ul>
+  <h3>Fields</h3>
+  <ul><li class='meta'>See sample JSON</li></ul>
+</div>
+<div class="card">
+  <h3>Sample</h3>
+  <pre>{
+  &quot;_probe&quot;: {
+    &quot;id&quot;: &quot;todaySharePrice&quot;,
+    &quot;url&quot;: &quot;https://www.cse.lk/api/todaySharePrice&quot;,
+    &quot;method&quot;: &quot;POST&quot;,
+    &quot;status&quot;: 200,
+    &quot;verified_at&quot;: &quot;2026-07-12T05:43:30.583265+00:00&quot;,
+    &quot;fingerprint&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;len&quot;: 10,
+      &quot;item_keys&quot;: [
+        &quot;change&quot;,
+        &quot;changePercentage&quot;,
+        &quot;crossingVolume&quot;,
+        &quot;high&quot;,
+        &quot;id&quot;,
+        &quot;lastTradedPrice&quot;,
+        &quot;low&quot;,
+        &quot;open&quot;,
+        &quot;quantity&quot;,
+        &quot;symbol&quot;,
+        &quot;tradesTime&quot;
+      ]
+    }
+  },
+  &quot;response&quot;: [
+    {
+      &quot;id&quot;: 204,
+      &quot;symbol&quot;: &quot;ABAN.N0000&quot;,
+      &quot;open&quot;: 1147.5,
+      &quot;high&quot;: 1148.0,
+      &quot;low&quot;: 1147.5,
+      &quot;lastTradedPrice&quot;: 1144.25,
+      &quot;change&quot;: 0.0,
+      &quot;changePercentage&quot;: 0.0,
+      &quot;crossingVolume&quot;: 17,
+      &quot;tradesTime&quot;: 1783673334404,
+      &quot;quantity&quot;: 7
+    },
+    {
+      &quot;id&quot;: 1845,
+      &quot;symbol&quot;: &quot;AFSL.N0000&quot;,
+      &quot;open&quot;: 96.0,
+      &quot;high&quot;: 99.6,
+      &quot;low&quot;: 95.3,
+      &quot;lastTradedPrice&quot;: 98.8,
+      &quot;change&quot;: -0.7,
+      &quot;changePercentage&quot;: -0.7035176,
+      &quot;crossingVolume&quot;: 869,
+      &quot;tradesTime&quot;: 1783671636352,
+      &quot;quantity&quot;: 10
+    },
+    {
+      &quot;id&quot;: 2065,
+      &quot;symbol&quot;: &quot;AEL.N0000&quot;,
+      &quot;open&quot;: 77.4,
+      &quot;high&quot;: 78.0,
+      &quot;low&quot;: 77.0,
+      &quot;lastTradedPrice&quot;: 77.4,
+      &quot;change&quot;: 0.4,
+      &quot;changePercentage&quot;: 0.5194805,
+      &quot;crossingVolume&quot;: 57483,
+      &quot;tradesTime&quot;: 1783673863340,
+      &quot;quantity&quot;: 50
+    },
+    {
+      &quot;id&quot;: 472,
+      &quot;symbol&quot;: &quot;ACL.N0000&quot;,
+      &quot;open&quot;: 96.7,
+      &quot;high&quot;: 98.0,
+      &quot;low&quot;: 96.6,
+      &quot;lastTradedPrice&quot;: 97.6,
+      &quot;change&quot;: 0.9,
+      &quot;changePercentage&quot;: 0.93071353,
+      &quot;crossingVolume&quot;: 43928,
+      &quot;tradesTime&quot;: 1783673863204,
+      &quot;quantity&quot;: 1
+    },
+    {
+      &quot;id&quot;: 406,
+      &quot;symbol&quot;: &quot;APLA.N0000&quot;,
+      &quot;open&quot;: 145.0,
+      &quot;high&quot;: 149.0,
+      &quot;low&quot;: 144.0,
+      &quot;lastTradedPrice&quot;: 149.0,
+      &quot;change&quot;: -0.25,
+      &quot;changePercentage&quot;: -0.16750419,
+      &quot;crossingVolume&quot;: 13809,
+      &quot;tradesTime&quot;: 1783673972248,
+      &quot;quantity&quot;: 218
+    },
+    {
+      &quot;id&quot;: 554,
+      &quot;symbol&quot;: &quot;ACME.N0000&quot;,
+      &quot;open&quot;: 4.8,
+      &quot;high&quot;: 5.0,
+      &quot;low&quot;: 4.8,
+      &quot;lastTradedPrice&quot;: 4.9,
+      &quot;change&quot;: 0.1,
+      &quot;changePercentage&quot;: 2.0833333,
+      &quot;crossingVolume&quot;: 342557,
+      &quot;tradesTime&quot;: 1783673991889,
+      &quot;quantity&quot;: 990
+    },
+    {
+      &quot;id&quot;: 163,
+      &quot;symbol&quot;: &quot;AGAL.N0000&quot;,
+      &quot;open&quot;: 53.4,
+      &quot;high&quot;: 53.4,
+      &quot;low&quot;: 51.9,
+      &quot;lastTradedPrice&quot;: 51.9,
+      &quot;change&quot;: -1.3,
+      &quot;changePercentage&quot;: -2.443609,
+      &quot;crossingVolume&quot;: 811,
+      &quot;tradesTime&quot;: 1783673452146,
+      &quot;quantity&quot;: 350
+    },
+    {
+      &quot;id&quot;: 2026,
+      &quot;symbol&quot;: &quot;AGST.N0000&quot;,
+      &quot;open&quot;: 11.2,
+      &quot;high&quot;: 11.6,
+      &quot;low&quot;: 11.2,
+      &quot;lastTradedPrice&quot;: 11.5,
+      &quot;change&quot;: 0.0,
+      &quot;changePercentage&quot;: 0.0,
+      &quot;crossingVolume&quot;: 163155,
+      &quot;tradesTime&quot;: 1783673815189,
+      &quot;quantity&quot;: 999
+    },
+    {
+      &quot;id&quot;: 2035,
+      &quot;symbol&quot;: &quot;AGST.X0000&quot;,
+      &quot;open&quot;: 12.3,
+      &quot;high&quot;: 12.3,
+      &quot;low&quot;: 11.1,
+      &quot;lastTradedPrice&quot;: 11.4,
+      &quot;change&quot;: -0.1,
+      &quot;changePercentage&quot;: -0.8695652,
+      &quot;crossingVolume&quot;: 5135,
+      &quot;tradesTime&quot;: 1783672278352,
+      &quot;quantity&quot;: 470
+    },
+    {
+      &quot;id&quot;: 144,
+      &quot;symbol&quot;: &quot;AHUN.N0000&quot;,
+      &quot;open&quot;: 91.6,
+      &quot;high&quot;: 92.0,
+      &quot;low&quot;: 91.0,
+      &quot;lastTradedPrice&quot;: 91.1,
+      &quot;change&quot;: -0.4,
+      &quot;changePercentage&quot;: -0.43715847,
+      &quot;crossingVolume&quot;: 22466,
+      &quot;tradesTime&quot;: 1783673939967,
+      &quot;quantity&quot;: 278
+    }
+  ]
+}
+</pre>
+</div>
+
+</main>
+<footer>
+  MIT-licensed harness · Not financial advice · <a href="../ethics.html">Ethics</a> ·
+  Generated 2026-07-12 05:44 UTC
+</footer>
+</body>
+</html>

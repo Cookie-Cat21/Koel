@@ -1,0 +1,23 @@
+{
+  "_probe": {
+    "id": "getCOVIDAnnouncements",
+    "url": "https://www.cse.lk/api/getCOVIDAnnouncements",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:39.516283+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "covidAnnouncements"
+      ]
+    }
+  },
+  "response": {
+    "_truncated": true,
+    "_note": "payload exceeded 12000 bytes; keys only",
+    "keys": [
+      "covidAnnouncements"
+    ],
+    "preview": "{\"covidAnnouncements\": [{\"id\": 9342, \"announcementId\": 10774, \"createdDate\": \"28 Jul 2021 03:24:21 PM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"LANKA MILK FOODS (CWE) PLC\"}, {\"id\": 6221, \"announcementId\": 7165, \"createdDate\": \"09 Nov 2020 03:55:06 PM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"JANASHAKTHI PLC\"}, {\"id\": 5582, \"announcementId\": 6409, \"createdDate\": \"11 Sep 2020 10:41:08 AM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"KELSEY DEVELOPMENTS PLC\"}, {\"id\": 5373, \"announcementId\": 6146, \"createdDate\": \"26 Aug 2020 09:22:06 AM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"THE AUTODROME PLC\"}, {\"id\": 5319, \"announcementId\": 6080, \"createdDate\": \"20 Aug 2020 01:23:41 PM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"ORIENT FINANCE PLC\"}, {\"id\": 5312, \"announcementId\": 6071, \"createdDate\": \"19 Aug 2020 12:12:32 PM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"COMMERCIAL LEASING & FINANCE PLC\"}, {\"id\": 5186, \"announcementId\": 5912, \"createdDate\": \"11 Aug 2020 04:19:24 PM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"ARPICO FINANCE COMPANY PLC\"}, {\"id\": 5165, \"announcementId\": 5889, \"createdDate\": \"10 Aug 2020 01:23:54 PM\", \"title\": null, \"announcementCategory\": \"DISCLOSURE REGARDING IMPACT OF COVID-19 ON LISTED COMPANIES\", \"category\": \"58\", \"company\": \"TRADE FINANCE & INVESTMENTS PLC\"}, {\"id\": 5158, \"announcementId\": 5887, \"createdDate\": \"07 Aug 2020 04"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "_probe": {
+    "id": "approvedAnnouncement",
+    "url": "https://www.cse.lk/api/approvedAnnouncement",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:34.541180+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "approvedAnnouncements"
+      ]
+    }
+  },
+  "response": {
+    "approvedAnnouncements": [
+      {
+        "id": 31842,
+        "createdDate": 1783683888000,
+        "dateOfAnnouncement": "10 Jul 2026",
+        "announcementId": 38004,
+        "announcementCategory": "CORPORATE DISCLOSURE",
+        "company": "TESS AGRO PLC",
+        "type": null,
+        "symbol": null,
+        "recordDate": null,
+        "allotment": null,
+        "xr": null,
+        "xc": null,
+        "xd": null,
+        "tradingCommencement": null,
+        "tradingSuspended": null,
+        "paymentDate": null,
+        "agmDate": null,
+        "dateOfAgmInitial": null,
+        "logoUrl": "upload_logo/781_1601463701.jpeg",
+        "remarks": "Changes to the Nomination and Governance, Remuneration and Audit Committee."
+      },
+      {
+        "id": 31841,
+        "createdDate": 1783683711000,
+        "dateOfAnnouncement": "10 Jul 2026",
+        "announcementId": 38009,
+        "announcementCategory": "CORPORATE DISCLOSURE",
+        "company": "INDUSTRIAL ASPHALTS (CEYLON) PLC",
+        "type": null,
+        "symbol": null,
+        "recordDate": null,
+        "allotment": null,
+        "xr": null,
+        "xc": null,
+        "xd": null,
+        "tradingCommencement": null,
+        "tradingSuspended": null,
+        "paymentDate": null,
+        "agmDate": null,
+        "dateOfAgmInitial": null,
+        "logoUrl": "upload_logo/495_1645043761.jpeg",
+        "remarks": "Further to the announcement dated 08th July 2026: Proposed Voluntary Offer by Arcasia Investment & Trading (Pvt) Ltd and ATX Partners (Pvt) Ltd to acquire shares in Industrial Asphalts (Ceylon) PLC"
+      },
+      {
+        "id": 31840,
+        "createdDate": 1783683537000,
+        "dateOfAnnouncement": "10 Jul 2026",
+        "announcementId": 38007,
+        "announcementCategory": "RESIGNATION OF DIRECTORS",
+        "company": "CITRUS LEISURE  PLC",
+        "type": null,
+        "symbol": null,
+        "recordDate": null,
+        "allotment": null,
+        "xr": null,
+        "xc": null,
+        "xd": null,
+        "tradingCommencement": null,
+        "tradingSuspended": null,
+        "paymentDate": null,
+        "agmDate": null,
+        "dateOfAgmInitial": null,
+        "logoUrl": null,
+        "remarks": null
+      }
+    ],
+    "_truncated": {
+      "list_key": "approvedAnnouncements",
+      "kept": 3,
+      "original_len": 82
+    }
+  }
+}

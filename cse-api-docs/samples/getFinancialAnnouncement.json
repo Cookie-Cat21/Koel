@@ -1,0 +1,107 @@
+{
+  "_probe": {
+    "id": "getFinancialAnnouncement",
+    "url": "https://www.cse.lk/api/getFinancialAnnouncement",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:36.207743+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "reqFinancialAnnouncemnets"
+      ]
+    }
+  },
+  "response": {
+    "reqFinancialAnnouncemnets": [
+      {
+        "id": 52007,
+        "path": "cmt/upload_report_file/863_1783652788017.26 Softlogic Finance PLC.pdf",
+        "manualDate": 1774895400000,
+        "uploadedDate": "10 Jul 2026 08:36:28 AM",
+        "fileText": "Audited Financial Statements for the Period ended 31st March 2026",
+        "name": "SOFTLOGIC FINANCE PLC",
+        "symbol": "CRL",
+        "logoUrl": "upload_logo/863_1603176008.jpeg",
+        "authorizedDate": "10 Jul 2026 08:42:30 AM"
+      },
+      {
+        "id": 52005,
+        "path": "cmt/upload_report_file/387_1783596490946.pdf",
+        "manualDate": 1783449000000,
+        "uploadedDate": "09 Jul 2026 04:58:10 PM",
+        "fileText": "prospectus",
+        "name": "NATIONS TRUST BANK PLC",
+        "symbol": "NTB",
+        "logoUrl": "upload_logo/387_1216701989.gif",
+        "authorizedDate": "09 Jul 2026 05:02:36 PM"
+      },
+      {
+        "id": 52004,
+        "path": "cmt/upload_report_file/387_1783596547902.pdf",
+        "manualDate": 1783449000000,
+        "uploadedDate": "09 Jul 2026 04:59:07 PM",
+        "fileText": "Accountant's reports & five year summary",
+        "name": "NATIONS TRUST BANK PLC",
+        "symbol": "NTB",
+        "logoUrl": "upload_logo/387_1216701989.gif",
+        "authorizedDate": "09 Jul 2026 05:01:44 PM"
+      },
+      {
+        "id": 52003,
+        "path": "cmt/upload_report_file/387_1783596604457.pdf",
+        "manualDate": 1783449000000,
+        "uploadedDate": "09 Jul 2026 05:00:04 PM",
+        "fileText": "Trust deed",
+        "name": "NATIONS TRUST BANK PLC",
+        "symbol": "NTB",
+        "logoUrl": "upload_logo/387_1216701989.gif",
+        "authorizedDate": "09 Jul 2026 05:00:33 PM"
+      },
+      {
+        "id": 51996,
+        "path": "cmt/upload_report_file/688_1783505383015.pdf",
+        "manualDate": 1774895400000,
+        "uploadedDate": "08 Jul 2026 03:39:43 PM",
+        "fileText": "Annual Report as at 31st March 2026",
+        "name": "TOKYO CEMENT COMPANY (LANKA) PLC",
+        "symbol": "TKYO",
+        "logoUrl": "upload_logo/688_1601611429.jpeg",
+        "authorizedDate": "08 Jul 2026 05:11:47 PM"
+      },
+      {
+        "id": 51995,
+        "path": "cmt/upload_report_file/1302_1783504660368.pdf",
+        "manualDate": 1774895400000,
+        "uploadedDate": "08 Jul 2026 03:27:40 PM",
+        "fileText": "Annual Report as at 31st March 2026",
+        "name": "ABANS PLC",
+        "symbol": "ABNS",
+        "logoUrl": "upload_logo/1302_1601464418.jpeg",
+        "authorizedDate": "08 Jul 2026 04:59:37 PM"
+      },
+      {
+        "id": 51992,
+        "path": "cmt/upload_report_file/458_1783341943255.pdf",
+        "manualDate": 1774895400000,
+        "uploadedDate": "06 Jul 2026 06:15:43 PM",
+        "fileText": "Annual Report as at 31st March 2026",
+        "name": "CEYLON BEVERAGE HOLDINGS PLC",
+        "symbol": "BREW",
+        "logoUrl": "upload_logo/bM7G579aV6bWSW5j_8Jul2026050307GMT_1783486987761.png",
+        "authorizedDate": "06 Jul 2026 06:51:36 PM"
+      },
+      {
+        "id": 51991,
+        "path": "cmt/upload_report_file/485_1783341509328.pdf",
+        "manualDate": 1774895400000,
+        "uploadedDate": "06 Jul 2026 06:08:29 PM",
+        "fileText": "Annual Report as at 31st March 2026",
+        "name": "LION BREWERY CEYLON PLC",
+        "symbol": "LION",
+        "logoUrl": "upload_logo/h86lOvFReO03p0OK_13Mar2026060110GMT_1773381670392.png",
+        "authorizedDate": "06 Jul 2026 06:48:16 PM"
+      }
+    ]
+  }
+}

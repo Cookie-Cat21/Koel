@@ -1,0 +1,114 @@
+{
+  "_probe": {
+    "id": "mostActiveTrades",
+    "url": "https://www.cse.lk/api/mostActiveTrades",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:32.268180+00:00",
+    "fingerprint": {
+      "type": "array",
+      "len": 10,
+      "item_keys": [
+        "id",
+        "percentageShareVolume",
+        "securityId",
+        "shareVolume",
+        "symbol",
+        "tradeVolume",
+        "turnover"
+      ]
+    }
+  },
+  "response": [
+    {
+      "id": 57215960,
+      "securityId": 266,
+      "symbol": "SAMP.N0000",
+      "tradeVolume": 1441.0,
+      "shareVolume": 1094805.0,
+      "turnover": 152382672.0,
+      "percentageShareVolume": -0.7155635062611807
+    },
+    {
+      "id": 57216001,
+      "securityId": 31,
+      "symbol": "HAYC.N0000",
+      "tradeVolume": 545.0,
+      "shareVolume": 631873.0,
+      "turnover": 106154405.5,
+      "percentageShareVolume": 4.622496147919877
+    },
+    {
+      "id": 57215977,
+      "securityId": 426,
+      "symbol": "CCS.N0000",
+      "tradeVolume": 328.0,
+      "shareVolume": 1700253.0,
+      "turnover": 211490816.5,
+      "percentageShareVolume": 3.4343434343434343
+    },
+    {
+      "id": 57216011,
+      "securityId": 208,
+      "symbol": "COMB.N0000",
+      "tradeVolume": 314.0,
+      "shareVolume": 2541864.0,
+      "turnover": 523428068.5,
+      "percentageShareVolume": 0.0
+    },
+    {
+      "id": 57215926,
+      "securityId": 297,
+      "symbol": "JKH.N0000",
+      "tradeVolume": 297.0,
+      "shareVolume": 6052893.0,
+      "turnover": 121043649.8,
+      "percentageShareVolume": 0.5025125628140703
+    },
+    {
+      "id": 57215958,
+      "securityId": 471,
+      "symbol": "DIAL.N0000",
+      "tradeVolume": 286.0,
+      "shareVolume": 435044.0,
+      "turnover": 19239353.7,
+      "percentageShareVolume": 0.9153318077803204
+    },
+    {
+      "id": 57215957,
+      "securityId": 1849,
+      "symbol": "SHL.N0000",
+      "tradeVolume": 284.0,
+      "shareVolume": 1026591.0,
+      "turnover": 9556924.1,
+      "percentageShareVolume": -1.0869565217391304
+    },
+    {
+      "id": 57215972,
+      "securityId": 553,
+      "symbol": "LIOC.N0000",
+      "tradeVolume": 283.0,
+      "shareVolume": 70772.0,
+      "turnover": 9669727.75,
+      "percentageShareVolume": -3.0088495575221237
+    },
+    {
+      "id": 57215965,
+      "securityId": 213,
+      "symbol": "SEYB.X0000",
+      "tradeVolume": 281.0,
+      "shareVolume": 179941.0,
+      "turnover": 11940439.9,
+      "percentageShareVolume": -2.7941176470588234
+    },
+    {
+      "id": 57215869,
+      "securityId": 269,
+      "symbol": "ASPH.N0000",
+      "tradeVolume": 234.0,
+      "shareVolume": 23441468.0,
+      "turnover": 16197151.4,
+      "percentageShareVolume": 0.0
+    }
+  ]
+}

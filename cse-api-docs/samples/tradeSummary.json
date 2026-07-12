@@ -1,0 +1,99 @@
+{
+  "_probe": {
+    "id": "tradeSummary",
+    "url": "https://www.cse.lk/api/tradeSummary",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:25.684064+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "reqTradeSummery"
+      ]
+    }
+  },
+  "response": {
+    "reqTradeSummery": [
+      {
+        "id": 204,
+        "name": "ABANS ELECTRICALS PLC",
+        "symbol": "ABAN.N0000",
+        "logoUrl": "upload_logo/642_1603172106.jpeg",
+        "quantity": 7,
+        "percentageChange": 0.0,
+        "change": 0.0,
+        "price": 1144.25,
+        "previousClose": 1144.25,
+        "high": 1148.0,
+        "low": 1147.5,
+        "lastTradedTime": 1783673334404,
+        "issueDate": "01/JAN/1984",
+        "turnover": 19511.0,
+        "sharevolume": 17,
+        "tradevolume": 3,
+        "marketCap": 5847758280.0,
+        "marketCapPercentage": 0.0,
+        "open": 1147.5,
+        "closingPrice": 1144.25,
+        "crossingVolume": 17,
+        "crossingTradeVol": 3,
+        "status": 0
+      },
+      {
+        "id": 1845,
+        "name": "ABANS FINANCE PLC",
+        "symbol": "AFSL.N0000",
+        "logoUrl": "upload_logo/1069_1601609724.jpeg",
+        "quantity": 10,
+        "percentageChange": -0.7035175879396985,
+        "change": -0.7,
+        "price": 98.8,
+        "previousClose": 99.5,
+        "high": 99.6,
+        "low": 95.3,
+        "lastTradedTime": 1783671636352,
+        "issueDate": "27/JUN/2011",
+        "turnover": 83782.8,
+        "sharevolume": 869,
+        "tradevolume": 15,
+        "marketCap": 7280885294.8,
+        "marketCapPercentage": 0.0,
+        "open": 96.0,
+        "closingPrice": 98.8,
+        "crossingVolume": 869,
+        "crossingTradeVol": 15,
+        "status": 3
+      },
+      {
+        "id": 2065,
+        "name": "ACCESS ENGINEERING PLC",
+        "symbol": "AEL.N0000",
+        "logoUrl": "upload_logo/1141_1601609745.jpeg",
+        "quantity": 50,
+        "percentageChange": 0.5194805194805194,
+        "change": 0.4,
+        "price": 77.4,
+        "previousClose": 77.0,
+        "high": 78.0,
+        "low": 77.0,
+        "lastTradedTime": 1783673863340,
+        "issueDate": "27/MAR/2012",
+        "turnover": 4439997.2,
+        "sharevolume": 57483,
+        "tradevolume": 79,
+        "marketCap": 77400000000.0,
+        "marketCapPercentage": 0.0,
+        "open": 77.4,
+        "closingPrice": 77.4,
+        "crossingVolume": 57483,
+        "crossingTradeVol": 79,
+        "status": 0
+      }
+    ],
+    "_truncated": {
+      "list_key": "reqTradeSummery",
+      "kept": 3,
+      "original_len": 282
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "_probe": {
+    "id": "news_web",
+    "url": "https://www.cse.lk/api/news/web",
+    "method": "GET",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:43.553966+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "CN"
+      ]
+    }
+  },
+  "response": {
+    "CN": [
+      {
+        "id": "abd29cc48824552a59f7267e476bf1c2",
+        "title": "Delay in the Commencement of Trading on 1st July 2026",
+        "shortDescription": "Delay in the Commencement of Trading on 1st July 2026",
+        "publishedDate": "2026-07-01 11:07:11",
+        "security": 0,
+        "year": 2026,
+        "month": "07",
+        "image1": "cms-internal/news/3DrfMjoQhjADwjjS_1Jul2026073054GMT_1782891054568.jpeg",
+        "image2": null,
+        "image3": null,
+        "type": "CN",
+        "source": "CSE",
+        "companyLogo": null,
+        "image1Orientation": "V",
+        "image2Orientation": "V",
+        "image3Orientation": "V",
+        "web": true,
+        "mobile": false,
+        "localization": {
+          "si": {
+            "pdf": "cms-internal/NEWS/XPdZm1VZnyPKv2pD_2Jul2026082853GMT_1782980933124.pdf"
+          },
+          "en": {
+            "pdf": "cms-internal/NEWS/gYSEzHBfDSuSfEhu_1Jul2026103934GMT_1782902374647.pdf"
+          },
+          "ta": {
+            "pdf": "cms-internal/NEWS/1lTvdbrkh4PRAnwj_6Jul2026053711GMT_1783316231922.pdf"
+          }
+        }
+      },
+      {
+        "id": "427fa42a5fa5ccb6882efeb24559d123",
+        "title": "SEC & CSE to Host Another Investor Forum at the CSE Trading Floor on 9th July 2026 ",
+        "shortDescription": "SEC & CSE to Host Another Investor Forum at the CSE Trading Floor on 9th July 2026 ",
+        "publishedDate": "2026-06-30 09:37:15",
+        "security": 0,
+        "year": 2026,
+        "month": "06",
+        "image1": "cms-internal/news/DwBCE9RFwdHQg29v_30Jun2026040717GMT_1782792437132.png",
+        "image2": null,
+        "image3": null,
+        "type": "CN",
+        "source": "CSE",
+        "companyLogo": null,
+        "image1Orientation": "V",
+        "image2Orientation": "V",
+        "image3Orientation": "V",
+        "web": true,
+        "mobile": true,
+        "localization": {
+          "en": {
+            "pdf": "cms-internal/news/LINcSEOp27Lr6q7s_30Jun2026040717GMT_1782792437263.pdf"
+          }
+        }
+      },
+      {
+        "id": "54dd4936d635f9c2387c7e06b0aec9ea",
+        "title": "University of Kelaniya’s Department of Finance Celebrates 15th Anniversary on CSE Trading Floor",
+        "shortDescription": "University of Kelaniya’s Department of Finance Celebrates 15th Anniversary on CSE Trading Floor",
+        "publishedDate": "2026-06-27 09:35:22",
+        "security": 0,
+        "year": 2026,
+        "month": "06",
+        "image1": "cms-internal/news/X5mxqQGQdqdKqgPB_30Jun2026040524GMT_1782792324098.jpeg",
+        "image2": null,
+        "image3": null,
+        "type": "CN",
+        "source": "CSE",
+        "companyLogo": null,
+        "image1Orientation": "V",
+        "image2Orientation": "V",
+        "image3Orientation": "V",
+        "web": true,
+        "mobile": true,
+        "localization": {
+          "en": {
+            "pdf": "cms-internal/news/7I3K6Esi5tTGtEvf_30Jun2026040524GMT_1782792324216.pdf"
+          }
+        }
+      }
+    ]
+  }
+}

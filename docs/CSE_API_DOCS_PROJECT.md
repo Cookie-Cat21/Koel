@@ -129,4 +129,4 @@ Chime consumes improvements by copying verified notes back into `endpoint_probe_
 | Can we release our own docs? | **Yes, as a separate repo/site**, with probe CI so it doesn’t go stale in 8 months. |
 | Does Chime need that repo to work? | **No** — Chime already runs on the subset it needs. Docs are community + portfolio upside. |
 
-**Next unlock:** create the empty sibling repo under the same org when you want node 2; until then keep extending `docs/endpoint_probe_report.md` here.
+**Next unlock:** This kit now lives at [`cse-api-docs/`](../cse-api-docs/) inside the Chime monorepo (agent cannot `gh repo create`). See [`cse-api-docs/EXTRACT.md`](../cse-api-docs/EXTRACT.md) to split into `Cookie-Cat21/cse-api-docs`. Browse generated docs under `cse-api-docs/site/` after `python3 scripts/build_site.py`.

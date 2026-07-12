@@ -1,0 +1,26 @@
+{
+  "_probe": {
+    "id": "marketSummery",
+    "url": "https://www.cse.lk/api/marketSummery",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:26.867430+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "id",
+        "shareVolume",
+        "tradeDate",
+        "tradeVolume",
+        "trades"
+      ]
+    }
+  },
+  "response": {
+    "id": 36842130,
+    "tradeVolume": 2032722428.75,
+    "shareVolume": 65380636,
+    "tradeDate": 1783675100747,
+    "trades": 16168
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "_probe": {
+    "id": "circularAnnouncement",
+    "url": "https://www.cse.lk/api/circularAnnouncement",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:38.424335+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "reqCircularAnnouncement"
+      ]
+    }
+  },
+  "response": {
+    "reqCircularAnnouncement": [
+      {
+        "id": 14315,
+        "path": "upload_report_file/c9c1SNvGcPerD9JM_7Jul2026114034GMT_1783424434658.pdf",
+        "manualDate": 1783424346000,
+        "uploadedDate": "07 Jul 2026 05:10:34 PM",
+        "fileText": "NATIONS TRUST BANK PLC (“BANK”) – BASEL III COMPLIANT TIER 2, LISTED, RATED, UNSECURED, SUBORDINATED, REDEEMABLE DEBENTURES WITH NON-VIABILITY CONVERSION FEATURE 2026"
+      },
+      {
+        "id": 14295,
+        "path": "upload_report_file/K8xQarJoA2Sr1PXN_2Jul2026070935GMT_1782976175452.pdf",
+        "manualDate": 1782976108000,
+        "uploadedDate": "02 Jul 2026 12:39:35 PM",
+        "fileText": "EMPLOYEE SHARE OPTION SCHEMES"
+      },
+      {
+        "id": 14293,
+        "path": "upload_report_file/gfg6pYmKifYYgLEu_1Jul2026050659GMT_1782882419289.pdf",
+        "manualDate": 1782882382000,
+        "uploadedDate": "01 Jul 2026 10:36:59 AM",
+        "fileText": "Extension of Opening Market Auction Call - 1st July 2026"
+      },
+      {
+        "id": 14255,
+        "path": "upload_report_file/iCsUCH0RnMKKFxwK_17Jun2026065153GMT_1781679113909.pdf",
+        "manualDate": 1781679073000,
+        "uploadedDate": "17 Jun 2026 12:21:53 PM",
+        "fileText": "IMPLEMENTATION OF THE STAGGERED SUSPENSION FRAMEWORK FOR NON-OPERATIVE (NON-ACTIVE/DORMANT) CLIENT ACCOUNTS – COMPLIANCE WITH CDS RULE 3.10"
+      },
+      {
+        "id": 14253,
+        "path": "upload_report_file/Ftv5U7vDsJcs3Zwy_16Jun2026062011GMT_1781590811367.pdf",
+        "manualDate": 1781590751000,
+        "uploadedDate": "16 Jun 2026 11:50:11 AM",
+        "fileText": "NATIONS TRUST BANK PLC (“BANK”) – ISSUANCE OF BASEL III COMPLIANT, TIER 2, LISTED, RATED, UNSECURED, SUBORDINATED, REDEEMABLE DEBENTURES WITH NON-VIABILITY CONVERSION FEATURE 2026"
+      }
+    ]
+  }
+}

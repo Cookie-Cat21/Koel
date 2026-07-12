@@ -1,0 +1,114 @@
+{
+  "_probe": {
+    "id": "topGainers",
+    "url": "https://www.cse.lk/api/topGainers",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:31.146030+00:00",
+    "fingerprint": {
+      "type": "array",
+      "len": 10,
+      "item_keys": [
+        "change",
+        "changePercentage",
+        "id",
+        "price",
+        "securityId",
+        "symbol",
+        "tradeDate"
+      ]
+    }
+  },
+  "response": [
+    {
+      "id": 57215464,
+      "securityId": 1521,
+      "symbol": "COCO.X0000",
+      "price": 22.4,
+      "change": 2.3,
+      "changePercentage": 11.442786069651742,
+      "tradeDate": 1783674120000
+    },
+    {
+      "id": 57215851,
+      "securityId": 1944,
+      "symbol": "SCAP.N0000",
+      "price": 12.2,
+      "change": 0.9,
+      "changePercentage": 7.964601769911504,
+      "tradeDate": 1783674184000
+    },
+    {
+      "id": 57215206,
+      "securityId": 520,
+      "symbol": "CTLD.N0000",
+      "price": 38.8,
+      "change": 2.6,
+      "changePercentage": 7.18232044198895,
+      "tradeDate": 1783674073000
+    },
+    {
+      "id": 57215300,
+      "securityId": 1744,
+      "symbol": "LGL.X0000",
+      "price": 42.9,
+      "change": 2.8,
+      "changePercentage": 6.982543640897756,
+      "tradeDate": 1783673698000
+    },
+    {
+      "id": 57215398,
+      "securityId": 117,
+      "symbol": "SIL.N0000",
+      "price": 549.75,
+      "change": 33.25,
+      "changePercentage": 6.437560503388189,
+      "tradeDate": 1783674010000
+    },
+    {
+      "id": 57215499,
+      "securityId": 225,
+      "symbol": "ASIR.N0000",
+      "price": 37.0,
+      "change": 2.2,
+      "changePercentage": 6.32183908045977,
+      "tradeDate": 1783674369000
+    },
+    {
+      "id": 57215521,
+      "securityId": 1786,
+      "symbol": "HVA.N0000",
+      "price": 5.8,
+      "change": 0.3,
+      "changePercentage": 5.454545454545454,
+      "tradeDate": 1783673997000
+    },
+    {
+      "id": 57215662,
+      "securityId": 1041,
+      "symbol": "CRL.N0000",
+      "price": 6.0,
+      "change": 0.3,
+      "changePercentage": 5.2631578947368425,
+      "tradeDate": 1783674438000
+    },
+    {
+      "id": 57214588,
+      "securityId": 34,
+      "symbol": "BOPL.N0000",
+      "price": 69.5,
+      "change": 3.4,
+      "changePercentage": 5.143721633888048,
+      "tradeDate": 1783674073000
+    },
+    {
+      "id": 57215130,
+      "securityId": 5892,
+      "symbol": "CALI.U0000",
+      "price": 14.4,
+      "change": 0.7,
+      "changePercentage": 5.109489051094891,
+      "tradeDate": 1783673969000
+    }
+  ]
+}

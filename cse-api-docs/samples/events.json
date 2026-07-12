@@ -1,0 +1,35 @@
+{
+  "_probe": {
+    "id": "events",
+    "url": "https://www.cse.lk/api/events",
+    "method": "GET",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:44.108500+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ]
+    }
+  },
+  "response": {
+    "_truncated": true,
+    "_note": "payload exceeded 12000 bytes; keys only",
+    "keys": [
+      "7",
+      "6",
+      "5",
+      "4",
+      "3",
+      "2",
+      "1"
+    ],
+    "preview": "{\"7\": [{\"id\": \"4850234d4feefae225ea8d878d420785\", \"eventType\": \"OT\", \"title\": \"SEC, CSE & CA Sri Lanka Signs MoU for XBRL Reporting Implementation\", \"body\": \"<p>The Securities and Exchange Commission of Sri Lanka (SEC), the Colombo Stock Exchange (CSE) and CA Sri Lanka signed an MoU on 9th July 2026 to implement the eXtensible Business Reporting Language (XBRL) reporting for listed entities, which would strengthen transparency, enhance the quality and consistency of financial reporting, and contribute to the development of an efficient, digitally enabled, technologically driven green capital market.</p>\", \"titleImage\": \"cms-internal/event/iMB0Z7Z1FPCgoJwX_10Jul2026063137GMT_1783665097353.jpeg\", \"publishedDate\": \"2026-07-09 12:01:56\", \"status\": \"A\", \"month\": 7, \"year\": 2026, \"images\": [{\"id\": 4418, \"imagePath\": \"cms-internal/event/3PjnGEwXIBOUS9i0_10Jul2026062940GMT_1783664980279.jpeg\"}, {\"id\": 4419, \"imagePath\": \"cms-internal/event/tevWCICuqtxwfB8R_10Jul2026062940GMT_1783664980397.jpeg\"}, {\"id\": 4420, \"imagePath\": \"cms-internal/event/HvSQJDxHkFhYUAiQ_10Jul2026062940GMT_1783664980440.jpeg\"}]}], \"6\": [{\"id\": \"939b9039550fcd987a38d19e41bb8a9f\", \"eventType\": \"OT\", \"title\": \"SEC & CSE Conclude Successful Sinhala Investor Forum On The Trading Floor\", \"body\": \"<p>The Colombo Stock Exchange (CSE) in collaboration with the Securities and Exchange Commission of Sri Lanka (SEC) hosted the first of a new series of country-wide investor forums on the iconic CSE trading floor.&nbsp; The Sinhala medium forum featured presentations and a panel discussion with members of the Central Bank of Sri Lanka, the SEC, CSE, stockbrokers and unit trusts, and was followed by an open session where attendees were able to open accounts with stockbrokers and unit trusts.</p>\", \"titleImage\": \"cms-internal/event/4qJEALVDs0MaEG2o_26Jun2026062051GMT_1782454851590.jpeg\", \"publishedDate\": \"2026-06-25 11:50:44\", \"status\": \"A\", \"month\": 6, \"year\": 2026, \"images\": [{\"id\": 4392, \"imagePath\": \"cms-internal/e"
+  }
+}

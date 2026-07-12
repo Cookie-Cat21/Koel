@@ -1,0 +1,107 @@
+{
+  "_probe": {
+    "id": "getNonComplianceAnnouncements",
+    "url": "https://www.cse.lk/api/getNonComplianceAnnouncements",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:36.778522+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "nonComplianceAnnouncements"
+      ]
+    }
+  },
+  "response": {
+    "nonComplianceAnnouncements": [
+      {
+        "id": 31836,
+        "announcementId": 38005,
+        "createdDate": "10 Jul 2026 04:37:07 PM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF MINIMUM PUBLIC HOLDING REQUIREMENTS",
+        "category": "40",
+        "company": "PALM GARDEN HOTELS PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/529_1601462485.jpeg"
+      },
+      {
+        "id": 31835,
+        "announcementId": 38003,
+        "createdDate": "10 Jul 2026 04:36:46 PM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF MINIMUM PUBLIC HOLDING REQUIREMENTS",
+        "category": "40",
+        "company": "EDEN HOTEL LANKA PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/533_1601458948.jpeg"
+      },
+      {
+        "id": 31829,
+        "announcementId": 37996,
+        "createdDate": "10 Jul 2026 02:11:03 PM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF MINIMUM PUBLIC HOLDING REQUIREMENTS",
+        "category": "40",
+        "company": "MADULSIMA PLANTATIONS PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/ETqGjgnA01aWsbXm_16Jan2026202010GMT_1768594810986.webp"
+      },
+      {
+        "id": 31793,
+        "announcementId": 37949,
+        "createdDate": "08 Jul 2026 03:06:48 PM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF CORPORATE GOVERNANCE RULES",
+        "category": "39",
+        "company": "HELA APPAREL HOLDINGS PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/2727_1644209016.jpeg"
+      },
+      {
+        "id": 31775,
+        "announcementId": 37933,
+        "createdDate": "07 Jul 2026 12:31:16 PM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF MINIMUM PUBLIC HOLDING REQUIREMENTS",
+        "category": "40",
+        "company": "KOTMALE HOLDINGS PLC",
+        "companyName": null,
+        "logoUrl": null
+      },
+      {
+        "id": 31758,
+        "announcementId": 37914,
+        "createdDate": "06 Jul 2026 10:00:14 AM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF CORPORATE GOVERNANCE RULES",
+        "category": "39",
+        "company": "AITKEN SPENCE HOTEL HOLDINGS PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/521_1192527461.gif"
+      },
+      {
+        "id": 31757,
+        "announcementId": 37913,
+        "createdDate": "06 Jul 2026 09:56:19 AM",
+        "title": null,
+        "announcementCategory": "NON-COMPLIANCE OF CORPORATE GOVERNANCE RULES",
+        "category": "39",
+        "company": "AITKEN SPENCE PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/501_1601609954.jpeg"
+      },
+      {
+        "id": 31756,
+        "announcementId": 37908,
+        "createdDate": "06 Jul 2026 09:55:01 AM",
+        "title": null,
+        "announcementCategory": "INDEPENDENT AUDITOR'S REPORT CONTAINING MODIFIED AUDIT OPINION",
+        "category": "41",
+        "company": "ASIA CAPITAL PLC",
+        "companyName": null,
+        "logoUrl": "upload_logo/363_1369737398.jpeg"
+      }
+    ]
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "_probe": {
+    "id": "getAnnouncementByCompany",
+    "url": "https://www.cse.lk/api/getAnnouncementByCompany",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:35.088417+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "reqCompanyAnnouncement"
+      ]
+    }
+  },
+  "response": {
+    "reqCompanyAnnouncement": [
+      {
+        "id": 31637,
+        "createdDate": 1782816663000,
+        "dateOfAnnouncement": "30 Jun 2026",
+        "announcementId": 37747,
+        "announcementCategory": "CORPORATE DISCLOSURE",
+        "company": "JOHN KEELLS HOLDINGS PLC",
+        "type": "new",
+        "symbol": null,
+        "recordDate": null,
+        "allotment": null,
+        "xr": null,
+        "xc": null,
+        "xd": null,
+        "tradingCommencement": null,
+        "tradingSuspended": null,
+        "paymentDate": null,
+        "agmDate": null,
+        "dateOfAgmInitial": null,
+        "logoUrl": null,
+        "remarks": null
+      },
+      {
+        "id": 31632,
+        "createdDate": 1782815953000,
+        "dateOfAnnouncement": "30 Jun 2026",
+        "announcementId": 37746,
+        "announcementCategory": "RESIGNATION OF DIRECTORS",
+        "company": "JOHN KEELLS HOLDINGS PLC",
+        "type": "new",
+        "symbol": null,
+        "recordDate": null,
+        "allotment": null,
+        "xr": null,
+        "xc": null,
+        "xd": null,
+        "tradingCommencement": null,
+        "tradingSuspended": null,
+        "paymentDate": null,
+        "agmDate": null,
+        "dateOfAgmInitial": null,
+        "logoUrl": null,
+        "remarks": null
+      },
+      {
+        "id": 31606,
+        "createdDate": 1782801386000,
+        "dateOfAnnouncement": "26 Jun 2026",
+        "announcementId": 37709,
+        "announcementCategory": "DEALINGS BY DIRECTORS",
+        "company": "JOHN KEELLS HOLDINGS PLC",
+        "type": "new",
+        "symbol": null,
+        "recordDate": null,
+        "allotment": null,
+        "xr": null,
+        "xc": null,
+        "xd": null,
+        "tradingCommencement": null,
+        "tradingSuspended": null,
+        "paymentDate": null,
+        "agmDate": null,
+        "dateOfAgmInitial": null,
+        "logoUrl": null,
+        "remarks": null
+      }
+    ],
+    "_truncated": {
+      "list_key": "reqCompanyAnnouncement",
+      "kept": 3,
+      "original_len": 11
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "_probe": {
+    "id": "events_top",
+    "url": "https://www.cse.lk/api/events/top",
+    "method": "GET",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:44.658978+00:00",
+    "fingerprint": {
+      "type": "array",
+      "len": 3,
+      "item_keys": [
+        "body",
+        "eventType",
+        "id",
+        "images",
+        "month",
+        "publishedDate",
+        "status",
+        "title",
+        "titleImage",
+        "year"
+      ]
+    }
+  },
+  "response": [
+    {
+      "id": "4850234d4feefae225ea8d878d420785",
+      "eventType": "OT",
+      "title": "SEC, CSE & CA Sri Lanka Signs MoU for XBRL Reporting Implementation",
+      "body": "<p>The Securities and Exchange Commission of Sri Lanka (SEC), the Colombo Stock Exchange (CSE) and CA Sri Lanka signed an MoU on 9th July 2026 to implement the eXtensible Business Reporting Language (XBRL) reporting for listed entities, which would strengthen transparency, enhance the quality and consistency of financial reporting, and contribute to the development of an efficient, digitally enabled, technologically driven green capital market.</p>",
+      "titleImage": "cms-internal/event/iMB0Z7Z1FPCgoJwX_10Jul2026063137GMT_1783665097353.jpeg",
+      "publishedDate": "2026-07-09 12:01:56",
+      "status": "A",
+      "month": 7,
+      "year": 2026,
+      "images": [
+        {
+          "id": 4418,
+          "imagePath": "cms-internal/event/3PjnGEwXIBOUS9i0_10Jul2026062940GMT_1783664980279.jpeg"
+        },
+        {
+          "id": 4419,
+          "imagePath": "cms-internal/event/tevWCICuqtxwfB8R_10Jul2026062940GMT_1783664980397.jpeg"
+        },
+        {
+          "id": 4420,
+          "imagePath": "cms-internal/event/HvSQJDxHkFhYUAiQ_10Jul2026062940GMT_1783664980440.jpeg"
+        }
+      ]
+    },
+    {
+      "id": "939b9039550fcd987a38d19e41bb8a9f",
+      "eventType": "OT",
+      "title": "SEC & CSE Conclude Successful Sinhala Investor Forum On The Trading Floor",
+      "body": "<p>The Colombo Stock Exchange (CSE) in collaboration with the Securities and Exchange Commission of Sri Lanka (SEC) hosted the first of a new series of country-wide investor forums on the iconic CSE trading floor.&nbsp; The Sinhala medium forum featured presentations and a panel discussion with members of the Central Bank of Sri Lanka, the SEC, CSE, stockbrokers and unit trusts, and was followed by an open session where attendees were able to open accounts with stockbrokers and unit trusts.</p>",
+      "titleImage": "cms-internal/event/4qJEALVDs0MaEG2o_26Jun2026062051GMT_1782454851590.jpeg",
+      "publishedDate": "2026-06-25 11:50:44",
+      "status": "A",
+      "month": 6,
+      "year": 2026,
+      "images": [
+        {
+          "id": 4392,
+          "imagePath": "cms-internal/event/K1LHvx6NIKMjmEZw_26Jun2026062051GMT_1782454851168.jpeg"
+        },
+        {
+          "id": 4393,
+          "imagePath": "cms-internal/event/gYmGoYGYyZTwBKSo_26Jun2026062051GMT_1782454851294.jpeg"
+        },
+        {
+          "id": 4394,
+          "imagePath": "cms-internal/event/0OqSrzBGEAjOj6iI_26Jun2026062051GMT_1782454851331.jpeg"
+        },
+        {
+          "id": 4395,
+          "imagePath": "cms-internal/event/HeR8xc1NwnJwNP0y_26Jun2026062051GMT_1782454851371.jpeg"
+        },
+        {
+          "id": 4396,
+          "imagePath": "cms-internal/event/KEilvj1A68O8tN7V_26Jun2026062051GMT_1782454851409.jpeg"
+        },
+        {
+          "id": 4398,
+          "imagePath": "cms-internal/event/vV2FBhgaDiaLh42h_26Jun2026062051GMT_1782454851492.jpeg"
+        },
+        {
+          "id": 4397,
+          "imagePath": "cms-internal/event/xLTxKTIqBLbUofjY_26Jun2026062051GMT_1782454851449.jpeg"
+        },
+        {
+          "id": 4399,
+          "imagePath": "cms-internal/event/WuzX072Umjf2flyx_26Jun2026062051GMT_1782454851528.jpeg"
+        }
+      ]
+    },
+    {
+      "id": "eacfc73c1ef71f8573a34df1dd15b458",
+      "eventType": "MOC",
+      "title": "University of Kelaniya’s Department of Finance Celebrates 15th Anniversary on CSE Trading Floor",
+      "body": "<p>The Department of Finance of the Faculty of Commerce and Management Studies of the University of Kelaniya commemorated its 15th anniversary by ringing the Market Opening Bell on the Colombo Stock Exchange (CSE) trading floor today (24th June 2026), marking its years of contribution to fostering successive generations of Sri Lankan financial specialists, investment professional and corporates.</p>",
+      "titleImage": "cms-internal/event/xiuq4jndS5TBN4ar_25Jun2026043828GMT_1782362308111.jpeg",
+      "publishedDate": "2026-06-24 10:08:25",
+      "status": "A",
+      "month": 6,
+      "year": 2026,
+      "images": [
+        {
+          "id": 4389,
+          "imagePath": "cms-internal/event/LUEYMQdxskipodpe_25Jun2026043827GMT_1782362307928.jpeg"
+        },
+        {
+          "id": 4390,
+          "imagePath": "cms-internal/event/ZdkWJzCBxePGyTJn_25Jun2026043828GMT_1782362308025.jpeg"
+        },
+        {
+          "id": 4391,
+          "imagePath": "cms-internal/event/750FZOvfrGtgZR6X_25Jun2026043828GMT_1782362308066.png"
+        }
+      ]
+    }
+  ]
+}

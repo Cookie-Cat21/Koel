@@ -1,0 +1,81 @@
+{
+  "_probe": {
+    "id": "companyInfoSummery",
+    "url": "https://www.cse.lk/api/companyInfoSummery",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:24.951288+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "reqLogo",
+        "reqSymbolBetaInfo",
+        "reqSymbolInfo",
+        "reqTagsLogo"
+      ]
+    }
+  },
+  "response": {
+    "reqSymbolBetaInfo": {
+      "securityId": 508,
+      "triASIBetaValue": 1.4364177,
+      "betaValueSPSL": 1.3333858,
+      "triASIBetaPeriod": "2025",
+      "quarter": 1
+    },
+    "reqTagsLogo": null,
+    "reqLogo": {
+      "id": 3567,
+      "path": "upload_logo/dzfJJcujeDHnGn8j_27Dec2025052535GMT_1766813135197.jpeg",
+      "secId": 508
+    },
+    "reqSymbolInfo": {
+      "id": 297,
+      "symbol": "JKH.N0000",
+      "name": "JOHN KEELLS HOLDINGS PLC",
+      "issueDate": "23/OCT/1986",
+      "quantityIssued": 17734109136,
+      "parValue": 1.0,
+      "issuedPrice": null,
+      "lastTradedPrice": 20.0,
+      "wtdHiPrice": 20.3,
+      "mtdHiPrice": 20.4,
+      "ytdHiPrice": 23.4,
+      "p12HiPrice": 26.1,
+      "allHiPrice": 430.25,
+      "allLowPrice": 8.75,
+      "wtdLowPrice": 19.8,
+      "mtdLowPrice": 19.8,
+      "ytdLowPrice": 17.8,
+      "p12LowPrice": 17.8,
+      "tdyShareVolume": 6052893,
+      "wdyShareVolume": 45201690,
+      "mtdShareVolume": 49888188,
+      "ytdShareVolume": 1410134578,
+      "p12ShareVolume": 2956106398,
+      "tdyTradeVolume": 297,
+      "wtdTradeVolume": null,
+      "mtdTradeVolume": null,
+      "ytdTradeVolume": null,
+      "p12TradeVolume": null,
+      "tdyTurnover": 121043648.0,
+      "wtdTurnover": 902383100.0,
+      "mtdTurnover": 997393540.0,
+      "ytdTurnover": 28644751400.0,
+      "p12Turnover": null,
+      "previousClose": 19.9,
+      "foreignHoldings": null,
+      "foreignPercentage": null,
+      "instrumentsDate": null,
+      "hiTrade": 20.2,
+      "lowTrade": 19.9,
+      "closingPrice": 20.0,
+      "marketCap": 354682182720.0,
+      "marketCapPercentage": 4.4885216,
+      "change": 0.1,
+      "changePercentage": 0.5025125628140703,
+      "symbolIndexShareVolume": 17734109136,
+      "isin": "LK0092N00003"
+    }
+  }
+}

@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Probe · CSE API Docs (unofficial)</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --panel: #1a222c;
+  --text: #e7ecf1;
+  --muted: #9aa7b5;
+  --accent: #3dbea0;
+  --bad: #e57373;
+  --ok: #81c784;
+  --border: #2a3542;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text);
+  line-height: 1.55;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header {
+  padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #152028, var(--bg));
+}
+header h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+header p { margin: 0; color: var(--muted); max-width: 52rem; }
+nav {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+  position: sticky; top: 0; z-index: 2;
+}
+main { padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.1rem; margin: 0 0 1rem;
+}
+.card h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.meta { color: var(--muted); font-size: .92rem; }
+.badge {
+  display: inline-block; font-size: .75rem; padding: .15rem .45rem;
+  border-radius: 999px; border: 1px solid var(--border); margin-right: .35rem;
+  font-family: var(--mono);
+}
+.badge.ok { color: var(--ok); border-color: #356b3d; }
+.badge.bad { color: var(--bad); border-color: #7a3b3b; }
+.badge.cat { color: var(--accent); }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+code, pre { font-family: var(--mono); font-size: .85rem; }
+pre {
+  background: #0b1015; border: 1px solid var(--border); border-radius: 8px;
+  padding: .85rem; overflow: auto; max-height: 320px;
+}
+footer { padding: 2rem 1.25rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--border); }
+h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; }
+.grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .85rem; }
+.stat b { display: block; font-size: 1.4rem; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Unofficial CSE API Docs</h1>
+  <p>Live-probed documentation for <code>https://www.cse.lk/api</code>. Not affiliated with the Colombo Stock Exchange.</p>
+</header>
+
+<nav>
+  <a href="./index.html">Home</a>
+  <a href="./endpoints/index.html">Endpoints</a>
+  <a href="./websocket.html">WebSocket</a>
+  <a href="./ethics.html">Ethics</a>
+  <a href="./examples.html">Examples</a>
+  <a href="./compare.html">vs GH0STH4CKER</a>
+  <a href="./probe.html">Last probe</a>
+</nav>
+<main>
+<h1>Probe report</h1>
+<p><strong>When:</strong> <code>2026-07-12T05:43:45.009492+00:00</code>  </p>
+<p><strong>Base:</strong> <code>https://www.cse.lk/api</code>  </p>
+<p><strong>Symbol:</strong> <code>JKH.N0000</code> stockId=<code>297</code>  </p>
+<p><strong>Result:</strong> 35/35 passed (0 failed)</p><div class='card'><pre>{
+  &quot;probed_at&quot;: &quot;2026-07-12T05:43:45.009492+00:00&quot;,
+  &quot;base_url&quot;: &quot;https://www.cse.lk/api&quot;,
+  &quot;symbol&quot;: &quot;JKH.N0000&quot;,
+  &quot;stock_id&quot;: &quot;297&quot;,
+  &quot;failed&quot;: 0,
+  &quot;passed&quot;: 35,
+  &quot;total&quot;: 35,
+  &quot;results&quot;: [
+    {
+      &quot;id&quot;: &quot;companyInfoSummery&quot;,
+      &quot;path&quot;: &quot;/companyInfoSummery&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;prices&quot;,
+      &quot;summary&quot;: &quot;Per-symbol quote (primary single-name source).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;resolved_stock_id&quot;: &quot;297&quot;,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqLogo&quot;,
+          &quot;reqSymbolBetaInfo&quot;,
+          &quot;reqSymbolInfo&quot;,
+          &quot;reqTagsLogo&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/companyInfoSummery.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;tradeSummary&quot;,
+      &quot;path&quot;: &quot;/tradeSummary&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;prices&quot;,
+      &quot;summary&quot;: &quot;Bulk board \u2014 best poller source (all symbols in one call).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqTradeSummery&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/tradeSummary.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;marketStatus&quot;,
+      &quot;path&quot;: &quot;/marketStatus&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;market&quot;,
+      &quot;summary&quot;: &quot;Open/closed status string for session gating.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;status&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/marketStatus.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;marketSummery&quot;,
+      &quot;path&quot;: &quot;/marketSummery&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;market&quot;,
+      &quot;summary&quot;: &quot;Session aggregates (tradeVolume, shareVolume, trades).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;id&quot;,
+          &quot;shareVolume&quot;,
+          &quot;tradeDate&quot;,
+          &quot;tradeVolume&quot;,
+          &quot;trades&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/marketSummery.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;dailyMarketSummery&quot;,
+      &quot;path&quot;: &quot;/dailyMarketSummery&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;market&quot;,
+      &quot;summary&quot;: &quot;End-of-day market aggregates history.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 2,
+        &quot;item_keys&quot;: null
+      },
+      &quot;sample&quot;: &quot;samples/dailyMarketSummery.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;allSectors&quot;,
+      &quot;path&quot;: &quot;/allSectors&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;market&quot;,
+      &quot;summary&quot;: &quot;Sector index rows.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 22,
+        &quot;item_keys&quot;: [
+          &quot;change&quot;,
+          &quot;id&quot;,
+          &quot;indexCode&quot;,
+          &quot;indexCodeSp&quot;,
+          &quot;indexName&quot;,
+          &quot;indexValue&quot;,
+          &quot;name&quot;,
+          &quot;percentage&quot;,
+          &quot;sectorId&quot;,
+          &quot;sectorPreviousClose&quot;,
+          &quot;sectorTradeToday&quot;,
+          &quot;sectorTurnoverToday&quot;,
+          &quot;sectorVolumeToday&quot;,
+          &quot;symbol&quot;,
+          &quot;transactionTime&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/allSectors.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;aspiData&quot;,
+      &quot;path&quot;: &quot;/aspiData&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;indices&quot;,
+      &quot;summary&quot;: &quot;All Share Price Index snapshot.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;change&quot;,
+          &quot;highValue&quot;,
+          &quot;id&quot;,
+          &quot;lowValue&quot;,
+          &quot;percentage&quot;,
+          &quot;sectorId&quot;,
+          &quot;timestamp&quot;,
+          &quot;value&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/aspiData.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;snpData&quot;,
+      &quot;path&quot;: &quot;/snpData&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;indices&quot;,
+      &quot;summary&quot;: &quot;S&amp;P Sri Lanka 20 snapshot.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;change&quot;,
+          &quot;highValue&quot;,
+          &quot;id&quot;,
+          &quot;lowValue&quot;,
+          &quot;percentage&quot;,
+          &quot;sectorId&quot;,
+          &quot;timestamp&quot;,
+          &quot;value&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/snpData.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;detailedTrades&quot;,
+      &quot;path&quot;: &quot;/detailedTrades&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;prices&quot;,
+      &quot;summary&quot;: &quot;Market-wide detailed trades board (not symbol-filtered in practice).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqDetailTrades&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/detailedTrades.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;todaySharePrice&quot;,
+      &quot;path&quot;: &quot;/todaySharePrice&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;prices&quot;,
+      &quot;summary&quot;: &quot;Short list (~top N) of share prices \u2014 NOT a full board. Prefer tradeSummary.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 10,
+        &quot;item_keys&quot;: [
+          &quot;change&quot;,
+          &quot;changePercentage&quot;,
+          &quot;crossingVolume&quot;,
+          &quot;high&quot;,
+          &quot;id&quot;,
+          &quot;lastTradedPrice&quot;,
+          &quot;low&quot;,
+          &quot;open&quot;,
+          &quot;quantity&quot;,
+          &quot;symbol&quot;,
+          &quot;tradesTime&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/todaySharePrice.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;topGainers&quot;,
+      &quot;path&quot;: &quot;/topGainers&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;leaderboards&quot;,
+      &quot;summary&quot;: &quot;Top gainers (short list). Also available via WS /topic/top-gainers.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 10,
+        &quot;item_keys&quot;: [
+          &quot;change&quot;,
+          &quot;changePercentage&quot;,
+          &quot;id&quot;,
+          &quot;price&quot;,
+          &quot;securityId&quot;,
+          &quot;symbol&quot;,
+          &quot;tradeDate&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/topGainers.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;topLooses&quot;,
+      &quot;path&quot;: &quot;/topLooses&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;leaderboards&quot;,
+      &quot;summary&quot;: &quot;Top losers (API spelling Looses). WS /topic/top-looses.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 10,
+        &quot;item_keys&quot;: [
+          &quot;change&quot;,
+          &quot;changePercentage&quot;,
+          &quot;id&quot;,
+          &quot;price&quot;,
+          &quot;securityId&quot;,
+          &quot;symbol&quot;,
+          &quot;tradeDate&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/topLooses.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;mostActiveTrades&quot;,
+      &quot;path&quot;: &quot;/mostActiveTrades&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;leaderboards&quot;,
+      &quot;summary&quot;: &quot;Most active by volume. WS /topic/most-active-trades.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 10,
+        &quot;item_keys&quot;: [
+          &quot;id&quot;,
+          &quot;percentageShareVolume&quot;,
+          &quot;securityId&quot;,
+          &quot;shareVolume&quot;,
+          &quot;symbol&quot;,
+          &quot;tradeVolume&quot;,
+          &quot;turnover&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/mostActiveTrades.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;companyChartDataByStock&quot;,
+      &quot;path&quot;: &quot;/companyChartDataByStock&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;charts&quot;,
+      &quot;summary&quot;: &quot;Per-stock intraday chart ticks (use reqSymbolInfo.id as stockId).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;chartData&quot;,
+          &quot;id&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/companyChartDataByStock.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;chartData&quot;,
+      &quot;path&quot;: &quot;/chartData&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;charts&quot;,
+      &quot;summary&quot;: &quot;Index-scale series. symbol= is IGNORED \u2014 do not use for per-stock charts.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 299,
+        &quot;item_keys&quot;: [
+          &quot;d&quot;,
+          &quot;pc&quot;,
+          &quot;v&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/chartData.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;daysTrade&quot;,
+      &quot;path&quot;: &quot;/daysTrade&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;charts&quot;,
+      &quot;summary&quot;: &quot;Day trade tape for one symbol.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 297,
+        &quot;item_keys&quot;: [
+          &quot;change&quot;,
+          &quot;changePercentage&quot;,
+          &quot;closingPrice&quot;,
+          &quot;hiTrade&quot;,
+          &quot;id&quot;,
+          &quot;lastTradedTime&quot;,
+          &quot;lowTrade&quot;,
+          &quot;previousClose&quot;,
+          &quot;price&quot;,
+          &quot;quantity&quot;,
+          &quot;securityId&quot;,
+          &quot;symbol&quot;,
+          &quot;time&quot;,
+          &quot;tradeDate&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/daysTrade.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;approvedAnnouncement&quot;,
+      &quot;path&quot;: &quot;/approvedAnnouncement&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: &quot;Market-wide approved announcements. symbol often null \u2014 match via company name.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;approvedAnnouncements&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/approvedAnnouncement.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getAnnouncementByCompany&quot;,
+      &quot;path&quot;: &quot;/getAnnouncementByCompany&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: &quot;Preferred per-symbol disclosures for watchlists.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqCompanyAnnouncement&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getAnnouncementByCompany.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;announcements_legacy&quot;,
+      &quot;path&quot;: &quot;/announcements&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: &quot;Legacy per-symbol PDF archive shape (infoAnnouncement).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;infoAnnouncement&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/announcements_legacy.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getFinancialAnnouncement&quot;,
+      &quot;path&quot;: &quot;/getFinancialAnnouncement&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: &quot;Financial announcements feed (response key typo reqFinancialAnnouncemnets).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqFinancialAnnouncemnets&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getFinancialAnnouncement.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getNonComplianceAnnouncements&quot;,
+      &quot;path&quot;: &quot;/getNonComplianceAnnouncements&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: null,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;nonComplianceAnnouncements&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getNonComplianceAnnouncements.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getNewListingsRelatedNoticesAnnouncements&quot;,
+      &quot;path&quot;: &quot;/getNewListingsRelatedNoticesAnnouncements&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: null,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;newListingRelatedAnnouncements&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getNewListingsRelatedNoticesAnnouncements.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getBuyInBoardAnnouncements&quot;,
+      &quot;path&quot;: &quot;/getBuyInBoardAnnouncements&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: null,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;buyInBoardAnnouncements&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getBuyInBoardAnnouncements.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;circularAnnouncement&quot;,
+      &quot;path&quot;: &quot;/circularAnnouncement&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: null,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqCircularAnnouncement&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/circularAnnouncement.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;directiveAnnouncement&quot;,
+      &quot;path&quot;: &quot;/directiveAnnouncement&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: null,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;reqDirectiveAnnouncement&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/directiveAnnouncement.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getCOVIDAnnouncements&quot;,
+      &quot;path&quot;: &quot;/getCOVIDAnnouncements&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: null,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;covidAnnouncements&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getCOVIDAnnouncements.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getGeneralAnnouncementById&quot;,
+      &quot;path&quot;: &quot;/getGeneralAnnouncementById&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: &quot;Detail by id (empty {} for unknown ids). Used by cse.lk UI.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: []
+      },
+      &quot;sample&quot;: &quot;samples/getGeneralAnnouncementById.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;getAnnouncementById&quot;,
+      &quot;path&quot;: &quot;/getAnnouncementById&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;disclosures&quot;,
+      &quot;summary&quot;: &quot;Often 204 No Content \u2014 list endpoints are more reliable.&quot;,
+      &quot;status&quot;: 204,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;_empty&quot;,
+          &quot;_http_status&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/getAnnouncementById.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;companyProfile&quot;,
+      &quot;path&quot;: &quot;/companyProfile&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;category&quot;: &quot;company&quot;,
+      &quot;summary&quot;: &quot;Rich company page \u2014 directors, business summary, logo, article PDFs, contacts.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;infoCompanyBusinessSummary&quot;,
+          &quot;infoCompanyDirector&quot;,
+          &quot;infoCompanyKeyExecutive&quot;,
+          &quot;reqArticlePDF&quot;,
+          &quot;reqBlockAd&quot;,
+          &quot;reqComSumInfo&quot;,
+          &quot;reqLogo&quot;,
+          &quot;reqTagsLogo&quot;,
+          &quot;topPosts&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/companyProfile.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;corporateAnnouncementCategory&quot;,
+      &quot;path&quot;: &quot;/corporateAnnouncementCategory&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;category&quot;: &quot;meta&quot;,
+      &quot;summary&quot;: &quot;Announcement category metadata (~53 rows).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 53,
+        &quot;item_keys&quot;: [
+          &quot;categoryName&quot;,
+          &quot;className&quot;,
+          &quot;genAnnou&quot;,
+          &quot;id&quot;,
+          &quot;methodName&quot;,
+          &quot;pageName&quot;,
+          &quot;pageView&quot;,
+          &quot;parentCategoryId&quot;,
+          &quot;smd&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/corporateAnnouncementCategory.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;smd_categories&quot;,
+      &quot;path&quot;: &quot;/smd/categories&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;category&quot;: &quot;meta&quot;,
+      &quot;summary&quot;: &quot;SMD category string list.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 57,
+        &quot;item_keys&quot;: null
+      },
+      &quot;sample&quot;: &quot;samples/smd_categories.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;notifications&quot;,
+      &quot;path&quot;: &quot;/notifications&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;category&quot;: &quot;meta&quot;,
+      &quot;summary&quot;: &quot;Market halt / notice banners.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;content&quot;,
+          &quot;status&quot;,
+          &quot;statusCode&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/notifications.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;news_web&quot;,
+      &quot;path&quot;: &quot;/news/web&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;category&quot;: &quot;media&quot;,
+      &quot;summary&quot;: &quot;Press / news. Types include CN, MR, BN (see site JS).&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;CN&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/news_web.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;events&quot;,
+      &quot;path&quot;: &quot;/events&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;category&quot;: &quot;media&quot;,
+      &quot;summary&quot;: &quot;Events calendar keyed by month-ish buckets.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;keys&quot;: [
+          &quot;1&quot;,
+          &quot;2&quot;,
+          &quot;3&quot;,
+          &quot;4&quot;,
+          &quot;5&quot;,
+          &quot;6&quot;,
+          &quot;7&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/events.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;events_top&quot;,
+      &quot;path&quot;: &quot;/events/top&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;category&quot;: &quot;media&quot;,
+      &quot;summary&quot;: &quot;Top events teaser.&quot;,
+      &quot;status&quot;: 200,
+      &quot;ok&quot;: true,
+      &quot;fingerprint&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;len&quot;: 3,
+        &quot;item_keys&quot;: [
+          &quot;body&quot;,
+          &quot;eventType&quot;,
+          &quot;id&quot;,
+          &quot;images&quot;,
+          &quot;month&quot;,
+          &quot;publishedDate&quot;,
+          &quot;status&quot;,
+          &quot;title&quot;,
+          &quot;titleImage&quot;,
+          &quot;year&quot;
+        ]
+      },
+      &quot;sample&quot;: &quot;samples/events_top.json&quot;
+    }
+  ],
+  &quot;websocket&quot;: {
+    &quot;broker&quot;: &quot;https://www.cse.lk/api/ws&quot;,
+    &quot;protocol&quot;: &quot;STOMP over SockJS/WebSocket (site uses @stomp/stompjs)&quot;,
+    &quot;topics&quot;: [
+      &quot;/topic/aspi&quot;,
+      &quot;/topic/snp&quot;,
+      &quot;/topic/status&quot;,
+      &quot;/topic/summary&quot;,
+      &quot;/topic/today-sharePrice&quot;,
+      &quot;/topic/top-gainers&quot;,
+      &quot;/topic/top-looses&quot;,
+      &quot;/topic/most-active-trades&quot;,
+      &quot;/topic/daytrade&quot;
+    ],
+    &quot;request_destinations&quot;: [
+      &quot;/app/request-aspi&quot;,
+      &quot;/app/request-snp&quot;,
+      &quot;/app/request-status&quot;,
+      &quot;/app/request-summary&quot;,
+      &quot;/app/request-today-sharePrice&quot;,
+      &quot;/app/request-top-gainers&quot;,
+      &quot;/app/request-top-looses&quot;,
+      &quot;/app/request-most-active-trades&quot;,
+      &quot;/app/request-daytrade&quot;
+    ],
+    &quot;notes&quot;: [
+      &quot;Also /user/topic/* mirrors for user-queue variants.&quot;,
+      &quot;HTTP upgrade to /api/ws may 301; follow SockJS negotiate path as the site does.&quot;,
+      &quot;Prefer tradeSummary HTTP for polite polling; WS is for live board UIs.&quot;
+    ]
+  }
+}
+</pre></div>
+</main>
+<footer>
+  MIT-licensed harness · Not financial advice · <a href="./ethics.html">Ethics</a> ·
+  Generated 2026-07-12 05:44 UTC
+</footer>
+</body>
+</html>

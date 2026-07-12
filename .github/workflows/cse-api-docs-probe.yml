@@ -1,0 +1,41 @@
+name: cse-api-docs probe
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # weekly Monday 06:00 UTC
+  push:
+    paths:
+      - "cse-api-docs/**"
+      - ".github/workflows/cse-api-docs-probe.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cse-api-docs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Probe live API
+        run: python3 scripts/probe.py
+      - name: Build site
+        run: python3 scripts/build_site.py
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cse-api-docs-site
+          path: cse-api-docs/site
+      - name: Upload probe report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cse-api-docs-probe
+          path: |
+            cse-api-docs/catalog/last_probe.json
+            cse-api-docs/catalog/PROBE_REPORT.md

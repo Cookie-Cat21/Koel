@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>events · CSE API Docs (unofficial)</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --panel: #1a222c;
+  --text: #e7ecf1;
+  --muted: #9aa7b5;
+  --accent: #3dbea0;
+  --bad: #e57373;
+  --ok: #81c784;
+  --border: #2a3542;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text);
+  line-height: 1.55;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header {
+  padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #152028, var(--bg));
+}
+header h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+header p { margin: 0; color: var(--muted); max-width: 52rem; }
+nav {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+  position: sticky; top: 0; z-index: 2;
+}
+main { padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.1rem; margin: 0 0 1rem;
+}
+.card h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.meta { color: var(--muted); font-size: .92rem; }
+.badge {
+  display: inline-block; font-size: .75rem; padding: .15rem .45rem;
+  border-radius: 999px; border: 1px solid var(--border); margin-right: .35rem;
+  font-family: var(--mono);
+}
+.badge.ok { color: var(--ok); border-color: #356b3d; }
+.badge.bad { color: var(--bad); border-color: #7a3b3b; }
+.badge.cat { color: var(--accent); }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+code, pre { font-family: var(--mono); font-size: .85rem; }
+pre {
+  background: #0b1015; border: 1px solid var(--border); border-radius: 8px;
+  padding: .85rem; overflow: auto; max-height: 320px;
+}
+footer { padding: 2rem 1.25rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--border); }
+h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; }
+.grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .85rem; }
+.stat b { display: block; font-size: 1.4rem; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Unofficial CSE API Docs</h1>
+  <p>Live-probed documentation for <code>https://www.cse.lk/api</code>. Not affiliated with the Colombo Stock Exchange.</p>
+</header>
+
+<nav>
+  <a href="../index.html">Home</a>
+  <a href="../endpoints/index.html">Endpoints</a>
+  <a href="../websocket.html">WebSocket</a>
+  <a href="../ethics.html">Ethics</a>
+  <a href="../examples.html">Examples</a>
+  <a href="../compare.html">vs GH0STH4CKER</a>
+  <a href="../probe.html">Last probe</a>
+</nav>
+<main>
+
+<div class="card">
+  <h2><code>GET /events</code></h2>
+  <p><span class="badge cat">media</span>
+  <span class='badge ok'>probe ok</span>
+  </p>
+  <p>Events calendar keyed by month-ish buckets.</p>
+  <p class="meta">Used by UI: —</p>
+  <p class="meta">Last probe status: 200 · expect [200]</p>
+</div>
+<div class="card">
+  <h3>curl</h3>
+  <pre>curl -sS &#x27;https://www.cse.lk/api/events?eventType=OT&amp;year=2026&#x27; \
+  -H &#x27;Origin: https://www.cse.lk&#x27; -H &#x27;Referer: https://www.cse.lk/&#x27;</pre>
+</div>
+<div class="card">
+  <h3>Known failures</h3>
+  <ul><li>None recorded</li></ul>
+  <h3>Fields</h3>
+  <ul><li class='meta'>See sample JSON</li></ul>
+</div>
+<div class="card">
+  <h3>Sample</h3>
+  <pre>{
+  &quot;_probe&quot;: {
+    &quot;id&quot;: &quot;events&quot;,
+    &quot;url&quot;: &quot;https://www.cse.lk/api/events&quot;,
+    &quot;method&quot;: &quot;GET&quot;,
+    &quot;status&quot;: 200,
+    &quot;verified_at&quot;: &quot;2026-07-12T05:43:44.108500+00:00&quot;,
+    &quot;fingerprint&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;keys&quot;: [
+        &quot;1&quot;,
+        &quot;2&quot;,
+        &quot;3&quot;,
+        &quot;4&quot;,
+        &quot;5&quot;,
+        &quot;6&quot;,
+        &quot;7&quot;
+      ]
+    }
+  },
+  &quot;response&quot;: {
+    &quot;_truncated&quot;: true,
+    &quot;_note&quot;: &quot;payload exceeded 12000 bytes; keys only&quot;,
+    &quot;keys&quot;: [
+      &quot;7&quot;,
+      &quot;6&quot;,
+      &quot;5&quot;,
+      &quot;4&quot;,
+      &quot;3&quot;,
+      &quot;2&quot;,
+      &quot;1&quot;
+    ],
+    &quot;preview&quot;: &quot;{\&quot;7\&quot;: [{\&quot;id\&quot;: \&quot;4850234d4feefae225ea8d878d420785\&quot;, \&quot;eventType\&quot;: \&quot;OT\&quot;, \&quot;title\&quot;: \&quot;SEC, CSE &amp; CA Sri Lanka Signs MoU for XBRL Reporting Implementation\&quot;, \&quot;body\&quot;: \&quot;&lt;p&gt;The Securities and Exchange Commission of Sri Lanka (SEC), the Colombo Stock Exchange (CSE) and CA Sri Lanka signed an MoU on 9th July 2026 to implement the eXtensible Business Reporting Language (XBRL) reporting for listed entities, which would strengthen transparency, enhance the quality and consistency of financial reporting, and contribute to the development of an efficient, digitally enabled, technologically driven green capital market.&lt;/p&gt;\&quot;, \&quot;titleImage\&quot;: \&quot;cms-internal/event/iMB0Z7Z1FPCgoJwX_10Jul2026063137GMT_1783665097353.jpeg\&quot;, \&quot;publishedDate\&quot;: \&quot;2026-07-09 12:01:56\&quot;, \&quot;status\&quot;: \&quot;A\&quot;, \&quot;month\&quot;: 7, \&quot;year\&quot;: 2026, \&quot;images\&quot;: [{\&quot;id\&quot;: 4418, \&quot;imagePath\&quot;: \&quot;cms-internal/event/3PjnGEwXIBOUS9i0_10Jul2026062940GMT_1783664980279.jpeg\&quot;}, {\&quot;id\&quot;: 4419, \&quot;imagePath\&quot;: \&quot;cms-internal/event/tevWCICuqtxwfB8R_10Jul2026062940GMT_1783664980397.jpeg\&quot;}, {\&quot;id\&quot;: 4420, \&quot;imagePath\&quot;: \&quot;cms-internal/event/HvSQJDxHkFhYUAiQ_10Jul2026062940GMT_1783664980440.jpeg\&quot;}]}], \&quot;6\&quot;: [{\&quot;id\&quot;: \&quot;939b9039550fcd987a38d19e41bb8a9f\&quot;, \&quot;eventType\&quot;: \&quot;OT\&quot;, \&quot;title\&quot;: \&quot;SEC &amp; CSE Conclude Successful Sinhala Investor Forum On The Trading Floor\&quot;, \&quot;body\&quot;: \&quot;&lt;p&gt;The Colombo Stock Exchange (CSE) in collaboration with the Securities and Exchange Commission of Sri Lanka (SEC) hosted the first of a new series of country-wide investor forums on the iconic CSE trading floor.&amp;nbsp; The Sinhala medium forum featured presentations and a panel discussion with members of the Central Bank of Sri Lanka, the SEC, CSE, stockbrokers and unit trusts, and was followed by an open session where attendees were able to open accounts with stockbrokers and unit trusts.&lt;/p&gt;\&quot;, \&quot;titleImage\&quot;: \&quot;cms-internal/event/4qJEALVDs0MaEG2o_26Jun2026062051GMT_1782454851590.jpeg\&quot;, \&quot;publishedDate\&quot;: \&quot;2026-06-25 11:50:44\&quot;, \&quot;status\&quot;: \&quot;A\&quot;, \&quot;month\&quot;: 6, \&quot;year\&quot;: 2026, \&quot;images\&quot;: [{\&quot;id\&quot;: 4392, \&quot;imagePath\&quot;: \&quot;cms-internal/e&quot;
+  }
+}
+</pre>
+</div>
+
+</main>
+<footer>
+  MIT-licensed harness · Not financial advice · <a href="../ethics.html">Ethics</a> ·
+  Generated 2026-07-12 05:44 UTC
+</footer>
+</body>
+</html>

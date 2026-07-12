@@ -1,0 +1,30 @@
+{
+  "_probe": {
+    "id": "corporateAnnouncementCategory",
+    "url": "https://www.cse.lk/api/corporateAnnouncementCategory",
+    "method": "GET",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:41.690875+00:00",
+    "fingerprint": {
+      "type": "array",
+      "len": 53,
+      "item_keys": [
+        "categoryName",
+        "className",
+        "genAnnou",
+        "id",
+        "methodName",
+        "pageName",
+        "pageView",
+        "parentCategoryId",
+        "smd"
+      ]
+    }
+  },
+  "response": {
+    "_truncated": true,
+    "_note": "payload exceeded 12000 bytes; keys only",
+    "keys": "list",
+    "preview": "[{\"id\": 1, \"categoryName\": \"ANNUAL GENERAL MEETING - APPROVED\", \"pageName\": \"annuAgmUpload.html\", \"pageView\": \"annuAgmApprvdUploadList\", \"methodName\": \"getLastAgmApproved\", \"className\": \"com.ef.cse.model.cmt.announcement.AgmApproved\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": null}, {\"id\": 2, \"categoryName\": \"ANNUAL GENERAL MEETING - INITIAL\", \"pageName\": \"annuAgmInitUpload.html\", \"pageView\": \"annuAgmInitUploadList\", \"methodName\": \"getLastAgmInitial\", \"className\": \"com.ef.cse.model.cmt.announcement.AgmInitial\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": null}, {\"id\": 6, \"categoryName\": \"APPOINTMENT OF CHAIRPERSON\", \"pageName\": \"annuAppointofChpUpload.html\", \"pageView\": \"annuAppointOfChpUploadList\", \"methodName\": null, \"className\": \"com.ef.cse.model.cmt.announcement.AppointOfChp\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": null}, {\"id\": 3, \"categoryName\": \"APPOINTMENT OF CHIEF EXECUTIVE OFFICER\", \"pageName\": \"annuAppointofCeoUpload.html\", \"pageView\": \"annuAppointOfCeoUploadList\", \"methodName\": null, \"className\": \"com.ef.cse.model.cmt.announcement.AppointOfCeo\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": null}, {\"id\": 12, \"categoryName\": \"APPOINTMENT OF DIRECTORS\", \"pageName\": \"annuAppointofDirUpload.html\", \"pageView\": \"annuAppointOfDirUploadList\", \"methodName\": null, \"className\": \"com.ef.cse.model.cmt.announcement.AppointOfDirectors\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": null}, {\"id\": 4, \"categoryName\": \"CAPITALIZATION OF RESERVES\", \"pageName\": \"annuCapitOfResrvsUpload.html\", \"pageView\": \"annuCapitOfResUploadList\", \"methodName\": null, \"className\": \"com.ef.cse.model.cmt.announcement.CapitOfReservs\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": 4}, {\"id\": 5, \"categoryName\": \"CASH DIVIDEND\", \"pageName\": \"annuCashDivDatesUpload.html\", \"pageView\": \"annuCashDivDatesUploadList\", \"methodName\": null, \"className\": \"com.ef.cse.model.cmt.announcement.CashDivDates\", \"genAnnou\": false, \"smd\": true, \"parentCategoryId\": 19},"
+  }
+}

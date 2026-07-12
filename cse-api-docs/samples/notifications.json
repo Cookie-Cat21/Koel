@@ -1,0 +1,27 @@
+{
+  "_probe": {
+    "id": "notifications",
+    "url": "https://www.cse.lk/api/notifications",
+    "method": "GET",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:42.999293+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "content",
+        "status",
+        "statusCode"
+      ]
+    }
+  },
+  "response": {
+    "_truncated": true,
+    "_note": "payload exceeded 12000 bytes; keys only",
+    "keys": [
+      "status",
+      "statusCode",
+      "content"
+    ],
+    "preview": "{\"status\": \"OK\", \"statusCode\": 200, \"content\": [{\"id\": \"a190afac53d99d146a5fec793bca61ee\", \"title\": \"NOTICE\", \"body\": \"The Opening Market Auction Call has been further extended to restore the active accounts which were suspended. Trading will commence at 11 a.m. \", \"status\": \"I\"}, {\"id\": \"305c7e91fd65a37c60e3c0999224ea0b\", \"title\": \"Notice\", \"body\": \"Opening Market Auction Call has been further extended.\", \"status\": \"I\"}, {\"id\": \"38898e3dbe2f77cad1773c938898e42c\", \"title\": \"System Maintenance Notice\", \"body\": \"The CSE Mobile App and associated services including CDS Account Opening/CDS E-Connect and MyCSE portal on the CSE Website will be unavailable from 8:00 PM on 12th June 2026 until 1:00 PM 13th June 2026 due to a planned system maintenance.\", \"status\": \"I\"}, {\"id\": \"da10c4e7b946bd0e8a011fe124488b52\", \"title\": \"Market Halt 03rd March 2026\", \"body\": \"Please note that the market has been halted due to the S&P SL20 index dropping over 5% from the previous close, as set out in SEC Directive dated 30th April 2020. Regular trading will commence in 30 minutes.\\n\\nSubsequent to the market halt, the market sessions have been scheduled as follows;\\n\\n\\nHalt Duration- From 9.31 a.m to 9.36 a.m\\nAuction Session- From 9.36 a.m to 10.01 a.m\\nRegular trading will commence at 10.01 a.m\\n\\n\", \"status\": \"I\"}, {\"id\": \"f1c20f960da4ab82134cee7c877c1689\", \"title\": \"Market Closed\", \"body\": \"Based on the request made by industry participants and to ensure a fair and orderly market the CSE in consultation with the Securities and Exchange Commission (SEC) has decided to close the market for the day. As notified earlier CSE has cancelled all orders and transactions carried out today prior to market halt. Trading will resume tomorrow as usual.\\n\", \"status\": \"I\"}, {\"id\": \"5133be9bc9d2d3321eb076516a9138b8\", \"title\": \"Market Halt \", \"body\": \"Based on the request made by industry participants and to ensure a fair and orderly market the CSE in consultation with the Securities and Exchange Commi"
+  }
+}

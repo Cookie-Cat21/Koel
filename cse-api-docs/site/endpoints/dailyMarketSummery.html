@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>dailyMarketSummery · CSE API Docs (unofficial)</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --panel: #1a222c;
+  --text: #e7ecf1;
+  --muted: #9aa7b5;
+  --accent: #3dbea0;
+  --bad: #e57373;
+  --ok: #81c784;
+  --border: #2a3542;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text);
+  line-height: 1.55;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header {
+  padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #152028, var(--bg));
+}
+header h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+header p { margin: 0; color: var(--muted); max-width: 52rem; }
+nav {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+  position: sticky; top: 0; z-index: 2;
+}
+main { padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.1rem; margin: 0 0 1rem;
+}
+.card h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.meta { color: var(--muted); font-size: .92rem; }
+.badge {
+  display: inline-block; font-size: .75rem; padding: .15rem .45rem;
+  border-radius: 999px; border: 1px solid var(--border); margin-right: .35rem;
+  font-family: var(--mono);
+}
+.badge.ok { color: var(--ok); border-color: #356b3d; }
+.badge.bad { color: var(--bad); border-color: #7a3b3b; }
+.badge.cat { color: var(--accent); }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+code, pre { font-family: var(--mono); font-size: .85rem; }
+pre {
+  background: #0b1015; border: 1px solid var(--border); border-radius: 8px;
+  padding: .85rem; overflow: auto; max-height: 320px;
+}
+footer { padding: 2rem 1.25rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--border); }
+h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; }
+.grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .85rem; }
+.stat b { display: block; font-size: 1.4rem; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Unofficial CSE API Docs</h1>
+  <p>Live-probed documentation for <code>https://www.cse.lk/api</code>. Not affiliated with the Colombo Stock Exchange.</p>
+</header>
+
+<nav>
+  <a href="../index.html">Home</a>
+  <a href="../endpoints/index.html">Endpoints</a>
+  <a href="../websocket.html">WebSocket</a>
+  <a href="../ethics.html">Ethics</a>
+  <a href="../examples.html">Examples</a>
+  <a href="../compare.html">vs GH0STH4CKER</a>
+  <a href="../probe.html">Last probe</a>
+</nav>
+<main>
+
+<div class="card">
+  <h2><code>POST /dailyMarketSummery</code></h2>
+  <p><span class="badge cat">market</span>
+  <span class='badge ok'>probe ok</span>
+  </p>
+  <p>End-of-day market aggregates history.</p>
+  <p class="meta">Used by UI: —</p>
+  <p class="meta">Last probe status: 200 · expect [200]</p>
+</div>
+<div class="card">
+  <h3>curl</h3>
+  <pre>curl -sS -X POST &#x27;https://www.cse.lk/api/dailyMarketSummery&#x27; \
+  -H &#x27;Content-Type: application/json&#x27; \
+  -H &#x27;Origin: https://www.cse.lk&#x27; -H &#x27;Referer: https://www.cse.lk/&#x27; \
+  -d &#x27;{}&#x27;</pre>
+</div>
+<div class="card">
+  <h3>Known failures</h3>
+  <ul><li>None recorded</li></ul>
+  <h3>Fields</h3>
+  <ul><li class='meta'>See sample JSON</li></ul>
+</div>
+<div class="card">
+  <h3>Sample</h3>
+  <pre>{
+  &quot;_probe&quot;: {
+    &quot;id&quot;: &quot;dailyMarketSummery&quot;,
+    &quot;url&quot;: &quot;https://www.cse.lk/api/dailyMarketSummery&quot;,
+    &quot;method&quot;: &quot;POST&quot;,
+    &quot;status&quot;: 200,
+    &quot;verified_at&quot;: &quot;2026-07-12T05:43:27.407515+00:00&quot;,
+    &quot;fingerprint&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;len&quot;: 2,
+      &quot;item_keys&quot;: null
+    }
+  },
+  &quot;response&quot;: [
+    [
+      {
+        &quot;id&quot;: 26376,
+        &quot;tradeDate&quot;: 1783621800000,
+        &quot;marketTurnover&quot;: 2032697980.0,
+        &quot;marketTrades&quot;: 16518.0,
+        &quot;marketDomestic&quot;: 15914.0,
+        &quot;marketForeign&quot;: 604.0,
+        &quot;equityTurnover&quot;: 2032697980.0,
+        &quot;equityDomesticPurchase&quot;: 1916196480.0,
+        &quot;equityDomesticSales&quot;: 1243132290.0,
+        &quot;equityForeignPurchase&quot;: 116501568.0,
+        &quot;equityForeignSales&quot;: 789565760.0,
+        &quot;volumeOfTurnOverNumber&quot;: 65378800.0,
+        &quot;volumeOfTurnoverDomestic&quot;: 61455576.0,
+        &quot;volumeOfTurnoverForeign&quot;: 3923227,
+        &quot;tradesNo&quot;: 16518,
+        &quot;tradesNoDomestic&quot;: 15914,
+        &quot;tradesNoForeign&quot;: 604,
+        &quot;listedCompanyNumber&quot;: 290,
+        &quot;tradeCompanyNumber&quot;: 264,
+        &quot;marketCap&quot;: 7887148977018.0,
+        &quot;cdsHoldingsTotal&quot;: 188696084000.0,
+        &quot;cdsHoldingsDomestic&quot;: 158327505000.0,
+        &quot;cdsHoldingsForeign&quot;: 30368579600.0,
+        &quot;cdsMarketValueTotal&quot;: 6252154300000.0,
+        &quot;cdsMarketValueDomestic&quot;: 5012009300000.0,
+        &quot;cdsMarketValueForeign&quot;: 1240144940000.0,
+        &quot;corporateDebtValue&quot;: 7595637.0,
+        &quot;governmentDebtValue&quot;: 0.0,
+        &quot;triasi&quot;: 34185.43,
+        &quot;spt&quot;: 12896.08,
+        &quot;per&quot;: 11.5,
+        &quot;pbv&quot;: 1.3,
+        &quot;dy&quot;: 2.9,
+        &quot;asi&quot;: 21765.56,
+        &quot;mpi&quot;: null,
+        &quot;spp&quot;: 6077.46,
+        &quot;trimpi&quot;: null
+      }
+    ],
+    [
+      {
+        &quot;id&quot;: 26374,
+        &quot;tradeDate&quot;: 1783535400000,
+        &quot;marketTurnover&quot;: 1438491650.0,
+        &quot;marketTrades&quot;: 17090.0,
+        &quot;marketDomestic&quot;: 16833.0,
+        &quot;marketForeign&quot;: 257.0,
+        &quot;equityTurnover&quot;: 1438491650.0,
+        &quot;equityDomesticPurchase&quot;: 1396630140.0,
+        &quot;equityDomesticSales&quot;: 1304943740.0,
+        &quot;equityForeignPurchase&quot;: 41861504.0,
+        &quot;equityForeignSales&quot;: 133547936.0,
+        &quot;volumeOfTurnOverNumber&quot;: 119546920.0,
+        &quot;volumeOfTurnoverDomestic&quot;: 117266352.0,
+        &quot;volumeOfTurnoverForeign&quot;: 2280568,
+        &quot;tradesNo&quot;: 17090,
+        &quot;tradesNoDomestic&quot;: 16833,
+        &quot;tradesNoForeign&quot;: 257,
+        &quot;listedCompanyNumber&quot;: 290,
+        &quot;tradeCompanyNumber&quot;: 266,
+        &quot;marketCap&quot;: 7856248192207.0,
+        &quot;cdsHoldingsTotal&quot;: 188696084000.0,
+        &quot;cdsHoldingsDomestic&quot;: 158328373000.0,
+        &quot;cdsHoldingsForeign&quot;: 30367719400.0,
+        &quot;cdsMarketValueTotal&quot;: 6224677400000.0,
+        &quot;cdsMarketValueDomestic&quot;: 4991704100000.0,
+        &quot;cdsMarketValueForeign&quot;: 1232973200000.0,
+        &quot;corporateDebtValue&quot;: 0.0,
+        &quot;governmentDebtValue&quot;: 0.0,
+        &quot;triasi&quot;: 34065.87,
+        &quot;spt&quot;: 12865.77,
+        &quot;per&quot;: 11.4,
+        &quot;pbv&quot;: 1.3,
+        &quot;dy&quot;: 3.0,
+        &quot;asi&quot;: 21697.72,
+        &quot;mpi&quot;: null,
+        &quot;spp&quot;: 6066.49,
+        &quot;trimpi&quot;: null
+      }
+    ]
+  ]
+}
+</pre>
+</div>
+
+</main>
+<footer>
+  MIT-licensed harness · Not financial advice · <a href="../ethics.html">Ethics</a> ·
+  Generated 2026-07-12 05:44 UTC
+</footer>
+</body>
+</html>

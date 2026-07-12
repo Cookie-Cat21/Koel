@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Examples · CSE API Docs (unofficial)</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --panel: #1a222c;
+  --text: #e7ecf1;
+  --muted: #9aa7b5;
+  --accent: #3dbea0;
+  --bad: #e57373;
+  --ok: #81c784;
+  --border: #2a3542;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text);
+  line-height: 1.55;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header {
+  padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #152028, var(--bg));
+}
+header h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+header p { margin: 0; color: var(--muted); max-width: 52rem; }
+nav {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+  position: sticky; top: 0; z-index: 2;
+}
+main { padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.1rem; margin: 0 0 1rem;
+}
+.card h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.meta { color: var(--muted); font-size: .92rem; }
+.badge {
+  display: inline-block; font-size: .75rem; padding: .15rem .45rem;
+  border-radius: 999px; border: 1px solid var(--border); margin-right: .35rem;
+  font-family: var(--mono);
+}
+.badge.ok { color: var(--ok); border-color: #356b3d; }
+.badge.bad { color: var(--bad); border-color: #7a3b3b; }
+.badge.cat { color: var(--accent); }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+code, pre { font-family: var(--mono); font-size: .85rem; }
+pre {
+  background: #0b1015; border: 1px solid var(--border); border-radius: 8px;
+  padding: .85rem; overflow: auto; max-height: 320px;
+}
+footer { padding: 2rem 1.25rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--border); }
+h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; }
+.grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .85rem; }
+.stat b { display: block; font-size: 1.4rem; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Unofficial CSE API Docs</h1>
+  <p>Live-probed documentation for <code>https://www.cse.lk/api</code>. Not affiliated with the Colombo Stock Exchange.</p>
+</header>
+
+<nav>
+  <a href="./index.html">Home</a>
+  <a href="./endpoints/index.html">Endpoints</a>
+  <a href="./websocket.html">WebSocket</a>
+  <a href="./ethics.html">Ethics</a>
+  <a href="./examples.html">Examples</a>
+  <a href="./compare.html">vs GH0STH4CKER</a>
+  <a href="./probe.html">Last probe</a>
+</nav>
+<main>
+
+<div class="card">
+  <h2>Python — company quote</h2>
+  <pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Fetch a single-symbol quote from cse.lk (unofficial).&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import sys
+
+import httpx
+
+BASE = &quot;https://www.cse.lk/api&quot;
+HEADERS = {
+    &quot;Origin&quot;: &quot;https://www.cse.lk&quot;,
+    &quot;Referer&quot;: &quot;https://www.cse.lk/&quot;,
+    &quot;User-Agent&quot;: &quot;CSE-API-Docs-Example/1.0&quot;,
+}
+
+
+def main(symbol: str = &quot;JKH.N0000&quot;) -&gt; None:
+    r = httpx.post(
+        f&quot;{BASE}/companyInfoSummery&quot;,
+        data={&quot;symbol&quot;: symbol},
+        headers=HEADERS,
+        timeout=30.0,
+    )
+    r.raise_for_status()
+    info = r.json()[&quot;reqSymbolInfo&quot;]
+    print(json.dumps(info, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main(sys.argv[1] if len(sys.argv) &gt; 1 else &quot;JKH.N0000&quot;)
+</pre>
+</div>
+<div class="card">
+  <h2>Python — trade summary (bulk)</h2>
+  <pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bulk trade summary — prefer this for polling many symbols.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import httpx
+
+BASE = &quot;https://www.cse.lk/api&quot;
+HEADERS = {
+    &quot;Origin&quot;: &quot;https://www.cse.lk&quot;,
+    &quot;Referer&quot;: &quot;https://www.cse.lk/&quot;,
+    &quot;User-Agent&quot;: &quot;CSE-API-Docs-Example/1.0&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+}
+
+
+def main() -&gt; None:
+    r = httpx.post(f&quot;{BASE}/tradeSummary&quot;, json={}, headers=HEADERS, timeout=45.0)
+    r.raise_for_status()
+    rows = r.json().get(&quot;reqTradeSummery&quot;) or []
+    print(f&quot;symbols: {len(rows)}&quot;)
+    for row in rows[:5]:
+        print(f&quot;{row.get(&#x27;symbol&#x27;)}\t{row.get(&#x27;price&#x27;)}\t{row.get(&#x27;percentageChange&#x27;)}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre>
+</div>
+<div class="card">
+  <h2>curl cheat sheet</h2>
+  <pre>#!/usr/bin/env bash
+# Unofficial cse.lk API cheat sheet — polite use only.
+set -euo pipefail
+H=(-H &#x27;Origin: https://www.cse.lk&#x27; -H &#x27;Referer: https://www.cse.lk/&#x27; -H &#x27;Accept: application/json&#x27;)
+
+echo &#x27;=== marketStatus ===&#x27;
+curl -sS -X POST &#x27;https://www.cse.lk/api/marketStatus&#x27; -H &#x27;Content-Type: application/json&#x27; &quot;${H[@]}&quot; -d &#x27;{}&#x27;
+echo
+
+echo &#x27;=== companyInfoSummery ===&#x27;
+curl -sS -X POST &#x27;https://www.cse.lk/api/companyInfoSummery&#x27; \
+  -H &#x27;Content-Type: application/x-www-form-urlencoded&#x27; &quot;${H[@]}&quot; -d &#x27;symbol=JKH.N0000&#x27; | head -c 400
+echo
+
+echo &#x27;=== tradeSummary (count) ===&#x27;
+curl -sS -X POST &#x27;https://www.cse.lk/api/tradeSummary&#x27; -H &#x27;Content-Type: application/json&#x27; &quot;${H[@]}&quot; -d &#x27;{}&#x27; \
+  | python3 -c &quot;import sys,json; print(len(json.load(sys.stdin).get(&#x27;reqTradeSummery&#x27;,[])))&quot;
+
+echo &#x27;=== companyProfile ===&#x27;
+curl -sS -X POST &#x27;https://www.cse.lk/api/companyProfile&#x27; \
+  -H &#x27;Content-Type: application/x-www-form-urlencoded&#x27; &quot;${H[@]}&quot; -d &#x27;symbol=JKH.N0000&#x27; \
+  | python3 -c &quot;import sys,json; d=json.load(sys.stdin); print(sorted(d.keys()))&quot;
+</pre>
+</div>
+
+</main>
+<footer>
+  MIT-licensed harness · Not financial advice · <a href="./ethics.html">Ethics</a> ·
+  Generated 2026-07-12 05:44 UTC
+</footer>
+</body>
+</html>

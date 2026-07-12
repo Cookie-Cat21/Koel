@@ -1,0 +1,32 @@
+{
+  "_probe": {
+    "id": "aspiData",
+    "url": "https://www.cse.lk/api/aspiData",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:28.500093+00:00",
+    "fingerprint": {
+      "type": "object",
+      "keys": [
+        "change",
+        "highValue",
+        "id",
+        "lowValue",
+        "percentage",
+        "sectorId",
+        "timestamp",
+        "value"
+      ]
+    }
+  },
+  "response": {
+    "id": 36847851,
+    "value": 21765.56,
+    "lowValue": 21697.72,
+    "highValue": 21803.67,
+    "change": 67.84,
+    "percentage": 0.31265957897880514,
+    "sectorId": 1.0,
+    "timestamp": 1783675100747
+  }
+}

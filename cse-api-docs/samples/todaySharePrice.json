@@ -1,0 +1,158 @@
+{
+  "_probe": {
+    "id": "todaySharePrice",
+    "url": "https://www.cse.lk/api/todaySharePrice",
+    "method": "POST",
+    "status": 200,
+    "verified_at": "2026-07-12T05:43:30.583265+00:00",
+    "fingerprint": {
+      "type": "array",
+      "len": 10,
+      "item_keys": [
+        "change",
+        "changePercentage",
+        "crossingVolume",
+        "high",
+        "id",
+        "lastTradedPrice",
+        "low",
+        "open",
+        "quantity",
+        "symbol",
+        "tradesTime"
+      ]
+    }
+  },
+  "response": [
+    {
+      "id": 204,
+      "symbol": "ABAN.N0000",
+      "open": 1147.5,
+      "high": 1148.0,
+      "low": 1147.5,
+      "lastTradedPrice": 1144.25,
+      "change": 0.0,
+      "changePercentage": 0.0,
+      "crossingVolume": 17,
+      "tradesTime": 1783673334404,
+      "quantity": 7
+    },
+    {
+      "id": 1845,
+      "symbol": "AFSL.N0000",
+      "open": 96.0,
+      "high": 99.6,
+      "low": 95.3,
+      "lastTradedPrice": 98.8,
+      "change": -0.7,
+      "changePercentage": -0.7035176,
+      "crossingVolume": 869,
+      "tradesTime": 1783671636352,
+      "quantity": 10
+    },
+    {
+      "id": 2065,
+      "symbol": "AEL.N0000",
+      "open": 77.4,
+      "high": 78.0,
+      "low": 77.0,
+      "lastTradedPrice": 77.4,
+      "change": 0.4,
+      "changePercentage": 0.5194805,
+      "crossingVolume": 57483,
+      "tradesTime": 1783673863340,
+      "quantity": 50
+    },
+    {
+      "id": 472,
+      "symbol": "ACL.N0000",
+      "open": 96.7,
+      "high": 98.0,
+      "low": 96.6,
+      "lastTradedPrice": 97.6,
+      "change": 0.9,
+      "changePercentage": 0.93071353,
+      "crossingVolume": 43928,
+      "tradesTime": 1783673863204,
+      "quantity": 1
+    },
+    {
+      "id": 406,
+      "symbol": "APLA.N0000",
+      "open": 145.0,
+      "high": 149.0,
+      "low": 144.0,
+      "lastTradedPrice": 149.0,
+      "change": -0.25,
+      "changePercentage": -0.16750419,
+      "crossingVolume": 13809,
+      "tradesTime": 1783673972248,
+      "quantity": 218
+    },
+    {
+      "id": 554,
+      "symbol": "ACME.N0000",
+      "open": 4.8,
+      "high": 5.0,
+      "low": 4.8,
+      "lastTradedPrice": 4.9,
+      "change": 0.1,
+      "changePercentage": 2.0833333,
+      "crossingVolume": 342557,
+      "tradesTime": 1783673991889,
+      "quantity": 990
+    },
+    {
+      "id": 163,
+      "symbol": "AGAL.N0000",
+      "open": 53.4,
+      "high": 53.4,
+      "low": 51.9,
+      "lastTradedPrice": 51.9,
+      "change": -1.3,
+      "changePercentage": -2.443609,
+      "crossingVolume": 811,
+      "tradesTime": 1783673452146,
+      "quantity": 350
+    },
+    {
+      "id": 2026,
+      "symbol": "AGST.N0000",
+      "open": 11.2,
+      "high": 11.6,
+      "low": 11.2,
+      "lastTradedPrice": 11.5,
+      "change": 0.0,
+      "changePercentage": 0.0,
+      "crossingVolume": 163155,
+      "tradesTime": 1783673815189,
+      "quantity": 999
+    },
+    {
+      "id": 2035,
+      "symbol": "AGST.X0000",
+      "open": 12.3,
+      "high": 12.3,
+      "low": 11.1,
+      "lastTradedPrice": 11.4,
+      "change": -0.1,
+      "changePercentage": -0.8695652,
+      "crossingVolume": 5135,
+      "tradesTime": 1783672278352,
+      "quantity": 470
+    },
+    {
+      "id": 144,
+      "symbol": "AHUN.N0000",
+      "open": 91.6,
+      "high": 92.0,
+      "low": 91.0,
+      "lastTradedPrice": 91.1,
+      "change": -0.4,
+      "changePercentage": -0.43715847,
+      "crossingVolume": 22466,
+      "tradesTime": 1783673939967,
+      "quantity": 278
+    }
+  ]
+}
