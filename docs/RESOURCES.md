@@ -47,6 +47,8 @@ Starter list of libraries and patterns for the CSE Telegram alerting stack. Pref
 
 - Adapter boundary: one module for cse.lk HTTP; normalize to Chime schemas (see [`endpoint_probe_report.md`](endpoint_probe_report.md)).
 - Samples of live responses: [`sample_responses/`](sample_responses/).
+- External checklist compare: [`CSE_EXTERNAL_DOC_COMPARE.md`](CSE_EXTERNAL_DOC_COMPARE.md).
+- **Sibling project (not Chime):** better unofficial API docs — [`CSE_API_DOCS_PROJECT.md`](CSE_API_DOCS_PROJECT.md).
 - Do not scrape competitors (e.g. csetracker.lk). Public cse.lk JSON only.
 - Polite rate limits; treat undocumented APIs as unstable.
 

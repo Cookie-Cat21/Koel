@@ -138,7 +138,7 @@ Samples: [`companyChartDataByStock.json`](sample_responses/companyChartDataBySto
 | Status | `200` |
 | Body | `{}` JSON or empty form |
 
-Response shape: `{ "status": "Market Closed" }` (or open-equivalent string when session is live). Chime currently gates on static `MARKET_OPEN`/`MARKET_CLOSE` clocks — wire this with clock fallback. Cross-check: [CSE_EXTERNAL_DOC_COMPARE.md](CSE_EXTERNAL_DOC_COMPARE.md).
+Response shape: `{ "status": "Market Closed" }` (or open-equivalent string when session is live). Chime currently gates on static `MARKET_OPEN`/`MARKET_CLOSE` clocks — wire this with clock fallback. Cross-check: [CSE_EXTERNAL_DOC_COMPARE.md](CSE_EXTERNAL_DOC_COMPARE.md) · sibling docs plan: [CSE_API_DOCS_PROJECT.md](CSE_API_DOCS_PROJECT.md).
 
 Sample: [`sample_responses/marketStatus.json`](sample_responses/marketStatus.json)
 
