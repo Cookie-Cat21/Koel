@@ -50,10 +50,12 @@ class Settings:
     market_open: str = "09:30"
     market_close: str = "14:30"
     bot_cmd_rate_per_minute: int = 20
-    # Polite pause between legacy /announcements PDF enrichment calls (per symbol).
+    # PDF_ENRICH_SLEEP_SECONDS — polite pause between legacy /announcements
+    # PDF enrichment calls (per symbol). Default 0.5; 0 disables sleep.
     pdf_enrich_sleep_seconds: float = 0.5
-    # Optional market-wide disclosure discovery via POST /approvedAnnouncement.
-    # Default off — per-symbol getAnnouncementByCompany remains the safe path.
+    # DISCLOSURE_BULK_FEED=1 — optional market-wide discovery via
+    # POST /approvedAnnouncement + stocks name map. Default off (0);
+    # per-symbol getAnnouncementByCompany remains the safe path.
     disclosure_bulk_feed: bool = False
 
     @classmethod

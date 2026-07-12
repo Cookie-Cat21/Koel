@@ -28,6 +28,17 @@ class BriefStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class BriefSettings:
+    """Env knobs (see root ``.env.example``):
+
+    - ``AI_BRIEFS_ENABLED`` — ``1`` to opt in (default ``0``)
+    - ``AI_PROVIDER`` — only ``gemini`` for now (default ``gemini``)
+    - ``AI_API_KEY`` — required with enabled for ``briefs_enabled()``
+    - ``AI_MODEL`` — default ``gemini-2.0-flash``
+    - ``AI_MAX_BRIEFS_PER_DAY`` — default ``50``
+    - ``AI_MAX_INPUT_CHARS`` — default ``12000``
+    - ``PDF_MAX_BYTES`` — max PDF download size (default ``5242880``)
+    """
+
     enabled: bool = False
     provider: str = "gemini"
     api_key: str = ""
