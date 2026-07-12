@@ -136,6 +136,10 @@ def test_symbols_list_route_requires_snapshots_and_session() -> None:
     assert "INNER JOIN LATERAL" in source
     assert "LEFT JOIN LATERAL" not in source
     assert "price_snapshots" in source
+    assert "escapeLikePattern" in source
+    assert "ESCAPE" in source
+    assert "normalizeMarketQuery" in source
+    assert "MAX_SYMBOLS_OFFSET" in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
         for line in source.splitlines()
@@ -198,5 +202,36 @@ def test_market_page_and_nav_browse_link() -> None:
     market_src = market.read_text(encoding="utf-8")
     assert "/api/v1/symbols" in market_src
     assert "NfaInline" in market_src
-    assert 'href: "/market", label: "Browse"' in nav.read_text(encoding="utf-8")
-    assert 'href="/market"' in watchlist.read_text(encoding="utf-8")
+    assert "normalizeMarketQuery" in market_src
+    assert 'role="search"' in market_src
+    assert "maxLength={MAX_MARKET_Q_LENGTH}" in market_src
+    assert "dangerouslySetInnerHTML" not in market_src
+    assert 'aria-label="Market symbols"' in market_src
+    assert "tradeSummary" not in market_src
+    assert "tick --force" not in market_src
+    nav_src = nav.read_text(encoding="utf-8")
+    assert 'href: "/market", label: "Browse"' in nav_src
+    assert "hidden={!open}" in nav_src
+    assert "{open ? (" not in nav_src
+    watch_src = watchlist.read_text(encoding="utf-8")
+    assert 'href="/market"' in watch_src
+    assert "Browse symbols" in watch_src
+
+
+def test_market_page_fence_no_screener_or_quote_board() -> None:
+    """Browse stays thin: no screener/OHLC/volume board tokens in the page source."""
+    market_src = (WEB / "src" / "app" / "market" / "page.tsx").read_text(encoding="utf-8")
+    forbidden = (
+        "market_cap",
+        "OHLC",
+        "ohlc",
+        "order book",
+        "heatmap",
+        "screener",
+        "volume",
+        "dangerouslySetInnerHTML",
+    )
+    hits = [tok for tok in forbidden if tok in market_src]
+    assert hits == [], f"screener/quote-board fence tokens on /market: {hits}"
+    assert 'sort: "change_pct"' in market_src or "sort=change_pct" in market_src
+    assert "sort=symbol" not in market_src

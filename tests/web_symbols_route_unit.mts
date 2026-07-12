@@ -7,6 +7,12 @@
 import { NextRequest } from "next/server";
 
 import { GET as symbolsGet } from "./src/app/api/v1/symbols/route.ts";
+import {
+  MAX_MARKET_Q_LENGTH,
+  MAX_SYMBOLS_OFFSET,
+  escapeLikePattern,
+  normalizeMarketQuery,
+} from "./src/lib/api/market-query.ts";
 import { SESSION_COOKIE } from "./src/lib/auth/config.ts";
 import { mintSessionToken } from "./src/lib/auth/session.ts";
 
@@ -168,6 +174,50 @@ async function testSessionRequired(): Promise<void> {
   assert(code === "unauthorized", `expected unauthorized, got ${code}`);
 }
 
+
+async function testLikeMetacharEscape(): Promise<void> {
+  const raw = "a%b_c\\d";
+  const { res, body, captured } = await call(`q=${encodeURIComponent(raw)}`);
+  assert(res.status === 200, `q LIKE escape should 200, got ${res.status}`);
+  assert(body.q === raw, `sanitized q echoed, got ${JSON.stringify(body.q)}`);
+  const sql = captured[0].sql;
+  assert(sql.includes("ESCAPE '\\'"), "LIKE must use ESCAPE '\\'");
+  assert(!sql.includes(raw), "raw q must not be interpolated into SQL text");
+  const expected = `%${escapeLikePattern(raw.toUpperCase())}%`;
+  assert(
+    captured[0].params[0] === expected,
+    `LIKE param must be escaped, got ${JSON.stringify(captured[0].params[0])}`,
+  );
+}
+
+async function testQueryLengthCapAndOffsetClamp(): Promise<void> {
+  assert(escapeLikePattern("%_") === "\\%\\_", "escape % and _");
+  assert(
+    normalizeMarketQuery("X".repeat(MAX_MARKET_Q_LENGTH + 40)).length ===
+      MAX_MARKET_Q_LENGTH,
+    "normalizeMarketQuery caps length",
+  );
+  assert(
+    normalizeMarketQuery("ab" + String.fromCharCode(0) + "c" + String.fromCharCode(10) + "d") ===
+      "abcd",
+    "NUL/LF controls stripped",
+  );
+  const over = "X".repeat(MAX_MARKET_Q_LENGTH + 40);
+  const { res, body, captured } = await call(
+    `q=${encodeURIComponent(over)}&offset=999999`,
+  );
+  assert(res.status === 200, "overlong q still 200");
+  assert(
+    typeof body.q === "string" && body.q.length === MAX_MARKET_Q_LENGTH,
+    `response q capped to ${MAX_MARKET_Q_LENGTH}`,
+  );
+  assert(body.offset === MAX_SYMBOLS_OFFSET, `offset clamped, got ${body.offset}`);
+  assert(
+    captured[0].params.includes(MAX_SYMBOLS_OFFSET),
+    "SQL params use clamped offset",
+  );
+}
+
 async function main(): Promise<void> {
   await testDefaultLimitAndSort();
   await testLimitClampToMax200();
@@ -175,6 +225,8 @@ async function main(): Promise<void> {
   await testSortWhitelist();
   await testEmptyBoardReturnsEmptyItems();
   await testSessionRequired();
+  await testLikeMetacharEscape();
+  await testQueryLengthCapAndOffsetClamp();
   console.log("WEB_SYMBOLS_ROUTE_UNIT_OK");
 }
 

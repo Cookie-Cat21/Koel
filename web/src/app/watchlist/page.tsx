@@ -78,9 +78,12 @@ export default async function WatchlistPage() {
             description={
               <>
                 Add a CSE symbol with the form above to start watching prices
-                and disclosures. Browse the market list at{" "}
-                <Link href="/market" className="underline underline-offset-4">
-                  /market
+                and disclosures.{" "}
+                <Link
+                  href="/market"
+                  className="rounded-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  Browse symbols
                 </Link>{" "}
                 to discover tickers, or use{" "}
                 <code className="font-mono text-xs">/watch SYMBOL</code> in
@@ -88,9 +91,14 @@ export default async function WatchlistPage() {
               </>
             }
             action={
-              <Button asChild variant="outline">
-                <a href="#watch_symbol">Add a symbol</a>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/market">Browse symbols</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <a href="#watch_symbol">Add a symbol</a>
+                </Button>
+              </div>
             }
           />
         ) : (

@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MAX_SYMBOLS_OFFSET,
+  escapeLikePattern,
+  normalizeMarketQuery,
+} from "@/lib/api/market-query";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
@@ -12,9 +17,9 @@ const MAX_LIMIT = 200;
 
 /**
  * GET /api/v1/symbols — thin market browse from Postgres (latest snapshots).
- * Query: limit (default 50, max 200), offset, q (symbol/name substring),
- * sort=change_pct|symbol (default change_pct).
- * No cse.lk.
+ * Query: limit (default 50, max 200), offset (max 10000), q (symbol/name
+ * substring, max 64, LIKE-metachar escaped), sort=change_pct|symbol
+ * (default change_pct). No cse.lk. Not a screener (no sector/volume filters).
  */
 export async function GET(request: NextRequest) {
   const gated = requireSession(request);
@@ -26,7 +31,9 @@ export async function GET(request: NextRequest) {
   limit = Math.min(limit, MAX_LIMIT);
   let offset = Number.parseInt(sp.get("offset") ?? "0", 10);
   if (!Number.isFinite(offset) || offset < 0) offset = 0;
-  const q = (sp.get("q") ?? "").trim();
+  offset = Math.min(offset, MAX_SYMBOLS_OFFSET);
+
+  const q = normalizeMarketQuery(sp.get("q"));
   const sortRaw = (sp.get("sort") ?? "change_pct").trim().toLowerCase();
   const sort = sortRaw === "symbol" ? "symbol" : "change_pct";
 
@@ -35,8 +42,9 @@ export async function GET(request: NextRequest) {
     const params: unknown[] = [];
     let where = "";
     if (q) {
-      params.push(`%${q.toUpperCase()}%`);
-      where = `WHERE s.symbol LIKE $1 OR UPPER(COALESCE(s.name, '')) LIKE $1`;
+      // Case-insensitive substring; escape LIKE wildcards so user `%`/`_` are literal.
+      params.push(`%${escapeLikePattern(q.toUpperCase())}%`);
+      where = `WHERE UPPER(s.symbol) LIKE $1 ESCAPE '\\' OR UPPER(COALESCE(s.name, '')) LIKE $1 ESCAPE '\\'`;
     }
     const order =
       sort === "symbol"

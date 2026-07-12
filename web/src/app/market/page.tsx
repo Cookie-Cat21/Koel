@@ -5,6 +5,10 @@ import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { Button } from "@/components/ui/button";
+import {
+  MAX_MARKET_Q_LENGTH,
+  normalizeMarketQuery,
+} from "@/lib/api/market-query";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
@@ -34,11 +38,12 @@ type MarketPayload = {
 export default async function MarketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string | string[] }>;
 }) {
   await requirePageSession();
   const sp = await searchParams;
-  const q = (sp.q ?? "").trim();
+  // Sanitize before any reflection (input defaultValue) or API round-trip.
+  const q = normalizeMarketQuery(sp.q);
   const qs = new URLSearchParams({ limit: "100", sort: "change_pct" });
   if (q) qs.set("q", q);
 
@@ -63,14 +68,23 @@ export default async function MarketPage({
           names to watch — alerts still fire on Telegram.
         </p>
 
-        <form className="mt-6 flex flex-wrap gap-2" method="get" action="/market">
+        <form
+          className="mt-6 flex flex-wrap gap-2"
+          method="get"
+          action="/market"
+          role="search"
+        >
           <label className="sr-only" htmlFor="market_q">
-            Search symbols
+            Search symbols by ticker or name
           </label>
           <input
             id="market_q"
             name="q"
+            type="search"
             defaultValue={q}
+            maxLength={MAX_MARKET_Q_LENGTH}
+            autoComplete="off"
+            spellCheck={false}
             placeholder="Symbol or name"
             className="min-w-[12rem] flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
@@ -86,10 +100,12 @@ export default async function MarketPage({
         {!payload ? (
           <EmptyState
             title="Couldn’t load market list"
-            description="Chime couldn’t read snapshot data just now. Retry, or confirm the poller has written tradeSummary rows."
+            description="Chime couldn’t read snapshot data just now. Retry in a moment, or check Health if this keeps happening."
             action={
               <Button asChild variant="outline">
-                <a href="/market">Retry</a>
+                <Link href={q ? `/market?q=${encodeURIComponent(q)}` : "/market"}>
+                  Retry
+                </Link>
               </Button>
             }
           />
@@ -98,12 +114,22 @@ export default async function MarketPage({
             title="No symbols yet"
             description={
               q
-                ? "No symbols matched that search. Try another query after the poller has run."
-                : "The poller has not persisted a market board yet. Run a tick during market hours (or tick --force), then refresh."
+                ? "No symbols matched that search. Try another query, or browse again after the next market update."
+                : "No snapshot data is available yet. Check back after market hours, or open Health if this persists."
+            }
+            action={
+              q ? (
+                <Button asChild variant="outline">
+                  <Link href="/market">Clear search</Link>
+                </Button>
+              ) : undefined
             }
           />
         ) : (
-          <ul className="mt-8 divide-y divide-border/60">
+          <ul
+            className="mt-8 divide-y divide-border/60"
+            aria-label="Market symbols"
+          >
             {payload.items.map((item) => {
               const pct = item.change_pct;
               const tone =
@@ -115,11 +141,14 @@ export default async function MarketPage({
                       ? "text-[oklch(0.45_0.12_25)]"
                       : "text-muted-foreground";
               return (
-                <li key={item.symbol} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
+                <li
+                  key={item.symbol}
+                  className="flex flex-wrap items-baseline justify-between gap-2 py-3"
+                >
                   <div className="min-w-0">
                     <Link
                       href={`/symbols/${encodeURIComponent(item.symbol)}`}
-                      className="font-mono text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                      className="rounded-sm font-mono text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                     >
                       {item.symbol}
                     </Link>

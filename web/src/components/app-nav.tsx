@@ -76,37 +76,38 @@ export function AppNav({ active }: { active?: string }) {
         </div>
       </div>
 
-      {open ? (
-        <nav
-          id="chime-mobile-nav"
-          className="border-t border-border/60 px-4 py-2 sm:hidden"
-        >
-          <ul className="flex flex-col">
-            {links.map((link) => {
-              const isActive = active === link.href;
-              return (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    aria-current={isActive ? "page" : undefined}
-                    onClick={() => setOpen(false)}
-                    className={`block rounded-sm py-3 text-base focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
-                      isActive
-                        ? "font-medium text-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="border-t border-border/60 py-3">
-            <NavSession compact />
-          </div>
-        </nav>
-      ) : null}
+      {/* Keep in DOM so aria-controls stays valid when the menu is closed. */}
+      <nav
+        id="chime-mobile-nav"
+        className="border-t border-border/60 px-4 py-2 sm:hidden"
+        hidden={!open}
+      >
+        <ul className="flex flex-col">
+          {links.map((link) => {
+            const isActive = active === link.href;
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  aria-current={isActive ? "page" : undefined}
+                  tabIndex={open ? undefined : -1}
+                  onClick={() => setOpen(false)}
+                  className={`block rounded-sm py-3 text-base focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
+                    isActive
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="border-t border-border/60 py-3">
+          <NavSession compact />
+        </div>
+      </nav>
     </header>
   );
 }
