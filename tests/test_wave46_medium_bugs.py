@@ -57,8 +57,12 @@ def test_health_proxy_content_length_early_reject() -> None:
     source = (
         WEB / "src" / "app" / "api" / "v1" / "health" / "route.ts"
     ).read_text(encoding="utf-8")
-    assert 'res.headers.get("content-length")' in source
-    assert "claimed > HEALTH_PROXY_BODY_MAX_BYTES" in source
-    cl_idx = source.index('res.headers.get("content-length")')
-    text_idx = source.index("await res.text()")
-    assert cl_idx < text_idx
+    assert "readBoundedResponseText" in source
+    assert "HEALTH_PROXY_BODY_MAX_BYTES" in source
+    assert "await res.text()" not in source
+    helper = (WEB / "src" / "lib" / "api" / "read-bounded-text.ts").read_text(
+        encoding="utf-8"
+    )
+    assert 'res.headers.get("content-length")' in helper
+    assert "claimed > cap" in helper
+    assert "getReader" in helper

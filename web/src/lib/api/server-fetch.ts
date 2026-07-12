@@ -1,4 +1,4 @@
-import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
+import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
 import { headers } from "next/headers";
 
 /**
@@ -151,20 +151,13 @@ export async function serverApiGet(path: string): Promise<Response> {
       redirect: "error",
       signal: ctrl.signal,
     });
-    // Early-reject claimed Content-Length before allocating the body buffer.
-    const lenHeader = res.headers.get("content-length");
-    if (lenHeader != null && lenHeader.trim()) {
-      const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
-      if (claimed < 0 || claimed > SERVER_API_BODY_MAX_BYTES) {
-        return new Response(JSON.stringify({ error: { code: "degraded" } }), {
-          status: 502,
-          headers: { "Content-Type": "application/json; charset=utf-8" },
-        });
-      }
-    }
-    // Bound body before page parsers call ``res.json()`` — huge payloads OOM SSR.
-    const rawText = await res.text().catch(() => "");
-    if (rawText.length > SERVER_API_BODY_MAX_BYTES) {
+    // Stream-bound body — missing / understated Content-Length must not let
+    // res.text() allocate past the cap (parity readJsonBody / client mutate).
+    const bounded = await readBoundedResponseText(
+      res,
+      SERVER_API_BODY_MAX_BYTES,
+    );
+    if (!bounded.ok) {
       return new Response(JSON.stringify({ error: { code: "degraded" } }), {
         status: 502,
         headers: { "Content-Type": "application/json; charset=utf-8" },
@@ -172,7 +165,7 @@ export async function serverApiGet(path: string): Promise<Response> {
     }
     // Force JSON — never reflect a hostile upstream Content-Type / statusText
     // into pages (statusText used to echo unbounded Reason-Phrase junk).
-    return new Response(rawText, {
+    return new Response(bounded.text, {
       status: res.status,
       headers: { "Content-Type": "application/json; charset=utf-8" },
     });

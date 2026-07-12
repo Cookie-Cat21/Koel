@@ -27,7 +27,9 @@ def test_nav_session_me_parse_fail_closed() -> None:
     assert "toIso(r.created_at)" in source
     assert "MAX_CSRF_TOKEN_LENGTH" in source
     assert "MAX_ME_BODY_CHARS" in source
-    assert "rawText.length > MAX_ME_BODY_CHARS" in source
+    assert "readBoundedResponseText" in source
+    assert "MAX_ME_BODY_CHARS" in source
+    assert "await res.text()" not in source
     assert 'typeof r.created_at === "string" && r.created_at' not in source
     assert (
         'csrf_token: typeof r.csrf_token === "string" ? r.csrf_token : undefined'
@@ -77,6 +79,7 @@ def test_server_api_get_timeout_and_body_bound() -> None:
     assert "SERVER_API_TIMEOUT_MS" in source
     assert "SERVER_API_BODY_MAX_BYTES" in source
     assert "AbortController" in source
-    assert "rawText.length > SERVER_API_BODY_MAX_BYTES" in source
+    assert "readBoundedResponseText" in source
+    assert "await res.text()" not in source
     assert 'redirect: "error"' in source
     assert "signal: ctrl.signal" in source

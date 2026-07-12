@@ -32,8 +32,8 @@ def test_api_mutate_timeout_and_body_bound() -> None:
     assert "AbortController" in source
     assert "ctrl.abort()" in source
     assert "signal: ctrl.signal" in source
-    assert "rawText.length > CLIENT_API_BODY_MAX_CHARS" in source
-    assert "res.text()" in source
+    assert "readBoundedResponseText" in source
+    assert "await res.text()" not in source
     assert "await res.json()" not in source
     assert "status: 502" in source
     assert "Response too large." in source
@@ -48,8 +48,8 @@ def test_login_form_bounds_demo_auth_response() -> None:
     assert "CLIENT_API_BODY_MAX_CHARS" in source
     assert "AbortController" in source
     assert "signal: ctrl.signal" in source
-    assert "rawText.length > CLIENT_API_BODY_MAX_CHARS" in source
-    assert "res.text()" in source
+    assert "readBoundedResponseText" in source
+    assert "await res.text()" not in source
     assert "await res.json()" not in source
     assert "response too large" in source
 

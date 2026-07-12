@@ -39,6 +39,6 @@ def test_health_proxy_body_bounded() -> None:
         WEB / "src" / "app" / "api" / "v1" / "health" / "route.ts"
     ).read_text(encoding="utf-8")
     assert "HEALTH_PROXY_BODY_MAX_BYTES" in source
-    assert "rawText.length > HEALTH_PROXY_BODY_MAX_BYTES" in source
+    assert "readBoundedResponseText" in source
     assert "await res.json()" not in source
-    assert "res.text()" in source
+    assert "await res.text()" not in source

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
 import { toIso } from "@/lib/api/time";
 import {
   toNonNegativeSafeInt,
@@ -285,23 +286,20 @@ export async function GET(request: NextRequest) {
           redirect: "error",
           headers: { Accept: "application/json" },
         });
-        // Early-reject claimed Content-Length before allocating the body
-        // (parity with serverApiGet — hostile loopback still must not OOM).
-        const lenHeader = res.headers.get("content-length");
-        if (lenHeader != null && lenHeader.trim()) {
-          const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
-          if (claimed < 0 || claimed > HEALTH_PROXY_BODY_MAX_BYTES) {
-            throw new Error("health_url_body_too_large");
-          }
-        }
-        // Keep abort armed through body read — hung / huge JSON must not OOM.
-        const rawText = await res.text().catch(() => "");
-        if (rawText.length > HEALTH_PROXY_BODY_MAX_BYTES) {
+        // Stream-bound body — missing / understated Content-Length must not
+        // let res.text() allocate past the cap (parity serverApiGet).
+        const bounded = await readBoundedResponseText(
+          res,
+          HEALTH_PROXY_BODY_MAX_BYTES,
+        );
+        if (!bounded.ok) {
           throw new Error("health_url_body_too_large");
         }
         let body: Record<string, unknown> | null = null;
         try {
-          const parsed: unknown = rawText ? JSON.parse(rawText) : null;
+          const parsed: unknown = bounded.text
+            ? JSON.parse(bounded.text)
+            : null;
           if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
             body = parsed as Record<string, unknown>;
           }

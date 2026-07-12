@@ -25,8 +25,8 @@ def test_server_api_get_timeout_and_body_bound() -> None:
     assert "SERVER_API_BODY_MAX_BYTES" in source
     assert "AbortController" in source
     assert "ctrl.abort()" in source
-    assert "rawText.length > SERVER_API_BODY_MAX_BYTES" in source
-    assert "res.text()" in source
+    assert "readBoundedResponseText" in source
+    assert "await res.text()" not in source
     # Must not hand an unbounded fetch Response straight to page parsers.
     assert "return fetch(url," not in source
     assert 'redirect: "error"' in source

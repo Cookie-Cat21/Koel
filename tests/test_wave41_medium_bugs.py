@@ -38,8 +38,12 @@ def test_server_api_get_content_length_early_reject() -> None:
     source = (WEB / "src" / "lib" / "api" / "server-fetch.ts").read_text(
         encoding="utf-8"
     )
-    assert 'res.headers.get("content-length")' in source
+    assert "readBoundedResponseText" in source
     assert "SERVER_API_BODY_MAX_BYTES" in source
-    assert "claimed > SERVER_API_BODY_MAX_BYTES" in source
-    # Existing body bound after text() must remain.
-    assert "rawText.length > SERVER_API_BODY_MAX_BYTES" in source
+    assert "await res.text()" not in source
+    helper = (WEB / "src" / "lib" / "api" / "read-bounded-text.ts").read_text(
+        encoding="utf-8"
+    )
+    assert 'res.headers.get("content-length")' in helper
+    assert "claimed > cap" in helper
+    assert "getReader" in helper

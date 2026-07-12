@@ -8,10 +8,8 @@ import {
   apiMutate,
   CLIENT_API_TIMEOUT_MS,
 } from "@/lib/api/client-fetch";
-import {
-  toNonNegativeSafeInt,
-  toSafePositiveInt,
-} from "@/lib/api/safe-int";
+import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
 import { MAX_CSRF_TOKEN_LENGTH } from "@/lib/auth/config";
 import { redirectToLogin } from "@/lib/auth/session-redirect";
@@ -82,18 +80,13 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
           return;
         }
         if (!res.ok) return;
-        // Early-reject claimed Content-Length before allocating the body.
-        const lenHeader = res.headers.get("content-length");
-        if (lenHeader != null && lenHeader.trim()) {
-          const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
-          if (claimed < 0 || claimed > MAX_ME_BODY_CHARS) return;
-        }
-        // Bound body before JSON.parse — hostile /me must not OOM the shell.
-        const rawText = await res.text();
-        if (rawText.length > MAX_ME_BODY_CHARS) return;
+        // Stream-bound body — missing / understated Content-Length must not
+        // let res.text() allocate past the cap.
+        const bounded = await readBoundedResponseText(res, MAX_ME_BODY_CHARS);
+        if (!bounded.ok) return;
         let parsed: unknown = null;
         try {
-          parsed = rawText ? JSON.parse(rawText) : null;
+          parsed = bounded.text ? JSON.parse(bounded.text) : null;
         } catch {
           return;
         }

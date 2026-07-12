@@ -1,4 +1,4 @@
-import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
+import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
 import { CSRF_COOKIE, MAX_CSRF_TOKEN_LENGTH } from "@/lib/auth/config";
 import { redirectToLogin } from "@/lib/auth/session-redirect";
 
@@ -154,42 +154,28 @@ export async function apiMutate(
     clearTimeout(timer);
   }
 
-  // Early-reject claimed Content-Length before allocating the body buffer
-  // (parity with SSR serverApiGet / HEALTH_URL proxy).
-  const lenHeader = res.headers.get("content-length");
-  if (lenHeader != null && lenHeader.trim()) {
-    const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
-    if (claimed < 0 || claimed > CLIENT_API_BODY_MAX_CHARS) {
-      return {
-        ok: false,
-        status: 502,
-        data: {
-          error: {
-            code: "degraded",
-            message: "Response too large.",
-          },
+  // Stream-bound body — missing / understated Content-Length must not let
+  // res.text() allocate past the cap (parity SSR + HEALTH_URL + readJsonBody).
+  const bounded = await readBoundedResponseText(
+    res,
+    CLIENT_API_BODY_MAX_CHARS,
+  );
+  if (!bounded.ok) {
+    return {
+      ok: false,
+      status: 502,
+      data: {
+        error: {
+          code: "degraded",
+          message: "Response too large.",
         },
-      };
-    }
+      },
+    };
   }
 
-  // Bound body before JSON.parse — hostile / huge mutation responses OOM the tab.
   let data: unknown = null;
   try {
-    const rawText = await res.text();
-    if (rawText.length > CLIENT_API_BODY_MAX_CHARS) {
-      return {
-        ok: false,
-        status: 502,
-        data: {
-          error: {
-            code: "degraded",
-            message: "Response too large.",
-          },
-        },
-      };
-    }
-    data = rawText ? JSON.parse(rawText) : null;
+    data = bounded.text ? JSON.parse(bounded.text) : null;
   } catch {
     data = null;
   }

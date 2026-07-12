@@ -12,10 +12,8 @@ import {
   CLIENT_API_BODY_MAX_CHARS,
   CLIENT_API_TIMEOUT_MS,
 } from "@/lib/api/client-fetch";
-import {
-  toNonNegativeSafeInt,
-  toSafePositiveInt,
-} from "@/lib/api/safe-int";
+import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { NFA_INLINE } from "@/lib/nfa";
 
 type Props = {
@@ -78,22 +76,13 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
       } finally {
         clearTimeout(timer);
       }
-      // Early-reject claimed Content-Length before allocating the body.
-      const lenHeader = res.headers.get("content-length");
-      if (lenHeader != null && lenHeader.trim()) {
-        const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
-        if (claimed < 0 || claimed > CLIENT_API_BODY_MAX_CHARS) {
-          setError(
-            loginError(
-              "Chime couldn't sign you in (response too large). Try again.",
-            ),
-          );
-          return;
-        }
-      }
-      // Bound body before JSON.parse — hostile demo auth responses must not OOM.
-      const rawText = await res.text();
-      if (rawText.length > CLIENT_API_BODY_MAX_CHARS) {
+      // Stream-bound body — missing / understated Content-Length must not
+      // let res.text() allocate past the cap.
+      const bounded = await readBoundedResponseText(
+        res,
+        CLIENT_API_BODY_MAX_CHARS,
+      );
+      if (!bounded.ok) {
         setError(
           loginError(
             "Chime couldn't sign you in (response too large). Try again.",
@@ -103,7 +92,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
       }
       let data: unknown = null;
       try {
-        data = rawText ? JSON.parse(rawText) : null;
+        data = bounded.text ? JSON.parse(bounded.text) : null;
       } catch {
         data = null;
       }

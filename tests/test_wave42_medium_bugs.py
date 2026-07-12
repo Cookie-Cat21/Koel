@@ -40,12 +40,16 @@ def test_server_api_content_length_early_reject() -> None:
     source = (WEB / "src" / "lib" / "api" / "server-fetch.ts").read_text(
         encoding="utf-8"
     )
-    assert "toNonNegativeSafeInt" in source
-    assert 'res.headers.get("content-length")' in source
-    assert "claimed > SERVER_API_BODY_MAX_BYTES" in source
-    cl_idx = source.index('res.headers.get("content-length")')
-    text_idx = source.index("await res.text()")
-    assert cl_idx < text_idx
+    assert "readBoundedResponseText" in source
+    assert "SERVER_API_BODY_MAX_BYTES" in source
+    assert "await res.text()" not in source
+    helper = (WEB / "src" / "lib" / "api" / "read-bounded-text.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "toNonNegativeSafeInt" in helper
+    assert 'res.headers.get("content-length")' in helper
+    assert "claimed > cap" in helper
+    assert "getReader" in helper
 
 
 def test_json_error_caps_code_and_message() -> None:

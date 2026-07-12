@@ -39,32 +39,30 @@ def test_api_mutate_content_length_early_reject() -> None:
     source = (WEB / "src" / "lib" / "api" / "client-fetch.ts").read_text(
         encoding="utf-8"
     )
-    assert "toNonNegativeSafeInt" in source
-    assert 'res.headers.get("content-length")' in source
-    assert "claimed > CLIENT_API_BODY_MAX_CHARS" in source
-    assert source.index('res.headers.get("content-length")') < source.index(
-        "await res.text()"
-    )
+    assert "readBoundedResponseText" in source
+    assert "CLIENT_API_BODY_MAX_CHARS" in source
+    assert "await res.text()" not in source
     assert "Response too large." in source
+    helper = (WEB / "src" / "lib" / "api" / "read-bounded-text.ts").read_text(
+        encoding="utf-8"
+    )
+    assert 'res.headers.get("content-length")' in helper
+    assert "claimed > cap" in helper
+    assert "getReader" in helper
 
 
 def test_login_and_nav_content_length_early_reject() -> None:
     login = (WEB / "src" / "components" / "login-form.tsx").read_text(
         encoding="utf-8"
     )
-    assert 'res.headers.get("content-length")' in login
+    assert "readBoundedResponseText" in login
     assert "CLIENT_API_BODY_MAX_CHARS" in login
-    assert "toNonNegativeSafeInt" in login
-    assert login.index('res.headers.get("content-length")') < login.index(
-        "await res.text()"
-    )
+    assert "await res.text()" not in login
 
     nav = (WEB / "src" / "components" / "nav-session.tsx").read_text(
         encoding="utf-8"
     )
-    assert 'res.headers.get("content-length")' in nav
+    assert "readBoundedResponseText" in nav
     assert "MAX_ME_BODY_CHARS" in nav
-    assert "toNonNegativeSafeInt" in nav
-    assert nav.index('res.headers.get("content-length")') < nav.index(
-        "await res.text()"
-    )
+    assert "await res.text()" not in nav
+    assert "readBoundedResponseText(res, MAX_ME_BODY_CHARS)" in nav
