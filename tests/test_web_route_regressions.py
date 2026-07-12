@@ -191,6 +191,16 @@ def test_symbols_list_query_validation_static() -> None:
     assert "normalizeMarketQuery" in mq_src
 
 
+def test_alerts_post_rejects_non_positive_threshold() -> None:
+    """Wave15: POST /alerts mirrors bot/UI — threshold must be > 0."""
+    route = WEB / "src" / "app" / "api" / "v1" / "alerts" / "route.ts"
+    assert route.is_file()
+    source = route.read_text(encoding="utf-8")
+    assert "obj.threshold <= 0" in source
+    assert "threshold must be a positive number." in source
+    assert "Number.isFinite(obj.threshold)" in source
+
+
 def test_market_movers_route_static() -> None:
     """Wave5: GET /api/v1/market/movers reuses browse; sign-filtered; thin fence."""
     route = WEB / "src" / "app" / "api" / "v1" / "market" / "movers" / "route.ts"

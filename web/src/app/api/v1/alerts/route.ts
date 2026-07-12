@@ -126,6 +126,15 @@ export async function POST(request: NextRequest) {
         "threshold must be a finite number.",
       );
     }
+    // Mirror bot + dash UI: non-positive thresholds are dead/weird rules
+    // (daily_move thr=0 never crosses; price ≤0 is not a CSE print).
+    if (obj.threshold <= 0) {
+      return jsonError(
+        400,
+        "validation_error",
+        "threshold must be a positive number.",
+      );
+    }
     threshold = obj.threshold;
   }
 

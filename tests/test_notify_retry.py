@@ -18,6 +18,17 @@ def test_retry_delay_seconds_accepts_timedelta_and_numeric() -> None:
     assert _retry_delay_seconds(1.25) == pytest.approx(1.25)
 
 
+@pytest.mark.parametrize("raw", [float("nan"), float("inf"), float("-inf"), -1.0, -0.5])
+def test_retry_delay_seconds_rejects_nonfinite_and_negative(raw: float) -> None:
+    """Wave15: min(nan, 30) is nan — clamp non-finite / negative to 0."""
+    assert _retry_delay_seconds(raw) == 0.0
+
+
+def test_retry_delay_seconds_caps_large_values() -> None:
+    assert _retry_delay_seconds(999) == 30.0
+    assert _retry_delay_seconds(timedelta(seconds=120)) == 30.0
+
+
 @pytest.mark.asyncio
 async def test_send_message_ok_on_first_attempt() -> None:
     bot = AsyncMock()

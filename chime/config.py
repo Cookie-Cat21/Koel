@@ -48,6 +48,24 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _positive_float(name: str, default: float) -> float:
+    """Float env that must be ``> 0``; otherwise ``default`` (fail closed)."""
+    value = _float(name, default)
+    return value if value > 0 else default
+
+
+def _nonneg_float(name: str, default: float) -> float:
+    """Float env that must be ``>= 0``; otherwise ``default`` (fail closed)."""
+    value = _float(name, default)
+    return value if value >= 0 else default
+
+
+def _positive_int(name: str, default: int) -> int:
+    """Int env that must be ``>= 1``; otherwise ``default`` (fail closed)."""
+    value = _int(name, default)
+    return value if value >= 1 else default
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     telegram_bot_token: str
@@ -85,23 +103,31 @@ class Settings:
         token = (
             _require("TELEGRAM_BOT_TOKEN") if require_token else os.getenv("TELEGRAM_BOT_TOKEN", "")
         )
+        health_port = _int("HEALTH_PORT", 8080)
+        if not (1 <= health_port <= 65535):
+            health_port = 8080
+        # bot_cmd_rate: 0 = unlimited; negative → default (fail closed).
+        bot_rate = _int("BOT_CMD_RATE_PER_MINUTE", 20)
+        if bot_rate < 0:
+            bot_rate = 20
         return cls(
             telegram_bot_token=token,
             database_url=_require("DATABASE_URL"),
             cse_base_url=os.getenv("CSE_BASE_URL", "https://www.cse.lk/api").rstrip("/"),
-            poll_interval_seconds=_float("POLL_INTERVAL_SECONDS", 60.0),
-            poll_jitter_seconds=_float("POLL_JITTER_SECONDS", 5.0),
-            http_timeout_seconds=_float("HTTP_TIMEOUT_SECONDS", 15.0),
-            circuit_fail_max=_int("CIRCUIT_FAIL_MAX", 5),
-            circuit_reset_seconds=_float("CIRCUIT_RESET_SECONDS", 60.0),
+            # ≤0 poll interval → IntervalTrigger weirdness / 1s hammer; reject.
+            poll_interval_seconds=_positive_float("POLL_INTERVAL_SECONDS", 60.0),
+            poll_jitter_seconds=_nonneg_float("POLL_JITTER_SECONDS", 5.0),
+            http_timeout_seconds=_positive_float("HTTP_TIMEOUT_SECONDS", 15.0),
+            circuit_fail_max=_positive_int("CIRCUIT_FAIL_MAX", 5),
+            circuit_reset_seconds=_positive_float("CIRCUIT_RESET_SECONDS", 60.0),
             health_host=os.getenv("HEALTH_HOST", "127.0.0.1"),
-            health_port=_int("HEALTH_PORT", 8080),
+            health_port=health_port,
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             market_tz=os.getenv("MARKET_TZ", "Asia/Colombo"),
             market_open=os.getenv("MARKET_OPEN", "09:30"),
             market_close=os.getenv("MARKET_CLOSE", "14:30"),
-            bot_cmd_rate_per_minute=_int("BOT_CMD_RATE_PER_MINUTE", 20),
-            pdf_enrich_sleep_seconds=_float("PDF_ENRICH_SLEEP_SECONDS", 0.5),
+            bot_cmd_rate_per_minute=bot_rate,
+            pdf_enrich_sleep_seconds=_nonneg_float("PDF_ENRICH_SLEEP_SECONDS", 0.5),
             disclosure_bulk_feed=os.getenv("DISCLOSURE_BULK_FEED", "0").strip() == "1",
             snapshot_retention_days=max(0, _int("SNAPSHOT_RETENTION_DAYS", 0)),
             sectors_ingest=os.getenv("SECTORS_INGEST", "0").strip() == "1",

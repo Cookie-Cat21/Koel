@@ -79,3 +79,52 @@ def test_float_env_rejects_nonfinite_and_invalid(
     settings = Settings.from_env(require_token=True)
     assert settings.poll_interval_seconds == 60.0
     assert settings.http_timeout_seconds == 15.0
+
+
+@pytest.mark.parametrize("raw", ["0", "-1", "-0.5"])
+def test_positive_float_env_rejects_non_positive(
+    monkeypatch: pytest.MonkeyPatch,
+    raw: str,
+) -> None:
+    """Wave15: ≤0 poll/timeout must not poison APScheduler / httpx."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
+    monkeypatch.setenv("DATABASE_URL", _DSN)
+    monkeypatch.setenv("POLL_INTERVAL_SECONDS", raw)
+    monkeypatch.setenv("HTTP_TIMEOUT_SECONDS", raw)
+    monkeypatch.setenv("CIRCUIT_RESET_SECONDS", raw)
+    settings = Settings.from_env(require_token=True)
+    assert settings.poll_interval_seconds == 60.0
+    assert settings.http_timeout_seconds == 15.0
+    assert settings.circuit_reset_seconds == 60.0
+
+
+@pytest.mark.parametrize("raw", ["-1", "-5"])
+def test_nonneg_float_env_rejects_negative_jitter(
+    monkeypatch: pytest.MonkeyPatch,
+    raw: str,
+) -> None:
+    """Wave15: negative jitter → default (uniform(0, neg) yields negative sleep)."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
+    monkeypatch.setenv("DATABASE_URL", _DSN)
+    monkeypatch.setenv("POLL_JITTER_SECONDS", raw)
+    monkeypatch.setenv("PDF_ENRICH_SLEEP_SECONDS", raw)
+    settings = Settings.from_env(require_token=True)
+    assert settings.poll_jitter_seconds == 5.0
+    assert settings.pdf_enrich_sleep_seconds == 0.5
+
+
+@pytest.mark.parametrize("raw", ["0", "-1", "abc"])
+def test_circuit_fail_max_and_health_port_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    raw: str,
+) -> None:
+    """Wave15: CIRCUIT_FAIL_MAX < 1 and out-of-range HEALTH_PORT → defaults."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
+    monkeypatch.setenv("DATABASE_URL", _DSN)
+    monkeypatch.setenv("CIRCUIT_FAIL_MAX", raw)
+    monkeypatch.setenv("HEALTH_PORT", "70000" if raw != "abc" else raw)
+    monkeypatch.setenv("BOT_CMD_RATE_PER_MINUTE", "-3")
+    settings = Settings.from_env(require_token=True)
+    assert settings.circuit_fail_max == 5
+    assert settings.health_port == 8080
+    assert settings.bot_cmd_rate_per_minute == 20

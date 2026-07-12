@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from datetime import timedelta
 from enum import StrEnum
 from typing import Any
@@ -15,6 +16,7 @@ from chime.logging_setup import get_logger
 log = get_logger(__name__)
 
 _SEND_KWARGS: dict[str, Any] = {"disable_web_page_preview": False}
+_RETRY_AFTER_CAP_SECONDS = 30.0
 
 
 class SendResult(StrEnum):
@@ -30,9 +32,21 @@ class SendResult(StrEnum):
 
 
 def _retry_delay_seconds(retry_after: int | float | timedelta) -> float:
+    """Bounded RetryAfter sleep seconds: finite, ``>= 0``, capped at 30s.
+
+    ``min(nan, 30)`` is nan and would poison ``asyncio.sleep``; negative or
+    non-finite Telegram values fail closed to ``0`` before the cap.
+    """
     if isinstance(retry_after, timedelta):
-        return retry_after.total_seconds()
-    return float(retry_after)
+        delay = retry_after.total_seconds()
+    else:
+        try:
+            delay = float(retry_after)
+        except (TypeError, ValueError):
+            return 0.0
+    if not math.isfinite(delay) or delay < 0:
+        return 0.0
+    return min(delay, _RETRY_AFTER_CAP_SECONDS)
 
 
 async def send_message(
@@ -61,7 +75,7 @@ async def send_message(
             )
             return SendResult.DEFERRED
         # Cap sleep so a RetryAfter storm cannot pin a caller indefinitely.
-        delay = min(_retry_delay_seconds(exc.retry_after), 30.0)
+        delay = _retry_delay_seconds(exc.retry_after)
         await asyncio.sleep(delay + 0.5)
         try:
             await bot.send_message(chat_id=chat_id, text=text, **_SEND_KWARGS)

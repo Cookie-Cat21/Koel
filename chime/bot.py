@@ -113,10 +113,15 @@ async def _rate_limited(update: Update, context: ContextTypes.DEFAULT_TYPE) -> b
 
 
 def _env_cmd_rate_per_minute() -> int:
+    """Parse bot rate env; invalid / negative → 20 (0 = unlimited)."""
     raw = os.getenv("BOT_CMD_RATE_PER_MINUTE", "").strip()
     if not raw:
         return 20
-    return int(raw)
+    try:
+        value = int(raw)
+    except ValueError:
+        return 20
+    return 20 if value < 0 else value
 
 
 # ≤3 lines including NFA; command dump lives on /help only (WS-014 / E7-B02).
