@@ -13,11 +13,11 @@
 | Layer | Status |
 |---|---|
 | CSE adapter + poller + rules + Telegram | Production-hardened |
-| Disclosure alerts | Raw title + announcements `#id` link; no AI brief; no PDF URL |
-| Thin dash | Watchlist / alerts / history / symbol / health |
-| Market browse | **Missing** — poller fetches full `tradeSummary` but stores **watched only** |
-| LLM / PDF pipeline | **None** |
-| Scenario AI | **None** |
+| Disclosure alerts | Title + announcements link; optional AI brief attach / follow-up (flag-gated) |
+| Thin dash | Watchlist / alerts / history / symbol / health / **Browse** |
+| Market browse | **Landed** — full `tradeSummary` persist + `/market` (+ thin movers) |
+| LLM / PDF pipeline | Schema + enricher + PDF extract + Gemini provider; **default off** |
+| Scenario AI | **None** (Phase 3) |
 
 Competitive gap in CSE: Tracker Pro owns portfolio; InvestNow/Rovana own analysis dashboards. Nobody cleanly owns **official filing → plain-language brief → real push**.
 
@@ -25,7 +25,7 @@ Competitive gap in CSE: Tracker Pro owns portfolio; InvestNow/Rovana own analysi
 
 ## 1. Phases
 
-### Phase 1 — Foundations (this PR) ✅ implement now
+### Phase 1 — Foundations ✅ done (waves 1–2)
 
 1. **Market-wide persist** — every poll stores all `tradeSummary` rows into `stocks` + `price_snapshots`; rule eval stays watchlist-scoped. Fetch even when watchlist empty (browse needs data).
 2. **Thin browse** — `GET /api/v1/symbols` + `/market` page (Symbols · name · last · change_pct). Not a screener / OHLC board.
@@ -33,18 +33,14 @@ Competitive gap in CSE: Tracker Pro owns portfolio; InvestNow/Rovana own analysi
 4. **Tests** — poller market persist, API list shape, briefs disabled-by-default, web still never calls cse.lk.
 5. **Docs** — this plan + contract/IA amendments.
 
-### Phase 2 — Tijori core (next)
+### Phase 2 — Tijori core (mostly landed; live LLM still flag-gated)
 
-1. Legacy `POST /announcements` enricher → resolve `filePath` → `cdn.cse.lk` PDF URL.
-2. PDF fetch + text extract (size/rate capped).
-3. Free-tier LLM brief (Gemini Flash default) on **new** disclosures only.
-4. Append brief to Telegram disclosure alert when ready (or follow-up message).
-   **Landed (wave4):** primary alert attaches a ready brief at claim time; if the
-   brief becomes ready later, `claim_pending_briefs` optionally sends a follow-up
-   via the poller’s `notify`/`send` callback to users with active disclosure
-   rules on that symbol (fail-soft; always NFA-suffixed).
-5. Dash symbol page shows brief when `status=ready`.
-6. Optional: category filter on `/alert SYMBOL disclosure [CATEGORY]`.
+1. ✅ **Done** — Legacy `POST /announcements` enricher → resolve `filePath` → `cdn.cse.lk` PDF URL (SSRF/rate hardened).
+2. ✅ **Done** — PDF fetch + text extract (size/rate capped; `chime/briefs/extract.py`).
+3. ◐ **Partial** — Free-tier LLM brief (Gemini Flash provider wired) on **new** disclosures only; default `AI_BRIEFS_ENABLED=0` until keyed/enabled in prod.
+4. ✅ **Done** — Append brief to Telegram disclosure alert when ready, or follow-up: primary alert attaches a ready brief at claim time; if the brief becomes ready later, `claim_pending_briefs` optionally notifies via the poller’s `notify`/`send` callback to users with active disclosure rules on that symbol (fail-soft; always NFA-suffixed).
+5. ✅ **Done** — Dash symbol page / disclosures API shows brief when `status=ready` (egress-sanitized).
+6. ✅ **Done** — Optional category filter on `/alert SYMBOL disclosure [CATEGORY]`.
 
 ### Phase 3 — Optional scenario AI (later)
 
@@ -142,13 +138,54 @@ User can: browse CSE symbols in dash → watch → set disclosure alert → get 
 
 **2026-07-12** — User override for this Tijori multi-wave: allow **max parallelism** and **long improve loops** beyond the usual factory soft caps (still prefer disjoint OWNED_FILES; stop early when gates are green).
 
-**Phase 1+ in progress**
+### Progress rollup
 
-| Item | Status |
+| Track | Status |
 |---|---|
-| Market-wide `tradeSummary` persist | landed (`a802cb7`) |
-| `GET /api/v1/symbols` + `/market` Browse | landed |
-| `pdf_url` + `disclosure_briefs` + `chime/briefs/` stub | landed (`AI_BRIEFS_ENABLED=0`) |
-| Improve-loop / CI green on touched paths | in progress |
-| Phase 2 PDF enricher + LLM briefs | in progress (Gemini stub + attach + PDF extract) |
-| Brief Telegram follow-up when ready after alert | landed — `claim_pending_briefs(..., notify=)`; poller passes `send`; fail-soft + NFA |
+| Phase 1 foundations | ✅ done |
+| Phase 2 Tijori core | ◐ mostly done — live Gemini still flag/key gated |
+| Phase 3 scenario AI | not started |
+| Improve-loop / CI on touched paths | ongoing (wave harden passes) |
+
+### Wave 1 — Phase 1 foundations + PDF enrich kickoff
+
+- [x] Market-wide `tradeSummary` persist (`a802cb7`); empty-watchlist still persists
+- [x] Batch market snapshot persist + health/dedupe harden
+- [x] `GET /api/v1/symbols` + `/market` Browse (session-only GET; CSRF docs)
+- [x] Market browse harden (`q`/LIKE, a11y, fence)
+- [x] `pdf_url` + `disclosure_briefs` schema; `chime/briefs/` stub (`AI_BRIEFS_ENABLED=0`)
+- [x] Enqueue `disclosure_briefs` rows on new disclosures
+- [x] Legacy `POST /announcements` → CDN `pdf_url` enrichment (Phase 2 #1 start)
+- [x] Tests: market persist / browse / symbols CSRF regression
+
+### Wave 2 — Phase 2 surface + ops
+
+- [x] Tijori ops enablement runbook (`docs/runbooks/TIJORI.md`)
+- [x] Optional brief text in disclosure alert message
+- [x] Optional bulk disclosure feed (`DISCLOSURE_BULK_FEED`; no category bleed)
+- [x] Disclosure category filter (`/alert SYMBOL disclosure [CATEGORY]`)
+- [x] Dash disclosure API/UI: `brief` + `pdf_url` fields
+- [x] Legacy PDF enrich harden (SSRF allowlist, rate gaps)
+- [x] Alert parse / disclosure gating harden
+- [x] Briefs/PDF integration test coverage
+
+### Wave 3 — Gemini stub + Telegram attach
+
+- [x] Gemini brief provider stub (`chime/briefs/provider.py`)
+- [x] Attach ready brief to disclosure Telegram push
+- [x] Health brief-queue hint
+- [x] Harden disclosure brief/pdf egress against XSS (dash)
+- [x] Migrations 005/006 presence tests; alert-parse edge coverage
+- [x] Bulk-feed ops docs sync; lint/type sweep
+
+### Wave 4 — PDF extract + follow-up + browse polish
+
+- [x] Env example parity for Tijori flags
+- [x] Thin `GET /api/v1/market/movers` + `/market` top-movers strip
+- [x] Poller shutdown-safe briefs push
+- [x] PDF text extract for briefs (`chime/briefs/extract.py` + worker drain)
+- [x] Brief follow-up Telegram when ready after alert (`claim_pending_briefs(..., notify=)`)
+- [x] Wire brief-ready notify through worker; provider harden (timeouts / empty candidates)
+- [x] Post-wave consistency pass
+
+**Remaining for Phase 2 “live”:** enable `AI_BRIEFS_ENABLED=1` + `AI_API_KEY` in a controlled env; watch rate caps / daily brief budget; no Phase 3 work yet.
