@@ -17,6 +17,31 @@ export type BoundedTextFail = {
 export type BoundedTextResult = BoundedTextOk | BoundedTextFail;
 
 /**
+ * Absolute ceiling for bounded body readers (parity sanitize text cap).
+ * Medium: integer ``maxBytes`` of ``Number.MAX_SAFE_INTEGER`` used to let a
+ * misbuilt caller stream-allocate multi-PB responses before any product cap.
+ * SSR / client mutate already use ≤1 MiB; this is the hard ceiling.
+ */
+export const MAX_BOUNDED_BODY_BYTES = 1_048_576;
+
+/**
+ * Fail-closed positive body cap — NaN/≤0 → 1; oversized → absolute max.
+ */
+export function resolveBoundedBodyCap(maxBytes: unknown): number {
+  if (
+    typeof maxBytes !== "number" ||
+    !Number.isInteger(maxBytes) ||
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 1
+  ) {
+    return 1;
+  }
+  return maxBytes > MAX_BOUNDED_BODY_BYTES
+    ? MAX_BOUNDED_BODY_BYTES
+    : maxBytes;
+}
+
+/**
  * Read at most ``maxBytes`` from ``res.body``, canceling the reader when the
  * stream exceeds the cap. Prefers Content-Length early-reject when present.
  */
@@ -24,13 +49,9 @@ export async function readBoundedResponseText(
   res: Response,
   maxBytes: number,
 ): Promise<BoundedTextResult> {
-  // Fail closed — Math.max(1, NaN)===NaN disables total>cap stream gate.
-  const cap =
-    typeof maxBytes === "number" &&
-    Number.isInteger(maxBytes) &&
-    maxBytes >= 1
-      ? maxBytes
-      : 1;
+  // Fail closed — Math.max(1, NaN)===NaN disables total>cap stream gate;
+  // abs-cap so hostile SafeInteger maxBytes cannot OOM the stream buffer.
+  const cap = resolveBoundedBodyCap(maxBytes);
   const lenHeader = res.headers.get("content-length");
   if (lenHeader != null && lenHeader.trim()) {
     const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);

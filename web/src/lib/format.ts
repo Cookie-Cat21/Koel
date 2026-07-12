@@ -1,4 +1,4 @@
-import { MAX_ISO_INPUT_LENGTH } from "@/lib/api/time";
+import { MAX_DATE_MS, MAX_ISO_INPUT_LENGTH } from "@/lib/api/time";
 
 /** True only for finite number primitives (rejects string/NaN/±Infinity). */
 function isFiniteNumber(value: unknown): value is number {
@@ -51,18 +51,25 @@ export function formatPct(value: number | null | undefined): string {
 }
 
 export function formatTs(iso: string | null | undefined): string {
-  // Parity with toIso: reject overlong / control-laden timestamp strings.
+  // Parity with toIso: reject overlong / control-laden / out-of-range stamps.
   if (typeof iso !== "string" || !iso) return "—";
   const trimmed = iso.trim();
   if (!trimmed || trimmed.length > MAX_ISO_INPUT_LENGTH) return "—";
   if (CTRL_RE.test(trimmed)) return "—";
   const d = new Date(trimmed);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-LK", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Colombo",
-  });
+  const t = d.getTime();
+  // Fail closed — NaN / |t|>MAX_DATE_MS used to throw or balloon locale labels
+  // (parity safeToIsoString) even when the ISO string itself fit the length cap.
+  if (Number.isNaN(t) || Math.abs(t) > MAX_DATE_MS) return "—";
+  try {
+    return d.toLocaleString("en-LK", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Colombo",
+    });
+  } catch {
+    return "—";
+  }
 }
 
 export function alertTypeLabel(type: unknown): string {

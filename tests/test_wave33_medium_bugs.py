@@ -23,6 +23,12 @@ def test_session_token_length_capped() -> None:
     assert "MAX_SESSION_TOKEN_LENGTH" in source
     assert "token.length > MAX_SESSION_TOKEN_LENGTH" in source
     assert "sig.length > 128" in source
+    # W62: typeof-guard before length / split (parity csrfTokensMatch).
+    chunk = source.split("export function verifySessionToken")[1].split(
+        "export function mintCsrfToken"
+    )[0]
+    assert 'typeof token !== "string"' in chunk
+    assert 'typeof secret !== "string"' in chunk
 
 
 def test_csrf_token_length_capped() -> None:

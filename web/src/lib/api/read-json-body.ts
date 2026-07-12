@@ -6,6 +6,9 @@
  * chunked transfer without Content-Length).
  */
 
+import {
+  resolveBoundedBodyCap,
+} from "@/lib/api/read-bounded-text";
 import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 
 /** Cap for CSRF-gated mutation JSON (alerts / watchlist / demo). */
@@ -24,13 +27,9 @@ export async function readJsonBody(
   request: Request,
   maxBytes: number = MAX_JSON_BODY_BYTES,
 ): Promise<ReadJsonResult> {
-  // Fail closed — Math.max(1, NaN)===NaN disables total>cap stream gate.
-  const cap =
-    typeof maxBytes === "number" &&
-    Number.isInteger(maxBytes) &&
-    maxBytes >= 1
-      ? maxBytes
-      : 1;
+  // Fail closed — Math.max(1, NaN)===NaN disables total>cap stream gate;
+  // abs-cap via resolveBoundedBodyCap (parity response body reader).
+  const cap = resolveBoundedBodyCap(maxBytes);
   const lenHeader = request.headers.get("content-length");
   if (lenHeader != null && lenHeader.trim()) {
     const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);

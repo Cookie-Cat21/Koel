@@ -57,6 +57,9 @@ def test_format_ts_rejects_overlong_and_controls() -> None:
     assert "CTRL_RE" in source
     assert "trimmed.length > MAX_ISO_INPUT_LENGTH" in source
     assert "const d = new Date(iso);" not in source
+    # W62: range-gate parity with safeToIsoString (length alone was insufficient).
+    assert "MAX_DATE_MS" in source
+    assert "Math.abs(t) > MAX_DATE_MS" in source
 
 
 def test_symbol_routes_use_normalize_symbol_param() -> None:

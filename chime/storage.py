@@ -1766,8 +1766,11 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule:
         created = datetime.fromisoformat(str(created))
     # Legacy / poisoned rows may still hold C0 controls or oversize categories —
     # sanitize on read so matching + Telegram egress share one egress bar.
+    # Fail closed — never str()-coerce non-string PG values into category
+    # (objects used to become "<...>" and bypass the isinstance guard).
+    raw_cat = row.get("category")
     cat = sanitize_disclosure_category(
-        None if row.get("category") is None else str(row.get("category"))
+        raw_cat if isinstance(raw_cat, str) else None
     )
     return AlertRule(
         id=int(row["id"]),

@@ -2,7 +2,7 @@
 export const MAX_ISO_INPUT_LENGTH = 64;
 
 /** ECMAScript Date absolute millisecond bound (±100M days from epoch). */
-const MAX_DATE_MS = 8.64e15;
+export const MAX_DATE_MS = 8.64e15;
 
 const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/;
 

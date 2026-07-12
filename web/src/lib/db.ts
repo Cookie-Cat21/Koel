@@ -154,9 +154,7 @@ function mapRule(row: {
     type: row.type,
     // Finite-only + abs magnitude cap — NaN/±Inf / ±absurd → null.
     threshold: cappedAlertThreshold(toFiniteNumber(row.threshold)),
-    category: sanitizeDisclosureCategory(
-      row.category == null ? null : String(row.category),
-    ),
+    category: sanitizeDisclosureCategory(row.category),
     // Strict === true — Boolean("false")/1 must not mislabel rule state.
     active: row.active === true,
     armed: row.armed === true,

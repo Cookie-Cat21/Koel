@@ -61,11 +61,15 @@ export function mintSessionToken(
 }
 
 export function verifySessionToken(
-  token: string,
-  secret: string,
+  token: unknown,
+  secret: unknown,
 ): SessionPayload | null {
+  // Fail closed — non-strings used to throw on ``.split`` / HMAC update
+  // (parity csrfTokensMatch typeof guard) instead of a clean auth reject.
+  if (typeof token !== "string" || typeof secret !== "string") return null;
   // Fail closed — overlong forged cookies must not burn HMAC / JSON.parse.
   if (!token || token.length > MAX_SESSION_TOKEN_LENGTH) return null;
+  if (!secret) return null;
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [body, sig] = parts;

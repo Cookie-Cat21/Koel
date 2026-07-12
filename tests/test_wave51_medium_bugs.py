@@ -20,8 +20,10 @@ def test_read_bounded_max_bytes_fail_closed() -> None:
         encoding="utf-8"
     )
     assert "readBoundedResponseText" in source
+    # W62: shared resolveBoundedBodyCap (NaN/≤0 → 1 + abs ceiling).
+    assert "resolveBoundedBodyCap" in source
     assert "Number.isInteger(maxBytes)" in source
-    assert "maxBytes >= 1" in source
+    assert "maxBytes < 1" in source
     assert "Math.max(1, maxBytes)" not in source
     assert "total > cap" in source
     assert "reader.cancel()" in source
@@ -31,7 +33,8 @@ def test_read_json_body_max_bytes_fail_closed() -> None:
     source = (WEB / "src" / "lib" / "api" / "read-json-body.ts").read_text(
         encoding="utf-8"
     )
-    assert "Number.isInteger(maxBytes)" in source
-    assert "maxBytes >= 1" in source
+    # W62: abs-cap via shared helper (parity response body reader).
+    assert "resolveBoundedBodyCap" in source
+    assert "resolveBoundedBodyCap(maxBytes)" in source
     assert "Math.max(1, maxBytes)" not in source
     assert "total > cap" in source

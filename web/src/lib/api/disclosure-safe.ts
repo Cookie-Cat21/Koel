@@ -164,8 +164,11 @@ export function normalizeBriefStatus(raw: unknown): BriefStatus | null {
  * Mirrors Python ``sanitize_disclosure_category`` — empty → null.
  */
 export function sanitizeDisclosureCategory(
-  category: string | null | undefined,
+  category: unknown,
 ): string | null {
+  // Fail closed — only plain strings (never String()-coerce objects/numbers).
+  if (category == null) return null;
+  if (typeof category !== "string") return null;
   return sanitizeDisclosureText(category, DISCLOSURE_CATEGORY_MAX);
 }
 

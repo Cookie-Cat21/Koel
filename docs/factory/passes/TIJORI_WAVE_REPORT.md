@@ -1,4 +1,4 @@
-# Tijori CSE — Waves 1–55 report
+# Tijori CSE — Waves 1–60 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-12  
