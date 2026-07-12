@@ -7,7 +7,11 @@ import { InlineError } from "@/components/inline-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiErrorMessage } from "@/lib/api/client-fetch";
+import {
+  apiErrorMessage,
+  CLIENT_API_BODY_MAX_CHARS,
+  CLIENT_API_TIMEOUT_MS,
+} from "@/lib/api/client-fetch";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { NFA_INLINE } from "@/lib/nfa";
 
@@ -57,13 +61,36 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
         setError(loginError("Almost there — enter a valid Telegram ID."));
         return;
       }
-      const res = await fetch("/api/v1/auth/demo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telegram_id: id }),
-        credentials: "same-origin",
-      });
-      const data = (await res.json().catch(() => null)) as unknown;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), CLIENT_API_TIMEOUT_MS);
+      let res: Response;
+      try {
+        res = await fetch("/api/v1/auth/demo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telegram_id: id }),
+          credentials: "same-origin",
+          signal: ctrl.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      // Bound body before JSON.parse — hostile demo auth responses must not OOM.
+      const rawText = await res.text();
+      if (rawText.length > CLIENT_API_BODY_MAX_CHARS) {
+        setError(
+          loginError(
+            "Chime couldn't sign you in (response too large). Try again.",
+          ),
+        );
+        return;
+      }
+      let data: unknown = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        data = null;
+      }
       if (!res.ok) {
         // Cap + strip controls — hostile error.message must not balloon UI.
         const apiMsg = apiErrorMessage(data, "");

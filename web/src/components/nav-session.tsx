@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
+import {
+  apiErrorMessage,
+  apiMutate,
+  CLIENT_API_TIMEOUT_MS,
+} from "@/lib/api/client-fetch";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
 import { MAX_CSRF_TOKEN_LENGTH } from "@/lib/auth/config";
@@ -58,6 +62,8 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), CLIENT_API_TIMEOUT_MS);
     (async () => {
       try {
         const res = await fetch("/api/v1/me", {
@@ -65,6 +71,7 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
           credentials: "same-origin",
           headers: { Accept: "application/json" },
           cache: "no-store",
+          signal: ctrl.signal,
         });
         if (res.status === 401) {
           // Expired/invalid session while shell still mounted — leave cleanly.
@@ -84,11 +91,13 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
         const data = parseMePayload(parsed);
         if (!cancelled && data) setMe(data);
       } catch {
-        /* chip stays empty */
+        /* chip stays empty (network / abort) */
       }
     })();
     return () => {
       cancelled = true;
+      ctrl.abort();
+      clearTimeout(timer);
     };
   }, []);
 

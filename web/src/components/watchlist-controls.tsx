@@ -107,10 +107,18 @@ export function UnwatchButton({ symbol }: { symbol: string }) {
 
   async function onClick() {
     setError(null);
+    // Fail closed — hostile / non-SYMBOL_RE props must not hit DELETE.
+    const normalized = normalizeSymbol(symbol);
+    if (!normalized) {
+      const msg = "Invalid CSE symbol.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
     setPending(true);
     try {
       const { ok, status, data } = await apiMutate(
-        `/api/v1/watchlist/${encodeURIComponent(symbol)}`,
+        `/api/v1/watchlist/${encodeURIComponent(normalized)}`,
         { method: "DELETE" },
       );
       if (!ok) {
@@ -119,7 +127,7 @@ export function UnwatchButton({ symbol }: { symbol: string }) {
         toast.error(msg);
         return;
       }
-      toast.success(`Removed ${symbol}. Telegram pushes for it are off.`);
+      toast.success(`Removed ${normalized}. Telegram pushes for it are off.`);
       router.refresh();
     } catch {
       const msg = "Network error.";

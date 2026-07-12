@@ -7,6 +7,12 @@ const CSRF_HEADER = "x-csrf-token";
 /** Cap hostile API error.message before toast / inline render. */
 export const MAX_API_ERROR_MESSAGE_LENGTH = 300;
 
+/** Abort budget for browser → /api/v1 mutations (parity with SSR bound). */
+export const CLIENT_API_TIMEOUT_MS = 15_000;
+
+/** Cap mutation / login JSON before parse — payloads are tiny. */
+export const CLIENT_API_BODY_MAX_CHARS = 1_048_576;
+
 const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/g;
 
 /** User-facing copy when double-submit CSRF fails (E6-D05). */
@@ -121,16 +127,49 @@ export async function apiMutate(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(path, {
-    method: init.method,
-    headers,
-    credentials: "same-origin",
-    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), CLIENT_API_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: init.method,
+      headers,
+      credentials: "same-origin",
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+      signal: ctrl.signal,
+    });
+  } catch {
+    return {
+      ok: false,
+      status: 0,
+      data: {
+        error: {
+          code: "network_error",
+          message: "Network error. Try again.",
+        },
+      },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 
+  // Bound body before JSON.parse — hostile / huge mutation responses OOM the tab.
   let data: unknown = null;
   try {
-    data = await res.json();
+    const rawText = await res.text();
+    if (rawText.length > CLIENT_API_BODY_MAX_CHARS) {
+      return {
+        ok: false,
+        status: 502,
+        data: {
+          error: {
+            code: "degraded",
+            message: "Response too large.",
+          },
+        },
+      };
+    }
+    data = rawText ? JSON.parse(rawText) : null;
   } catch {
     data = null;
   }
