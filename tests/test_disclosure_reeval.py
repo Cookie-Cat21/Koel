@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -30,11 +31,21 @@ class _FakeConn:
 
     async def execute(self, sql: str, params: tuple[Any, ...] | None = None) -> _FakeResult:
         assert params is not None
+        # Briefs enqueue uses (disclosure_id, status) — ignore for this fake.
+        if "disclosure_briefs" in sql:
+            return _FakeResult(None)
         key = (str(params[0]), str(params[1]))
-        if key not in self._ids:
+        is_new = key not in self._ids
+        if is_new:
             self._ids[key] = self._next
             self._next += 1
-        return _FakeResult({"id": self._ids[key]})
+        return _FakeResult(
+            {"id": self._ids[key], "inserted": is_new, "pdf_url": None}
+        )
+
+    @asynccontextmanager
+    async def transaction(self) -> Any:
+        yield
 
 
 class _FakeCM:

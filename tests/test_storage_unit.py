@@ -280,16 +280,18 @@ async def test_upsert_disclosure_and_compat_wrapper() -> None:
         seen_at=datetime(2026, 7, 11, 6, 0, 0, tzinfo=UTC),
         company_name="John Keells",
     )
-    # upsert_stock + insert disclosure
-    conn = _Conn([None, {"id": 7}])
+    # upsert_stock + insert disclosure (inserted=True) + briefs enqueue
+    conn = _Conn([None, {"id": 7, "inserted": True}, None])
     store = _store(conn)
     out = await store.upsert_disclosure(disc)
     assert out.id == 7
+    assert any("disclosure_briefs" in s for s in conn.sql)
 
-    conn2 = _Conn([None, {"id": 8}])
+    conn2 = _Conn([None, {"id": 8, "inserted": False}])
     store2 = _store(conn2)
     again = await store2.insert_disclosure_if_new(disc)
     assert again is not None and again.id == 8
+    assert not any("disclosure_briefs" in s for s in conn2.sql)
 
 
 @pytest.mark.asyncio

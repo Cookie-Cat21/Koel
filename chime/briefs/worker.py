@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
 import structlog
 
 from chime.briefs import BriefSettings, BriefStatus, briefs_enabled
@@ -9,24 +11,50 @@ from chime.briefs import BriefSettings, BriefStatus, briefs_enabled
 log = structlog.get_logger("chime.briefs")
 
 
+class _BriefEnqueuer(Protocol):
+    async def enqueue_disclosure_brief(
+        self,
+        disclosure_id: int,
+        *,
+        status: str = "pending",
+    ) -> bool: ...
+
+
 async def enqueue_or_skip_brief(
     *,
     disclosure_id: int,
     settings: BriefSettings | None = None,
+    storage: _BriefEnqueuer | None = None,
 ) -> BriefStatus:
-    """Return skipped when disabled; pending when enabled (Phase 2 persists).
+    """Enqueue a briefs ledger row: pending when enabled, skipped when disabled.
 
-    Phase 1 does not write to Postgres — callers can ignore the status until
-    the Phase 2 worker lands. Kept async for poller integration symmetry.
+    When ``storage`` is provided, persists via ``enqueue_disclosure_brief``
+    (INSERT … ON CONFLICT DO NOTHING). Without storage this remains a pure
+    status decision for unit tests. Does not call any LLM.
     """
     cfg = settings or BriefSettings.from_env()
-    if not briefs_enabled(cfg):
+    status = BriefStatus.PENDING if briefs_enabled(cfg) else BriefStatus.SKIPPED
+    if storage is not None:
+        inserted = await storage.enqueue_disclosure_brief(
+            disclosure_id,
+            status=status.value,
+        )
+        log.info(
+            "brief_enqueued",
+            disclosure_id=disclosure_id,
+            status=status.value,
+            inserted=inserted,
+            provider=cfg.provider if status is BriefStatus.PENDING else None,
+            model=cfg.model if status is BriefStatus.PENDING else None,
+        )
+        return status
+    if status is BriefStatus.SKIPPED:
         log.debug("brief_skipped_disabled", disclosure_id=disclosure_id)
-        return BriefStatus.SKIPPED
-    log.info(
-        "brief_enqueue_stub",
-        disclosure_id=disclosure_id,
-        provider=cfg.provider,
-        model=cfg.model,
-    )
-    return BriefStatus.PENDING
+    else:
+        log.info(
+            "brief_enqueue_stub",
+            disclosure_id=disclosure_id,
+            provider=cfg.provider,
+            model=cfg.model,
+        )
+    return status
