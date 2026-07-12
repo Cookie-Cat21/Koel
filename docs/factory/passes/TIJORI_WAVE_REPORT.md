@@ -4,19 +4,19 @@
 **Date:** 2026-07-12  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … `b67c559` (+ this wave-9 report refresh)
+**Range:** `a802cb7` … `6be6430` (+ this wave-9 report refresh)
 
 ---
 
 ## Verdict
 
-Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX polish, adversarial grace/storage close, and a ruff format sweep. Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **not started**.
+Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX/a11y polish, adversarial grace/storage close, env-example completeness, storage brief-method coverage, and a Phase 3 scenario stub fence (`AI_SCENARIOS_ENABLED=0`). Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **stub only** — no LLM wiring yet.
 
 | Track | Status |
 |---|---|
 | Phase 1 foundations | ✅ done |
 | Phase 2 Tijori core | ◐ mostly done — live LLM still off until keyed |
-| Phase 3 scenario AI | not started |
+| Phase 3 scenario AI | ◐ stub fence only (`AI_SCENARIOS_ENABLED=0`) |
 | Improve-loop / CI on touched paths | ongoing |
 
 ---
@@ -235,20 +235,27 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
-## Wave 9 — Format sweep + env docs + wave report
+## Wave 9 — Format, env docs, scenario stub, coverage, a11y
 
-**Theme:** Ruff format across chime/tests; complete `.env.example` knobs; refresh this rollup through waves 8–9.
+**Theme:** Ruff format; complete `.env.example`; scenario AI stub fence; storage brief-method coverage; market a11y; wave report refresh.
 
 | SHA | Commit |
 |---|---|
 | `d46e3ea` | style(wave9): ruff format chime and tests |
 | `b67c559` | chore(wave9): env example complete |
+| `9530172` | docs(wave9): wave report refresh |
+| `b438154` | feat(wave9): scenario AI stub fence |
+| `f652f9d` | test(wave9): storage brief methods coverage |
+| `6be6430` | fix(wave9): market a11y push |
 | _(this)_ | docs(wave9): wave report refresh |
 
 **Shipped**
 
 - `ruff format` over `chime/` and related tests (style-only).
 - Root + `web/.env.example`: remaining `Settings` knobs (`HTTP_TIMEOUT_SECONDS`, `MARKET_*`) and annotated `BriefSettings` AI/PDF/BRIEF flags.
+- `chime/scenarios/` stub gated by `AI_SCENARIOS_ENABLED=0` with NFA guardrails (reject buy/sell language); no LLM wiring.
+- Unit coverage for claim/list/mark/count/promote brief storage paths.
+- `/market` a11y: merged movers symbol+Watch labelled link; list headings via `aria-labelledby`; sectors empty/truncation + change-direction cues.
 - `TIJORI_WAVE_REPORT.md` — waves 8–9 inventory + updated totals.
 
 ---
@@ -265,8 +272,8 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | 6 (`wave6`) | 8 |
 | 7 (`wave7`) | 7 |
 | 8 (`wave8`) | 9 |
-| 9 (`wave9` + this report) | 3 |
-| **Total** | **71** |
+| 9 (`wave9` + this report) | 7 |
+| **Total** | **75** |
 
 ---
 
@@ -282,7 +289,7 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 | Item | Notes |
 |---|---|
-| Phase 3 scenario AI | On-demand only; daily caps; legal review before MiroFish-style reuse |
+| Phase 3 scenario AI (beyond stub) | On-demand only; daily caps; legal review before MiroFish-style reuse |
 | Portfolio / P&L / tax / screener / TA / payments / native app | Explicit non-goals |
 | Always-on swarm / commit farming | Factory fence; stop when gates green |
 
@@ -290,4 +297,4 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 - CI green on touched Python/web paths after wave 9.
 - Controlled briefs-on soak (not default-on in prod).
-- No Phase 3 until Phase 2 live brief path is proven.
+- Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.
