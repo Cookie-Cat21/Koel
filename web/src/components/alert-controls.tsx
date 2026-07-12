@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
 import { DISCLOSURE_CATEGORY_MAX } from "@/lib/api/disclosure-safe";
-import { toFiniteNumber } from "@/lib/api/market-browse";
+import { toFiniteNumber } from "@/lib/api/finite-number";
 import {
   ALERT_TYPES,
   type AlertType,
+  isAlertType,
   normalizeSymbol,
 } from "@/lib/api/symbol";
 
@@ -197,7 +198,9 @@ export function AlertCreateForm() {
           className="border-input bg-background h-10 rounded-lg border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
           value={type}
           onChange={(e) => {
-            const nextType = e.target.value as AlertType;
+            // Fail closed — tampered <option> values must not cast into state.
+            if (!isAlertType(e.target.value)) return;
+            const nextType = e.target.value;
             setType(nextType);
             if (nextType === "disclosure") {
               setThreshold("");

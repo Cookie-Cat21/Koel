@@ -93,8 +93,9 @@ export default async function AlertsPage({
             category: sanitizeDisclosureCategory(
               typeof r.category === "string" ? r.category : null,
             ),
-            active: Boolean(r.active),
-            armed: Boolean(r.armed),
+            // Strict === true — Boolean("false") used to show Armed wrongly.
+            active: r.active === true,
+            armed: r.armed === true,
             created_at: toIso(r.created_at),
           });
         }

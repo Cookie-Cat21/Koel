@@ -149,9 +149,10 @@ export async function GET(request: NextRequest) {
       const event_key =
         sanitizeDisclosureText(row.event_key, MAX_HISTORY_EVENT_KEY_LENGTH) ??
         "";
-      const message_sent = Boolean(row.message_sent);
-      const dead_lettered = Boolean(row.dead_lettered);
-      const delivery_attempted_ok = Boolean(row.delivery_attempted_ok);
+      // Strict === true — Boolean("false")/1 used to flip delivery_status.
+      const message_sent = row.message_sent === true;
+      const dead_lettered = row.dead_lettered === true;
+      const delivery_attempted_ok = row.delivery_attempted_ok === true;
       return [
         {
           id,

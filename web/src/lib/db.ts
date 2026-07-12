@@ -159,8 +159,9 @@ function mapRule(row: {
     category: sanitizeDisclosureCategory(
       row.category == null ? null : String(row.category),
     ),
-    active: Boolean(row.active),
-    armed: Boolean(row.armed),
+    // Strict === true — Boolean("false")/1 must not mislabel rule state.
+    active: row.active === true,
+    armed: row.armed === true,
     created_at: toIso(row.created_at),
   };
 }

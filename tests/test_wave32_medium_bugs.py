@@ -18,7 +18,7 @@ WEB = ROOT / "web"
 
 
 def test_to_finite_number_rejects_empty_bool_array_sci() -> None:
-    source = (WEB / "src" / "lib" / "api" / "market-browse.ts").read_text(
+    source = (WEB / "src" / "lib" / "api" / "finite-number.ts").read_text(
         encoding="utf-8"
     )
     assert "FINITE_DECIMAL_RE" in source
@@ -31,6 +31,13 @@ def test_to_finite_number_rejects_empty_bool_array_sci() -> None:
         'const n = typeof value === "number" ? value : Number(value);'
         not in source
     )
+    # Client-safe module — no pg import (alert form is "use client").
+    assert 'from "pg"' not in source
+    browse = (WEB / "src" / "lib" / "api" / "market-browse.ts").read_text(
+        encoding="utf-8"
+    )
+    assert 'from "@/lib/api/finite-number"' in browse
+    assert "toFiniteNumber" in browse
 
 
 def test_health_api_brief_circuit_safe_int() -> None:
@@ -63,3 +70,6 @@ def test_alert_form_threshold_uses_to_finite_number() -> None:
     )
     assert "toFiniteNumber(raw)" in source
     assert "const n = Number(raw);" not in source
+    # Client must not import pg-coupled market-browse for thresholds.
+    assert 'from "@/lib/api/finite-number"' in source
+    assert 'from "@/lib/api/market-browse"' not in source

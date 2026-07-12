@@ -17,6 +17,9 @@ import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { alertTypeLabel, formatTs } from "@/lib/format";
 
+/** Soft-cap OFFSET — keep in sync with history API ``MAX_HISTORY_OFFSET``. */
+const MAX_HISTORY_OFFSET = 10_000;
+
 export const dynamic = "force-dynamic";
 
 export const metadata = {
@@ -103,7 +106,7 @@ function deliveryCopy(event: HistoryPayload["events"][number]): {
 export default async function AlertHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ symbol?: string; limit?: string }>;
+  searchParams: Promise<{ symbol?: string; limit?: string; offset?: string }>;
 }) {
   await requirePageSession();
   const sp = await searchParams;
@@ -113,9 +116,14 @@ export default async function AlertHistoryPage({
   const limitParsed = toSafePositiveInt(sp.limit ?? "");
   const limit =
     limitParsed != null ? Math.min(limitParsed, 200) : 50;
+  // Soft-cap OFFSET like the API — reject sci-notation / float trunc.
+  const offsetParsed = toNonNegativeSafeInt(sp.offset ?? "", -1);
+  const offset =
+    offsetParsed < 0 ? 0 : Math.min(offsetParsed, MAX_HISTORY_OFFSET);
 
   const qs = new URLSearchParams();
   qs.set("limit", String(limit));
+  qs.set("offset", String(offset));
   if (symbolFilter) qs.set("symbol", symbolFilter);
 
   const res = await serverApiGet(`/api/v1/alerts/history?${qs.toString()}`);
@@ -170,8 +178,9 @@ export default async function AlertHistoryPage({
             symbol,
             type: r.type,
             fired_at: toIso(r.fired_at),
-            message_sent: Boolean(r.message_sent),
-            dead_lettered: Boolean(r.dead_lettered),
+            // Strict === true — Boolean("false") must not invent sent/DL flags.
+            message_sent: r.message_sent === true,
+            dead_lettered: r.dead_lettered === true,
             attempt_count,
             delivery_status,
             message_text,
@@ -187,19 +196,35 @@ export default async function AlertHistoryPage({
         const offsetOut = toNonNegativeSafeInt(
           body && typeof body === "object" && !Array.isArray(body)
             ? (body as { offset?: unknown }).offset
-            : 0,
-          0,
+            : offset,
+          offset,
         );
         payload = {
           events,
           limit: Math.min(Math.max(limitOut, 1), 200),
-          offset: offsetOut,
+          offset: Math.min(offsetOut, MAX_HISTORY_OFFSET),
         };
       }
     } catch {
       payload = null;
     }
   }
+
+  function historyHref(nextOffset: number): string {
+    const next = new URLSearchParams();
+    next.set("limit", String(limit));
+    if (nextOffset > 0) next.set("offset", String(nextOffset));
+    if (symbolFilter) next.set("symbol", symbolFilter);
+    const q = next.toString();
+    return q ? `/alerts/history?${q}` : "/alerts/history";
+  }
+
+  const pageLimit = payload?.limit ?? limit;
+  const pageOffset = payload?.offset ?? offset;
+  const hasPrev = pageOffset > 0;
+  const hasNext = payload != null && payload.events.length >= pageLimit;
+  const prevOffset = Math.max(0, pageOffset - pageLimit);
+  const nextOffset = Math.min(pageOffset + pageLimit, MAX_HISTORY_OFFSET);
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -217,6 +242,8 @@ export default async function AlertHistoryPage({
           method="get"
           className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
+          {/* New filter resets OFFSET; preserve limit across Apply. */}
+          <input type="hidden" name="limit" value={limit} />
           <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
             <span className="text-muted-foreground">Symbol filter</span>
             <input
@@ -336,6 +363,34 @@ export default async function AlertHistoryPage({
             })}
           </ul>
         )}
+
+        {payload && payload.events.length > 0 && (hasPrev || hasNext) ? (
+          <nav
+            className="mt-6 flex items-center justify-between gap-3 text-sm"
+            aria-label="Fire history pages"
+          >
+            {hasPrev ? (
+              <Link
+                href={historyHref(prevOffset)}
+                className="underline underline-offset-4"
+              >
+                Previous
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">Previous</span>
+            )}
+            {hasNext ? (
+              <Link
+                href={historyHref(nextOffset)}
+                className="underline underline-offset-4"
+              >
+                Next
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">Next</span>
+            )}
+          </nav>
+        ) : null}
 
         <NfaInline className="mt-8" />
       </main>
