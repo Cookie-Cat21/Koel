@@ -138,13 +138,22 @@ def test_start_text_includes_nfa_framing() -> None:
         (["JKH.N0000", "disclosure", "Financial"], "Financial"),
         (["JKH.N0000", "disclosure", "Financial", "Report"], "Financial Report"),
         (["COMB.N0000", "announcement", "Dividend"], "Dividend"),
+        # Wave3 edges: kind case, whitespace-only → None, multi-token join, alias.
+        (["JKH.N0000", "DISCLOSURE", "Board"], "Board"),
+        (["JKH.N0000", "Disclosure", "  "], None),
+        (["JKH.N0000", "disclosure", " ", "\t"], None),
+        (["SAMP.N0000", "announcement", "Corporate", "Disclosure"], "Corporate Disclosure"),
+        (["HNB.N0000", "ANNOUNCEMENT", "Circular"], "Circular"),
+        (["JKH.N0000", "disclosure", "Q1", "Interim", "Financial"], "Q1 Interim Financial"),
     ],
 )
 def test_parse_disclosure_category_args(args: list[str], category: str | None) -> None:
+    """Wave3: /alert SYMBOL disclosure [CATEGORY...] joins remaining tokens."""
     parsed, err = parse_alert_args(args)
     assert err is None
     assert parsed is not None
     assert parsed.alert_type == AlertType.DISCLOSURE
+    assert parsed.threshold is None
     assert parsed.category == category
 
 
@@ -153,16 +162,55 @@ def test_parse_disclosure_category_args(args: list[str], category: str | None) -
     [
         ["JKH.N0000", "above", "nan"],
         ["JKH.N0000", "above", "NaN"],
+        ["JKH.N0000", "above", "NAN"],
         ["JKH.N0000", "below", "inf"],
+        ["JKH.N0000", "below", "-inf"],
+        ["JKH.N0000", "below", "+inf"],
         ["JKH.N0000", "move", "Infinity"],
+        ["JKH.N0000", "move", "-Infinity"],
         ["JKH.N0000", "above", "1e309"],
-        ["JKH.N0000", "above", "100,50"],
-        ["JKH.N0000", "above", "1.000,50"],
-        ["JKH.N0000", "above", "100", "extra"],
+        ["COMB.N0000", "move", "1e400"],
     ],
 )
-def test_parse_alert_args_rejects_non_finite_ambiguous_and_trailing(args: list[str]) -> None:
-    """Wave2: nan/inf, EU decimals, and trailing junk must not create rules."""
+def test_parse_alert_args_rejects_nan_inf(args: list[str]) -> None:
+    """Wave3: nan/inf (any case/sign) and overflow must not create rules."""
     parsed, err = parse_alert_args(args)
     assert parsed is None
     assert err is not None
+    assert "positive finite number" in err.lower()
+    assert "nan/inf" in err.lower()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["JKH.N0000", "above", "100,50"],
+        ["JKH.N0000", "above", "1.000,50"],
+        ["JKH.N0000", "below", "12,5"],
+        ["JKH.N0000", "move", "1.234,56"],
+        ["COMB.N0000", "above", "1.000.000,99"],
+        ["SAMP.N0000", "below", "0,5"],
+    ],
+)
+def test_parse_alert_args_rejects_eu_decimal_comma(args: list[str]) -> None:
+    """Wave3: European decimal commas are rejected (US thousands 1,000 still ok)."""
+    parsed, err = parse_alert_args(args)
+    assert parsed is None
+    assert err is not None
+    assert "positive finite number" in err.lower()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["JKH.N0000", "above", "100", "extra"],
+        ["JKH.N0000", "below", "50", "more", "junk"],
+        ["JKH.N0000", "move", "5", "pct"],
+    ],
+)
+def test_parse_alert_args_rejects_trailing_junk(args: list[str]) -> None:
+    """Trailing tokens after a price/move threshold are not allowed."""
+    parsed, err = parse_alert_args(args)
+    assert parsed is None
+    assert err is not None
+    assert "unexpected extra text" in err.lower()
