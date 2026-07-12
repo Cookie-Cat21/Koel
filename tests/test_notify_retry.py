@@ -2,13 +2,35 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from structlog.testing import capture_logs
-from telegram.error import NetworkError, RetryAfter, TimedOut
+from telegram.error import NetworkError, RetryAfter, TelegramError, TimedOut
 
-from chime.notify import SendResult, send_message
+from chime.notify import SendResult, _retry_delay_seconds, send_message
+
+
+def test_retry_delay_seconds_accepts_timedelta_and_numeric() -> None:
+    assert _retry_delay_seconds(timedelta(seconds=2, milliseconds=500)) == pytest.approx(2.5)
+    assert _retry_delay_seconds(3) == 3.0
+    assert _retry_delay_seconds(1.25) == pytest.approx(1.25)
+
+
+@pytest.mark.asyncio
+async def test_send_message_ok_on_first_attempt() -> None:
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(return_value=None)
+
+    result = await send_message(bot, chat_id=1001, text="hello")
+
+    assert result is SendResult.OK
+    bot.send_message.assert_awaited_once_with(
+        chat_id=1001,
+        text="hello",
+        disable_web_page_preview=False,
+    )
 
 
 @pytest.mark.asyncio
@@ -44,6 +66,45 @@ async def test_retry_after_sleep_is_capped() -> None:
     sleep.assert_awaited_once()
     # Cap 30s + 0.5 buffer — never sleep the full RetryAfter(999).
     assert sleep.await_args.args[0] == pytest.approx(30.5)
+
+
+@pytest.mark.asyncio
+async def test_retry_after_timedelta_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PTB may surface retry_after as timedelta (PTB_TIMEDELTA / future default)."""
+    monkeypatch.setenv("PTB_TIMEDELTA", "1")
+    flood = RetryAfter(2)
+    assert isinstance(flood.retry_after, timedelta)
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(side_effect=[flood, None])
+
+    with patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
+        result = await send_message(bot, chat_id=1001, text="hello")
+
+    assert result is SendResult.OK
+    sleep.assert_awaited_once()
+    assert sleep.await_args.args[0] == pytest.approx(2.5)
+
+
+@pytest.mark.asyncio
+async def test_retry_after_then_telegram_error_returns_failed() -> None:
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(side_effect=[RetryAfter(1), TelegramError("still blocked")])
+
+    with (
+        capture_logs() as logs,
+        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        result = await send_message(bot, chat_id=1001, text="hello")
+
+    assert result is SendResult.FAILED
+    assert bot.send_message.await_count == 2
+    sleep.assert_awaited_once()
+    assert {
+        "event": "telegram_retry_failed",
+        "log_level": "warning",
+        "error": "still blocked",
+        "chat_id": 1001,
+    } in logs
 
 
 @pytest.mark.asyncio
@@ -90,3 +151,20 @@ async def test_transient_errors_return_failed(exc: Exception) -> None:
     bot = AsyncMock()
     bot.send_message = AsyncMock(side_effect=exc)
     assert await send_message(bot, chat_id=1, text="x") is SendResult.FAILED
+
+
+@pytest.mark.asyncio
+async def test_telegram_error_returns_failed() -> None:
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(side_effect=TelegramError("forbidden"))
+
+    with capture_logs() as logs:
+        result = await send_message(bot, chat_id=42, text="x")
+
+    assert result is SendResult.FAILED
+    assert {
+        "event": "telegram_error",
+        "log_level": "error",
+        "error": "forbidden",
+        "chat_id": 42,
+    } in logs
