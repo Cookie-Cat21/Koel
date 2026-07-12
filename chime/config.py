@@ -52,6 +52,9 @@ class Settings:
     bot_cmd_rate_per_minute: int = 20
     # Polite pause between legacy /announcements PDF enrichment calls (per symbol).
     pdf_enrich_sleep_seconds: float = 0.5
+    # Optional market-wide disclosure discovery via POST /approvedAnnouncement.
+    # Default off — per-symbol getAnnouncementByCompany remains the safe path.
+    disclosure_bulk_feed: bool = False
 
     @classmethod
     def from_env(cls, *, require_token: bool = True) -> Settings:
@@ -75,6 +78,7 @@ class Settings:
             market_close=os.getenv("MARKET_CLOSE", "14:30"),
             bot_cmd_rate_per_minute=_int("BOT_CMD_RATE_PER_MINUTE", 20),
             pdf_enrich_sleep_seconds=_float("PDF_ENRICH_SLEEP_SECONDS", 0.5),
+            disclosure_bulk_feed=os.getenv("DISCLOSURE_BULK_FEED", "0").strip() == "1",
         )
 
 

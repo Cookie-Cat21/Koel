@@ -26,7 +26,14 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from chime.adapters.cse import CSEClient, legacy_pdf_urls_by_id
+from chime.adapters.cse import (
+    CSEClient,
+    announcement_to_disclosure,
+    build_unique_company_name_map,
+    legacy_pdf_urls_by_id,
+    normalize_company_name,
+    resolve_announcement_symbol,
+)
 from chime.circuit import CircuitOpenError
 from chime.config import Settings
 from chime.domain import (
@@ -541,8 +548,33 @@ class Poller:
         # Fetch all first (no inter-symbol sleep under lock — CORE-004).
         # Sequential HTTP provides natural spacing; rate-limit sleeps belong
         # outside the advisory lock if reintroduced.
+        # Optional bulk path (DISCLOSURE_BULK_FEED=1): one market-wide call +
+        # stocks name→symbol map; fail-soft to per-symbol for uncovered
+        # tickers or when the bulk feed errors.
         fetched: dict[str, list[Disclosure]] = {}
-        for symbol in disclosure_symbols:
+        remaining = list(disclosure_symbols)
+        if self.settings.disclosure_bulk_feed:
+            bulk_fetched, bulk_covered, bulk_ok = await self._fetch_disclosures_bulk(
+                disclosure_symbols
+            )
+            if bulk_ok:
+                fetched.update(bulk_fetched)
+                remaining = [s for s in disclosure_symbols if s not in bulk_covered]
+                if remaining:
+                    log.info(
+                        "disclosure_bulk_partial_fallback",
+                        bulk_covered=sorted(bulk_covered),
+                        per_symbol_fallback=remaining,
+                    )
+            else:
+                # Fail-soft: bulk error does not poison the tick if per-symbol works.
+                log.warning(
+                    "disclosure_bulk_failed_fallback",
+                    symbols=disclosure_symbols,
+                )
+                remaining = list(disclosure_symbols)
+
+        for symbol in remaining:
             try:
                 fetched[symbol] = await self.cse.fetch_announcements_for_symbol(
                     symbol, from_date=from_date, to_date=to_date
@@ -579,6 +611,61 @@ class Poller:
                         )
                     )
         return fired, not any_failure
+
+
+    async def _fetch_disclosures_bulk(
+        self, disclosure_symbols: list[str]
+    ) -> tuple[dict[str, list[Disclosure]], set[str], bool]:
+        """Market-wide approvedAnnouncement + name map.
+
+        Returns ``(fetched_by_symbol, covered_symbols, ok)``. ``covered`` are
+        symbols that have a unique stocks-table name mapping (safe to skip
+        per-symbol HTTP even when the feed has no rows for them). On any
+        bulk/map failure, ``ok`` is False and the caller falls back fully.
+        """
+        allowed = {s.strip().upper() for s in disclosure_symbols}
+        try:
+            rows = await self.cse.fetch_approved_announcements()
+            stock_pairs = await self.storage.list_stock_names()
+        except Exception as exc:
+            log.warning("disclosure_bulk_fetch_failed", error=str(exc))
+            return {}, set(), False
+
+        name_map = build_unique_company_name_map(stock_pairs)
+        covered: set[str] = set()
+        for symbol, name in stock_pairs:
+            sym = symbol.strip().upper()
+            if sym not in allowed or not name:
+                continue
+            mapped = name_map.get(normalize_company_name(name))
+            if mapped == sym:
+                covered.add(sym)
+
+        seen_at = datetime.now(UTC)
+        fetched: dict[str, list[Disclosure]] = {s: [] for s in covered}
+        unmatched = 0
+        for row in rows:
+            symbol = resolve_announcement_symbol(
+                row, name_map=name_map, allowed_symbols=allowed
+            )
+            if symbol is None:
+                unmatched += 1
+                continue
+            covered.add(symbol)
+            fetched.setdefault(symbol, [])
+            disc = announcement_to_disclosure(row, symbol=symbol, seen_at=seen_at)
+            if disc is not None:
+                fetched[symbol].append(disc)
+
+        log.info(
+            "disclosure_bulk_ok",
+            rows=len(rows),
+            matched_symbols=sorted(s for s, ds in fetched.items() if ds),
+            covered=sorted(covered),
+            unmatched_or_out_of_watchlist=unmatched,
+        )
+        return fetched, covered, True
+
 
     async def _enrich_disclosure_pdfs(self, items: list[PendingPdfEnrich]) -> None:
         """Resolve legacy filePath → CDN PDF URL. Fail-soft; polite per-symbol sleep.

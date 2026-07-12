@@ -8,7 +8,7 @@ with backoff; a per-endpoint circuit breaker short-circuits sustained outages.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, Iterable, cast
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -307,6 +307,66 @@ def announcement_to_disclosure(
         seen_at=seen_at or datetime.now(UTC),
         doa_display=doa,
     )
+
+def normalize_company_name(name: str) -> str:
+    """Collapse whitespace + uppercase for company-name → symbol matching."""
+    return " ".join(name.split()).upper()
+
+
+def build_unique_company_name_map(
+    pairs: Iterable[tuple[str, str | None]],
+) -> dict[str, str]:
+    """Build normalized-name → symbol map; drop ambiguous names (multi-symbol).
+
+    ``pairs`` are ``(symbol, name)`` rows from the stocks table. Names that
+    resolve to more than one symbol are excluded so bulk attribution cannot
+    fire the wrong ticker.
+    """
+    buckets: dict[str, set[str]] = {}
+    for symbol, name in pairs:
+        if name is None:
+            continue
+        sym = symbol.strip().upper()
+        if not sym or not name.strip():
+            continue
+        key = normalize_company_name(name)
+        buckets.setdefault(key, set()).add(sym)
+
+    out: dict[str, str] = {}
+    for key, symbols in buckets.items():
+        if len(symbols) == 1:
+            out[key] = next(iter(symbols))
+        else:
+            log.warning(
+                "company_name_map_ambiguous",
+                company_name=key,
+                symbols=sorted(symbols),
+            )
+    return out
+
+
+def resolve_announcement_symbol(
+    row: AnnouncementRow,
+    *,
+    name_map: dict[str, str],
+    allowed_symbols: set[str],
+) -> str | None:
+    """Attribute a bulk announcement row to a watched symbol, or None.
+
+    Prefer an explicit ``row.symbol`` when present and allowed; otherwise map
+    ``row.company`` via ``name_map``. Unmatched / ambiguous → None (caller
+    must not invent a ticker).
+    """
+    allowed = {s.strip().upper() for s in allowed_symbols}
+    if row.symbol and row.symbol.strip():
+        sym = row.symbol.strip().upper()
+        return sym if sym in allowed else None
+    if not row.company or not row.company.strip():
+        return None
+    mapped = name_map.get(normalize_company_name(row.company))
+    if mapped is None:
+        return None
+    return mapped if mapped in allowed else None
 
 
 class CSEClient:
