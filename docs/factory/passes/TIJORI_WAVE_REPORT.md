@@ -1,16 +1,16 @@
-# Tijori CSE — Waves 1–10 report
+# Tijori CSE — Waves 1–11 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-12  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … wave 10 (+ advisory-lock deadlock defer)
+**Range:** `a802cb7` … wave 11 (wave-10 harden + `/brief` empty-state align)
 
 ---
 
 ## Verdict
 
-Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX/a11y polish, adversarial grace/storage close, env-example completeness, storage brief-method coverage, and a Phase 3 scenario stub fence (`AI_SCENARIOS_ENABLED=0`). Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **stub only** — no LLM wiring yet.
+Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX/a11y polish, adversarial grace/storage close, env-example completeness, storage brief-method coverage, and a Phase 3 scenario stub fence (`AI_SCENARIOS_ENABLED=0`). Wave 10 hardens briefs ops (smoke, rate limits, CDN requeue, poller/disclosure coverage) and audits poll↔brief advisory locks as a non-issue. Wave 11 aligns `/brief` empty-state test copy with AI-off messaging. Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **stub only** — no LLM wiring yet.
 
 | Track | Status |
 |---|---|
@@ -260,19 +260,44 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
-## Wave 10 — Smoke + lock audit defer
+## Wave 10 — Smoke, harden, coverage, lock audit
 
-**Theme:** Tijori smoke script; poll vs brief advisory-lock deadlock audit.
+**Theme:** Tijori smoke; API contract sync; brief rate limit; advisory-lock audit; poller/disclosure coverage; CDN requeue + `/brief` egress + scenario fence.
 
 | SHA | Commit |
 |---|---|
 | `35b1b97` | chore(wave10): tijori smoke script |
-| _(this)_ | docs(wave10): defer poll/brief advisory lock deadlock |
+| `821bbbb` | docs(wave10): contract sync |
+| `c251b00` | chore(wave10): clear todos |
+| `aa87ed9` | fix/test(wave10): brief rate limit push |
+| `303ffbc` | docs(wave10): defer poll/brief advisory lock deadlock |
+| `c6eb42f` | test(wave10): disclosure rules fuzz push |
+| `0070ea1` | test(wave10): poller coverage push |
+| `cd5b5f3` | fix(wave10): brief CDN requeue, /brief egress, scenario fence |
 
 **Shipped**
 
-- Tijori smoke script (`chore(wave10)`).
+- Tijori smoke script; API contract sync; drop leftover Phase-1 stub naming in briefs worker/docs.
+- `/brief` behind the same per-user cmd rate limit as other handlers (+ shared-budget / structural gate tests).
 - Audit: poll `4_201_337` (session try) vs brief-cap `4_201_339` (xact) — **no deadlock**; pin `BRIEF_CAP_LOCK_ID` + docs ([ADVISORY_LOCK_DEADLOCK.md](ADVISORY_LOCK_DEADLOCK.md)). Do not unify IDs.
+- Disclosure-rules fuzz; poller coverage wave-10 suite.
+- CDN miss requeues pending (no daily-cap burn); hostile `pdf_url` fails closed; `/brief` strips non-CSE URLs, caps Telegram body, splits AI-off vs none-yet; scenario guardrails reject accumulate/short/long/exit/take-profit phrasing.
+
+---
+
+## Wave 11 — /brief empty-state align + wave report
+
+**Theme:** Align `/brief` empty-state test with AI-off copy; append waves 10–11 to this report.
+
+| SHA | Commit |
+|---|---|
+| `bee6aee` | fix(wave11): align /brief empty-state assertion with AI-off copy |
+| _(this)_ | docs(wave11): wave report append |
+
+**Shipped**
+
+- `/brief` empty-state assertion matches AI-off bot copy (`tests/test_bot_rate_limit.py`).
+- `TIJORI_WAVE_REPORT.md` — waves 10–11 inventory + updated totals.
 
 ---
 
@@ -288,9 +313,10 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | 6 (`wave6`) | 8 |
 | 7 (`wave7`) | 7 |
 | 8 (`wave8`) | 9 |
-| 9 (`wave9` + this report) | 7 |
-| 10 (`wave10`) | 2+ |
-| **Total** | **77+** |
+| 9 (`wave9`) | 7 |
+| 10 (`wave10`) | 8 |
+| 11 (`wave11` + this report) | 2 |
+| **Total** | **85** |
 
 ---
 
@@ -313,6 +339,6 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ### Suggested next improve-loop focus
 
-- CI green on touched Python/web paths after wave 10.
+- CI green on touched Python/web paths after wave 11.
 - Controlled briefs-on soak (not default-on in prod).
 - Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.
