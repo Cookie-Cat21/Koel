@@ -56,9 +56,7 @@ async def test_crossing_fires_telegram_once(storage: Storage) -> None:
     user_id = await storage.ensure_user(telegram_id=tg_id)
     await storage.upsert_stock(symbol, "TEST CO")
     await storage.add_watch(user_id, symbol)
-    rule = await storage.create_alert_rule(
-        user_id, symbol, AlertType.PRICE_ABOVE, 100.0
-    )
+    rule = await storage.create_alert_rule(user_id, symbol, AlertType.PRICE_ABOVE, 100.0)
 
     # Baseline below threshold (no fire)
     baseline = PriceSnapshot(
@@ -134,9 +132,7 @@ async def test_kill_restart_no_double_send(storage: Storage) -> None:
     user_id = await storage.ensure_user(telegram_id=tg_id)
     await storage.upsert_stock(symbol, "KILL CO")
     await storage.add_watch(user_id, symbol)
-    rule = await storage.create_alert_rule(
-        user_id, symbol, AlertType.PRICE_BELOW, 50.0
-    )
+    rule = await storage.create_alert_rule(user_id, symbol, AlertType.PRICE_BELOW, 50.0)
     await storage.insert_snapshot(
         PriceSnapshot(
             symbol=symbol,

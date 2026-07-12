@@ -201,9 +201,12 @@ async def test_persist_market_snapshots_last_wins_dedupes_symbol() -> None:
 @pytest.mark.asyncio
 async def test_persist_market_snapshots_skips_blank_symbols() -> None:
     store = _store(_Conn([]))
-    assert await store.persist_market_snapshots(
-        [_snap(symbol="  ", price=1.0), _snap(symbol="", price=2.0)]
-    ) == []
+    assert (
+        await store.persist_market_snapshots(
+            [_snap(symbol="  ", price=1.0), _snap(symbol="", price=2.0)]
+        )
+        == []
+    )
 
     conn = _Conn([None, [{"id": 3}]])
     store = _store(conn)
@@ -442,10 +445,7 @@ async def test_get_ready_filing_brief_by_external_id() -> None:
 @pytest.mark.asyncio
 async def test_get_ready_filing_brief_missing_or_blank_returns_none() -> None:
     assert await _store(_Conn([None])).get_ready_filing_brief(disclosure_id=1) is None
-    assert (
-        await _store(_Conn([{"brief": "   "}])).get_ready_filing_brief(disclosure_id=1)
-        is None
-    )
+    assert await _store(_Conn([{"brief": "   "}])).get_ready_filing_brief(disclosure_id=1) is None
     # No keys → no query
     conn = _Conn([{"brief": "x"}])
     assert await _store(conn).get_ready_filing_brief() is None
@@ -591,9 +591,10 @@ async def test_set_armed_deactivate_paths() -> None:
 
     assert await _store(_Conn([{"id": 1}])).deactivate_alert(3, 1) is True
     assert await _store(_Conn([None])).deactivate_alert(3, 99) is False
-    assert await _store(_Conn([[{"id": 1}, {"id": 2}]])).deactivate_rules_for_symbol(
-        3, "jkh.n0000"
-    ) == 2
+    assert (
+        await _store(_Conn([[{"id": 1}, {"id": 2}]])).deactivate_rules_for_symbol(3, "jkh.n0000")
+        == 2
+    )
 
 
 @pytest.mark.asyncio

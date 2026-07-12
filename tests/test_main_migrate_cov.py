@@ -240,9 +240,7 @@ def test_main_migrate_command(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _patch_settings(monkeypatch)
-    monkeypatch.setattr(
-        main_mod, "apply_migrations", lambda url: ["001_initial.sql", "002_x.sql"]
-    )
+    monkeypatch.setattr(main_mod, "apply_migrations", lambda url: ["001_initial.sql", "002_x.sql"])
 
     main_mod.main(["migrate"])
     out = capsys.readouterr().out

@@ -287,7 +287,7 @@ def test_extract_pdf_text_caps_pages(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(extract_mod, "_MAX_PDF_PAGES", 3)
     with patch("pypdf.PdfReader", _Reader):
         text = extract_pdf_text(b"%PDF")
-    assert text == 'page-0' + chr(10) + 'page-1' + chr(10) + 'page-2'
+    assert text == "page-0" + chr(10) + "page-1" + chr(10) + "page-2"
 
 
 def test_extract_pdf_text_skips_blank_pages() -> None:

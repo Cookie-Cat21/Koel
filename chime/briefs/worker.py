@@ -410,9 +410,7 @@ async def claim_pending_briefs(
             owns_provider = provider is None
             owns_http = http_client is None
             prov: BriefProvider = provider or make_brief_provider(cfg)
-            http = http_client or httpx.AsyncClient(
-                timeout=float(cfg.http_timeout_seconds or 30.0)
-            )
+            http = http_client or httpx.AsyncClient(timeout=float(cfg.http_timeout_seconds or 30.0))
             sleep_s = max(0.0, float(cfg.sleep_seconds))
             try:
                 for i, row in enumerate(rows):

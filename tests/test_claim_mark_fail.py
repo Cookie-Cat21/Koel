@@ -59,9 +59,7 @@ async def test_claim_mark_fail_retry_succeeds_treats_as_sent() -> None:
     """First mark fails, retry succeeds → treat as sent; no dead-letter."""
     storage = AsyncMock()
     storage.claim_alert = AsyncMock(return_value=88)
-    storage.mark_alert_sent = AsyncMock(
-        side_effect=[RuntimeError("transient"), None]
-    )
+    storage.mark_alert_sent = AsyncMock(side_effect=[RuntimeError("transient"), None])
     storage.mark_alert_attempt = AsyncMock()
     storage.dead_letter = AsyncMock()
     send = AsyncMock(return_value=True)

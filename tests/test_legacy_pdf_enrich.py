@@ -25,10 +25,7 @@ from tests.conftest import make_disclosure, make_rule
 from tests.test_storage_unit import _Conn, _store
 
 _FIXTURE = (
-    Path(__file__).resolve().parents[1]
-    / "docs"
-    / "sample_responses"
-    / "announcements_legacy.json"
+    Path(__file__).resolve().parents[1] / "docs" / "sample_responses" / "announcements_legacy.json"
 )
 
 
@@ -241,8 +238,7 @@ async def test_poller_enriches_pdf_url_after_alerts_fail_soft(
         ]
     )
     legacy_rows = [
-        LegacyAnnouncementRow.model_validate(item)
-        for item in _legacy_fixture()["infoAnnouncement"]
+        LegacyAnnouncementRow.model_validate(item) for item in _legacy_fixture()["infoAnnouncement"]
     ]
     cse.fetch_legacy_announcements = AsyncMock(return_value=legacy_rows)
 

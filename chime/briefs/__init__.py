@@ -146,8 +146,5 @@ def build_brief_prompt(*, symbol: str, title: str, extracted_text: str) -> str:
     sym = (symbol or "").replace("\x00", "").strip() or "UNKNOWN"
     ttl = (title or "").replace("\x00", "").strip() or "(untitled)"
     return (
-        f"Symbol: {sym}\n"
-        f"Title: {ttl}\n\n"
-        f"<<<FILING>>>\n{body}\n<<<END_FILING>>>\n\n"
-        f"{nfa_suffix()}"
+        f"Symbol: {sym}\nTitle: {ttl}\n\n<<<FILING>>>\n{body}\n<<<END_FILING>>>\n\n{nfa_suffix()}"
     )

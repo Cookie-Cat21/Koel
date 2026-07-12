@@ -45,9 +45,7 @@ async def test_drain_briefs_safe_logs_when_processed(
     import chime.poller as poller_mod
 
     poller = _poller()
-    monkeypatch.setattr(
-        poller_mod, "claim_pending_briefs", AsyncMock(return_value=3)
-    )
+    monkeypatch.setattr(poller_mod, "claim_pending_briefs", AsyncMock(return_value=3))
     with patch.object(poller_mod.log, "info") as info:
         await poller._drain_briefs_safe()
     info.assert_any_call("brief_drain_done", processed=3)

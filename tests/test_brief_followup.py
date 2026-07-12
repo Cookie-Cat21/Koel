@@ -346,9 +346,7 @@ async def test_claim_pending_briefs_skips_followup_when_mark_ready_false() -> No
 async def test_claim_pending_briefs_skips_followup_without_external_id() -> None:
     storage = MagicMock()
     storage.count_briefs_today = AsyncMock(return_value=0)
-    storage.claim_pending_briefs = AsyncMock(
-        return_value=[_pending_row(external_id="")]
-    )
+    storage.claim_pending_briefs = AsyncMock(return_value=[_pending_row(external_id="")])
     storage.mark_brief_ready = AsyncMock(return_value=True)
     storage.claim_brief_followups = AsyncMock(return_value=[])
     provider = AsyncMock()
@@ -431,15 +429,21 @@ async def test_storage_claim_brief_followups_sql_gates_on_primary_alert() -> Non
 @pytest.mark.asyncio
 async def test_storage_claim_brief_followups_noop_on_incomplete() -> None:
     store = _store(_Conn([]))
-    assert await store.claim_brief_followups(
-        external_id="",
-        symbol="JKH.N0000",
-        brief="x",
-        message_text="y",
-    ) == []
-    assert await store.claim_brief_followups(
-        external_id="99",
-        symbol="",
-        brief="x",
-        message_text="y",
-    ) == []
+    assert (
+        await store.claim_brief_followups(
+            external_id="",
+            symbol="JKH.N0000",
+            brief="x",
+            message_text="y",
+        )
+        == []
+    )
+    assert (
+        await store.claim_brief_followups(
+            external_id="99",
+            symbol="",
+            brief="x",
+            message_text="y",
+        )
+        == []
+    )

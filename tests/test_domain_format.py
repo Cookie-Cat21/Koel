@@ -135,8 +135,6 @@ def test_truncate_disclosure_title(title: str, max_len: int, expected: str) -> N
     assert truncate_disclosure_title(title, max_len) == expected
 
 
-
-
 def test_format_brief_followup_includes_brief_and_nfa() -> None:
     brief = "AGM scheduled for 15 August. No dividend declared."
     msg = format_brief_followup(
@@ -159,17 +157,14 @@ def test_format_brief_followup_omits_blank_optional_fields() -> None:
     assert "Disclosure:" not in msg
     assert disclaimer() in msg
 
+
 @pytest.mark.parametrize(
     "msg",
     [
         format_alert_message(_price_event()),
         format_alert_message(_disclosure_event()),
-        format_alert_message(
-            _disclosure_event(disclosure_title="Z" * 250, current_price=12.34)
-        ),
-        format_alert_message(
-            _disclosure_event(filing_brief="Short filing summary for tests.")
-        ),
+        format_alert_message(_disclosure_event(disclosure_title="Z" * 250, current_price=12.34)),
+        format_alert_message(_disclosure_event(filing_brief="Short filing summary for tests.")),
         format_alert_message(
             _disclosure_event(),
             filing_brief="Kwarg brief paragraph for NFA guard.",

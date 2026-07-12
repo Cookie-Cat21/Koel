@@ -39,9 +39,7 @@ class _FakeConn:
         if is_new:
             self._ids[key] = self._next
             self._next += 1
-        return _FakeResult(
-            {"id": self._ids[key], "inserted": is_new, "pdf_url": None}
-        )
+        return _FakeResult({"id": self._ids[key], "inserted": is_new, "pdf_url": None})
 
     @asynccontextmanager
     async def transaction(self) -> Any:
@@ -71,9 +69,7 @@ async def test_upsert_disclosure_returns_same_id_on_conflict() -> None:
     disc = make_disclosure(external_id="ann-reeval-1", symbol="JKH.N0000")
     first = await storage.upsert_disclosure(disc)
     assert first.id is not None
-    second = await storage.upsert_disclosure(
-        disc.model_copy(update={"title": "Updated Title"})
-    )
+    second = await storage.upsert_disclosure(disc.model_copy(update={"title": "Updated Title"}))
     assert second.id == first.id
     assert second.title == "Updated Title"
 

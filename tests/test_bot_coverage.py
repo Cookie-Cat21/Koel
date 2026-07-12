@@ -224,9 +224,7 @@ async def test_cmd_alert_validation_errors() -> None:
     assert "couldn't parse" in reply.lower()
     assert "/alert SYMBOL above" in reply
 
-    update2, context2 = _make_update_context(
-        args=["JKH.N0000", "above"], storage=storage, cse=cse
-    )
+    update2, context2 = _make_update_context(args=["JKH.N0000", "above"], storage=storage, cse=cse)
     await cmd_alert(update2, context2)
     assert "need a number" in update2.effective_message.reply_text.await_args.args[0].lower()
 

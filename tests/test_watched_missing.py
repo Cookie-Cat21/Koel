@@ -28,9 +28,7 @@ def _snap(symbol: str, price: float = 20.0) -> PriceSnapshot:
 
 def _persist_with_ids(snaps: list[PriceSnapshot]) -> list[PriceSnapshot]:
     """Assign incremental ids like persist_market_snapshots."""
-    return [
-        s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)
-    ]
+    return [s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)]
 
 
 @pytest.mark.asyncio

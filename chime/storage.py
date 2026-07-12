@@ -112,9 +112,7 @@ class Storage:
             raise ValueError(f"invalid snapshot symbol: {snap.symbol!r}")
         return stored[0]
 
-    async def persist_market_snapshots(
-        self, snaps: list[PriceSnapshot]
-    ) -> list[PriceSnapshot]:
+    async def persist_market_snapshots(self, snaps: list[PriceSnapshot]) -> list[PriceSnapshot]:
         """Upsert stocks + insert price_snapshots for a full tradeSummary board.
 
         Used by the poller to keep a market-wide browse layer in Postgres while
@@ -225,9 +223,7 @@ class Storage:
         assert len(rows) == len(normalized)
         out: list[PriceSnapshot] = []
         for (symbol, snap), row in zip(normalized, _as_rows(rows), strict=True):
-            out.append(
-                snap.model_copy(update={"id": int(row["id"]), "symbol": symbol})
-            )
+            out.append(snap.model_copy(update={"id": int(row["id"]), "symbol": symbol}))
         return out
 
     async def delete_old_non_watchlist_snapshots(
@@ -887,11 +883,7 @@ class Storage:
             disclosure_id = int(data["id"])
             existing_pdf = data.get("pdf_url")
             if data.get("inserted"):
-                brief_status = (
-                    BriefStatus.PENDING
-                    if briefs_enabled()
-                    else BriefStatus.SKIPPED
-                )
+                brief_status = BriefStatus.PENDING if briefs_enabled() else BriefStatus.SKIPPED
                 await conn.execute(
                     """
                     INSERT INTO disclosure_briefs (disclosure_id, status)
@@ -1095,9 +1087,7 @@ class Storage:
     async def watched_symbols(self) -> list[str]:
         async with self._pool.connection() as conn:
             rows = await (
-                await conn.execute(
-                    "SELECT DISTINCT symbol FROM watchlist_items ORDER BY symbol"
-                )
+                await conn.execute("SELECT DISTINCT symbol FROM watchlist_items ORDER BY symbol")
             ).fetchall()
         return [r["symbol"] for r in _as_rows(rows)]
 
@@ -1572,7 +1562,6 @@ class Storage:
             raise
         finally:
             await cm.__aexit__(*exc_info)
-
 
     async def count_pending_disclosure_briefs(self) -> int:
         """Count ``disclosure_briefs`` rows still ``pending`` (ops queue hint)."""

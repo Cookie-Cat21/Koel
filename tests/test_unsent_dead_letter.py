@@ -94,7 +94,8 @@ async def test_claim_conflict_returns_false() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_failure_increments_and_dead_letters() -> None:
     storage = AsyncMock()
-    storage.claim_unsent_batch = claim_unsent_deque([
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 11,
                 "rule_id": 2,
@@ -102,7 +103,8 @@ async def test_retry_unsent_failure_increments_and_dead_letters() -> None:
                 "telegram_id": 1001,
                 "attempt_count": 4,
             }
-        ])
+        ]
+    )
     storage.mark_alert_attempt = AsyncMock(return_value=MAX_SEND_ATTEMPTS)
     storage.dead_letter = AsyncMock()
     send = AsyncMock(return_value=False)
@@ -119,7 +121,8 @@ async def test_retry_unsent_failure_increments_and_dead_letters() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_success_marks_sent_without_attempt() -> None:
     storage = AsyncMock()
-    storage.claim_unsent_batch = claim_unsent_deque([
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 12,
                 "rule_id": 3,
@@ -127,7 +130,8 @@ async def test_retry_unsent_success_marks_sent_without_attempt() -> None:
                 "telegram_id": 2002,
                 "attempt_count": 2,
             }
-        ])
+        ]
+    )
     send = AsyncMock(return_value=True)
 
     poller = _poller(send=send, storage=storage)
@@ -141,7 +145,8 @@ async def test_retry_unsent_success_marks_sent_without_attempt() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_below_max_does_not_dead_letter() -> None:
     storage = AsyncMock()
-    storage.claim_unsent_batch = claim_unsent_deque([
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 13,
                 "rule_id": 4,
@@ -149,7 +154,8 @@ async def test_retry_unsent_below_max_does_not_dead_letter() -> None:
                 "telegram_id": 3003,
                 "attempt_count": 1,
             }
-        ])
+        ]
+    )
     storage.mark_alert_attempt = AsyncMock(return_value=2)
     storage.dead_letter = AsyncMock()
     send = AsyncMock(return_value=False)
@@ -232,7 +238,8 @@ async def test_claim_and_send_network_error_increments_attempt() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_deferred_increments_attempt() -> None:
     storage = AsyncMock()
-    storage.claim_unsent_batch = claim_unsent_deque([
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 14,
                 "rule_id": 5,
@@ -240,7 +247,8 @@ async def test_retry_unsent_deferred_increments_attempt() -> None:
                 "telegram_id": 4004,
                 "attempt_count": 0,
             }
-        ])
+        ]
+    )
     storage.mark_alert_attempt = AsyncMock(return_value=1)
     storage.dead_letter = AsyncMock()
     send = AsyncMock(return_value=SendResult.DEFERRED)
@@ -257,7 +265,8 @@ async def test_retry_unsent_deferred_increments_attempt() -> None:
 @pytest.mark.asyncio
 async def test_retry_unsent_deferred_dead_letters_at_max() -> None:
     storage = AsyncMock()
-    storage.claim_unsent_batch = claim_unsent_deque([
+    storage.claim_unsent_batch = claim_unsent_deque(
+        [
             {
                 "id": 15,
                 "rule_id": 6,
@@ -265,7 +274,8 @@ async def test_retry_unsent_deferred_dead_letters_at_max() -> None:
                 "telegram_id": 5005,
                 "attempt_count": 29,
             }
-        ])
+        ]
+    )
     storage.mark_alert_attempt = AsyncMock(return_value=MAX_DEFERRED_ATTEMPTS)
     storage.dead_letter = AsyncMock()
     send = AsyncMock(return_value=SendResult.DEFERRED)

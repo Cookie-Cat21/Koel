@@ -45,9 +45,7 @@ class _FakeConn:
     def transaction(self) -> _FakeTxn:
         return self._txn
 
-    async def execute(
-        self, sql: str, params: tuple[Any, ...] | None = None
-    ) -> _FakeResult:
+    async def execute(self, sql: str, params: tuple[Any, ...] | None = None) -> _FakeResult:
         self.calls.append((sql, params))
         if "INSERT INTO alert_log" in sql:
             return _FakeResult(self._claim_row)

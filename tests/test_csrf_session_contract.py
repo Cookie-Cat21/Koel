@@ -75,9 +75,7 @@ def test_csrf_contract_doc_exists() -> None:
     assert "X-CSRF-Token" in text
     assert "/api/v1/auth/logout" in text
     assert "401 beats csrf_failed" in text or "E10-A01" in text
-    contract = (ROOT / "docs" / "factory" / "API_CONTRACT_V1.md").read_text(
-        encoding="utf-8"
-    )
+    contract = (ROOT / "docs" / "factory" / "API_CONTRACT_V1.md").read_text(encoding="utf-8")
     assert "E10-A01" in contract
     assert "401 unauthorized" in contract
 

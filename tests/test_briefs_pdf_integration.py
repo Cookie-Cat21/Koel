@@ -157,8 +157,7 @@ async def test_poller_enrich_sets_pdf_url_without_brief_reenqueue(
         ]
     )
     legacy_rows = [
-        LegacyAnnouncementRow.model_validate(item)
-        for item in _legacy_fixture()["infoAnnouncement"]
+        LegacyAnnouncementRow.model_validate(item) for item in _legacy_fixture()["infoAnnouncement"]
     ]
     cse.fetch_legacy_announcements = AsyncMock(return_value=legacy_rows)
 
@@ -189,8 +188,7 @@ async def test_enrich_disclosure_pdfs_sets_url_for_pending_items() -> None:
 
     cse = AsyncMock()
     legacy_rows = [
-        LegacyAnnouncementRow.model_validate(item)
-        for item in _legacy_fixture()["infoAnnouncement"]
+        LegacyAnnouncementRow.model_validate(item) for item in _legacy_fixture()["infoAnnouncement"]
     ]
     cse.fetch_legacy_announcements = AsyncMock(return_value=legacy_rows)
 

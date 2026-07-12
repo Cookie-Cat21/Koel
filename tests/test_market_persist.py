@@ -295,9 +295,7 @@ async def test_retention_runs_after_successful_persist() -> None:
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
     storage.persist_market_snapshots = AsyncMock(side_effect=_persist_with_ids)
     storage.delete_old_non_watchlist_snapshots = AsyncMock(return_value=12)
-    storage.get_previous_state = AsyncMock(
-        return_value=PreviousPriceState(price=None)
-    )
+    storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
 
     board = [_snap("JKH.N0000"), _snap("COMB.N0000", 90.0)]
     cse = AsyncMock()
@@ -355,12 +353,8 @@ async def test_retention_failure_is_fail_soft(
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
     storage.persist_market_snapshots = AsyncMock(side_effect=_persist_with_ids)
-    storage.delete_old_non_watchlist_snapshots = AsyncMock(
-        side_effect=RuntimeError("cleanup boom")
-    )
-    storage.get_previous_state = AsyncMock(
-        return_value=PreviousPriceState(price=None)
-    )
+    storage.delete_old_non_watchlist_snapshots = AsyncMock(side_effect=RuntimeError("cleanup boom"))
+    storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
 
     board = [_snap("JKH.N0000")]
     cse = AsyncMock()

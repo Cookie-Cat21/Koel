@@ -352,10 +352,7 @@ _WEIRD_KINDS = [
             for token in _WEIRD_TOKENS
         ],
         *[["JKH.N0000", kind] for kind in _WEIRD_KINDS],
-        *[
-            ["JKH.N0000", kind, "Financial", "💣"]
-            for kind in ("disclosure", "announcement")
-        ],
+        *[["JKH.N0000", kind, "Financial", "💣"] for kind in ("disclosure", "announcement")],
     ],
     ids=lambda a: repr(a)[:80],
 )
@@ -390,9 +387,7 @@ def test_parse_alert_args_fuzz_cartesian_kinds_thresholds() -> None:
             try:
                 parsed, err = parse_alert_args(args)
             except Exception as exc:  # pragma: no cover
-                pytest.fail(
-                    f"parse_alert_args raised {type(exc).__name__}: {exc!r} for {args!r}"
-                )
+                pytest.fail(f"parse_alert_args raised {type(exc).__name__}: {exc!r} for {args!r}")
             assert (parsed is None) ^ (err is None)
             if err is not None:
                 assert isinstance(err, str) and err

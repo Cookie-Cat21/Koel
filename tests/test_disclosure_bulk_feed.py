@@ -48,9 +48,7 @@ def test_resolve_announcement_symbol_prefers_explicit_then_name() -> None:
         createdDate=1_700_000_000_000,
     )
     assert (
-        resolve_announcement_symbol(
-            by_symbol, name_map=name_map, allowed_symbols=allowed
-        )
+        resolve_announcement_symbol(by_symbol, name_map=name_map, allowed_symbols=allowed)
         == "JKH.N0000"
     )
 
@@ -72,10 +70,7 @@ def test_resolve_announcement_symbol_prefers_explicit_then_name() -> None:
         createdDate=1_700_000_000_000,
     )
     assert (
-        resolve_announcement_symbol(
-            unmatched, name_map=name_map, allowed_symbols=allowed
-        )
-        is None
+        resolve_announcement_symbol(unmatched, name_map=name_map, allowed_symbols=allowed) is None
     )
 
 
@@ -112,9 +107,7 @@ def _poller_mocks(
     from chime.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
-    storage.upsert_disclosure = AsyncMock(
-        side_effect=lambda d: d.model_copy(update={"id": 99})
-    )
+    storage.upsert_disclosure = AsyncMock(side_effect=lambda d: d.model_copy(update={"id": 99}))
     storage.claim_unsent_batch = AsyncMock(return_value=[])
     storage.list_stock_names = AsyncMock(
         return_value=[
@@ -144,9 +137,7 @@ def _poller_mocks(
 
 @pytest.mark.asyncio
 async def test_bulk_feed_off_uses_per_symbol_only() -> None:
-    poller, _storage, cse = _poller_mocks(
-        disc_symbols=["JKH.N0000", "COMB.N0000"], bulk_feed=False
-    )
+    poller, _storage, cse = _poller_mocks(disc_symbols=["JKH.N0000", "COMB.N0000"], bulk_feed=False)
     await poller.run_once(force=True)
     cse.fetch_approved_announcements.assert_not_called()
     assert cse.fetch_announcements_for_symbol.await_count == 2
@@ -154,9 +145,7 @@ async def test_bulk_feed_off_uses_per_symbol_only() -> None:
 
 @pytest.mark.asyncio
 async def test_bulk_feed_on_skips_per_symbol_when_names_map() -> None:
-    poller, storage, cse = _poller_mocks(
-        disc_symbols=["JKH.N0000", "COMB.N0000"], bulk_feed=True
-    )
+    poller, storage, cse = _poller_mocks(disc_symbols=["JKH.N0000", "COMB.N0000"], bulk_feed=True)
     row = AnnouncementRow(
         announcementId=38004,
         company="JOHN KEELLS HOLDINGS PLC",
@@ -182,9 +171,7 @@ async def test_bulk_feed_on_skips_per_symbol_when_names_map() -> None:
 
 @pytest.mark.asyncio
 async def test_bulk_feed_fails_soft_to_per_symbol() -> None:
-    poller, _storage, cse = _poller_mocks(
-        disc_symbols=["JKH.N0000"], bulk_feed=True
-    )
+    poller, _storage, cse = _poller_mocks(disc_symbols=["JKH.N0000"], bulk_feed=True)
     cse.fetch_approved_announcements = AsyncMock(side_effect=RuntimeError("bulk down"))
     cse.fetch_announcements_for_symbol = AsyncMock(
         return_value=[make_disclosure(external_id="fallback-1")]
@@ -199,9 +186,7 @@ async def test_bulk_feed_fails_soft_to_per_symbol() -> None:
 @pytest.mark.asyncio
 async def test_bulk_feed_partial_fallback_for_unmapped_symbol() -> None:
     """Named symbols use bulk; unnamed / ambiguous fall back per-symbol."""
-    poller, storage, cse = _poller_mocks(
-        disc_symbols=["JKH.N0000", "XYZ.N0000"], bulk_feed=True
-    )
+    poller, storage, cse = _poller_mocks(disc_symbols=["JKH.N0000", "XYZ.N0000"], bulk_feed=True)
     storage.list_stock_names = AsyncMock(
         return_value=[
             ("JKH.N0000", "JOHN KEELLS HOLDINGS PLC"),

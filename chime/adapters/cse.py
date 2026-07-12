@@ -384,6 +384,7 @@ def announcement_to_disclosure(
         doa_display=doa,
     )
 
+
 def normalize_company_name(name: str) -> str:
     """Collapse whitespace + uppercase for company-name → symbol matching."""
     return " ".join(name.split()).upper()

@@ -100,9 +100,7 @@ async def fetch_cdn_pdf(
         ) as response:
             status = int(getattr(response, "status_code", 0) or 0)
             headers = getattr(response, "headers", {}) or {}
-            if status in {301, 302, 303, 307, 308} or bool(
-                getattr(response, "is_redirect", False)
-            ):
+            if status in {301, 302, 303, 307, 308} or bool(getattr(response, "is_redirect", False)):
                 log.warning(
                     "pdf_fetch_redirect_rejected",
                     pdf_url=allowed,

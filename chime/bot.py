@@ -30,13 +30,10 @@ SYMBOL_RE = re.compile(r"^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$")
 _cmd_timestamps: dict[int, deque[float]] = defaultdict(deque)
 _RATE_WINDOW_SECONDS = 60.0
 RATE_LIMIT_REPLY = (
-    "Slow down — you've hit the command rate limit. Try again in a minute.\n"
-    f"{disclaimer()}"
+    f"Slow down — you've hit the command rate limit. Try again in a minute.\n{disclaimer()}"
 )
 
-BAD_SYMBOL_HINT = (
-    "That doesn't look like a CSE symbol. Try something like JKH.N0000 or COMB.N0000."
-)
+BAD_SYMBOL_HINT = "That doesn't look like a CSE symbol. Try something like JKH.N0000 or COMB.N0000."
 ALERT_USAGE = (
     "I couldn't parse that alert. Try one of:\n"
     "/alert SYMBOL above PRICE\n"
@@ -221,10 +218,7 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
     if kind in ("disclosure", "announcement"):
         category = " ".join(args[2:]).strip() or None
         return ParsedAlert(AlertType.DISCLOSURE, None, category), None
-    return None, (
-        "I didn't catch that alert type.\n"
-        f"{ALERT_USAGE}"
-    )
+    return None, (f"I didn't catch that alert type.\n{ALERT_USAGE}")
 
 
 async def _user_id(storage: Storage, update: Update) -> int | None:
@@ -233,9 +227,7 @@ async def _user_id(storage: Storage, update: Update) -> int | None:
     return await storage.ensure_user(update.effective_user.id)
 
 
-async def _lookup_symbol(
-    cse: CSEClient, symbol: str
-) -> tuple[str, PriceSnapshot | None]:
+async def _lookup_symbol(cse: CSEClient, symbol: str) -> tuple[str, PriceSnapshot | None]:
     """Return ('ok', snap) | ('not_found', None) | ('upstream', None)."""
     try:
         info = await cse.fetch_company_info(symbol)
@@ -271,9 +263,7 @@ async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_message:
         return
     if not context.args:
-        await update.effective_message.reply_text(
-            "Usage: /watch SYMBOL\nExample: /watch JKH.N0000"
-        )
+        await update.effective_message.reply_text("Usage: /watch SYMBOL\nExample: /watch JKH.N0000")
         return
     symbol = normalize_symbol(context.args[0])
     if symbol is None:
@@ -327,8 +317,7 @@ async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
     else:
         await update.effective_message.reply_text(
-            f"{symbol} wasn't on your watchlist. Check /mywatchlist or add it with "
-            f"/watch {symbol}."
+            f"{symbol} wasn't on your watchlist. Check /mywatchlist or add it with /watch {symbol}."
         )
 
 
@@ -375,9 +364,7 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if alert_type == AlertType.DISCLOSURE:
         if rule.category:
-            desc = (
-                f"new disclosure for {symbol} matching category '{rule.category}'"
-            )
+            desc = f"new disclosure for {symbol} matching category '{rule.category}'"
         else:
             desc = f"new disclosure for {symbol}"
     elif alert_type == AlertType.DAILY_MOVE:
@@ -387,9 +374,7 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         desc = f"{symbol} crosses below {threshold:g}"
 
-    await update.effective_message.reply_text(
-        f"Alert #{rule.id} set: {desc}.\n{disclaimer()}"
-    )
+    await update.effective_message.reply_text(f"Alert #{rule.id} set: {desc}.\n{disclaimer()}")
 
 
 async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -473,8 +458,7 @@ async def cmd_mywatchlist(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     symbols = await storage.list_watchlist(user_id)
     if not symbols:
         await update.effective_message.reply_text(
-            "Watchlist empty. Add a CSE symbol with /watch SYMBOL.\n"
-            "Example: /watch JKH.N0000"
+            "Watchlist empty. Add a CSE symbol with /watch SYMBOL.\nExample: /watch JKH.N0000"
         )
         return
     await update.effective_message.reply_text("Watchlist:\n" + "\n".join(symbols))

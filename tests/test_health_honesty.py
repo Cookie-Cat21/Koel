@@ -96,9 +96,7 @@ async def test_cycle_exception_fail_closes_poll_health_flags() -> None:
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(
-        return_value=[
-            PriceSnapshot(symbol="JKH.N0000", price=20.0, ts=datetime.now(UTC))
-        ]
+        return_value=[PriceSnapshot(symbol="JKH.N0000", price=20.0, ts=datetime.now(UTC))]
     )
     cse.fetch_announcements_for_symbol = AsyncMock(return_value=[make_disclosure()])
 

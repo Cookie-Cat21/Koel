@@ -30,9 +30,7 @@ async def test_price_cross_disarms_when_send_fails() -> None:
     storage.mark_alert_attempt = AsyncMock(return_value=1)
     storage.set_rule_armed = AsyncMock()
     storage.insert_snapshot = AsyncMock(side_effect=lambda s: s)
-    storage.get_previous_state = AsyncMock(
-        return_value=PreviousPriceState(price=95.0)
-    )
+    storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=95.0))
 
     send = AsyncMock(return_value=False)
     settings = Settings(

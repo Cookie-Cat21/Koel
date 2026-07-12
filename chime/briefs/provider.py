@@ -58,8 +58,7 @@ class _HttpBriefProviderBase:
         timeout_s = float(
             timeout
             if timeout is not None
-            else self._settings.http_timeout_seconds
-            or _DEFAULT_TIMEOUT_SECONDS
+            else self._settings.http_timeout_seconds or _DEFAULT_TIMEOUT_SECONDS
         )
         self._timeout = httpx.Timeout(timeout_s, connect=min(10.0, timeout_s))
         self._client = client or httpx.AsyncClient(timeout=self._timeout)
@@ -70,9 +69,7 @@ class _HttpBriefProviderBase:
 
     def _require_enabled(self) -> None:
         if not briefs_enabled(self._settings):
-            raise BriefsDisabledError(
-                "AI briefs disabled: set AI_BRIEFS_ENABLED=1 and AI_API_KEY"
-            )
+            raise BriefsDisabledError("AI briefs disabled: set AI_BRIEFS_ENABLED=1 and AI_API_KEY")
 
     def _sanitize_user_text(self, text: str) -> str:
         """Treat caller text as untrusted filing payload (null-strip + wrap)."""
@@ -142,9 +139,7 @@ class GeminiBriefProvider(_HttpBriefProviderBase):
         try:
             data = response.json()
         except (json.JSONDecodeError, ValueError) as exc:
-            raise RuntimeError(
-                f"Gemini response was not JSON: {response.text[:300]!r}"
-            ) from exc
+            raise RuntimeError(f"Gemini response was not JSON: {response.text[:300]!r}") from exc
 
         brief = _extract_gemini_text(data)
         if not brief:
@@ -205,16 +200,12 @@ class _OpenAICompatibleBriefProvider(_HttpBriefProviderBase):
         try:
             data = response.json()
         except (json.JSONDecodeError, ValueError) as exc:
-            raise RuntimeError(
-                f"{label} response was not JSON: {response.text[:300]!r}"
-            ) from exc
+            raise RuntimeError(f"{label} response was not JSON: {response.text[:300]!r}") from exc
 
         brief = _extract_openai_chat_text(data)
         if not brief:
             reason = _openai_chat_failure_reason(data)
-            raise RuntimeError(
-                f"{label} response missing message content ({reason})"
-            )
+            raise RuntimeError(f"{label} response missing message content ({reason})")
         return brief
 
 
@@ -356,6 +347,4 @@ def make_brief_provider(
         return GroqBriefProvider(cfg, client=client)
     if provider == "openrouter":
         return OpenRouterBriefProvider(cfg, client=client)
-    raise RuntimeError(
-        f"Unsupported AI_PROVIDER={cfg.provider!r} (gemini|groq|openrouter)"
-    )
+    raise RuntimeError(f"Unsupported AI_PROVIDER={cfg.provider!r} (gemini|groq|openrouter)")

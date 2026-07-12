@@ -104,9 +104,7 @@ async def test_all_persist_fail_keeps_delivered_ok_ids_retry_skips(
     """
     monkeypatch.setenv(DELIVERY_OK_LEDGER_ENV, str(tmp_path / "delivery-ok.jsonl"))
     storage = AsyncMock()
-    storage.mark_delivery_attempted_ok = AsyncMock(
-        side_effect=RuntimeError("delivery flag down")
-    )
+    storage.mark_delivery_attempted_ok = AsyncMock(side_effect=RuntimeError("delivery flag down"))
     storage.mark_alert_sent = AsyncMock(side_effect=RuntimeError("mark sent down"))
     storage.dead_letter = AsyncMock(side_effect=RuntimeError("dead letter down"))
     storage.claim_unsent_batch = claim_unsent_deque(
@@ -154,9 +152,7 @@ async def test_restart_skips_repush_after_total_post_send_db_write_failure(
     monkeypatch.setenv(DELIVERY_OK_LEDGER_ENV, str(ledger))
 
     storage = AsyncMock()
-    storage.mark_delivery_attempted_ok = AsyncMock(
-        side_effect=RuntimeError("delivery flag down")
-    )
+    storage.mark_delivery_attempted_ok = AsyncMock(side_effect=RuntimeError("delivery flag down"))
     storage.mark_alert_sent = AsyncMock(side_effect=RuntimeError("mark sent down"))
     storage.dead_letter = AsyncMock(side_effect=RuntimeError("dead letter down"))
     send = AsyncMock(return_value=SendResult.OK)
@@ -234,9 +230,7 @@ async def test_delivery_attempted_ok_excludes_from_unsent_db() -> None:
     try:
         user_id = await store.ensure_user(telegram_id=9_005_001)
         await store.upsert_stock("DLOK.N0000", "DLOK CO")
-        rule = await store.create_alert_rule(
-            user_id, "DLOK.N0000", AlertType.PRICE_ABOVE, 100.0
-        )
+        rule = await store.create_alert_rule(user_id, "DLOK.N0000", AlertType.PRICE_ABOVE, 100.0)
         snap = await store.insert_snapshot(
             PriceSnapshot(
                 symbol="DLOK.N0000",

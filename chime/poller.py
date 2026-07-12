@@ -502,9 +502,7 @@ class Poller:
             # Fetch succeeded — report watchlist gaps from the board we saw.
             if wanted:
                 present = {
-                    s.symbol.strip().upper()
-                    for s in all_snaps
-                    if s.symbol and s.symbol.strip()
+                    s.symbol.strip().upper() for s in all_snaps if s.symbol and s.symbol.strip()
                 }
                 self.watched_missing = sorted(wanted - present)
             else:
@@ -515,9 +513,7 @@ class Poller:
         retention_days = self.settings.snapshot_retention_days
         if retention_days > 0:
             try:
-                deleted = await self.storage.delete_old_non_watchlist_snapshots(
-                    retention_days
-                )
+                deleted = await self.storage.delete_old_non_watchlist_snapshots(retention_days)
                 if deleted:
                     log.info(
                         "snapshot_retention_deleted",
@@ -702,7 +698,6 @@ class Poller:
                     )
         return fired, not any_failure
 
-
     async def _fetch_disclosures_bulk(
         self, disclosure_symbols: list[str]
     ) -> tuple[dict[str, list[Disclosure]], set[str], bool]:
@@ -735,9 +730,7 @@ class Poller:
         fetched: dict[str, list[Disclosure]] = {s: [] for s in covered}
         unmatched = 0
         for row in rows:
-            resolved = resolve_announcement_symbol(
-                row, name_map=name_map, allowed_symbols=allowed
-            )
+            resolved = resolve_announcement_symbol(row, name_map=name_map, allowed_symbols=allowed)
             if resolved is None:
                 unmatched += 1
                 continue
@@ -755,7 +748,6 @@ class Poller:
             unmatched_or_out_of_watchlist=unmatched,
         )
         return fetched, covered, True
-
 
     def _schedule_pdf_enrichment(self, items: list[PendingPdfEnrich]) -> None:
         """Fire-and-forget enrich so run_once returns after alert delivery."""
@@ -847,9 +839,7 @@ class Poller:
                 if not pdf_url:
                     continue
                 try:
-                    updated = await self.storage.set_disclosure_pdf_url(
-                        item.disclosure_id, pdf_url
-                    )
+                    updated = await self.storage.set_disclosure_pdf_url(item.disclosure_id, pdf_url)
                     if updated:
                         log.info(
                             "disclosure_pdf_url_set",
@@ -1279,9 +1269,7 @@ class Poller:
         deadline = loop.time() + SHUTDOWN_TICK_TIMEOUT_SECONDS
         while True:
             pending = [
-                t
-                for t in (*self._pdf_enrich_tasks, *self._brief_drain_tasks)
-                if not t.done()
+                t for t in (*self._pdf_enrich_tasks, *self._brief_drain_tasks) if not t.done()
             ]
             if not pending:
                 return

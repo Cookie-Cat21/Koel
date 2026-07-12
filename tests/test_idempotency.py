@@ -83,9 +83,7 @@ def test_evaluate_claim_twice_sends_once() -> None:
     snap = make_snapshot(price=105.0, id=50)
     prev = make_previous(price=95.0)
 
-    events = filter_fireable(
-        evaluate_price_rules(snapshot=snap, previous=prev, rules=[rule])
-    )
+    events = filter_fireable(evaluate_price_rules(snapshot=snap, previous=prev, rules=[rule]))
     assert len(events) == 1
     event = events[0]
     msg = format_alert_message(event)

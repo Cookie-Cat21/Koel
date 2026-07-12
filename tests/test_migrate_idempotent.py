@@ -29,33 +29,23 @@ def test_migration_filenames_ordered_and_wave3_presence() -> None:
     assert "006_alert_rule_category.sql" in files
     assert "007_brief_processing_status.sql" in files
     assert "008_sectors.sql" in files
-    assert files.index("005_disclosure_briefs.sql") < files.index(
-        "006_alert_rule_category.sql"
-    )
+    assert files.index("005_disclosure_briefs.sql") < files.index("006_alert_rule_category.sql")
     assert files.index("006_alert_rule_category.sql") < files.index(
         "007_brief_processing_status.sql"
     )
-    assert files.index("007_brief_processing_status.sql") < files.index(
-        "008_sectors.sql"
-    )
+    assert files.index("007_brief_processing_status.sql") < files.index("008_sectors.sql")
 
-    briefs_sql = (migrations_dir() / "005_disclosure_briefs.sql").read_text(
-        encoding="utf-8"
-    )
+    briefs_sql = (migrations_dir() / "005_disclosure_briefs.sql").read_text(encoding="utf-8")
     assert "disclosure_briefs" in briefs_sql
     assert "pdf_url" in briefs_sql
 
-    category_sql = (migrations_dir() / "006_alert_rule_category.sql").read_text(
+    category_sql = (migrations_dir() / "006_alert_rule_category.sql").read_text(encoding="utf-8")
+    assert "alert_rules" in category_sql
+    assert re.search(r"ADD COLUMN IF NOT EXISTS\s+category\b", category_sql, re.IGNORECASE)
+
+    processing_sql = (migrations_dir() / "007_brief_processing_status.sql").read_text(
         encoding="utf-8"
     )
-    assert "alert_rules" in category_sql
-    assert re.search(
-        r"ADD COLUMN IF NOT EXISTS\s+category\b", category_sql, re.IGNORECASE
-    )
-
-    processing_sql = (
-        migrations_dir() / "007_brief_processing_status.sql"
-    ).read_text(encoding="utf-8")
     assert "processing" in processing_sql
 
     sectors_sql = (migrations_dir() / "008_sectors.sql").read_text(encoding="utf-8")
@@ -75,9 +65,7 @@ def test_apply_migrations_twice_idempotent() -> None:
 
     expected = sorted(p.name for p in migrations_dir().glob("*.sql") if p.is_file())
     with psycopg.connect(DATABASE_URL) as conn:
-        rows = conn.execute(
-            "SELECT filename FROM schema_migrations ORDER BY filename"
-        ).fetchall()
+        rows = conn.execute("SELECT filename FROM schema_migrations ORDER BY filename").fetchall()
     applied = [r[0] for r in rows]
     for name in expected:
         assert name in applied

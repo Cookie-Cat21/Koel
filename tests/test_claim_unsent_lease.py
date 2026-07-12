@@ -195,9 +195,7 @@ async def test_claim_unsent_batch_leases_and_excludes() -> None:
     try:
         user_id = await store.ensure_user(telegram_id=9_005_001)
         await store.upsert_stock("C05A.N0000", "C05A")
-        rule = await store.create_alert_rule(
-            user_id, "C05A.N0000", AlertType.PRICE_ABOVE, 10.0
-        )
+        rule = await store.create_alert_rule(user_id, "C05A.N0000", AlertType.PRICE_ABOVE, 10.0)
         snap = await store.insert_snapshot(
             PriceSnapshot(
                 symbol="C05A.N0000",
@@ -255,9 +253,7 @@ async def test_claim_alert_lease_blocks_claim_unsent_until_ok_or_expiry() -> Non
     try:
         user_id = await store.ensure_user(telegram_id=9_005_011)
         await store.upsert_stock("C05C.N0000", "C05C")
-        rule = await store.create_alert_rule(
-            user_id, "C05C.N0000", AlertType.PRICE_ABOVE, 10.0
-        )
+        rule = await store.create_alert_rule(user_id, "C05C.N0000", AlertType.PRICE_ABOVE, 10.0)
         snap = await store.insert_snapshot(
             PriceSnapshot(
                 symbol="C05C.N0000",
@@ -334,9 +330,7 @@ async def test_claim_unsent_batch_skip_locked_concurrent() -> None:
     try:
         user_id = await store_a.ensure_user(telegram_id=9_005_002)
         await store_a.upsert_stock("C05B.N0000", "C05B")
-        rule = await store_a.create_alert_rule(
-            user_id, "C05B.N0000", AlertType.PRICE_BELOW, 50.0
-        )
+        rule = await store_a.create_alert_rule(user_id, "C05B.N0000", AlertType.PRICE_BELOW, 50.0)
         snap = await store_a.insert_snapshot(
             PriceSnapshot(
                 symbol="C05B.N0000",

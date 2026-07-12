@@ -99,9 +99,7 @@ def _pool_for_health(storage: Storage) -> dict[str, object]:
         "requests_waiting",
     ):
         value = raw.get(key)
-        if value is None or (
-            isinstance(value, int | float) and not isinstance(value, bool)
-        ):
+        if value is None or (isinstance(value, int | float) and not isinstance(value, bool)):
             snapshot[key] = value
     return snapshot
 

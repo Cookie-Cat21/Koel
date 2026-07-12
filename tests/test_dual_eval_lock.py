@@ -27,12 +27,8 @@ def test_different_snap_ids_distinct_event_keys() -> None:
     snap_a = make_snapshot(price=105.0, id=10, ts=ts)
     snap_b = make_snapshot(price=105.0, id=11, ts=ts)
 
-    events_a = filter_fireable(
-        evaluate_price_rules(snapshot=snap_a, previous=prev, rules=[rule])
-    )
-    events_b = filter_fireable(
-        evaluate_price_rules(snapshot=snap_b, previous=prev, rules=[rule])
-    )
+    events_a = filter_fireable(evaluate_price_rules(snapshot=snap_a, previous=prev, rules=[rule]))
+    events_b = filter_fireable(evaluate_price_rules(snapshot=snap_b, previous=prev, rules=[rule]))
     assert len(events_a) == 1
     assert len(events_b) == 1
     assert events_a[0].event_key == "price:1:above:100:s10"
@@ -52,9 +48,9 @@ def test_same_snap_id_idempotent_claim() -> None:
     prev = make_previous(price=95.0)
     snap = make_snapshot(price=105.0, id=20)
 
-    key = filter_fireable(
-        evaluate_price_rules(snapshot=snap, previous=prev, rules=[rule])
-    )[0].event_key
+    key = filter_fireable(evaluate_price_rules(snapshot=snap, previous=prev, rules=[rule]))[
+        0
+    ].event_key
     assert key == "price:2:above:100:s20"
 
     assert store.claim_and_send(rule.id, key, "a") is True
@@ -72,12 +68,12 @@ def test_none_snap_id_falls_back_to_minute_price() -> None:
     snap_a = make_snapshot(price=105.0, id=None, ts=ts)
     snap_b = make_snapshot(price=105.0, id=None, ts=ts)
 
-    key_a = filter_fireable(
-        evaluate_price_rules(snapshot=snap_a, previous=prev, rules=[rule])
-    )[0].event_key
-    key_b = filter_fireable(
-        evaluate_price_rules(snapshot=snap_b, previous=prev, rules=[rule])
-    )[0].event_key
+    key_a = filter_fireable(evaluate_price_rules(snapshot=snap_a, previous=prev, rules=[rule]))[
+        0
+    ].event_key
+    key_b = filter_fireable(evaluate_price_rules(snapshot=snap_b, previous=prev, rules=[rule]))[
+        0
+    ].event_key
     assert key_a == key_b
     assert key_a == "price:3:above:100:202607110600:105"
 

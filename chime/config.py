@@ -67,8 +67,8 @@ class Settings:
 
     @classmethod
     def from_env(cls, *, require_token: bool = True) -> Settings:
-        token = _require("TELEGRAM_BOT_TOKEN") if require_token else os.getenv(
-            "TELEGRAM_BOT_TOKEN", ""
+        token = (
+            _require("TELEGRAM_BOT_TOKEN") if require_token else os.getenv("TELEGRAM_BOT_TOKEN", "")
         )
         return cls(
             telegram_bot_token=token,

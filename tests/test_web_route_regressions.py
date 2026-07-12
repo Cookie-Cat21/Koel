@@ -172,7 +172,7 @@ def test_symbols_list_query_validation_static() -> None:
     assert "const DEFAULT_LIMIT = 50;" in source
     assert "const MAX_LIMIT = 200;" in source
     assert "Math.min(limit, MAX_LIMIT)" in source
-    assert 'limit < 1) limit = DEFAULT_LIMIT' in source or (
+    assert "limit < 1) limit = DEFAULT_LIMIT" in source or (
         "limit < 1" in source and "DEFAULT_LIMIT" in source
     )
     # Sort whitelist: only symbol|change_pct; anything else → change_pct.
@@ -238,9 +238,7 @@ def test_market_movers_route_static() -> None:
 def test_market_movers_route_unit() -> None:
     """Runtime: sign filter, invalid direction 400, finite egress, session/CSRF."""
     assert UNIT_MOVERS_MTS.is_file(), f"missing {UNIT_MOVERS_MTS}"
-    assert (
-        WEB / "src" / "app" / "api" / "v1" / "market" / "movers" / "route.ts"
-    ).is_file()
+    assert (WEB / "src" / "app" / "api" / "v1" / "market" / "movers" / "route.ts").is_file()
     _require_web_node_modules()
     npx = _npx()
     staged = WEB / ".web_movers_route_unit.mts"
@@ -376,17 +374,7 @@ def test_sectors_route_static() -> None:
 
 def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:
     """Wave2/3: disclosures API LEFT JOINs briefs; sanitizes pdf_url/brief egress."""
-    route = (
-        WEB
-        / "src"
-        / "app"
-        / "api"
-        / "v1"
-        / "symbols"
-        / "[symbol]"
-        / "disclosures"
-        / "route.ts"
-    )
+    route = WEB / "src" / "app" / "api" / "v1" / "symbols" / "[symbol]" / "disclosures" / "route.ts"
     assert route.is_file()
     source = route.read_text(encoding="utf-8")
     assert "requireSession" in source
@@ -434,7 +422,7 @@ def test_disclosure_safe_helpers_fence() -> None:
     assert "safeAnnouncementUrl" in source
     assert "safeFilingHref" in source
     assert "sanitizeBriefText" in source
-    assert 'briefStatus !== "ready"' in source or "briefStatus !== \"ready\"" in source
+    assert 'briefStatus !== "ready"' in source or 'briefStatus !== "ready"' in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
         for line in source.splitlines()
@@ -445,17 +433,7 @@ def test_disclosure_safe_helpers_fence() -> None:
 def test_disclosures_route_brief_pdf_unit() -> None:
     """Runtime: LEFT JOIN mapping + XSS egress nulling; SQL never mentions cse.lk."""
     assert UNIT_DISCLOSURES_MTS.is_file(), f"missing {UNIT_DISCLOSURES_MTS}"
-    route = (
-        WEB
-        / "src"
-        / "app"
-        / "api"
-        / "v1"
-        / "symbols"
-        / "[symbol]"
-        / "disclosures"
-        / "route.ts"
-    )
+    route = WEB / "src" / "app" / "api" / "v1" / "symbols" / "[symbol]" / "disclosures" / "route.ts"
     assert route.is_file()
     _require_web_node_modules()
     npx = _npx()
@@ -479,4 +457,3 @@ def test_disclosures_route_brief_pdf_unit() -> None:
             f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
         )
     assert "WEB_DISCLOSURES_ROUTE_UNIT_OK" in proc.stdout
-
