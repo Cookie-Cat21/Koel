@@ -24,6 +24,15 @@ export function healthProxyTimeoutMs(): number {
   return n;
 }
 
+type BriefQueueHint = {
+  pending_briefs?: number;
+  pdf_enrich?: {
+    in_flight_tasks?: number;
+    last_batch_size?: number;
+    batches_started?: number;
+  };
+};
+
 type PollerHealth = {
   last_tick_at?: string | null;
   last_tick_ok?: boolean;
@@ -33,8 +42,46 @@ type PollerHealth = {
   last_error?: string | null;
   watched_missing?: string[];
   circuits?: Record<string, unknown>;
+  /** Ops hint only — never drives ok/degraded. */
+  brief_queue?: BriefQueueHint;
   [key: string]: unknown;
 };
+
+/** Parse loopback health `brief_queue` (fail-soft; omit empty). */
+export function parseBriefQueue(raw: unknown): BriefQueueHint | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const obj = raw as Record<string, unknown>;
+  const hint: BriefQueueHint = {};
+
+  if (
+    typeof obj.pending_briefs === "number" &&
+    Number.isFinite(obj.pending_briefs) &&
+    obj.pending_briefs >= 0
+  ) {
+    hint.pending_briefs = Math.floor(obj.pending_briefs);
+  }
+
+  const pe = obj.pdf_enrich;
+  if (pe && typeof pe === "object" && !Array.isArray(pe)) {
+    const src = pe as Record<string, unknown>;
+    const pdf: NonNullable<BriefQueueHint["pdf_enrich"]> = {};
+    for (const key of [
+      "in_flight_tasks",
+      "last_batch_size",
+      "batches_started",
+    ] as const) {
+      const v = src[key];
+      if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+        pdf[key] = Math.floor(v);
+      }
+    }
+    if (Object.keys(pdf).length > 0) {
+      hint.pdf_enrich = pdf;
+    }
+  }
+
+  return Object.keys(hint).length > 0 ? hint : undefined;
+}
 
 /**
  * GET /api/v1/health — ops-gated (valid session). DB ping + optional poller proxy.
@@ -117,10 +164,17 @@ export async function GET(request: NextRequest) {
             !Array.isArray(body.circuits)
               ? (body.circuits as Record<string, unknown>)
               : undefined,
+          brief_queue: parseBriefQueue(body.brief_queue),
         };
         // Prefer nested poller if present
         if (body.poller && typeof body.poller === "object") {
-          poller = { ...poller, ...(body.poller as PollerHealth) };
+          const nested = body.poller as PollerHealth;
+          const nestedBrief = parseBriefQueue(nested.brief_queue);
+          poller = {
+            ...poller,
+            ...nested,
+            brief_queue: nestedBrief ?? poller.brief_queue,
+          };
         }
       }
     } catch (err) {

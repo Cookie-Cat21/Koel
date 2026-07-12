@@ -25,6 +25,14 @@ type HealthBody = {
     disclosure_poll_ok?: boolean;
     last_error?: string | null;
     watched_missing?: string[];
+    brief_queue?: {
+      pending_briefs?: number;
+      pdf_enrich?: {
+        in_flight_tasks?: number;
+        last_batch_size?: number;
+        batches_started?: number;
+      };
+    };
   } | null;
 };
 
@@ -196,10 +204,65 @@ async function testHealthProxyTimeoutAbortsAndDegrades(): Promise<void> {
   delete process.env.HEALTH_PROXY_TIMEOUT_MS;
 }
 
+async function testBriefQueueForwardedWithoutDegrading(): Promise<void> {
+  installDbPool();
+  process.env.DASH_SESSION_SECRET = SECRET;
+  process.env.HEALTH_URL = "http://poller.local/health";
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    assert(url === process.env.HEALTH_URL, `unexpected health fetch URL ${url}`);
+    return new Response(
+      JSON.stringify({
+        started_at: "2026-07-11T00:00:00.000Z",
+        last_tick_at: "2026-07-11T04:30:00.000Z",
+        last_tick_ok: true,
+        price_poll_ok: true,
+        disclosure_poll_ok: true,
+        last_error: null,
+        watched_missing: [],
+        brief_queue: {
+          pending_briefs: 4,
+          pdf_enrich: {
+            in_flight_tasks: 1,
+            last_batch_size: 3,
+            batches_started: 2,
+          },
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const res = await healthGet(makeRequest());
+    const body = await readBody(res);
+    assert(res.status === 200, `brief_queue hint must not degrade, got ${res.status}`);
+    assert(body.status === "ok", `expected ok, got ${body.status}`);
+    assert(body.poller?.brief_queue?.pending_briefs === 4, "pending_briefs forwarded");
+    assert(
+      body.poller?.brief_queue?.pdf_enrich?.in_flight_tasks === 1,
+      "pdf_enrich.in_flight_tasks forwarded",
+    );
+    assert(
+      body.poller?.brief_queue?.pdf_enrich?.last_batch_size === 3,
+      "pdf_enrich.last_batch_size forwarded",
+    );
+    assert(
+      body.poller?.brief_queue?.pdf_enrich?.batches_started === 2,
+      "pdf_enrich.batches_started forwarded",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 async function main(): Promise<void> {
   await testWatchedMissingDegradesRoute();
   await testUnreachableHealthUrlDegradesRoute();
   await testHealthProxyTimeoutAbortsAndDegrades();
+  await testBriefQueueForwardedWithoutDegrading();
   console.log("WEB_HEALTH_ROUTE_UNIT_OK");
 }
 

@@ -14,6 +14,15 @@ export const metadata = {
 /** Health timestamps older than this need explicit ops attention. */
 const STALE_HEALTH_AGE_MS = 24 * 60 * 60 * 1000;
 
+type BriefQueueHint = {
+  pending_briefs?: number;
+  pdf_enrich?: {
+    in_flight_tasks?: number;
+    last_batch_size?: number;
+    batches_started?: number;
+  };
+};
+
 type HealthPayload = {
   status: "ok" | "degraded";
   db_ok: boolean;
@@ -28,6 +37,8 @@ type HealthPayload = {
     last_error?: string | null;
     watched_missing?: string[];
     circuits?: Record<string, { state?: string; failures?: number }>;
+    /** Ops hint only — omit section when absent. */
+    brief_queue?: BriefQueueHint;
   } | null;
 };
 
@@ -46,6 +57,7 @@ export default async function HealthPage() {
   const ok = status === "ok";
   const missing = payload?.poller?.watched_missing ?? [];
   const circuits = payload?.poller?.circuits ?? null;
+  const briefQueue = payload?.poller?.brief_queue ?? null;
   const snapshotAge = timestampAge(payload?.last_snapshot_at);
   const tickAge = timestampAge(payload?.poller?.last_tick_at);
   const pollerUnreachable =
@@ -216,6 +228,51 @@ export default async function HealthPage() {
                       value={`${snap?.state ?? "—"} (failures ${String(snap?.failures ?? "—")})`}
                     />
                   ))}
+                </dl>
+              </section>
+            )}
+
+            {briefQueue != null && (
+              <section className="mt-10 border-t border-border/60 pt-6">
+                <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                  Brief queue
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Ops hint only — does not change health status.
+                </p>
+                <dl className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Row
+                    label="Pending briefs"
+                    value={
+                      typeof briefQueue.pending_briefs === "number"
+                        ? String(briefQueue.pending_briefs)
+                        : "—"
+                    }
+                  />
+                  <Row
+                    label="PDF enrich in-flight"
+                    value={
+                      typeof briefQueue.pdf_enrich?.in_flight_tasks === "number"
+                        ? String(briefQueue.pdf_enrich.in_flight_tasks)
+                        : "—"
+                    }
+                  />
+                  <Row
+                    label="PDF enrich last batch"
+                    value={
+                      typeof briefQueue.pdf_enrich?.last_batch_size === "number"
+                        ? String(briefQueue.pdf_enrich.last_batch_size)
+                        : "—"
+                    }
+                  />
+                  <Row
+                    label="PDF enrich batches started"
+                    value={
+                      typeof briefQueue.pdf_enrich?.batches_started === "number"
+                        ? String(briefQueue.pdf_enrich.batches_started)
+                        : "—"
+                    }
+                  />
                 </dl>
               </section>
             )}
