@@ -13,6 +13,7 @@ import {
 import { toNonNegativeSafeInt, toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
+import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { alertTypeLabel, formatTs } from "@/lib/format";
 
@@ -168,7 +169,7 @@ export default async function AlertHistoryPage({
             rule_id,
             symbol,
             type: r.type,
-            fired_at: typeof r.fired_at === "string" && r.fired_at ? r.fired_at : null,
+            fired_at: toIso(r.fired_at),
             message_sent: Boolean(r.message_sent),
             dead_lettered: Boolean(r.dead_lettered),
             attempt_count,

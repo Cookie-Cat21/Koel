@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { SESSION_TTL_SECONDS, type DashAuthConfig } from "./config";
 
 export type SessionPayload = {
@@ -11,6 +12,9 @@ export type SessionPayload = {
   sid: string;
   v: 1;
 };
+
+/** Cap hostile sid strings in forged cookies (mint uses 32 hex chars). */
+export const MAX_SESSION_SID_LENGTH = 64;
 
 function b64url(buf: Buffer | string): string {
   const b = typeof buf === "string" ? Buffer.from(buf, "utf8") : buf;
@@ -53,18 +57,15 @@ export function verifySessionToken(
 
   try {
     const json = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    if (
-      json?.v !== 1 ||
-      typeof json.user_id !== "number" ||
-      !Number.isSafeInteger(json.user_id) ||
-      json.user_id <= 0 ||
-      typeof json.exp !== "number" ||
-      typeof json.sid !== "string"
-    ) {
-      return null;
-    }
+    if (json?.v !== 1) return null;
+    // Digits-only SafeInteger — reject float / oversized aliases.
+    const user_id = toSafePositiveInt(json.user_id);
+    if (user_id == null) return null;
+    if (typeof json.exp !== "number" || !Number.isFinite(json.exp)) return null;
+    if (typeof json.sid !== "string" || !json.sid) return null;
+    if (json.sid.length > MAX_SESSION_SID_LENGTH) return null;
     if (json.exp < Math.floor(Date.now() / 1000)) return null;
-    return json as SessionPayload;
+    return { user_id, exp: json.exp, sid: json.sid, v: 1 };
   } catch {
     return null;
   }

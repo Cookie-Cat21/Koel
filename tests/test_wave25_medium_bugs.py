@@ -87,8 +87,12 @@ def test_symbols_and_movers_use_safe_integer_limits() -> None:
     movers = WEB / "src" / "app" / "api" / "v1" / "market" / "movers" / "route.ts"
     for path in (symbols, movers):
         source = path.read_text(encoding="utf-8")
-        assert "Number.isSafeInteger(limit)" in source
+        # Digits-only helpers — reject float trunc / sci-notation soft-accept.
+        assert "toSafePositiveInt" in source
+        assert "Number.parseInt" not in source
         assert "Number.isFinite(limit)" not in source
     symbols_src = symbols.read_text(encoding="utf-8")
-    assert "Number.isSafeInteger(offset)" in symbols_src
+    assert "toNonNegativeSafeInt" in symbols_src
     assert "Number.isFinite(offset)" not in symbols_src
+    movers_src = movers.read_text(encoding="utf-8")
+    assert 'toSafePositiveInt(sp.get("limit")' in movers_src

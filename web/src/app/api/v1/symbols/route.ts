@@ -5,6 +5,7 @@ import {
   MAX_SYMBOLS_OFFSET,
   normalizeMarketQuery,
 } from "@/lib/api/market-query";
+import { toNonNegativeSafeInt, toSafePositiveInt } from "@/lib/api/safe-int";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
 import { getPool } from "@/lib/db";
@@ -27,12 +28,12 @@ export async function GET(request: NextRequest) {
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;
-  let limit = Number.parseInt(sp.get("limit") ?? String(DEFAULT_LIMIT), 10);
-  // SafeInteger — reject precision-loss / float-coerced limits.
-  if (!Number.isSafeInteger(limit) || limit < 1) limit = DEFAULT_LIMIT;
+  // Digits-only SafeInteger — reject float trunc / sci-notation soft-accept.
+  const limitParsed = toSafePositiveInt(sp.get("limit") ?? String(DEFAULT_LIMIT));
+  let limit = limitParsed == null ? DEFAULT_LIMIT : limitParsed;
   limit = Math.min(limit, MAX_LIMIT);
-  let offset = Number.parseInt(sp.get("offset") ?? "0", 10);
-  if (!Number.isSafeInteger(offset) || offset < 0) offset = 0;
+  const offsetParsed = toNonNegativeSafeInt(sp.get("offset") ?? "0", -1);
+  let offset = offsetParsed < 0 ? 0 : offsetParsed;
   offset = Math.min(offset, MAX_SYMBOLS_OFFSET);
 
   const q = normalizeMarketQuery(sp.get("q"));

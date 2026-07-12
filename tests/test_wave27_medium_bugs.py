@@ -63,7 +63,9 @@ def test_symbols_and_movers_use_safe_integer_limits() -> None:
         "src/app/api/v1/market/movers/route.ts",
     ):
         source = (WEB / rel).read_text(encoding="utf-8")
-        assert "Number.isSafeInteger(limit)" in source
+        # Digits-only helpers — reject float trunc / sci-notation soft-accept.
+        assert "toSafePositiveInt" in source
+        assert "Number.parseInt" not in source
         assert "Number.isFinite(limit)" not in source
 
 

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { queryMarketBrowse } from "@/lib/api/market-browse";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
 import { getPool } from "@/lib/db";
@@ -36,9 +37,9 @@ export async function GET(request: NextRequest) {
     direction = directionRaw;
   }
 
-  let limit = Number.parseInt(sp.get("limit") ?? String(DEFAULT_LIMIT), 10);
-  // SafeInteger — reject precision-loss / float-coerced limits.
-  if (!Number.isSafeInteger(limit) || limit < 1) limit = DEFAULT_LIMIT;
+  // Digits-only SafeInteger — reject float trunc / sci-notation soft-accept.
+  const limitParsed = toSafePositiveInt(sp.get("limit") ?? String(DEFAULT_LIMIT));
+  let limit = limitParsed == null ? DEFAULT_LIMIT : limitParsed;
   limit = Math.min(limit, MAX_LIMIT);
 
   const sort = direction === "down" ? "change_pct_asc" : "change_pct";

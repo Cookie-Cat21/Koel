@@ -16,7 +16,9 @@ import {
   MAX_MARKET_Q_LENGTH,
   normalizeMarketQuery,
 } from "@/lib/api/market-query";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
+import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
 
@@ -86,7 +88,6 @@ function asMarketItems(body: unknown): MarketItem[] | null {
         MAX_HISTORY_SYMBOL_LENGTH,
       ) ?? "";
     if (!symbol) continue;
-    const tsRaw = r.ts;
     out.push({
       symbol,
       name: sanitizeDisclosureText(
@@ -100,7 +101,8 @@ function asMarketItems(body: unknown): MarketItem[] | null {
       price: finiteOrNull(r.price),
       change: finiteOrNull(r.change),
       change_pct: finiteOrNull(r.change_pct),
-      ts: typeof tsRaw === "string" && tsRaw ? tsRaw : null,
+      // Fail-closed ISO — no raw overlong / control-laden ts echo.
+      ts: toIso(r.ts),
     });
   }
   return out;
@@ -122,17 +124,11 @@ function asSectorItems(body: unknown): SectorItem[] | null {
         MAX_SECTOR_NAME_LENGTH,
       ) ?? "";
     if (!name) continue;
-    const sectorIdRaw = finiteOrNull(r.sector_id);
-    // SafeInteger only — floats / unsafe ints must not become React keys.
-    if (
-      sectorIdRaw == null ||
-      !Number.isSafeInteger(sectorIdRaw) ||
-      sectorIdRaw <= 0
-    ) {
-      continue;
-    }
+    // Digits-only SafeInteger — Number(oversized) used to precision-lose keys.
+    const sectorId = toSafePositiveInt(r.sector_id);
+    if (sectorId == null) continue;
     out.push({
-      sector_id: sectorIdRaw,
+      sector_id: sectorId,
       name,
       change_pct: finiteOrNull(r.change_pct),
     });

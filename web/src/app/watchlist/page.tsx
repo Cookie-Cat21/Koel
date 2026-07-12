@@ -16,6 +16,7 @@ import {
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import { serverApiGet } from "@/lib/api/server-fetch";
+import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
 
@@ -88,7 +89,7 @@ export default async function WatchlistPage() {
             price,
             change,
             change_pct,
-            ts: typeof r.ts === "string" && r.ts ? r.ts : null,
+            ts: toIso(r.ts),
           });
         }
         payload = { items };

@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/disclosure-safe";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
+import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { alertTypeLabel, formatNumber, formatTs } from "@/lib/format";
 
@@ -94,10 +95,7 @@ export default async function AlertsPage({
             ),
             active: Boolean(r.active),
             armed: Boolean(r.armed),
-            created_at:
-              typeof r.created_at === "string" && r.created_at
-                ? r.created_at
-                : null,
+            created_at: toIso(r.created_at),
           });
         }
         payload = { rules };

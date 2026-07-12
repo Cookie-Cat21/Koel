@@ -25,6 +25,7 @@ import {
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
+import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
 
@@ -62,7 +63,7 @@ type SymbolPayload = {
   name: string | null;
   sector: string | null;
   last: {
-    price: number | null;
+    price: number;
     change: number | null;
     change_pct: number | null;
     volume: number | null;
@@ -110,14 +111,18 @@ function parseSymbolPayload(body: unknown): SymbolPayload | null {
   let last: SymbolPayload["last"] = null;
   if (r.last != null && typeof r.last === "object" && !Array.isArray(r.last)) {
     const L = r.last as Record<string, unknown>;
-    const tsRaw = L.ts;
-    last = {
-      price: finiteOrNull(L.price),
-      change: finiteOrNull(L.change),
-      change_pct: finiteOrNull(L.change_pct),
-      volume: finiteOrNull(L.volume),
-      ts: typeof tsRaw === "string" && tsRaw ? tsRaw : null,
-    };
+    const price = finiteOrNull(L.price);
+    // Require a finite price — null-only last stubs confuse the quote strip.
+    if (price != null) {
+      last = {
+        price,
+        change: finiteOrNull(L.change),
+        change_pct: finiteOrNull(L.change_pct),
+        volume: finiteOrNull(L.volume),
+        // Fail-closed ISO — no raw overlong / control-laden ts echo.
+        ts: toIso(L.ts),
+      };
+    }
   }
   return {
     symbol,
@@ -144,9 +149,9 @@ function parseSnapshotsPayload(body: unknown): SnapshotsPayload {
   for (const row of pointsRaw) {
     if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
     const r = row as Record<string, unknown>;
-    const tsRaw = r.ts;
     points.push({
-      ts: typeof tsRaw === "string" && tsRaw ? tsRaw : null,
+      // Fail-closed ISO — no raw overlong / control-laden ts echo.
+      ts: toIso(r.ts),
       price: finiteOrNull(r.price),
       change_pct: finiteOrNull(r.change_pct),
     });
@@ -191,8 +196,8 @@ function parseDisclosuresPayload(body: unknown): DisclosuresPayload {
         MAX_DISCLOSURE_CATEGORY_LENGTH,
       ),
       url: typeof r.url === "string" ? r.url : null,
-      published_at:
-        typeof publishedRaw === "string" && publishedRaw ? publishedRaw : null,
+      // Fail-closed ISO — no raw overlong / control-laden ts echo.
+      published_at: toIso(publishedRaw),
       company_name: sanitizeDisclosureText(
         typeof r.company_name === "string" ? r.company_name : null,
         MAX_DISCLOSURE_COMPANY_LENGTH,
