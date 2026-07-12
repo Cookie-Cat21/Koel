@@ -74,6 +74,8 @@ jobs:
       - name: Install package + dev deps
         run: pip install -e ".[dev]"
 
+      # Applies db/migrations/*.sql in sorted order (incl. 007 briefs status,
+      # 008 sectors). Presence pinned in tests/test_migrate_idempotent.py.
       - name: Apply migrations
         run: python -m chime.migrate
 
@@ -134,6 +136,8 @@ jobs:
           DASH_SESSION_SECRET: ci-smoke-secret-not-for-prod
           DASH_DEMO_AUTH: "0"
 
+      # Smoke: /login, /api/v1/health, mutate gate, plus wave6 browse
+      # (/market + /api/v1/symbols|market/movers|sectors session-closed).
       - name: Dash smoke (next start + curl)
         working-directory: .
         run: bash scripts/factory/dash_smoke.sh

@@ -31,7 +31,7 @@ type MarketItem = {
   ts: string | null;
 };
 
-/** Thin sector board row — name + change% only (not a screener). */
+/** Thin sector board row — name + change% only. */
 type SectorItem = {
   sector_id: number;
   name: string;
@@ -256,7 +256,7 @@ export default async function MarketPage({
               Sectors
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              CSE sector index change from the latest poll — not a screener.
+              CSE sector index change from the latest poll — name and change only.
             </p>
             {(sectorItems ?? []).length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">

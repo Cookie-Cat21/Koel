@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Dashboard smoke (E6-Q01) — curl: GET /login + GET /api/v1/health.
+# Dashboard smoke (E6-Q01) — curl: GET /login + GET /api/v1/health +
+# wave6 browse session gates (/market, /api/v1/symbols|movers|sectors).
 #
 # Mutate happy path (POST/DELETE watchlist|alerts) needs a signed
 # chime_session cookie + matching X-CSRF-Token (ADR 001). This smoke does
@@ -112,5 +113,34 @@ else
   cat /tmp/chime-dash-mutate.body || true
   exit 1
 fi
+
+
+# Wave6 browse routes: session-gated GETs must fail closed without a cookie.
+# Pages redirect to /login; APIs return 401 (or 503 if secret unset).
+market_code="$(curl -sS -o /dev/null -w '%{http_code}' "${BASE}/market" || true)"
+if [[ "${market_code}" == "307" || "${market_code}" == "302" || "${market_code}" == "303" ]]; then
+  echo "dash_smoke: OK GET /market (no session) → ${market_code} (redirect login)"
+elif [[ "${market_code}" == "200" ]]; then
+  # next start may follow internal redirect into login HTML — still proves route.
+  echo "dash_smoke: OK GET /market → 200 (login shell without session)"
+else
+  echo "dash_smoke: FAIL GET /market → ${market_code} (expected redirect or login 200)"
+  exit 1
+fi
+
+for path in \
+  "/api/v1/symbols" \
+  "/api/v1/market/movers" \
+  "/api/v1/sectors"; do
+  code="$(curl -sS -o "/tmp/chime-dash-browse.body" -w '%{http_code}' \
+    "${BASE}${path}" || true)"
+  if [[ "${code}" == "401" || "${code}" == "503" ]]; then
+    echo "dash_smoke: OK GET ${path} (no session) → ${code}"
+  else
+    echo "dash_smoke: FAIL GET ${path} → ${code} (expected 401 or 503)"
+    cat /tmp/chime-dash-browse.body || true
+    exit 1
+  fi
+done
 
 echo "DASH_SMOKE_OK BASE=${BASE} HEAD=$(cd "$ROOT" && git rev-parse HEAD)"

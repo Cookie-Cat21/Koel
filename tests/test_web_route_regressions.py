@@ -300,6 +300,7 @@ def test_market_page_and_nav_browse_link() -> None:
     market_src = market.read_text(encoding="utf-8")
     assert "/api/v1/symbols" in market_src
     assert "/api/v1/market/movers" in market_src
+    assert "/api/v1/sectors" in market_src
     assert "direction=up" in market_src
     assert "direction=down" in market_src
     assert "Top movers" in market_src
@@ -334,7 +335,12 @@ def test_market_page_fence_no_screener_or_quote_board() -> None:
         "volume",
         "dangerouslySetInnerHTML",
     )
-    hits = [tok for tok in forbidden if tok in market_src]
+    hits: list[str] = []
+    for tok in forbidden:
+        for line in market_src.splitlines():
+            if tok in line and not _is_comment_only_hit(line, tok):
+                hits.append(tok)
+                break
     assert hits == [], f"screener/quote-board fence tokens on /market: {hits}"
     assert 'sort: "change_pct"' in market_src or "sort=change_pct" in market_src
     assert "sort=symbol" not in market_src
@@ -342,6 +348,31 @@ def test_market_page_fence_no_screener_or_quote_board() -> None:
     assert "Top movers" in market_src
     assert "/api/v1/market/movers?direction=up&limit=5" in market_src
     assert "/api/v1/market/movers?direction=down&limit=5" in market_src
+    # Wave6: optional sectors strip (Postgres /api/v1/sectors; thin browse only).
+    assert "/api/v1/sectors" in market_src
+    assert 'aria-labelledby="sectors-heading"' in market_src
+
+
+def test_sectors_route_static() -> None:
+    """Wave6: GET /api/v1/sectors reads Postgres sectors; session GET; no cse.lk."""
+    route = WEB / "src" / "app" / "api" / "v1" / "sectors" / "route.ts"
+    assert route.is_file()
+    source = route.read_text(encoding="utf-8")
+    assert "requireSession" in source
+    assert "requireSessionAndCsrf" not in source
+    assert "FROM sectors" in source
+    assert "ORDER BY change_pct DESC NULLS LAST" in source
+    assert "getPool" in source
+    assert "jsonOk({ items })" in source or "jsonOk({ items" in source
+    # Thin fence: not a heatmap / multi-filter board (comments may negate).
+    for tok in ("heatmap", "cse.lk", "allSectors"):
+        hits = [
+            line.strip()
+            for line in source.splitlines()
+            if tok in line.lower() and not _is_comment_only_hit(line, tok)
+        ]
+        assert hits == [], f"sectors route must not use {tok}: {hits}"
+
 
 def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:
     """Wave2/3: disclosures API LEFT JOINs briefs; sanitizes pdf_url/brief egress."""
