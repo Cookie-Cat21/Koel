@@ -4,11 +4,11 @@ import {
   MAX_SECTOR_INDEX_CODE_LENGTH,
   MAX_SECTOR_INDEX_NAME_LENGTH,
   MAX_SECTOR_NAME_LENGTH,
-  MAX_SECTOR_SYMBOL_LENGTH,
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
+import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
@@ -69,10 +69,8 @@ export async function GET(request: NextRequest) {
       const name = sanitizeDisclosureText(row.name, MAX_SECTOR_NAME_LENGTH);
       // Blank / control-only names are useless — drop rather than egress "".
       if (!name) return [];
-      const symbol = sanitizeDisclosureText(
-        row.symbol,
-        MAX_SECTOR_SYMBOL_LENGTH,
-      );
+      // Fail closed — only CSE SYMBOL_RE (sector codes like EGY; no sanitize junk).
+      const symbol = normalizeSymbol(row.symbol);
       if (!symbol) return [];
       return [
         {

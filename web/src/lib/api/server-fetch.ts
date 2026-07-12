@@ -170,10 +170,10 @@ export async function serverApiGet(path: string): Promise<Response> {
         headers: { "Content-Type": "application/json; charset=utf-8" },
       });
     }
-    // Force JSON — never reflect a hostile upstream Content-Type into pages.
+    // Force JSON — never reflect a hostile upstream Content-Type / statusText
+    // into pages (statusText used to echo unbounded Reason-Phrase junk).
     return new Response(rawText, {
       status: res.status,
-      statusText: res.statusText,
       headers: { "Content-Type": "application/json; charset=utf-8" },
     });
   } catch {
