@@ -114,12 +114,40 @@ async function testPostFilterDropsNullPctAfterFinite(): Promise<void> {
       ts: null,
     },
     {
+      symbol: "NAN.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: null,
+      change_pct: "NaN",
+      ts: null,
+    },
+    {
+      symbol: "NEGINF.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: null,
+      change_pct: "-Infinity",
+      ts: null,
+    },
+    {
       symbol: "FLAT.N0000",
       name: null,
       sector: null,
       price: "1",
       change: "0",
       change_pct: "0",
+      ts: null,
+    },
+    {
+      // Wrong sign after finite coerce must not label as a gainer.
+      symbol: "LOSER.N0000",
+      name: null,
+      sector: null,
+      price: "10",
+      change: "-0.5",
+      change_pct: "-1.2",
       ts: null,
     },
   ]);
@@ -129,6 +157,89 @@ async function testPostFilterDropsNullPctAfterFinite(): Promise<void> {
   const only = body.items![0] as Record<string, unknown>;
   assert(only.symbol === "JKH.N0000", `expected JKH, got ${only.symbol}`);
   assert(only.change_pct === 1.35, `JKH pct finite, got ${only.change_pct}`);
+}
+
+async function testPostFilterDownDropsNonFiniteWrongSignAndFlat(): Promise<void> {
+  const { res, body } = await call("direction=down&limit=5", [
+    {
+      symbol: "COMB.N0000",
+      name: "Commercial Bank",
+      sector: null,
+      price: "95.5",
+      change: "-1.4",
+      change_pct: "-1.44",
+      ts: new Date("2026-07-11T09:00:00Z"),
+    },
+    {
+      symbol: "BAD.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: null,
+      change_pct: "-Infinity",
+      ts: null,
+    },
+    {
+      symbol: "NAN.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: null,
+      change_pct: "NaN",
+      ts: null,
+    },
+    {
+      symbol: "FLAT.N0000",
+      name: null,
+      sector: null,
+      price: "1",
+      change: "0",
+      change_pct: "0",
+      ts: null,
+    },
+    {
+      // Opposite sign must not appear under direction=down.
+      symbol: "GAIN.N0000",
+      name: null,
+      sector: null,
+      price: "10",
+      change: "0.5",
+      change_pct: "1.2",
+      ts: null,
+    },
+  ]);
+  assert(res.status === 200, `down post-filter should 200, got ${res.status}`);
+  assert(Array.isArray(body.items), "items array");
+  assert(
+    body.items!.length === 1,
+    `only finite loser kept, got ${body.items!.length}`,
+  );
+  const only = body.items![0] as Record<string, unknown>;
+  assert(only.symbol === "COMB.N0000", `expected COMB, got ${only.symbol}`);
+  assert(only.change_pct === -1.44, `COMB pct finite, got ${only.change_pct}`);
+  assert(only.price === 95.5, `COMB price finite, got ${only.price}`);
+}
+
+async function testFinitePriceNullDoesNotDropFinitePctMover(): Promise<void> {
+  // Drop fence is change_pct only — non-finite price nulls out but row stays.
+  const { res, body } = await call("direction=up&limit=3", [
+    {
+      symbol: "JKH.N0000",
+      name: "John Keells",
+      sector: null,
+      price: "NaN",
+      change: "Infinity",
+      change_pct: "2.5",
+      ts: new Date("2026-07-11T09:00:00Z"),
+    },
+  ]);
+  assert(res.status === 200, `finite pct mover should 200, got ${res.status}`);
+  assert(Array.isArray(body.items) && body.items.length === 1, "row kept");
+  const row = body.items![0] as Record<string, unknown>;
+  assert(row.symbol === "JKH.N0000", "finite pct gainer kept");
+  assert(row.price === null, `non-finite price → null, got ${row.price}`);
+  assert(row.change === null, `non-finite change → null, got ${row.change}`);
+  assert(row.change_pct === 2.5, `finite pct kept, got ${row.change_pct}`);
 }
 
 async function testDirectionDownSignFilter(): Promise<void> {
@@ -219,10 +330,18 @@ async function testDbErrorDoesNotDiscloseInternals(): Promise<void> {
 
 async function testFiniteEgressAndNoQFilter(): Promise<void> {
   assert(toFiniteNumber(null) === null, "null → null");
+  assert(toFiniteNumber(undefined) === null, "undefined → null");
   assert(toFiniteNumber(NaN) === null, "NaN → null");
   assert(toFiniteNumber(Infinity) === null, "Infinity → null");
+  assert(toFiniteNumber(-Infinity) === null, "-Infinity → null");
+  assert(toFiniteNumber("Infinity") === null, "Infinity string → null");
+  assert(toFiniteNumber("-Infinity") === null, "-Infinity string → null");
+  assert(toFiniteNumber("NaN") === null, "NaN string → null");
   assert(toFiniteNumber("1.25") === 1.25, "numeric string → number");
+  assert(toFiniteNumber(0) === 0, "zero kept");
+  assert(toFiniteNumber(-3.5) === -3.5, "negative finite kept");
   assert(toFiniteNumber("nope") === null, "non-numeric → null");
+  assert(toFiniteNumber("") === 0, "empty string Number('') → 0");
 
   const { res, body, captured } = await call(
     "direction=up&limit=3",
@@ -268,6 +387,8 @@ async function testCaseInsensitiveDirection(): Promise<void> {
 async function main(): Promise<void> {
   await testDefaultDirectionUpAndLimit();
   await testPostFilterDropsNullPctAfterFinite();
+  await testPostFilterDownDropsNonFiniteWrongSignAndFlat();
+  await testFinitePriceNullDoesNotDropFinitePctMover();
   await testDirectionDownSignFilter();
   await testInvalidDirectionRejected();
   await testLimitClampAndInvalidFallback();

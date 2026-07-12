@@ -7,6 +7,7 @@
 import { NextRequest } from "next/server";
 
 import { GET as symbolsGet } from "./src/app/api/v1/symbols/route.ts";
+import { toFiniteNumber } from "./src/lib/api/market-browse.ts";
 import {
   MAX_MARKET_Q_LENGTH,
   MAX_SYMBOLS_OFFSET,
@@ -260,6 +261,77 @@ async function testQueryLengthCapAndOffsetClamp(): Promise<void> {
   );
 }
 
+async function testFiniteNumberEgress(): Promise<void> {
+  // Shared browse coerce (w13): NaN/±Infinity → null; symbols keep the row.
+  assert(toFiniteNumber(null) === null, "null → null");
+  assert(toFiniteNumber(NaN) === null, "NaN → null");
+  assert(toFiniteNumber(Infinity) === null, "Infinity → null");
+  assert(toFiniteNumber(-Infinity) === null, "-Infinity → null");
+  assert(toFiniteNumber("Infinity") === null, "Infinity string → null");
+  assert(toFiniteNumber("-Infinity") === null, "-Infinity string → null");
+  assert(toFiniteNumber("NaN") === null, "NaN string → null");
+  assert(toFiniteNumber("22.5") === 22.5, "numeric string → number");
+  assert(toFiniteNumber(-1.44) === -1.44, "negative finite kept");
+  assert(toFiniteNumber("nope") === null, "non-numeric → null");
+
+  const { res, body } = await call("limit=10", [
+    {
+      symbol: "JKH.N0000",
+      name: "John Keells",
+      sector: "Diversified",
+      price: "22.5",
+      change: "0.3",
+      change_pct: "1.35",
+      ts: new Date("2026-07-11T09:00:00Z"),
+    },
+    {
+      symbol: "BAD.N0000",
+      name: null,
+      sector: null,
+      price: "NaN",
+      change: "Infinity",
+      change_pct: "-Infinity",
+      ts: null,
+    },
+    {
+      symbol: "FLAT.N0000",
+      name: null,
+      sector: null,
+      price: "100",
+      change: "0",
+      change_pct: "0",
+      ts: null,
+    },
+  ]);
+  assert(res.status === 200, `finite egress should 200, got ${res.status}`);
+  assert(Array.isArray(body.items), "items array");
+  // Unlike movers, symbols do not drop non-finite pct rows — only null fields.
+  assert(body.items!.length === 3, `all rows kept, got ${body.items!.length}`);
+
+  const bySymbol = Object.fromEntries(
+    (body.items as Record<string, unknown>[]).map((r) => [r.symbol, r]),
+  );
+  const jkh = bySymbol["JKH.N0000"];
+  assert(jkh, "JKH present");
+  assert(jkh.price === 22.5, `JKH price finite, got ${jkh.price}`);
+  assert(jkh.change === 0.3, `JKH change finite, got ${jkh.change}`);
+  assert(jkh.change_pct === 1.35, `JKH pct finite, got ${jkh.change_pct}`);
+
+  const bad = bySymbol["BAD.N0000"];
+  assert(bad, "BAD row kept (symbols browse, not movers drop)");
+  assert(bad.price === null, `non-finite price → null, got ${bad.price}`);
+  assert(bad.change === null, `non-finite change → null, got ${bad.change}`);
+  assert(
+    bad.change_pct === null,
+    `non-finite change_pct → null, got ${bad.change_pct}`,
+  );
+
+  const flat = bySymbol["FLAT.N0000"];
+  assert(flat, "FLAT present");
+  assert(flat.change_pct === 0, `zero pct kept, got ${flat.change_pct}`);
+  assert(flat.price === 100, `FLAT price finite, got ${flat.price}`);
+}
+
 async function main(): Promise<void> {
   await testDefaultLimitAndSort();
   await testLimitClampToMax200();
@@ -270,6 +342,7 @@ async function main(): Promise<void> {
   await testGetDoesNotRequireCsrf();
   await testLikeMetacharEscape();
   await testQueryLengthCapAndOffsetClamp();
+  await testFiniteNumberEgress();
   await testDbErrorDoesNotDiscloseInternals();
   console.log("WEB_SYMBOLS_ROUTE_UNIT_OK");
 }
