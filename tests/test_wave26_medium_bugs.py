@@ -31,7 +31,7 @@ def test_alerts_page_fail_closed_parse() -> None:
     source = page.read_text(encoding="utf-8")
     assert "toSafePositiveInt" in source
     assert "isAlertType" in source
-    assert "sanitizeDisclosureText" in source
+    assert "normalizeSymbol(" in source
     assert "as AlertsPayload" not in source
 
 
@@ -39,6 +39,6 @@ def test_watchlist_page_fail_closed_parse() -> None:
     page = WEB / "src" / "app" / "watchlist" / "page.tsx"
     source = page.read_text(encoding="utf-8")
     assert "sanitizeDisclosureText" in source
-    assert "MAX_HISTORY_SYMBOL_LENGTH" in source
+    assert "normalizeSymbol(" in source
     assert "as WatchlistPayload" not in source
-    assert "Number.isFinite(r.price)" in source
+    assert "toFiniteNumber(r.price)" in source

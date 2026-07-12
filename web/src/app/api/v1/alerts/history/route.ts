@@ -2,7 +2,6 @@ import type { NextRequest } from "next/server";
 
 import {
   MAX_HISTORY_EVENT_KEY_LENGTH,
-  MAX_HISTORY_SYMBOL_LENGTH,
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import {
@@ -144,8 +143,9 @@ export async function GET(request: NextRequest) {
       if (id == null || rule_id == null) return [];
       if (!isAlertType(row.type)) return [];
       const attempts = toNonNegativeSafeInt(row.attempt_count, 0);
-      const symbol =
-        sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "?";
+      // Fail closed — only CSE SYMBOL_RE (no sanitize "?" placeholder).
+      const symbol = normalizeSymbol(row.symbol);
+      if (!symbol) return [];
       const event_key =
         sanitizeDisclosureText(row.event_key, MAX_HISTORY_EVENT_KEY_LENGTH) ??
         "";

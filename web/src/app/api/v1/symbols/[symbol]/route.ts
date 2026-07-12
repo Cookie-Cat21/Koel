@@ -1,13 +1,12 @@
 import type { NextRequest } from "next/server";
 
 import {
-  MAX_HISTORY_SYMBOL_LENGTH,
   MAX_STOCK_NAME_LENGTH,
   MAX_STOCK_SECTOR_LENGTH,
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
-import { normalizeSymbolParam } from "@/lib/api/symbol";
+import { normalizeSymbol, normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
@@ -73,8 +72,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
           };
 
     return jsonOk({
-      symbol:
-        sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? symbol,
+      // Prefer DB symbol only when it still passes SYMBOL_RE; else path symbol.
+      symbol: normalizeSymbol(row.symbol) ?? symbol,
       name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
       sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
       last,

@@ -1,14 +1,10 @@
 import { Pool, type PoolClient } from "pg";
 
-import {
-  MAX_HISTORY_SYMBOL_LENGTH,
-  sanitizeDisclosureCategory,
-  sanitizeDisclosureText,
-} from "@/lib/api/disclosure-safe";
+import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
-import { isAlertType, type AlertType } from "@/lib/api/symbol";
+import { isAlertType, normalizeSymbol, type AlertType } from "@/lib/api/symbol";
 
 const globalForPg = globalThis as typeof globalThis & {
   __chimePgPool?: Pool;
@@ -148,11 +144,12 @@ function mapRule(row: {
   const id = toSafePositiveInt(row.id);
   if (id == null || !Number.isSafeInteger(id)) return null;
   if (!isAlertType(row.type)) return null;
+  // Fail closed — only CSE SYMBOL_RE (no sanitize "?" placeholder).
+  const symbol = normalizeSymbol(row.symbol);
+  if (!symbol) return null;
   return {
     id,
-    // Strip C0 + cap — hostile DB symbol must not balloon create/list JSON.
-    symbol:
-      sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "?",
+    symbol,
     type: row.type,
     // Finite-only — NaN/±Inf threshold from a poisoned row → null.
     threshold: toFiniteNumber(row.threshold),

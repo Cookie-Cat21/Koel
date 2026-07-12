@@ -35,8 +35,7 @@ def test_sectors_route_sanitizes_text_and_safe_ids() -> None:
 def test_alerts_get_sanitizes_symbol_and_drops_unknown_types() -> None:
     route = WEB / "src" / "app" / "api" / "v1" / "alerts" / "route.ts"
     source = route.read_text(encoding="utf-8")
-    assert "sanitizeDisclosureText" in source
-    assert "MAX_HISTORY_SYMBOL_LENGTH" in source
+    assert "normalizeSymbol(row.symbol)" in source
     assert "isAlertType(row.type)" in source
     assert "symbol: row.symbol" not in source
 
@@ -52,8 +51,7 @@ def test_map_rule_uses_safe_integer_and_sanitizes_symbol() -> None:
     source = db.read_text(encoding="utf-8")
     assert "Number.isSafeInteger(id)" in source
     assert "Number.isFinite(id)" not in source
-    assert "sanitizeDisclosureText" in source
-    assert "MAX_HISTORY_SYMBOL_LENGTH" in source
+    assert "normalizeSymbol(row.symbol)" in source
     assert "symbol: row.symbol" not in source
 
 
@@ -62,8 +60,7 @@ def test_market_browse_and_watchlist_sanitize_symbol() -> None:
     watch = WEB / "src" / "app" / "api" / "v1" / "watchlist" / "route.ts"
     for path in (browse, watch):
         source = path.read_text(encoding="utf-8")
-        assert "sanitizeDisclosureText" in source
-        assert "MAX_HISTORY_SYMBOL_LENGTH" in source
+        assert "normalizeSymbol(row.symbol)" in source
         assert "symbol: row.symbol" not in source
     watch_src = watch.read_text(encoding="utf-8")
     assert "name: stock.name" not in watch_src

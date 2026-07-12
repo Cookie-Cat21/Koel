@@ -17,8 +17,8 @@ WEB = ROOT / "web"
 def test_history_route_sanitizes_symbol_event_key_and_safe_ids() -> None:
     route = WEB / "src" / "app" / "api" / "v1" / "alerts" / "history" / "route.ts"
     source = route.read_text(encoding="utf-8")
+    assert "normalizeSymbol(row.symbol)" in source
     assert "sanitizeDisclosureText" in source
-    assert "MAX_HISTORY_SYMBOL_LENGTH" in source
     assert "MAX_HISTORY_EVENT_KEY_LENGTH" in source
     assert "toSafePositiveInt" in source
     # Ban raw symbol/event_key egress.

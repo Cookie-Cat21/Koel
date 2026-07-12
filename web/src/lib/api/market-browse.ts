@@ -6,7 +6,6 @@
 import type { Pool } from "pg";
 
 import {
-  MAX_HISTORY_SYMBOL_LENGTH,
   MAX_STOCK_NAME_LENGTH,
   MAX_STOCK_SECTOR_LENGTH,
   sanitizeDisclosureText,
@@ -16,6 +15,7 @@ import {
   toFiniteNumber,
 } from "@/lib/api/finite-number";
 import { escapeLikePattern } from "@/lib/api/market-query";
+import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 
 export type MarketBrowseSort = "change_pct" | "change_pct_asc" | "symbol";
@@ -120,8 +120,8 @@ export async function queryMarketBrowse(
   );
 
   return result.rows.flatMap((row) => {
-    const symbol =
-      sanitizeDisclosureText(row.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "";
+    // Fail closed — only CSE SYMBOL_RE (not sanitize-only junk).
+    const symbol = normalizeSymbol(row.symbol);
     if (!symbol) return [];
     return [
       {
