@@ -785,7 +785,18 @@ class Storage:
         tokens_in: int | None = None,
         tokens_out: int | None = None,
     ) -> bool:
-        """Mark a claimed (processing) brief row ready with generated text."""
+        """Mark a claimed (processing) brief row ready with generated text.
+
+        Sanitizes/caps the brief body at write time so a hostile provider
+        response cannot land an unbounded control-laden blob in Postgres
+        (Telegram + dash egress also sanitize, but storage is the choke point).
+        """
+        from chime.domain import sanitize_brief_body
+
+        cleaned = sanitize_brief_body(brief)
+        if cleaned is None:
+            # Fail closed: do not leave status=processing or persist garbage.
+            raise ValueError("brief empty after sanitize")
         async with self._pool.connection() as conn:
             row = await (
                 await conn.execute(
@@ -803,7 +814,7 @@ class Storage:
                       AND status IN ('pending', 'processing')
                     RETURNING disclosure_id
                     """,
-                    (brief, model, tokens_in, tokens_out, disclosure_id),
+                    (cleaned, model, tokens_in, tokens_out, disclosure_id),
                 )
             ).fetchone()
         return row is not None

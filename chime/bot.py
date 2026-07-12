@@ -19,17 +19,20 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from chime.adapters.cse import CSEClient, allowed_filing_url
 from chime.briefs import briefs_enabled
-from chime.domain import AlertType, PriceSnapshot, disclaimer, truncate_disclosure_title
+from chime.domain import (
+    BRIEF_BODY_MAX,
+    AlertType,
+    PriceSnapshot,
+    disclaimer,
+    sanitize_brief_body,
+    truncate_disclosure_title,
+)
 from chime.logging_setup import get_logger
 from chime.storage import Storage
 
 log = get_logger(__name__)
 
 SYMBOL_RE = re.compile(r"^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$")
-
-# Telegram hard cap is 4096; leave headroom for title/URL/NFA framing.
-_BRIEF_LOOKUP_BODY_MAX = 3500
-_CTRL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 # Per telegram_id sliding-window timestamps (monotonic seconds). No DB.
 _cmd_timestamps: dict[int, deque[float]] = defaultdict(deque)
@@ -493,7 +496,8 @@ def format_brief_lookup_reply(
     and caps brief body length so Telegram's 4096 limit is not exceeded.
     Distinguishes AI-off from none-yet when ``ai_enabled`` is provided.
     """
-    if not brief or not _CTRL_RE.sub("", brief).strip():
+    body = sanitize_brief_body(brief, max_len=BRIEF_BODY_MAX)
+    if body is None:
         if ai_enabled is False:
             return f"{symbol}: {BRIEF_AI_OFF}\n{disclaimer()}"
         return f"{symbol}: {BRIEF_NONE_YET}\n{disclaimer()}"
@@ -504,9 +508,6 @@ def format_brief_lookup_reply(
     if safe_url:
         lines.append(safe_url)
     lines.append("")
-    body = _CTRL_RE.sub("", brief).strip()
-    if len(body) > _BRIEF_LOOKUP_BODY_MAX:
-        body = body[: _BRIEF_LOOKUP_BODY_MAX - 1].rstrip() + "…"
     lines.append(body)
     lines.append("")
     lines.append(disclaimer())

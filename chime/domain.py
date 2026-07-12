@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -140,6 +141,9 @@ class PreviousPriceState(BaseModel):
 
 
 DISCLOSURE_TITLE_MAX = 120
+# Telegram hard cap is 4096; leave headroom for title/URL/NFA framing.
+BRIEF_BODY_MAX = 3500
+_CTRL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 def disclaimer() -> str:
@@ -156,6 +160,26 @@ def truncate_disclosure_title(title: str, max_len: int = DISCLOSURE_TITLE_MAX) -
     return t[: max_len - 1].rstrip() + "…"
 
 
+def sanitize_brief_body(
+    brief: str | None,
+    *,
+    max_len: int = BRIEF_BODY_MAX,
+) -> str | None:
+    """Strip C0/C1 controls and cap length for Telegram / storage egress.
+
+    Returns ``None`` when empty after sanitize so callers omit the body.
+    """
+    if brief is None:
+        return None
+    body = _CTRL_RE.sub("", brief).strip()
+    if not body:
+        return None
+    cap = max(1, int(max_len))
+    if len(body) > cap:
+        body = body[: cap - 1].rstrip() + "…"
+    return body
+
+
 def format_alert_message(
     event: AlertEvent,
     *,
@@ -166,7 +190,9 @@ def format_alert_message(
     ``filing_brief`` kwarg overrides ``event.filing_brief`` when not None.
     Neither path calls an LLM — callers supply precomputed text only.
     Filing URLs are egress-hardened (CDN / www.cse.lk only) so a hostile DB
-    ``url`` cannot become an auto-linked Telegram href.
+    ``url`` cannot become an auto-linked Telegram href. Brief bodies are
+    control-stripped and length-capped so a hostile/huge LLM string cannot
+    blow past Telegram's 4096 limit and fail the push.
     """
     # Lazy import: adapters.cse imports domain at module load.
     from chime.adapters.cse import allowed_filing_url
@@ -184,11 +210,10 @@ def format_alert_message(
         if safe_url:
             lines.append(safe_url)
     brief = filing_brief if filing_brief is not None else event.filing_brief
-    if brief is not None:
-        brief_text = brief.strip()
-        if brief_text:
-            lines.append("")
-            lines.append(brief_text)
+    brief_text = sanitize_brief_body(brief)
+    if brief_text:
+        lines.append("")
+        lines.append(brief_text)
     lines.append("")
     lines.append(disclaimer())
     return "\n".join(lines)
@@ -213,6 +238,7 @@ def format_brief_followup(
 
     Always ends with NFA. Callers supply precomputed brief text only.
     Filing URLs are egress-hardened (CDN / www.cse.lk only), matching ``/brief``.
+    Brief bodies are control-stripped and length-capped (Telegram 4096).
     """
     # Lazy import: adapters.cse imports domain at module load.
     from chime.adapters.cse import allowed_filing_url
@@ -227,7 +253,7 @@ def format_brief_followup(
         safe_url = allowed_filing_url(url)
         if safe_url:
             lines.append(safe_url)
-    brief_text = brief.strip()
+    brief_text = sanitize_brief_body(brief)
     if brief_text:
         lines.append("")
         lines.append(brief_text)

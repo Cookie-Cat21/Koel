@@ -93,12 +93,12 @@ def test_extract_pdf_text_corrupt_returns_empty() -> None:
 async def test_fetch_cdn_pdf_rejects_non_cdn() -> None:
     transport = httpx.MockTransport(lambda r: httpx.Response(200, content=b"%PDF"))
     async with httpx.AsyncClient(transport=transport) as client:
-        out = await fetch_cdn_pdf(
-            "https://evil.example/x.pdf",
-            max_bytes=1024,
-            client=client,
-        )
-    assert out is None
+        with pytest.raises(CdnPdfPermanentError, match="not allowlisted"):
+            await fetch_cdn_pdf(
+                "https://evil.example/x.pdf",
+                max_bytes=1024,
+                client=client,
+            )
 
 
 @pytest.mark.asyncio
@@ -266,6 +266,23 @@ async def test_fetch_cdn_pdf_rejects_non_200() -> None:
             client=client,
         )
     assert out is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_cdn_pdf_permanent_http_status() -> None:
+    """403/410 must not soft-requeue forever — permanent fail."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, text="forbidden")
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(CdnPdfPermanentError, match="permanent HTTP 403"):
+            await fetch_cdn_pdf(
+                "https://cdn.cse.lk/forbidden.pdf",
+                max_bytes=1024,
+                client=client,
+            )
 
 
 def test_extract_pdf_text_caps_pages(monkeypatch: pytest.MonkeyPatch) -> None:

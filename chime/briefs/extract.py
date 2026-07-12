@@ -21,11 +21,17 @@ _MAX_PDF_PAGES = 40
 _MAX_EXTRACT_CHARS = 50_000
 
 
-class CdnPdfPermanentError(RuntimeError):
-    """Non-retryable CDN PDF failure (oversized body or redirect off-host).
+# Client errors that will not heal on retry — fail the brief permanently.
+_CDN_PERMANENT_STATUS = frozenset({401, 403, 410, 451})
 
-    Distinct from soft ``None`` returns (transport / 5xx / 404) so the brief
-    worker can mark ``failed`` instead of requeue-hammering the CDN forever.
+
+class CdnPdfPermanentError(RuntimeError):
+    """Non-retryable CDN PDF failure.
+
+    Covers oversized bodies, redirects, host allowlist rejects, and permanent
+    HTTP statuses (401/403/410/451). Distinct from soft ``None`` returns
+    (transport / 5xx / 404) so the brief worker can mark ``failed`` instead of
+    requeue-hammering the CDN forever.
     """
 
 
@@ -89,15 +95,17 @@ async def fetch_cdn_pdf(
 ) -> bytes | None:
     """GET a CSE CDN PDF with host allowlist + byte cap.
 
-    Returns ``None`` for transient misses (transport error, non-200) so the
+    Returns ``None`` for transient misses (transport error, 404/5xx) so the
     worker can requeue with backoff. Raises ``CdnPdfPermanentError`` for
-    oversized bodies and redirects (never followed — SSRF / poison loops).
-    Host allowlist failures return ``None`` (caller usually pre-checks).
+    oversized bodies, redirects (never followed — SSRF / poison loops),
+    host allowlist rejects, and permanent HTTP statuses.
     """
     allowed = allowed_cdn_pdf_url(pdf_url)
     if allowed is None:
         log.warning("pdf_fetch_rejected_host", pdf_url=pdf_url)
-        return None
+        raise CdnPdfPermanentError(
+            f"CDN PDF URL rejected (not allowlisted): {pdf_url!r}"
+        )
 
     cap = max(1, int(max_bytes))
     try:
@@ -118,6 +126,15 @@ async def fetch_cdn_pdf(
                 )
                 raise CdnPdfPermanentError(
                     f"CDN PDF redirect rejected for {allowed!r} (status={status})"
+                )
+            if status in _CDN_PERMANENT_STATUS:
+                log.warning(
+                    "pdf_fetch_permanent_status",
+                    pdf_url=allowed,
+                    status_code=status,
+                )
+                raise CdnPdfPermanentError(
+                    f"CDN PDF permanent HTTP {status} for {allowed!r}"
                 )
             if status != 200:
                 log.warning(
