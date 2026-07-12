@@ -198,13 +198,15 @@ class Poller:
         self._queue_sends = True
         self._pending_sends = pending
         self._pending_pdf_enrich = pdf_enrich
+        # Fail-closed defaults: if the cycle aborts mid-tick, health must not
+        # keep stale True from a prior success (or cold-start defaults).
+        price_ok = False
+        disc_ok = False
         try:
             price_events, price_ok = await self._poll_prices()
             disc_events, disc_ok = await self._poll_disclosures()
             fired.extend(price_events)
             fired.extend(disc_events)
-            self.price_poll_ok = price_ok
-            self.disclosure_poll_ok = disc_ok
             symbols = await self.storage.watched_symbols()
             rules = await self.storage.active_rules_for_symbols(symbols) if symbols else []
             needs_disclosure = any(r.type.value == "disclosure" for r in rules)
@@ -225,6 +227,8 @@ class Poller:
             self.last_error = str(exc)
             log.exception("poll_cycle_failed", error=str(exc))
         finally:
+            self.price_poll_ok = price_ok
+            self.disclosure_poll_ok = disc_ok
             self._queue_sends = False
             self.last_tick_at = datetime.now(UTC)
             await self.storage.advisory_unlock(POLL_LOCK_ID)
@@ -408,15 +412,15 @@ class Poller:
         except CircuitOpenError:
             self.trade_summary_count = None
             self.trade_summary_empty_ok = False
-            if not wanted:
-                self.watched_missing = []
+            # No board this tick — clear stale missing so health does not imply
+            # a CSE symbol gap when the real failure is circuit/transport.
+            self.watched_missing = []
             log.error("price_poll_circuit_open")
             return [], False
         except Exception as exc:
             self.trade_summary_count = None
             self.trade_summary_empty_ok = False
-            if not wanted:
-                self.watched_missing = []
+            self.watched_missing = []
             log.exception("price_poll_failed", error=str(exc))
             return [], False
 
@@ -434,7 +438,15 @@ class Poller:
             stored_all = await self.storage.persist_market_snapshots(all_snaps)
         except Exception as exc:
             log.exception("market_persist_failed", error=str(exc), count=len(all_snaps))
-            if not wanted:
+            # Fetch succeeded — report watchlist gaps from the board we saw.
+            if wanted:
+                present = {
+                    s.symbol.strip().upper()
+                    for s in all_snaps
+                    if s.symbol and s.symbol.strip()
+                }
+                self.watched_missing = sorted(wanted - present)
+            else:
                 self.watched_missing = []
             return [], False
 

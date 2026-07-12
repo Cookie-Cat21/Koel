@@ -177,9 +177,9 @@ async def test_persist_market_snapshots_empty_and_batch() -> None:
 
 
 @pytest.mark.asyncio
-async def test_persist_market_snapshots_dedupes_stocks_keeps_all_snaps() -> None:
-    """Duplicate symbols in one board: one stock row, two snapshot inserts."""
-    conn = _Conn([None, [{"id": 10}, {"id": 11}]])
+async def test_persist_market_snapshots_last_wins_dedupes_symbol() -> None:
+    """Duplicate symbols in one board → one snapshot (last-wins), one stock row."""
+    conn = _Conn([None, [{"id": 10}]])
     store = _store(conn)
     out = await store.persist_market_snapshots(
         [
@@ -187,11 +187,36 @@ async def test_persist_market_snapshots_dedupes_stocks_keeps_all_snaps() -> None
             _snap(symbol="JKH.N0000", price=101.0, name="Second"),
         ]
     )
-    assert [s.id for s in out] == [10, 11]
-    assert all(s.symbol == "JKH.N0000" for s in out)
+    assert len(out) == 1
+    assert out[0].id == 10
+    assert out[0].symbol == "JKH.N0000"
+    assert out[0].price == 101.0
     assert conn.sql[0].count("(%s, %s, %s)") == 1
     assert conn.params[0] == ["JKH.N0000", "Second", None]
-    assert conn.sql[1].count("(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)") == 2
+    assert conn.sql[1].count("(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)") == 1
+    assert conn.params[1][1] == 101.0
+
+
+@pytest.mark.asyncio
+async def test_persist_market_snapshots_skips_blank_symbols() -> None:
+    store = _store(_Conn([]))
+    assert await store.persist_market_snapshots(
+        [_snap(symbol="  ", price=1.0), _snap(symbol="", price=2.0)]
+    ) == []
+
+    conn = _Conn([None, [{"id": 3}]])
+    store = _store(conn)
+    out = await store.persist_market_snapshots(
+        [_snap(symbol="  ", price=1.0), _snap(symbol="COMB.N0000", price=90.0)]
+    )
+    assert len(out) == 1 and out[0].symbol == "COMB.N0000" and out[0].id == 3
+
+
+@pytest.mark.asyncio
+async def test_insert_snapshot_rejects_blank_symbol() -> None:
+    store = _store(_Conn([]))
+    with pytest.raises(ValueError, match="invalid snapshot symbol"):
+        await store.insert_snapshot(_snap(symbol="   "))
 
 
 @pytest.mark.asyncio

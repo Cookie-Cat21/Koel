@@ -119,8 +119,8 @@ async def test_watchlist_persist_failure_price_ok_false(
 
     assert events == []
     assert price_ok is False
-    # Fail-closed before recomputing missing; watchlist path does not clear prior state.
-    assert poller.watched_missing == ["STALE.N0000"]
+    # Fetch succeeded — recompute missing from the board (both watched present).
+    assert poller.watched_missing == []
     storage.persist_market_snapshots.assert_awaited_once_with(board)
     storage.get_previous_state.assert_not_awaited()
     storage.active_rules_for_symbols.assert_not_awaited()
@@ -228,3 +228,42 @@ async def test_persist_only_evaluates_watched() -> None:
 def test_briefs_disabled_by_default() -> None:
     assert briefs_enabled(BriefSettings()) is False
     assert BriefSettings.from_env().enabled is False
+
+
+@pytest.mark.asyncio
+async def test_circuit_open_clears_stale_watched_missing() -> None:
+    """Fetch failure must not leave a prior tick's missing list on health."""
+    storage = AsyncMock()
+    storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
+    cse = AsyncMock()
+    from chime.circuit import CircuitOpenError
+
+    cse.fetch_trade_summary = AsyncMock(side_effect=CircuitOpenError("open"))
+
+    poller = Poller(_settings(), storage, cse, AsyncMock(return_value=True))
+    poller.watched_missing = ["STALE.N0000"]
+    events, price_ok = await poller._poll_prices()
+
+    assert events == []
+    assert price_ok is False
+    assert poller.watched_missing == []
+
+
+@pytest.mark.asyncio
+async def test_persist_failure_updates_missing_from_fetched_board() -> None:
+    """DB persist fail after a successful fetch still reports CSE gaps honestly."""
+    storage = AsyncMock()
+    storage.watched_symbols = AsyncMock(return_value=["JKH.N0000", "COMB.N0000"])
+    storage.persist_market_snapshots = AsyncMock(side_effect=RuntimeError("db down"))
+
+    cse = AsyncMock()
+    cse.fetch_trade_summary = AsyncMock(return_value=[_snap("JKH.N0000")])
+
+    poller = Poller(_settings(), storage, cse, AsyncMock(return_value=True))
+    poller.watched_missing = ["STALE.N0000"]
+    events, price_ok = await poller._poll_prices()
+
+    assert events == []
+    assert price_ok is False
+    assert poller.watched_missing == ["COMB.N0000"]
+    assert poller.trade_summary_count == 1

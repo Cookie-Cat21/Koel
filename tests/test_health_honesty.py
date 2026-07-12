@@ -66,3 +66,50 @@ async def test_lock_skip_sets_lock_held_skip() -> None:
     storage.try_advisory_lock.assert_awaited_once()
     storage.advisory_unlock.assert_not_awaited()
     cse.fetch_trade_summary.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cycle_exception_fail_closes_poll_health_flags() -> None:
+    """Mid-tick abort must not leave cold-start True on price/disclosure legs."""
+    from datetime import UTC, datetime
+
+    from chime.domain import AlertType, PriceSnapshot
+    from tests.conftest import make_disclosure, make_rule
+
+    storage = AsyncMock()
+    storage.try_advisory_lock = AsyncMock(return_value=True)
+    storage.advisory_unlock = AsyncMock()
+    storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
+    storage.active_rules_for_symbols = AsyncMock(
+        return_value=[make_rule(type=AlertType.DISCLOSURE, threshold=None)]
+    )
+    storage.persist_market_snapshots = AsyncMock(
+        side_effect=lambda snaps: [
+            s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)
+        ]
+    )
+    from chime.domain import PreviousPriceState
+
+    storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
+    storage.claim_unsent_batch = AsyncMock(return_value=[])
+    storage.upsert_disclosure = AsyncMock(side_effect=RuntimeError("upsert boom"))
+
+    cse = AsyncMock()
+    cse.fetch_trade_summary = AsyncMock(
+        return_value=[
+            PriceSnapshot(symbol="JKH.N0000", price=20.0, ts=datetime.now(UTC))
+        ]
+    )
+    cse.fetch_announcements_for_symbol = AsyncMock(return_value=[make_disclosure()])
+
+    poller = Poller(_settings(), storage, cse, AsyncMock(return_value=True))
+    assert poller.price_poll_ok is True
+    assert poller.disclosure_poll_ok is True
+
+    events = await poller.run_once(force=True)
+
+    assert events == []
+    assert poller.last_tick_ok is False
+    assert poller.price_poll_ok is True  # prices completed before disclosure abort
+    assert poller.disclosure_poll_ok is False
+    assert "upsert boom" in (poller.last_error or "")

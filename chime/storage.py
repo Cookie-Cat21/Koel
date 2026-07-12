@@ -83,6 +83,8 @@ class Storage:
 
     async def insert_snapshot(self, snap: PriceSnapshot) -> PriceSnapshot:
         stored = await self.persist_market_snapshots([snap])
+        if not stored:
+            raise ValueError(f"invalid snapshot symbol: {snap.symbol!r}")
         return stored[0]
 
     async def persist_market_snapshots(
@@ -93,26 +95,29 @@ class Storage:
         Used by the poller to keep a market-wide browse layer in Postgres while
         rule evaluation stays watchlist-scoped. Empty input is a no-op.
 
-        Batches ~300 symbols into two multi-row statements (stocks upsert, then
-        snapshots ``INSERT … RETURNING id``) inside one transaction. Returned
-        snapshots keep input order with assigned ids.
+        Duplicate symbols in one board collapse to last-wins (one snapshot row
+        per symbol) so rule eval cannot use an intra-tick sibling as
+        ``previous``. Empty/whitespace symbols are skipped. Batches into two
+        multi-row statements inside one transaction.
         """
         if not snaps:
             return []
 
-        normalized: list[tuple[str, PriceSnapshot]] = [
-            (snap.symbol.strip().upper(), snap) for snap in snaps
-        ]
-        # ON CONFLICT DO UPDATE cannot touch the same row twice in one statement.
-        stock_by_symbol: dict[str, str | None] = {}
-        for symbol, snap in normalized:
-            stock_by_symbol[symbol] = snap.name
+        # Last-wins per normalized symbol; skip blanks (invalid CSE rows).
+        by_symbol: dict[str, PriceSnapshot] = {}
+        for snap in snaps:
+            symbol = snap.symbol.strip().upper()
+            if not symbol:
+                continue
+            by_symbol[symbol] = snap
+        if not by_symbol:
+            return []
 
-        stock_symbols = list(stock_by_symbol.keys())
-        stock_values = ",".join(["(%s, %s, %s)"] * len(stock_symbols))
+        normalized: list[tuple[str, PriceSnapshot]] = list(by_symbol.items())
+        stock_values = ",".join(["(%s, %s, %s)"] * len(normalized))
         stock_params: list[Any] = []
-        for symbol in stock_symbols:
-            stock_params.extend([symbol, stock_by_symbol[symbol], None])
+        for symbol, snap in normalized:
+            stock_params.extend([symbol, snap.name, None])
 
         snap_values = ",".join(
             ["(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"] * len(normalized)
