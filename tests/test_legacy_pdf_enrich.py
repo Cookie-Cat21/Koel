@@ -120,7 +120,7 @@ async def test_set_disclosure_pdf_url_fills_null_only() -> None:
     store = _store(conn)
     assert await store.set_disclosure_pdf_url(7, f"{CDN_BASE}/uploadAnnounceFiles/a.pdf") is True
     assert "UPDATE disclosures" in conn.sql[0]
-    assert "pdf_url IS NULL" in conn.sql[0]
+    assert "NULLIF(btrim(pdf_url), '') IS NULL" in conn.sql[0]
     assert conn.params[0] == (f"{CDN_BASE}/uploadAnnounceFiles/a.pdf", 7)
 
     conn2 = _Conn([None])

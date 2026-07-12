@@ -47,20 +47,27 @@ export async function GET(request: NextRequest) {
        ORDER BY change_pct DESC NULLS LAST, symbol ASC`,
     );
 
-    const items = result.rows.map((row) => ({
-      sector_id: Number(row.sector_id),
-      symbol: row.symbol,
-      name: row.name,
-      index_code: row.index_code,
-      index_name: row.index_name,
-      index_value: toFiniteNumber(row.index_value),
-      change: toFiniteNumber(row.change),
-      change_pct: toFiniteNumber(row.change_pct),
-      volume_today: toFiniteNumber(row.volume_today),
-      turnover_today: toFiniteNumber(row.turnover_today),
-      previous_close: toFiniteNumber(row.previous_close),
-      ts: toIso(row.ts),
-    }));
+    const items = result.rows.flatMap((row) => {
+      const sector_id = toFiniteNumber(row.sector_id);
+      // Drop non-finite ids — JSON.stringify(NaN) becomes null and breaks clients.
+      if (sector_id == null) return [];
+      return [
+        {
+          sector_id,
+          symbol: row.symbol,
+          name: row.name,
+          index_code: row.index_code,
+          index_name: row.index_name,
+          index_value: toFiniteNumber(row.index_value),
+          change: toFiniteNumber(row.change),
+          change_pct: toFiniteNumber(row.change_pct),
+          volume_today: toFiniteNumber(row.volume_today),
+          turnover_today: toFiniteNumber(row.turnover_today),
+          previous_close: toFiniteNumber(row.previous_close),
+          ts: toIso(row.ts),
+        },
+      ];
+    });
 
     return jsonOk({ items });
   } catch (err) {

@@ -901,10 +901,12 @@ class Storage:
         )
 
     async def set_disclosure_pdf_url(self, disclosure_id: int, pdf_url: str) -> bool:
-        """Fill ``disclosures.pdf_url`` when known; never overwrite an existing URL.
+        """Fill ``disclosures.pdf_url`` when known; never overwrite a real URL.
 
-        Only ``https://cdn.cse.lk/...`` URLs are persisted (SSRF guard). Returns
-        True if a row was updated. Fail-soft callers treat False / errors as
+        Blank / whitespace-only ``pdf_url`` values are treated as missing (same
+        as claim PDF-grace) so enrich can still land. Only
+        ``https://cdn.cse.lk/...`` URLs are persisted (SSRF guard). Returns True
+        if a row was updated. Fail-soft callers treat False / errors as
         non-blocking for alerts.
         """
         from chime.adapters.cse import resolve_pdf_url
@@ -918,7 +920,8 @@ class Storage:
                     """
                     UPDATE disclosures
                     SET pdf_url = %s
-                    WHERE id = %s AND pdf_url IS NULL
+                    WHERE id = %s
+                      AND NULLIF(btrim(pdf_url), '') IS NULL
                     RETURNING id
                     """,
                     (normalized, disclosure_id),

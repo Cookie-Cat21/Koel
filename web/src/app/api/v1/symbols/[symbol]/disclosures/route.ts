@@ -75,20 +75,25 @@ export async function GET(request: NextRequest, context: RouteContext) {
       [symbol, limit],
     );
 
-    const items = result.rows.map((row) => {
+    const items = result.rows.flatMap((row) => {
+      const id = Number(row.id);
+      // Drop non-finite ids — JSON.stringify(NaN) becomes null.
+      if (!Number.isFinite(id)) return [];
       const brief_status = normalizeBriefStatus(row.brief_status);
-      return {
-        id: Number(row.id),
-        external_id: row.external_id,
-        title: row.title,
-        category: row.category,
-        url: safeAnnouncementUrl(row.url),
-        published_at: toIso(row.published_at),
-        company_name: row.company_name,
-        pdf_url: safePdfUrl(row.pdf_url),
-        brief: sanitizeBriefText(row.brief, brief_status),
-        brief_status,
-      };
+      return [
+        {
+          id,
+          external_id: row.external_id,
+          title: row.title,
+          category: row.category,
+          url: safeAnnouncementUrl(row.url),
+          published_at: toIso(row.published_at),
+          company_name: row.company_name,
+          pdf_url: safePdfUrl(row.pdf_url),
+          brief: sanitizeBriefText(row.brief, brief_status),
+          brief_status,
+        },
+      ];
     });
 
     return jsonOk({ items });

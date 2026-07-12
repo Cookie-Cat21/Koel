@@ -66,7 +66,13 @@ type DisclosuresPayload = {
     company_name: string | null;
     pdf_url: string | null;
     brief: string | null;
-    brief_status: "pending" | "ready" | "failed" | "skipped" | null;
+    brief_status:
+      | "pending"
+      | "processing"
+      | "ready"
+      | "failed"
+      | "skipped"
+      | null;
   }[];
 };
 

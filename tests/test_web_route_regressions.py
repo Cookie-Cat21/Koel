@@ -371,6 +371,7 @@ def test_sectors_route_static() -> None:
     assert "ORDER BY change_pct DESC NULLS LAST" in source
     assert "getPool" in source
     assert "jsonOk({ items })" in source or "jsonOk({ items" in source
+    assert "toFiniteNumber(row.sector_id)" in source
     # Thin fence: not a heatmap / multi-filter board (comments may negate).
     for tok in ("heatmap", "cse.lk", "allSectors"):
         hits = [
@@ -395,6 +396,7 @@ def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:
     assert "safePdfUrl" in source
     assert "safeAnnouncementUrl" in source
     assert "sanitizeBriefText" in source
+    assert "Number.isFinite(id)" in source
     assert "FROM disclosures d" in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
@@ -415,6 +417,7 @@ def test_symbol_page_prefers_pdf_and_shows_ready_brief() -> None:
     assert "dangerouslySetInnerHTML" not in source
     assert "NfaInline" in source
     assert "NfaFooter" in source
+    assert '"processing"' in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
         for line in source.splitlines()

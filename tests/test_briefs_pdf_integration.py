@@ -65,7 +65,7 @@ async def test_new_disclosure_enqueues_skipped_then_pdf_enrich_sets_url() -> Non
 
     assert await store.set_disclosure_pdf_url(55, pdf) is True
     assert "UPDATE disclosures" in conn.sql[-1]
-    assert "pdf_url IS NULL" in conn.sql[-1]
+    assert "NULLIF(btrim(pdf_url), '') IS NULL" in conn.sql[-1]
     assert conn.params[-1] == (pdf, 55)
     # Enrich must not touch disclosure_briefs again
     assert sum(1 for s in conn.sql if "disclosure_briefs" in s) == 1

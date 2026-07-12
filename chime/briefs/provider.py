@@ -72,16 +72,27 @@ class _HttpBriefProviderBase:
             raise BriefsDisabledError("AI briefs disabled: set AI_BRIEFS_ENABLED=1 and AI_API_KEY")
 
     def _sanitize_user_text(self, text: str) -> str:
-        """Treat caller text as untrusted filing payload (null-strip + wrap)."""
+        """Treat caller text as untrusted filing payload (null-strip + wrap).
+
+        Truncates the *inner* filing body so a small ``AI_MAX_INPUT_CHARS``
+        cannot chop ``<<<END_FILING>>>`` and trigger a broken re-wrap.
+        """
         body = (text or "").replace("\x00", "").strip()
         if not body:
             raise ValueError("summarize requires non-empty text")
         max_chars = max(1, int(self._settings.max_input_chars))
+        start = "<<<FILING>>>"
+        end = "<<<END_FILING>>>"
+        if start in body and end in body:
+            pre, _, rest = body.partition(start)
+            inner, _, post = rest.partition(end)
+            inner = inner.strip("\n")
+            if len(inner) > max_chars:
+                inner = inner[:max_chars]
+            return f"{pre}{start}\n{inner}\n{end}{post}"
         if len(body) > max_chars:
             body = body[:max_chars]
-        if "<<<FILING>>>" in body and "<<<END_FILING>>>" in body:
-            return body
-        return f"<<<FILING>>>\n{body}\n<<<END_FILING>>>"
+        return f"{start}\n{body}\n{end}"
 
 
 class GeminiBriefProvider(_HttpBriefProviderBase):
@@ -224,7 +235,11 @@ class GroqBriefProvider(_OpenAICompatibleBriefProvider):
 
 
 class OpenRouterBriefProvider(_OpenAICompatibleBriefProvider):
-    """OpenRouter OpenAI-compatible ``/chat/completions`` via httpx."""
+    """OpenRouter OpenAI-compatible ``/chat/completions`` via httpx.
+
+    Sends ``HTTP-Referer`` + ``X-Title`` (OpenRouter attribution headers);
+    missing them can yield 401/403 on free-tier routes.
+    """
 
     _chat_url = OPENROUTER_CHAT_COMPLETIONS_URL
     _label = "OpenRouter"
@@ -235,6 +250,62 @@ class OpenRouterBriefProvider(_OpenAICompatibleBriefProvider):
 
     async def __aexit__(self, *args: object) -> None:
         await self.aclose()
+
+    async def summarize(self, text: str) -> str:
+        self._require_enabled()
+        body = self._sanitize_user_text(text)
+
+        payload: dict[str, Any] = {
+            "model": self._settings.model,
+            "messages": [
+                {"role": "system", "content": BRIEF_SYSTEM_INSTRUCTION},
+                {"role": "user", "content": body},
+            ],
+            "temperature": 0.2,
+            "max_tokens": _MAX_OUTPUT_TOKENS,
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self._settings.api_key}",
+            # OpenRouter ranks / gates some models on these attribution headers.
+            "HTTP-Referer": "https://github.com/chime-cse",
+            "X-Title": "Chime CSE alerts",
+        }
+        log.info(
+            self._log_event,
+            model=self._settings.model,
+            input_chars=len(body),
+        )
+        label = self._label
+        try:
+            response = await self._client.post(
+                self._chat_url,
+                headers=headers,
+                json=payload,
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise RuntimeError(f"{label} request timed out: {exc}") from exc
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"{label} transport error: {exc}") from exc
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(
+                f"{label} HTTP {exc.response.status_code}: {exc.response.text[:300]}"
+            ) from exc
+
+        try:
+            data = response.json()
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise RuntimeError(f"{label} response was not JSON: {response.text[:300]!r}") from exc
+
+        brief = _extract_openai_chat_text(data)
+        if not brief:
+            reason = _openai_chat_failure_reason(data)
+            raise RuntimeError(f"{label} response missing message content ({reason})")
+        return brief
 
 
 def _gemini_failure_reason(data: Any) -> str:

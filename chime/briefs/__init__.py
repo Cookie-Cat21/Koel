@@ -138,11 +138,22 @@ BRIEF_SYSTEM_INSTRUCTION = (
 )
 
 
-def build_brief_prompt(*, symbol: str, title: str, extracted_text: str) -> str:
-    """User payload for a neutral filing brief (filing text is untrusted)."""
+def build_brief_prompt(
+    *,
+    symbol: str,
+    title: str,
+    extracted_text: str,
+    max_chars: int = 12_000,
+) -> str:
+    """User payload for a neutral filing brief (filing text is untrusted).
+
+    Truncates the filing body (not the delimiters) to ``max_chars`` so
+    ``AI_MAX_INPUT_CHARS`` cannot chop ``<<<END_FILING>>>`` off mid-prompt.
+    """
     body = (extracted_text or "").replace("\x00", "").strip()
-    if len(body) > 12_000:
-        body = body[:12_000]
+    cap = max(1, int(max_chars))
+    if len(body) > cap:
+        body = body[:cap]
     sym = (symbol or "").replace("\x00", "").strip() or "UNKNOWN"
     ttl = (title or "").replace("\x00", "").strip() or "(untitled)"
     return (

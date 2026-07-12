@@ -169,9 +169,16 @@ async def _input_text_for_row(
     cfg: BriefSettings,
     client: httpx.AsyncClient,
 ) -> str:
-    """Build provider input: CDN PDF extract when ``pdf_url`` set, else title."""
+    """Build provider input: CDN PDF extract when ``pdf_url`` set, else title.
+
+    When ``pdf_url`` is set, a failed CDN fetch raises so the row stays
+    reclaimable (``mark_brief_failed`` / stale ``processing``) instead of
+    burning the daily cap on a silent title-only summarize. Empty extract
+    after a successful fetch still falls back to title (image-only PDFs).
+    """
     symbol = str(row.get("symbol") or "").strip()
     title = str(row.get("title") or "").strip()
+    max_chars = int(cfg.max_input_chars)
     pdf_url = row.get("pdf_url")
     if isinstance(pdf_url, str) and pdf_url.strip():
         raw = await fetch_cdn_pdf(
@@ -179,23 +186,26 @@ async def _input_text_for_row(
             max_bytes=cfg.pdf_max_bytes,
             client=client,
         )
-        if raw:
-            extracted = extract_pdf_text(raw)
-            if extracted:
-                return build_brief_prompt(
-                    symbol=symbol or "UNKNOWN",
-                    title=title or "Filing",
-                    extracted_text=extracted,
-                )
-            log.info(
-                "brief_pdf_text_empty",
-                disclosure_id=row.get("disclosure_id"),
-                pdf_url=pdf_url,
+        if raw is None:
+            raise RuntimeError(f"CDN PDF fetch failed for {pdf_url.strip()!r}")
+        extracted = extract_pdf_text(raw)
+        if extracted:
+            return build_brief_prompt(
+                symbol=symbol or "UNKNOWN",
+                title=title or "Filing",
+                extracted_text=extracted,
+                max_chars=max_chars,
             )
+        log.info(
+            "brief_pdf_text_empty",
+            disclosure_id=row.get("disclosure_id"),
+            pdf_url=pdf_url,
+        )
     return build_brief_prompt(
         symbol=symbol or "UNKNOWN",
         title=title or "Filing",
         extracted_text=_stub_input_text(row),
+        max_chars=max_chars,
     )
 
 
@@ -417,8 +427,8 @@ async def claim_pending_briefs(
                     if i > 0 and sleep_s > 0:
                         await asyncio.sleep(sleep_s)
                     disclosure_id = int(row["disclosure_id"])
-                    text = await _input_text_for_row(row, cfg=cfg, client=http)
                     try:
+                        text = await _input_text_for_row(row, cfg=cfg, client=http)
                         brief = await prov.summarize(text)
                         marked = await storage.mark_brief_ready(
                             disclosure_id,
