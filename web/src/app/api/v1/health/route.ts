@@ -10,6 +10,20 @@ export const runtime = "nodejs";
 /** Process start — used when HEALTH_URL is unset (DB-only health). */
 const PROCESS_STARTED_AT = new Date().toISOString();
 
+/** Default bound for HEALTH_URL proxy (headers + body). */
+export const HEALTH_PROXY_TIMEOUT_MS_DEFAULT = 3000;
+
+/** Bound HEALTH_URL proxy. Fail-closed on bad/non-positive env → default. */
+export function healthProxyTimeoutMs(): number {
+  const raw = (process.env.HEALTH_PROXY_TIMEOUT_MS ?? "").trim();
+  if (!raw) return HEALTH_PROXY_TIMEOUT_MS_DEFAULT;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0 || n > 30_000) {
+    return HEALTH_PROXY_TIMEOUT_MS_DEFAULT;
+  }
+  return n;
+}
+
 type PollerHealth = {
   last_tick_at?: string | null;
   last_tick_ok?: boolean;
@@ -50,15 +64,17 @@ export async function GET(request: NextRequest) {
 
   const healthUrl = (process.env.HEALTH_URL ?? "").trim();
   if (healthUrl) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), healthProxyTimeoutMs());
+    // Avoid keeping the event loop awake solely for this timer (Node).
+    timer.unref?.();
     try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 3000);
       const res = await fetch(healthUrl, {
         method: "GET",
         signal: ctrl.signal,
         headers: { Accept: "application/json" },
       });
-      clearTimeout(timer);
+      // Keep abort armed through body parse — hung JSON must not outlive budget.
       const body = (await res.json().catch(() => null)) as Record<
         string,
         unknown
@@ -115,6 +131,8 @@ export async function GET(request: NextRequest) {
         last_tick_ok: false,
         last_error: "health_url_unreachable",
       };
+    } finally {
+      clearTimeout(timer);
     }
   }
 

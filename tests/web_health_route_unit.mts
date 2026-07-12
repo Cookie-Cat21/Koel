@@ -6,7 +6,11 @@
  */
 import { NextRequest } from "next/server";
 
-import { GET as healthGet } from "./src/app/api/v1/health/route.ts";
+import {
+  GET as healthGet,
+  HEALTH_PROXY_TIMEOUT_MS_DEFAULT,
+  healthProxyTimeoutMs,
+} from "./src/app/api/v1/health/route.ts";
 import { SESSION_COOKIE } from "./src/lib/auth/config.ts";
 import { mintSessionToken } from "./src/lib/auth/session.ts";
 
@@ -134,9 +138,68 @@ async function testUnreachableHealthUrlDegradesRoute(): Promise<void> {
   }
 }
 
+async function testHealthProxyTimeoutAbortsAndDegrades(): Promise<void> {
+  installDbPool();
+  process.env.DASH_SESSION_SECRET = SECRET;
+  process.env.HEALTH_URL = "http://poller.local/slow";
+  process.env.HEALTH_PROXY_TIMEOUT_MS = "40";
+  assert(healthProxyTimeoutMs() === 40, "test timeout env should parse to 40ms");
+
+  const originalFetch = globalThis.fetch;
+  let sawAbort = false;
+  globalThis.fetch = ((
+    _input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const signal = init?.signal;
+    return new Promise((_resolve, reject) => {
+      const fail = () => {
+        sawAbort = true;
+        reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+      };
+      if (signal?.aborted) {
+        fail();
+        return;
+      }
+      signal?.addEventListener("abort", fail, { once: true });
+    });
+  }) as typeof fetch;
+
+  const started = Date.now();
+  try {
+    const res = await healthGet(makeRequest());
+    const body = await readBody(res);
+    const elapsed = Date.now() - started;
+    assert(res.status === 503, `timeout proxy should return 503, got ${res.status}`);
+    assert(body.status === "degraded", `expected degraded, got ${body.status}`);
+    assert(
+      body.poller?.last_error === "health_url_unreachable",
+      `expected health_url_unreachable, got ${body.poller?.last_error}`,
+    );
+    assert(sawAbort, "fetch mock must observe AbortSignal abort");
+    assert(elapsed < 1500, `proxy timeout should be fast, took ${elapsed}ms`);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.HEALTH_PROXY_TIMEOUT_MS;
+  }
+
+  process.env.HEALTH_PROXY_TIMEOUT_MS = "0";
+  assert(
+    healthProxyTimeoutMs() === HEALTH_PROXY_TIMEOUT_MS_DEFAULT,
+    "non-positive HEALTH_PROXY_TIMEOUT_MS must fail closed to default",
+  );
+  process.env.HEALTH_PROXY_TIMEOUT_MS = "nan";
+  assert(
+    healthProxyTimeoutMs() === HEALTH_PROXY_TIMEOUT_MS_DEFAULT,
+    "invalid HEALTH_PROXY_TIMEOUT_MS must fail closed to default",
+  );
+  delete process.env.HEALTH_PROXY_TIMEOUT_MS;
+}
+
 async function main(): Promise<void> {
   await testWatchedMissingDegradesRoute();
   await testUnreachableHealthUrlDegradesRoute();
+  await testHealthProxyTimeoutAbortsAndDegrades();
   console.log("WEB_HEALTH_ROUTE_UNIT_OK");
 }
 
