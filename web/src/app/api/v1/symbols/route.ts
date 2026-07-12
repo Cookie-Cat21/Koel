@@ -19,9 +19,11 @@ const MAX_LIMIT = 200;
  * GET /api/v1/symbols — thin market browse from Postgres (latest snapshots).
  * Query: limit (default 50, max 200), offset (max 10000), q (symbol/name
  * substring, max 64, LIKE-metachar escaped), sort=change_pct|symbol
- * (default change_pct). No cse.lk. Not a screener (no sector/volume filters).
+ * (default change_pct). Session required; CSRF not required (safe GET).
+ * No cse.lk. Not a screener (no sector/volume filters).
  */
 export async function GET(request: NextRequest) {
+  // Session only — GET must not require CSRF (double-submit is for mutations).
   const gated = requireSession(request);
   if (!gated.ok) return gated.response;
 
