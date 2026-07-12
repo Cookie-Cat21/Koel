@@ -8,11 +8,13 @@ No extra env. Poller already persists full `tradeSummary` into `stocks` + `price
 
 ```bash
 python -m chime migrate
-python -m chime poller   # or: both / tick --force
+# Seed browse once (ignores market hours), or leave poller/both running:
+make tick                 # → python -m chime tick --force
+# python -m chime poller  # or: both
 # dash → /market (session); data = Postgres only
 ```
 
-Empty board ⇒ poller not running or tradeSummary empty that tick.
+Empty board ⇒ no forced tick / poller not running, or `tradeSummary` empty that tick.
 
 ## AI briefs (`AI_BRIEFS_ENABLED`)
 

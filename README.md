@@ -40,7 +40,8 @@ Point `DATABASE_URL` at it (see `.env.example`).
 | `python -m chime bot` | Telegram bot only |
 | `python -m chime poller` | Market-hours poller + rule engine only |
 | `python -m chime both` | Bot + poller in one process |
-| `python -m chime tick --force` | One poll cycle (ignores market hours) |
+| `python -m chime tick --force` | One poll cycle (ignores market hours); seeds `/market` browse |
+| `make tick` | Same as `python -m chime tick --force` |
 
 Bot and `both` start Telegram long-polling with `drop_pending_updates=True`, so
 queued messages from downtime are discarded on restart (avoids replaying stale
@@ -107,7 +108,10 @@ Local demo auth (ADR 001) — Postgres only; never calls cse.lk from `web/`.
 make up && make migrate
 cp .env.example .env   # DATABASE_URL=postgresql://chime:chime@localhost:5432/chime
 
-# 2) Dashboard
+# 2) Seed /market browse (one forced CSE poll → stocks + price_snapshots)
+make tick   # or: python -m chime tick --force
+
+# 3) Dashboard
 cd web
 cp .env.example .env.local
 # Required:
@@ -121,10 +125,12 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000/login](http://localhost:3000/login). Demo sign-in
-posts `{ "telegram_id": <allowlisted id> }` → HttpOnly `chime_session` + CSRF.
-Mutations need matching `X-CSRF-Token`. Details: [web/README.md](web/README.md),
-[docs/adr/001-dash-auth.md](docs/adr/001-dash-auth.md).
+Empty `/market` ⇒ no snapshots yet — run `make tick` (or leave `poller`/`both`
+running). Open [http://localhost:3000/login](http://localhost:3000/login). Demo
+sign-in posts `{ "telegram_id": <allowlisted id> }` → HttpOnly `chime_session` +
+CSRF. Mutations need matching `X-CSRF-Token`. Details:
+[web/README.md](web/README.md), [docs/adr/001-dash-auth.md](docs/adr/001-dash-auth.md),
+[docs/runbooks/TIJORI.md](docs/runbooks/TIJORI.md).
 
 ## Disclaimer
 

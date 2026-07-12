@@ -1,7 +1,7 @@
 # Thin DX entrypoint for Chime local ops.
 PYTHON ?= python3
 
-.PHONY: help install lint typecheck test test-unit migrate up-db down-db up down up-web down-web factory-status factory-verify factory-scoreboard factory-refill factory-wave portfolio-sum
+.PHONY: help install lint typecheck test test-unit migrate tick up-db down-db up down up-web down-web factory-status factory-verify factory-scoreboard factory-refill factory-wave portfolio-sum
 
 help:
 	@echo "Chime local targets:"
@@ -15,6 +15,7 @@ help:
 	@echo "  make up-web      Postgres + dash (compose --profile web)"
 	@echo "  make down-web    Stop profile web stack"
 	@echo "  make migrate     Apply SQL migrations (waits for compose health)"
+	@echo "  make tick        One poll cycle (--force); seeds /market browse"
 	@echo "  make factory-status      Board + scoreboard"
 	@echo "  make factory-verify      ruff/mypy/pytest proof (+ portfolio_sum smoke)"
 	@echo "  make portfolio-sum       Plan A portfolio_sum.py smoke (non-fatal)"
@@ -40,6 +41,10 @@ test-unit:
 migrate:
 	@docker compose up -d --wait 2>/dev/null || true
 	$(PYTHON) -m chime.migrate
+
+# One forced poll: persists tradeSummary → stocks + price_snapshots for dash /market.
+tick:
+	$(PYTHON) -m chime tick --force
 
 up-db:
 	docker compose up -d --wait
