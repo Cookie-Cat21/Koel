@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { NavSession } from "@/components/nav-session";
@@ -14,8 +15,32 @@ const links = [
   { href: "/health", label: "Health" },
 ] as const;
 
+/**
+ * Resolve which nav href is active. Prefers the explicit `active` prop, else
+ * the current pathname. Longest prefix wins so `/alerts/history` highlights
+ * History (not Alerts), and `/scenarios` exact-matches Scenarios.
+ */
+export function resolveActiveNavHref(
+  current: string | null | undefined,
+): (typeof links)[number]["href"] | undefined {
+  if (!current) return undefined;
+  const path =
+    current.length > 1 && current.endsWith("/") ? current.slice(0, -1) : current;
+  let best: (typeof links)[number]["href"] | undefined;
+  for (const { href } of links) {
+    if (path === href || path.startsWith(`${href}/`)) {
+      if (best === undefined || href.length > best.length) {
+        best = href;
+      }
+    }
+  }
+  return best;
+}
+
 export function AppNav({ active }: { active?: string }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const activeHref = resolveActiveNavHref(active ?? pathname);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-sm">
@@ -31,7 +56,7 @@ export function AppNav({ active }: { active?: string }) {
         {/* Desktop / tablet */}
         <nav className="hidden items-center gap-x-5 text-sm sm:flex">
           {links.map((link) => {
-            const isActive = active === link.href;
+            const isActive = activeHref === link.href;
             return (
               <Link
                 key={link.href}
@@ -85,7 +110,7 @@ export function AppNav({ active }: { active?: string }) {
       >
         <ul className="flex flex-col">
           {links.map((link) => {
-            const isActive = active === link.href;
+            const isActive = activeHref === link.href;
             return (
               <li key={link.href}>
                 <Link
