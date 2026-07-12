@@ -88,6 +88,8 @@ class AlertEvent(BaseModel):
     current_price: float | None = None
     disclosure_url: str | None = None
     disclosure_title: str | None = None
+    # Optional plain-language filing brief (Phase 2); never generated here.
+    filing_brief: str | None = None
     snapshot_id: int | None = None
     event_key: str
     # Optional arming update for sticky-above/below rules
@@ -120,7 +122,16 @@ def truncate_disclosure_title(title: str, max_len: int = DISCLOSURE_TITLE_MAX) -
     return t[: max_len - 1].rstrip() + "…"
 
 
-def format_alert_message(event: AlertEvent) -> str:
+def format_alert_message(
+    event: AlertEvent,
+    *,
+    filing_brief: str | None = None,
+) -> str:
+    """Render a Telegram alert body. Always ends with NFA.
+
+    ``filing_brief`` kwarg overrides ``event.filing_brief`` when not None.
+    Neither path calls an LLM — callers supply precomputed text only.
+    """
     lines = [
         f"🔔 {event.symbol}",
         f"Trigger: {event.trigger}",
@@ -131,6 +142,12 @@ def format_alert_message(event: AlertEvent) -> str:
         lines.append(f"Disclosure: {truncate_disclosure_title(event.disclosure_title)}")
     if event.disclosure_url:
         lines.append(event.disclosure_url)
+    brief = filing_brief if filing_brief is not None else event.filing_brief
+    if brief is not None:
+        brief_text = brief.strip()
+        if brief_text:
+            lines.append("")
+            lines.append(brief_text)
     lines.append("")
     lines.append(disclaimer())
     return "\n".join(lines)

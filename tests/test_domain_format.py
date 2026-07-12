@@ -78,6 +78,48 @@ def test_disclosure_message_truncates_long_titles() -> None:
     assert disclaimer() in msg
 
 
+def test_format_alert_message_includes_filing_brief_from_event() -> None:
+    brief = "The company announced its AGM for 15 August. No dividend declared."
+    msg = format_alert_message(_disclosure_event(filing_brief=brief))
+    assert brief in msg
+    # Brief sits before NFA; NFA remains the last non-empty line.
+    assert msg.index(brief) < msg.index(disclaimer())
+    last = [ln for ln in msg.strip().splitlines() if ln.strip()][-1]
+    assert last == disclaimer()
+
+
+def test_format_alert_message_includes_filing_brief_via_kwarg() -> None:
+    brief = "Board approved a rights issue of 1:5 at 40.00 LKR."
+    msg = format_alert_message(_disclosure_event(), filing_brief=brief)
+    assert brief in msg
+    assert disclaimer() in msg
+    last = [ln for ln in msg.strip().splitlines() if ln.strip()][-1]
+    assert "Not financial advice" in last
+
+
+def test_format_alert_message_kwarg_overrides_event_filing_brief() -> None:
+    event = _disclosure_event(filing_brief="Event brief should be replaced.")
+    override = "Kwarg brief wins."
+    msg = format_alert_message(event, filing_brief=override)
+    assert override in msg
+    assert "Event brief should be replaced." not in msg
+    assert disclaimer() in msg
+
+
+def test_format_alert_message_omits_blank_filing_brief() -> None:
+    without = format_alert_message(_disclosure_event())
+    blank_event = format_alert_message(_disclosure_event(filing_brief="   "))
+    blank_kwarg = format_alert_message(_disclosure_event(), filing_brief="")
+    assert without == blank_event == blank_kwarg
+    assert disclaimer() in without
+
+
+def test_format_alert_message_without_brief_unchanged_shape() -> None:
+    msg = format_alert_message(_price_event())
+    assert "filing" not in msg.lower()
+    assert msg.endswith(disclaimer())
+
+
 @pytest.mark.parametrize(
     "title,max_len,expected",
     [
@@ -99,6 +141,13 @@ def test_truncate_disclosure_title(title: str, max_len: int, expected: str) -> N
         format_alert_message(_disclosure_event()),
         format_alert_message(
             _disclosure_event(disclosure_title="Z" * 250, current_price=12.34)
+        ),
+        format_alert_message(
+            _disclosure_event(filing_brief="Short filing summary for tests.")
+        ),
+        format_alert_message(
+            _disclosure_event(),
+            filing_brief="Kwarg brief paragraph for NFA guard.",
         ),
         format_dead_letter_notify("JKH.N0000", 5),
         format_dead_letter_notify("COMB.N0000", 1),
