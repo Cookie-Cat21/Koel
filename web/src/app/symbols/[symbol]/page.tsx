@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { Sparkline } from "@/components/sparkline";
+import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
 import { safeFilingHref, safePdfUrl, sanitizeBriefText } from "@/lib/api/disclosure-safe";
 import { serverApiGet } from "@/lib/api/server-fetch";
@@ -52,7 +53,7 @@ type SymbolPayload = {
 };
 
 type SnapshotsPayload = {
-  points: { ts: string | null; price: number; change_pct: number | null }[];
+  points: { ts: string | null; price: number | null; change_pct: number | null }[];
 };
 
 type DisclosuresPayload = {
@@ -261,7 +262,7 @@ export default async function SymbolDetailPage({
             <p className="text-sm text-muted-foreground" role="status">
               Couldn’t load recent ticks right now.
             </p>
-          ) : snaps.points.length < 2 ? (
+          ) : finiteSparklinePoints(snaps.points).length < 2 ? (
             <EmptyState
               className="mt-1"
               title="Not enough ticks"

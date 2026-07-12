@@ -14,6 +14,7 @@ UNIT_MTS = Path(__file__).resolve().parent / "web_health_route_unit.mts"
 UNIT_SYMBOLS_MTS = Path(__file__).resolve().parent / "web_symbols_route_unit.mts"
 UNIT_MOVERS_MTS = Path(__file__).resolve().parent / "web_movers_route_unit.mts"
 UNIT_DISCLOSURES_MTS = Path(__file__).resolve().parent / "web_disclosures_route_unit.mts"
+UNIT_SPARKLINE_MTS = Path(__file__).resolve().parent / "web_sparkline_finite_unit.mts"
 
 RUNTIME_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"}
 SKIP_DIRS = {".next", "node_modules"}
@@ -595,6 +596,61 @@ def test_price_egress_routes_use_to_finite_number() -> None:
             if tok in line.lower() and not _is_comment_only_hit(line, tok)
         ]
         assert hits == [], f"sectors route must not use {tok}: {hits}"
+
+
+def test_sparkline_hardens_empty_nan_points() -> None:
+    """w18: sparkline + snapshots drop non-finite prices; empty when <2 ticks."""
+    spark_lib = WEB / "src" / "lib" / "sparkline.ts"
+    spark_ui = WEB / "src" / "components" / "sparkline.tsx"
+    snaps = WEB / "src" / "app" / "api" / "v1" / "symbols" / "[symbol]" / "snapshots" / "route.ts"
+    page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    for path in (spark_lib, spark_ui, snaps, page):
+        assert path.is_file(), path
+
+    lib_src = spark_lib.read_text(encoding="utf-8")
+    assert "Number.isFinite" in lib_src
+    assert "finiteSparklinePoints" in lib_src
+
+    ui_src = spark_ui.read_text(encoding="utf-8")
+    assert "finiteSparklinePoints" in ui_src
+    assert 'c.includes("NaN")' in ui_src or "NaN" in ui_src
+    assert "series.length < 2" in ui_src
+
+    snaps_src = snaps.read_text(encoding="utf-8")
+    assert "toFiniteNumber" in snaps_src
+    assert "price == null" in snaps_src
+    assert "flatMap" in snaps_src
+
+    page_src = page.read_text(encoding="utf-8")
+    assert "finiteSparklinePoints" in page_src
+    assert 'from "@/lib/sparkline"' in page_src
+
+
+def test_sparkline_finite_points_unit() -> None:
+    """w18: unit harness for finiteSparklinePoints empty/NaN filter."""
+    assert UNIT_SPARKLINE_MTS.is_file(), f"missing {UNIT_SPARKLINE_MTS}"
+    assert (WEB / "src" / "lib" / "sparkline.ts").is_file()
+    _require_web_node_modules()
+    npx = _npx()
+    staged = WEB / ".web_sparkline_finite_unit.mts"
+    staged.write_text(UNIT_SPARKLINE_MTS.read_text(encoding="utf-8"), encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            [npx, "--yes", "tsx", str(staged.name)],
+            cwd=str(WEB),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    finally:
+        staged.unlink(missing_ok=True)
+    if proc.returncode != 0:
+        pytest.fail(
+            f".web_sparkline_finite_unit.mts failed ({proc.returncode}):\n"
+            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+    assert "WEB_SPARKLINE_FINITE_UNIT_OK" in proc.stdout
 
 
 def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:

@@ -58,13 +58,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
       [symbol, limit],
     );
 
+    // Drop non-finite prices entirely — sparkline needs ≥2 real ticks, not null stubs.
     const points = result.rows
-      .map((row) => ({
-        ts: toIso(row.ts),
-        // Finite-only (parity with movers) so sparkline never gets NaN/±Inf.
-        price: toFiniteNumber(row.price),
-        change_pct: toFiniteNumber(row.change_pct),
-      }))
+      .flatMap((row) => {
+        const price = toFiniteNumber(row.price);
+        if (price == null) return [];
+        return [
+          {
+            ts: toIso(row.ts),
+            price,
+            change_pct: toFiniteNumber(row.change_pct),
+          },
+        ];
+      })
       .reverse();
 
     return jsonOk({ points });
