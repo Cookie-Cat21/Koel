@@ -15,7 +15,7 @@ const DIGITS_ID_RE = /^\d{1,15}$/;
  */
 export function toSafePositiveInt(raw: unknown): number | null {
   if (typeof raw === "bigint") {
-    if (raw <= 0n || raw > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+    if (raw <= BigInt(0) || raw > BigInt(Number.MAX_SAFE_INTEGER)) return null;
     return Number(raw);
   }
   if (typeof raw === "number") {
@@ -36,7 +36,7 @@ export function toSafePositiveInt(raw: unknown): number | null {
  */
 export function toNonNegativeSafeInt(raw: unknown, fallback = 0): number {
   if (typeof raw === "bigint") {
-    if (raw < 0n || raw > BigInt(Number.MAX_SAFE_INTEGER)) return fallback;
+    if (raw < BigInt(0) || raw > BigInt(Number.MAX_SAFE_INTEGER)) return fallback;
     return Number(raw);
   }
   if (typeof raw === "number") {

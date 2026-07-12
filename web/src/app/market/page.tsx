@@ -81,7 +81,10 @@ function asMarketItems(body: unknown): MarketItem[] | null {
     if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
     const r = row as Record<string, unknown>;
     const symbol =
-      sanitizeDisclosureText(r.symbol, MAX_HISTORY_SYMBOL_LENGTH) ?? "";
+      sanitizeDisclosureText(
+        typeof r.symbol === "string" ? r.symbol : null,
+        MAX_HISTORY_SYMBOL_LENGTH,
+      ) ?? "";
     if (!symbol) continue;
     const tsRaw = r.ts;
     out.push({
@@ -114,7 +117,10 @@ function asSectorItems(body: unknown): SectorItem[] | null {
     if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
     const r = row as Record<string, unknown>;
     const name =
-      sanitizeDisclosureText(r.name, MAX_SECTOR_NAME_LENGTH) ?? "";
+      sanitizeDisclosureText(
+        typeof r.name === "string" ? r.name : null,
+        MAX_SECTOR_NAME_LENGTH,
+      ) ?? "";
     if (!name) continue;
     const sectorIdRaw = finiteOrNull(r.sector_id);
     // SafeInteger only — floats / unsafe ints must not become React keys.
