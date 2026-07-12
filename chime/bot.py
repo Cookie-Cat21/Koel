@@ -1,7 +1,7 @@
 """Telegram bot — the only user-facing surface for v1.
 
-Commands: /start, /help, /watch, /unwatch, /alert, /cancel, /myalerts, /mywatchlist.
-Alert dispatch happens from the poller via notify.send_message.
+Commands: /start, /help, /watch, /unwatch, /alert, /cancel, /myalerts,
+/mywatchlist, /brief. Alert dispatch happens from the poller via notify.send_message.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from chime.adapters.cse import CSEClient
-from chime.domain import AlertType, PriceSnapshot, disclaimer
+from chime.domain import AlertType, PriceSnapshot, disclaimer, truncate_disclosure_title
 from chime.logging_setup import get_logger
 from chime.storage import Storage
 
@@ -124,6 +124,7 @@ START_TEXT = (
 # E11-B01: alert syntax + NFA one-liner on /help.
 # E11-A01: disclosure alerts skip filings at/before rule create (fail-closed).
 # Wave5: Browse dash + CATEGORY + optional AI brief.
+# Wave9: /brief SYMBOL — read-only latest ready brief (or none yet / AI off).
 HELP_TEXT = (
     "Commands:\n"
     "/watch SYMBOL\n"
@@ -133,13 +134,20 @@ HELP_TEXT = (
     "/alert SYMBOL move PERCENT\n"
     "/alert SYMBOL disclosure [CATEGORY]\n"
     "/cancel ALERT_ID\n"
-    "/myalerts — active only · /mywatchlist\n"
+    "/myalerts — active only · /mywatchlist · /brief SYMBOL\n"
     "Browse dash: market symbols + watchlists (thin UI).\n"
     "Disclosure alerts: new filings after the rule only "
     "(missing publish time → no fire; CATEGORY = title substring; "
     "optional AI brief when enabled).\n"
     f"{disclaimer()}"
 )
+
+BRIEF_USAGE = (
+    "Usage: /brief SYMBOL\n"
+    "Example: /brief JKH.N0000\n"
+    f"{disclaimer()}"
+)
+BRIEF_NONE_YET = "none yet / AI off"
 
 
 @dataclass(frozen=True)
@@ -464,6 +472,58 @@ async def cmd_mywatchlist(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.effective_message.reply_text("Watchlist:\n" + "\n".join(symbols))
 
 
+def format_brief_lookup_reply(
+    *,
+    symbol: str,
+    brief: str | None,
+    title: str | None = None,
+    url: str | None = None,
+) -> str:
+    """Read-only /brief reply body. Always ends with NFA."""
+    if not brief or not brief.strip():
+        return f"{symbol}: {BRIEF_NONE_YET}\n{disclaimer()}"
+    lines = [f"{symbol} filing brief"]
+    if title and title.strip():
+        lines.append(f"Disclosure: {truncate_disclosure_title(title)}")
+    if url and str(url).strip():
+        lines.append(str(url).strip())
+    lines.append("")
+    lines.append(brief.strip())
+    lines.append("")
+    lines.append(disclaimer())
+    return "\n".join(lines)
+
+
+async def cmd_brief(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Read-only latest ready brief from DB — never calls an LLM."""
+    if await _rate_limited(update, context):
+        return
+    storage: Storage = context.application.bot_data["storage"]
+    if not update.effective_message:
+        return
+    if not context.args:
+        await update.effective_message.reply_text(BRIEF_USAGE)
+        return
+    symbol = normalize_symbol(context.args[0])
+    if symbol is None:
+        await update.effective_message.reply_text(BAD_SYMBOL_HINT)
+        return
+    row = await storage.get_latest_ready_brief(symbol)
+    if row is None:
+        await update.effective_message.reply_text(
+            format_brief_lookup_reply(symbol=symbol, brief=None)
+        )
+        return
+    await update.effective_message.reply_text(
+        format_brief_lookup_reply(
+            symbol=str(row.get("symbol") or symbol),
+            brief=str(row.get("brief") or ""),
+            title=row.get("title") if isinstance(row.get("title"), str) else None,
+            url=row.get("url") if isinstance(row.get("url"), str) else None,
+        )
+    )
+
+
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     log.exception("bot_handler_error", error=str(context.error), update=str(update)[:200])
 
@@ -497,5 +557,6 @@ def build_application(
     app.add_handler(CommandHandler("cancel", cmd_cancel))
     app.add_handler(CommandHandler("myalerts", cmd_myalerts))
     app.add_handler(CommandHandler("mywatchlist", cmd_mywatchlist))
+    app.add_handler(CommandHandler("brief", cmd_brief))
     app.add_error_handler(on_error)
     return app

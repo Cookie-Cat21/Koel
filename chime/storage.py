@@ -987,6 +987,61 @@ class Storage:
         except Exception:
             return None
 
+    async def get_latest_ready_brief(self, symbol: str) -> dict[str, Any] | None:
+        """Latest ``ready`` filing brief for a symbol (read-only lookup).
+
+        Ordered by disclosure ``published_at`` then ``id`` descending. Returns
+        ``None`` when missing, blank, or on any DB error (fail-soft).
+        """
+        sym = (symbol or "").strip().upper()
+        if not sym:
+            return None
+        try:
+            async with self._pool.connection() as conn:
+                row = await (
+                    await conn.execute(
+                        """
+                        SELECT
+                            b.brief,
+                            d.symbol,
+                            d.title,
+                            d.url,
+                            d.external_id,
+                            b.disclosure_id
+                        FROM disclosure_briefs b
+                        JOIN disclosures d ON d.id = b.disclosure_id
+                        WHERE d.symbol = %s
+                          AND b.status = 'ready'
+                          AND b.brief IS NOT NULL
+                          AND btrim(b.brief) <> ''
+                        ORDER BY d.published_at DESC NULLS LAST, d.id DESC
+                        LIMIT 1
+                        """,
+                        (sym,),
+                    )
+                ).fetchone()
+            if row is None:
+                return None
+            data = _as_row(row)
+            brief = data.get("brief")
+            if not isinstance(brief, str):
+                return None
+            text = brief.strip()
+            if not text:
+                return None
+            return {
+                "brief": text,
+                "symbol": str(data.get("symbol") or sym).strip().upper(),
+                "title": (str(data["title"]).strip() if data.get("title") else None),
+                "url": (str(data["url"]).strip() if data.get("url") else None),
+                "external_id": (
+                    str(data["external_id"]).strip() if data.get("external_id") else None
+                ),
+                "disclosure_id": data.get("disclosure_id"),
+            }
+        except Exception:
+            return None
+
     async def insert_disclosure_if_new(self, disc: Disclosure) -> Disclosure | None:
         """Compat wrapper — prefer upsert_disclosure.
 

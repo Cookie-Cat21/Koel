@@ -459,6 +459,43 @@ async def test_get_ready_filing_brief_fail_soft_on_db_error() -> None:
     assert await store.get_ready_filing_brief(disclosure_id=9) is None
 
 
+
+
+@pytest.mark.asyncio
+async def test_get_latest_ready_brief_for_symbol() -> None:
+    brief = "AGM scheduled for August."
+    conn = _Conn(
+        [
+            {
+                "brief": brief,
+                "symbol": "JKH.N0000",
+                "title": "AGM Notice",
+                "url": "https://cdn.cse.lk/a.pdf",
+                "external_id": "99",
+                "disclosure_id": 7,
+            }
+        ]
+    )
+    store = _store(conn)
+    out = await store.get_latest_ready_brief("jkh.n0000")
+    assert out is not None
+    assert out["brief"] == brief
+    assert out["symbol"] == "JKH.N0000"
+    assert out["title"] == "AGM Notice"
+    assert "disclosure_briefs" in conn.sql[0]
+    assert "status = 'ready'" in conn.sql[0]
+    assert "ORDER BY d.published_at DESC" in conn.sql[0]
+    assert conn.params[0] == ("JKH.N0000",)
+
+
+@pytest.mark.asyncio
+async def test_get_latest_ready_brief_none_or_fail_soft() -> None:
+    assert await _store(_Conn([None])).get_latest_ready_brief("JKH.N0000") is None
+    assert await _store(_Conn([{"brief": "  "}])).get_latest_ready_brief("JKH.N0000") is None
+    assert await _store(_Conn([])).get_latest_ready_brief("") is None
+    conn = _Conn([RuntimeError("db down")])
+    assert await _store(conn).get_latest_ready_brief("JKH.N0000") is None
+
 @pytest.mark.asyncio
 async def test_ensure_user_add_remove_watch_list() -> None:
     conn = _Conn([{"id": 3}, None, {"symbol": "JKH.N0000"}, [{"symbol": "JKH.N0000"}]])
