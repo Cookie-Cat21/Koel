@@ -1,11 +1,9 @@
 import { AppNav } from "@/components/app-nav";
 import { NfaFooter } from "@/components/nfa-footer";
-import {
-  MAX_HISTORY_SYMBOL_LENGTH,
-  sanitizeDisclosureText,
-} from "@/lib/api/disclosure-safe";
+import { sanitizeDisclosureText } from "@/lib/api/disclosure-safe";
 import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
+import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatTs } from "@/lib/format";
@@ -22,6 +20,7 @@ const STALE_HEALTH_AGE_MS = 24 * 60 * 60 * 1000;
 const HEALTH_UI_STRING_MAX = 512;
 const HEALTH_UI_WATCHED_MAX = 64;
 const HEALTH_UI_CIRCUITS_MAX = 32;
+const CIRCUIT_STATES = new Set(["closed", "open", "half_open"]);
 
 type BriefQueueHint = {
   pending_briefs?: number;
@@ -85,11 +84,8 @@ function parseHealthPayload(body: unknown): HealthPayload | null {
     const watched: string[] = [];
     if (Array.isArray(p.watched_missing)) {
       for (const item of p.watched_missing) {
-        const sym =
-          sanitizeDisclosureText(
-            typeof item === "string" ? item : null,
-            MAX_HISTORY_SYMBOL_LENGTH,
-          ) ?? "";
+        // Fail closed — only CSE SYMBOL_RE (no sanitize length-cap fallback).
+        const sym = normalizeSymbol(item);
         if (!sym) continue;
         watched.push(sym);
         if (watched.length >= HEALTH_UI_WATCHED_MAX) break;
@@ -111,8 +107,11 @@ function parseHealthPayload(body: unknown): HealthPayload | null {
           continue;
         }
         const snap = value as Record<string, unknown>;
-        const state =
+        // Allowlist only — sanitize-alone used to echo hostile circuit states.
+        const stateRaw =
           typeof snap.state === "string" ? healthUiString(snap.state) : null;
+        const state =
+          stateRaw && CIRCUIT_STATES.has(stateRaw) ? stateRaw : null;
         const failuresRaw = toNonNegativeSafeInt(snap.failures, -1);
         const failures = failuresRaw >= 0 ? failuresRaw : undefined;
         circuits[name] = {

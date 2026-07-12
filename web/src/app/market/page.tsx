@@ -6,7 +6,6 @@ import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { Button } from "@/components/ui/button";
 import {
-  MAX_HISTORY_SYMBOL_LENGTH,
   MAX_SECTOR_NAME_LENGTH,
   MAX_STOCK_NAME_LENGTH,
   MAX_STOCK_SECTOR_LENGTH,
@@ -18,6 +17,7 @@ import {
 } from "@/lib/api/market-query";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
+import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
@@ -67,8 +67,8 @@ function finiteOrNull(value: unknown): number | null {
 }
 
 /**
- * Fail-closed browse rows: sanitize symbol/name/sector (controls + cap) and
- * coerce numerics. Raw string change_pct must not reach formatPct (throws).
+ * Fail-closed browse rows: SYMBOL_RE symbols (no sanitize fallback), sanitize
+ * name/sector, coerce numerics. Raw string change_pct must not reach formatPct.
  */
 function asMarketItems(body: unknown): MarketItem[] | null {
   if (body == null || typeof body !== "object" || Array.isArray(body)) {
@@ -80,11 +80,8 @@ function asMarketItems(body: unknown): MarketItem[] | null {
   for (const row of items) {
     if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
     const r = row as Record<string, unknown>;
-    const symbol =
-      sanitizeDisclosureText(
-        typeof r.symbol === "string" ? r.symbol : null,
-        MAX_HISTORY_SYMBOL_LENGTH,
-      ) ?? "";
+    // Fail closed — only CSE SYMBOL_RE (no sanitize length-cap fallback).
+    const symbol = normalizeSymbol(r.symbol);
     if (!symbol) continue;
     out.push({
       symbol,

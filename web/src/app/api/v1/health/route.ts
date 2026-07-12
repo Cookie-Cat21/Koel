@@ -5,6 +5,7 @@ import {
   toNonNegativeSafeInt,
   toSafePositiveInt,
 } from "@/lib/api/safe-int";
+import { normalizeSymbol } from "@/lib/api/symbol";
 import { jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
 import { getPool } from "@/lib/db";
@@ -136,14 +137,11 @@ function sanitizeWatchedMissing(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out: string[] = [];
   for (const item of raw) {
-    if (typeof item !== "string") continue;
-    const cleaned = item.replace(/[\u0000-\u001F\u007F-\u009F]/g, "").trim();
-    if (!cleaned) continue;
-    out.push(
-      cleaned.length > HEALTH_STRING_MAX
-        ? cleaned.slice(0, HEALTH_STRING_MAX)
-        : cleaned,
-    );
+    // Fail closed — only CSE SYMBOL_RE (no sanitize length-cap fallback).
+    // Hostile HEALTH_URL used to egress 512-char non-ticker strings into ops JSON.
+    const sym = normalizeSymbol(item);
+    if (!sym) continue;
+    out.push(sym);
     if (out.length >= HEALTH_WATCHED_MISSING_MAX) break;
   }
   return out;
@@ -287,6 +285,15 @@ export async function GET(request: NextRequest) {
           redirect: "error",
           headers: { Accept: "application/json" },
         });
+        // Early-reject claimed Content-Length before allocating the body
+        // (parity with serverApiGet — hostile loopback still must not OOM).
+        const lenHeader = res.headers.get("content-length");
+        if (lenHeader != null && lenHeader.trim()) {
+          const claimed = toNonNegativeSafeInt(lenHeader.trim(), -1);
+          if (claimed < 0 || claimed > HEALTH_PROXY_BODY_MAX_BYTES) {
+            throw new Error("health_url_body_too_large");
+          }
+        }
         // Keep abort armed through body read — hung / huge JSON must not OOM.
         const rawText = await res.text().catch(() => "");
         if (rawText.length > HEALTH_PROXY_BODY_MAX_BYTES) {

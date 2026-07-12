@@ -73,8 +73,8 @@ def test_ensure_user_requires_safe_integer_id() -> None:
 def test_market_page_sanitizes_symbol_name_sector() -> None:
     page = WEB / "src" / "app" / "market" / "page.tsx"
     source = page.read_text(encoding="utf-8")
-    assert "sanitizeDisclosureText" in source
-    assert "MAX_HISTORY_SYMBOL_LENGTH" in source
+    assert "normalizeSymbol(" in source
+    assert "MAX_HISTORY_SYMBOL_LENGTH" not in source
     assert "MAX_STOCK_NAME_LENGTH" in source
     assert "MAX_STOCK_SECTOR_LENGTH" in source
     assert "MAX_SECTOR_NAME_LENGTH" in source

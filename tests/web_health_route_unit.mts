@@ -279,7 +279,13 @@ async function testNestedPollerCannotOverwriteSanitizedFields(): Promise<void> {
         poller: {
           last_tick_ok: "yes",
           price_poll_ok: "nope",
-          watched_missing: [1, null, "COMB\u0000.N0000", "X".repeat(2000)],
+          watched_missing: [
+            1,
+            null,
+            "COMB\u0000.N0000",
+            "X".repeat(2000),
+            "JKH.N0000",
+          ],
           last_error: { nested: true },
           brief_queue: { pending_briefs: Number.NaN },
         },
@@ -295,14 +301,10 @@ async function testNestedPollerCannotOverwriteSanitizedFields(): Promise<void> {
     assert(body.poller?.last_tick_ok === true, "nested string must not clobber last_tick_ok");
     assert(body.poller?.price_poll_ok === true, "nested string must not clobber price_poll_ok");
     assert(body.poller?.disclosure_poll_ok === true, "disclosure_poll_ok preserved");
-    // Only string symbols kept; controls stripped; length capped.
+    // Only CSE SYMBOL_RE kept — controls / oversize / non-tickers dropped.
     const missing = body.poller?.watched_missing ?? [];
-    assert(missing.length === 2, `expected 2 cleaned symbols, got ${missing.length}`);
-    assert(missing[0] === "COMB.N0000", `controls stripped, got ${missing[0]}`);
-    assert(
-      typeof missing[1] === "string" && missing[1]!.length <= 512,
-      "hostile oversize watched_missing entry must be capped",
-    );
+    assert(missing.length === 1, `expected 1 SYMBOL_RE symbol, got ${missing.length}`);
+    assert(missing[0] === "JKH.N0000", `expected JKH.N0000, got ${missing[0]}`);
     assert(body.poller?.last_error === null, "nested object last_error must not clobber null");
     assert(body.poller?.brief_queue === undefined, "NaN brief_queue must be omitted");
     // Cleaned missing still degrades ops status.

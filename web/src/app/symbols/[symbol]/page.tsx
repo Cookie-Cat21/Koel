@@ -13,7 +13,6 @@ import {
   MAX_DISCLOSURE_COMPANY_LENGTH,
   MAX_DISCLOSURE_EXTERNAL_ID_LENGTH,
   MAX_DISCLOSURE_TITLE_LENGTH,
-  MAX_HISTORY_SYMBOL_LENGTH,
   MAX_STOCK_NAME_LENGTH,
   MAX_STOCK_SECTOR_LENGTH,
   normalizeBriefStatus,
@@ -25,7 +24,7 @@ import {
 } from "@/lib/api/disclosure-safe";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
-import { normalizeSymbolParam } from "@/lib/api/symbol";
+import { normalizeSymbol, normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
@@ -104,11 +103,8 @@ function parseSymbolPayload(body: unknown): SymbolPayload | null {
     return null;
   }
   const r = body as Record<string, unknown>;
-  const symbol =
-    sanitizeDisclosureText(
-      typeof r.symbol === "string" ? r.symbol : null,
-      MAX_HISTORY_SYMBOL_LENGTH,
-    ) ?? "";
+  // Fail closed — only CSE SYMBOL_RE (no sanitize length-cap fallback).
+  const symbol = normalizeSymbol(r.symbol);
   if (!symbol) return null;
   let last: SymbolPayload["last"] = null;
   if (r.last != null && typeof r.last === "object" && !Array.isArray(r.last)) {
