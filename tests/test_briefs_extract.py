@@ -182,7 +182,9 @@ async def test_claim_pending_briefs_skips_pdf_fetch_without_url() -> None:
         )
     assert n == 1
     fetch.assert_not_awaited()
-    provider.summarize.assert_awaited_once_with("JKH.N0000: AGM Notice")
+    called = provider.summarize.await_args.args[0]
+    assert "<<<FILING>>>" in called
+    assert "JKH.N0000: AGM Notice" in called
 
 
 @pytest.mark.asyncio

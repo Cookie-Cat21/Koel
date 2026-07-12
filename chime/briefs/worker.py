@@ -35,7 +35,13 @@ class _BriefEnqueuer(Protocol):
 
 
 class _BriefDrainStorage(Protocol):
-    async def claim_pending_briefs(self, *, limit: int = 5) -> list[dict[str, Any]]: ...
+    async def claim_pending_briefs(
+        self,
+        *,
+        limit: int = 5,
+        max_briefs_per_day: int | None = None,
+        stale_processing_minutes: int = 15,
+    ) -> list[dict[str, Any]]: ...
 
     async def mark_brief_ready(
         self,
@@ -55,7 +61,7 @@ class _BriefDrainStorage(Protocol):
         model: str | None = None,
     ) -> bool: ...
 
-    async def count_briefs_today(self) -> int: ...
+    async def count_briefs_today(self, *, stale_processing_minutes: int = 15) -> int: ...
 
     async def active_rules_for_symbols(self, symbols: Sequence[str]) -> list[Any]: ...
 
@@ -138,7 +144,11 @@ async def _input_text_for_row(
                 disclosure_id=row.get("disclosure_id"),
                 pdf_url=pdf_url,
             )
-    return _stub_input_text(row)
+    return build_brief_prompt(
+        symbol=symbol or "UNKNOWN",
+        title=title or "Filing",
+        extracted_text=_stub_input_text(row),
+    )
 
 
 def _disclosure_telegram_ids(rules: list[Any], *, symbol: str) -> list[int]:
@@ -254,14 +264,17 @@ async def claim_pending_briefs(
         return 0
 
     batch = min(max(1, limit), remaining)
-    rows = await storage.claim_pending_briefs(limit=batch)
+    rows = await storage.claim_pending_briefs(
+        limit=batch,
+        max_briefs_per_day=cfg.max_briefs_per_day,
+    )
     if not rows:
         return 0
 
     owns_provider = provider is None
     owns_http = http_client is None
     prov: BriefProvider = provider or make_brief_provider(cfg)
-    http = http_client or httpx.AsyncClient(timeout=30.0)
+    http = http_client or httpx.AsyncClient(timeout=float(cfg.http_timeout_seconds or 30.0))
     processed = 0
     try:
         for row in rows:

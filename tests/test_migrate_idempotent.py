@@ -27,8 +27,12 @@ def test_migration_filenames_ordered_and_wave3_presence() -> None:
 
     assert "005_disclosure_briefs.sql" in files
     assert "006_alert_rule_category.sql" in files
+    assert "007_brief_processing_status.sql" in files
     assert files.index("005_disclosure_briefs.sql") < files.index(
         "006_alert_rule_category.sql"
+    )
+    assert files.index("006_alert_rule_category.sql") < files.index(
+        "007_brief_processing_status.sql"
     )
 
     briefs_sql = (migrations_dir() / "005_disclosure_briefs.sql").read_text(
@@ -44,6 +48,11 @@ def test_migration_filenames_ordered_and_wave3_presence() -> None:
     assert re.search(
         r"ADD COLUMN IF NOT EXISTS\s+category\b", category_sql, re.IGNORECASE
     )
+
+    processing_sql = (
+        migrations_dir() / "007_brief_processing_status.sql"
+    ).read_text(encoding="utf-8")
+    assert "processing" in processing_sql
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL not set")

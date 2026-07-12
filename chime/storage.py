@@ -285,32 +285,93 @@ class Storage:
             ).fetchone()
         return row is not None
 
-    async def claim_pending_briefs(self, *, limit: int = 5) -> list[dict[str, Any]]:
-        """Load pending brief rows joined with disclosure title/symbol (skeleton).
+    async def claim_pending_briefs(
+        self,
+        *,
+        limit: int = 5,
+        max_briefs_per_day: int | None = None,
+        stale_processing_minutes: int = 15,
+    ) -> list[dict[str, Any]]:
+        """Lease pending (or stale processing) briefs as ``processing``.
 
-        Uses ``FOR UPDATE SKIP LOCKED`` so concurrent drainers do not double-claim.
-        Caller must mark ready/failed; rows stay ``pending`` until then.
+        Takes a transaction-scoped advisory lock when ``max_briefs_per_day`` is
+        set so concurrent drainers cannot race past the daily cap. Marks rows
+        ``processing`` before returning so FOR UPDATE ending does not allow
+        double-claim. Stale ``processing`` rows older than
+        ``stale_processing_minutes`` are reclaimable after a crash.
         """
         if limit <= 0:
             return []
+        # Distinct from POLL_LOCK_ID; serializes brief claim + daily-cap check.
+        brief_cap_lock_id = 4_201_339
         async with self._pool.connection() as conn, conn.transaction():
+            if max_briefs_per_day is not None:
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    (brief_cap_lock_id,),
+                )
+                used_row = await (
+                    await conn.execute(
+                        """
+                        SELECT COUNT(*)::int AS n
+                        FROM disclosure_briefs
+                        WHERE updated_at >= date_trunc('day', now() AT TIME ZONE 'UTC')
+                          AND (
+                              status IN ('ready', 'failed')
+                              OR (
+                                  status = 'processing'
+                                  AND updated_at
+                                      >= now() - (%s * interval '1 minute')
+                              )
+                          )
+                        """,
+                        (stale_processing_minutes,),
+                    )
+                ).fetchone()
+                used = int(_as_row(used_row).get("n") or 0) if used_row else 0
+                remaining = max(0, int(max_briefs_per_day) - used)
+                if remaining <= 0:
+                    return []
+                batch = min(limit, remaining)
+            else:
+                batch = limit
+
             rows = await (
                 await conn.execute(
                     """
+                    WITH picked AS (
+                        SELECT b.disclosure_id
+                        FROM disclosure_briefs b
+                        WHERE b.status = 'pending'
+                           OR (
+                               b.status = 'processing'
+                               AND b.updated_at
+                                   < now() - (%s * interval '1 minute')
+                           )
+                        ORDER BY b.created_at ASC
+                        LIMIT %s
+                        FOR UPDATE OF b SKIP LOCKED
+                    ),
+                    claimed AS (
+                        UPDATE disclosure_briefs b
+                        SET
+                            status = 'processing',
+                            updated_at = now(),
+                            error = NULL
+                        FROM picked
+                        WHERE b.disclosure_id = picked.disclosure_id
+                        RETURNING b.disclosure_id
+                    )
                     SELECT
-                        b.disclosure_id,
+                        c.disclosure_id,
                         d.symbol,
                         d.title,
                         d.url,
                         d.pdf_url
-                    FROM disclosure_briefs b
-                    JOIN disclosures d ON d.id = b.disclosure_id
-                    WHERE b.status = 'pending'
-                    ORDER BY b.created_at ASC
-                    LIMIT %s
-                    FOR UPDATE OF b SKIP LOCKED
+                    FROM claimed c
+                    JOIN disclosures d ON d.id = c.disclosure_id
                     """,
-                    (limit,),
+                    (stale_processing_minutes, batch),
                 )
             ).fetchall()
         return _as_rows(rows)
@@ -324,7 +385,7 @@ class Storage:
         tokens_in: int | None = None,
         tokens_out: int | None = None,
     ) -> bool:
-        """Mark a pending brief row ready with generated text."""
+        """Mark a claimed (processing) brief row ready with generated text."""
         async with self._pool.connection() as conn:
             row = await (
                 await conn.execute(
@@ -338,7 +399,8 @@ class Storage:
                         tokens_out = %s,
                         error = NULL,
                         updated_at = now()
-                    WHERE disclosure_id = %s AND status = 'pending'
+                    WHERE disclosure_id = %s
+                      AND status IN ('pending', 'processing')
                     RETURNING disclosure_id
                     """,
                     (brief, model, tokens_in, tokens_out, disclosure_id),
@@ -353,7 +415,7 @@ class Storage:
         error: str,
         model: str | None = None,
     ) -> bool:
-        """Mark a pending brief row failed (keeps prior brief null)."""
+        """Mark a claimed brief row failed (keeps prior brief null)."""
         err = (error or "unknown")[:2000]
         async with self._pool.connection() as conn:
             row = await (
@@ -365,7 +427,8 @@ class Storage:
                         error = %s,
                         model = COALESCE(%s, model),
                         updated_at = now()
-                    WHERE disclosure_id = %s AND status = 'pending'
+                    WHERE disclosure_id = %s
+                      AND status IN ('pending', 'processing')
                     RETURNING disclosure_id
                     """,
                     (err, model, disclosure_id),
@@ -373,17 +436,25 @@ class Storage:
             ).fetchone()
         return row is not None
 
-    async def count_briefs_today(self) -> int:
-        """Count ready/failed briefs updated since UTC midnight (daily cap)."""
+    async def count_briefs_today(self, *, stale_processing_minutes: int = 15) -> int:
+        """Count today's completed briefs plus non-stale in-flight processing."""
         async with self._pool.connection() as conn:
             row = await (
                 await conn.execute(
                     """
                     SELECT COUNT(*)::int AS n
                     FROM disclosure_briefs
-                    WHERE status IN ('ready', 'failed')
-                      AND updated_at >= date_trunc('day', now() AT TIME ZONE 'UTC')
-                    """
+                    WHERE updated_at >= date_trunc('day', now() AT TIME ZONE 'UTC')
+                      AND (
+                          status IN ('ready', 'failed')
+                          OR (
+                              status = 'processing'
+                              AND updated_at
+                                  >= now() - (%s * interval '1 minute')
+                          )
+                      )
+                    """,
+                    (stale_processing_minutes,),
                 )
             ).fetchone()
         if row is None:
