@@ -165,7 +165,16 @@ def resolve_positive_int_cap(
     try:
         if isinstance(raw, float) and not math.isfinite(raw):
             return default
-        n = int(raw)  # type: ignore[arg-type]
+        # Narrow before int() — mypy rejects int(object); fail closed otherwise.
+        if isinstance(raw, bool):
+            # bool is an int subclass; treat as invalid for size caps.
+            return default
+        if isinstance(raw, int):
+            n = raw
+        elif isinstance(raw, (float, str, bytes, bytearray)):
+            n = int(raw)
+        else:
+            return default
     except (TypeError, ValueError, OverflowError):
         return default
     if n < 1:
