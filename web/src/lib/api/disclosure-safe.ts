@@ -141,11 +141,16 @@ export function sanitizeDisclosureText(
  * Strips C0/C1 controls; caps length. Does not HTML-escape (React does).
  */
 export function sanitizeBriefText(
-  brief: string | null | undefined,
-  briefStatus: string | null | undefined,
+  brief: unknown,
+  briefStatus: unknown,
 ): string | null {
-  if (briefStatus !== "ready" || brief == null) return null;
-  return sanitizeDisclosureText(brief, MAX_BRIEF_LENGTH);
+  // Fail closed — only ready + string bodies (non-string status must not coerce).
+  if (typeof briefStatus !== "string" || briefStatus !== "ready") return null;
+  if (brief == null) return null;
+  return sanitizeDisclosureText(
+    typeof brief === "string" ? brief : null,
+    MAX_BRIEF_LENGTH,
+  );
 }
 
 export function normalizeBriefStatus(raw: unknown): BriefStatus | null {

@@ -21,6 +21,7 @@ import httpx
 import structlog
 
 from chime.briefs import BRIEF_SYSTEM_INSTRUCTION, BriefSettings, briefs_enabled
+from chime.domain import resolve_positive_int_cap
 
 log = structlog.get_logger("chime.briefs.provider")
 
@@ -80,7 +81,9 @@ class _HttpBriefProviderBase:
         body = (text or "").replace("\x00", "").strip()
         if not body:
             raise ValueError("summarize requires non-empty text")
-        max_chars = max(1, int(self._settings.max_input_chars))
+        max_chars = resolve_positive_int_cap(
+            self._settings.max_input_chars, default=1, absolute_max=200_000
+        )
         start = "<<<FILING>>>"
         end = "<<<END_FILING>>>"
         if start in body and end in body:

@@ -12,6 +12,8 @@ import os
 from dataclasses import dataclass
 from enum import StrEnum
 
+from chime.domain import resolve_positive_int_cap
+
 __all__ = [
     "BRIEF_SYSTEM_INSTRUCTION",
     "BriefSettings",
@@ -165,7 +167,8 @@ def build_brief_prompt(
     ``AI_MAX_INPUT_CHARS`` cannot chop ``<<<END_FILING>>>`` off mid-prompt.
     """
     body = (extracted_text or "").replace("\x00", "").strip()
-    cap = max(1, int(max_chars))
+    # Fail closed — int(NaN)/None/inf used to raise mid prompt build.
+    cap = resolve_positive_int_cap(max_chars, default=1, absolute_max=200_000)
     if len(body) > cap:
         body = body[:cap]
     sym = (symbol or "").replace("\x00", "").strip() or "UNKNOWN"

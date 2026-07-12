@@ -150,12 +150,41 @@ TELEGRAM_SAFE_MAX = 4096
 _CTRL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
+def resolve_positive_int_cap(
+    raw: object,
+    *,
+    default: int = 1,
+    absolute_max: int | None = None,
+) -> int:
+    """Fail-closed positive int cap (parity web ``resolveSanitizeTextCap``).
+
+    Medium: ``max(1, int(max_len))`` raises on ``None`` / ``NaN`` / ``inf`` /
+    non-numerics mid Telegram format / PDF fetch / prompt build. Non-positive
+    and oversized values clamp instead of crashing the alert path.
+    """
+    try:
+        if isinstance(raw, float) and not math.isfinite(raw):
+            return default
+        n = int(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if n < 1:
+        return default
+    if absolute_max is not None and n > absolute_max:
+        return absolute_max
+    return n
+
+
+
 def sanitize_disclosure_category(category: str | None) -> str | None:
     """Strip C0/C1 controls and cap length for disclosure category filters.
 
     Returns ``None`` when empty after sanitize.
     """
     if category is None:
+        return None
+    # Fail closed — non-strings used to throw on re.sub mid bot/API path.
+    if not isinstance(category, str):
         return None
     cleaned = _CTRL_RE.sub("", category).strip()
     if not cleaned:
@@ -175,14 +204,20 @@ def truncate_disclosure_title(title: str, max_len: int = DISCLOSURE_TITLE_MAX) -
     Strips C0/C1 controls so a hostile DB title cannot inject nulls/newlines
     into Telegram egress.
     """
+    # Fail closed — non-strings used to throw on re.sub mid alert format.
+    if not isinstance(title, str):
+        return ""
     t = _CTRL_RE.sub("", title).strip()
     if not t:
         return ""
-    if len(t) <= max_len:
+    cap = resolve_positive_int_cap(
+        max_len, default=DISCLOSURE_TITLE_MAX, absolute_max=DISCLOSURE_TITLE_MAX
+    )
+    if len(t) <= cap:
         return t
-    if max_len <= 1:
+    if cap <= 1:
         return "…"
-    return t[: max_len - 1].rstrip() + "…"
+    return t[: cap - 1].rstrip() + "…"
 
 
 def sanitize_brief_body(
@@ -196,10 +231,16 @@ def sanitize_brief_body(
     """
     if brief is None:
         return None
+    # Fail closed — non-strings used to throw on re.sub mid alert format.
+    if not isinstance(brief, str):
+        return None
     body = _CTRL_RE.sub("", brief).strip()
     if not body:
         return None
-    cap = max(1, int(max_len))
+    # Fail closed — int(NaN)/None/inf used to raise; oversized caps clamp.
+    cap = resolve_positive_int_cap(
+        max_len, default=1, absolute_max=TELEGRAM_SAFE_MAX
+    )
     if len(body) > cap:
         body = body[: cap - 1].rstrip() + "…"
     return body

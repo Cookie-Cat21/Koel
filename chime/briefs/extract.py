@@ -13,12 +13,15 @@ import httpx
 import structlog
 
 from chime.adapters.cse import allowed_cdn_pdf_url
+from chime.domain import resolve_positive_int_cap
 
 log = structlog.get_logger("chime.briefs.extract")
 
 # Soft caps so a hostile/huge CDN PDF cannot pin the brief worker on CPU/RAM.
 _MAX_PDF_PAGES = 40
 _MAX_EXTRACT_CHARS = 50_000
+# Absolute ceiling for PDF fetch byte caps (env / caller misconfig).
+_PDF_MAX_BYTES_ABS = 20_971_520  # 20 MiB
 
 
 # Client errors that will not heal on retry — fail the brief permanently.
@@ -107,7 +110,11 @@ async def fetch_cdn_pdf(
             f"CDN PDF URL rejected (not allowlisted): {pdf_url!r}"
         )
 
-    cap = max(1, int(max_bytes))
+    # Fail closed — int(NaN)/None/inf used to raise mid CDN fetch;
+    # max_bytes=0 still clamps to 1 (oversized body → permanent error).
+    cap = resolve_positive_int_cap(
+        max_bytes, default=1, absolute_max=_PDF_MAX_BYTES_ABS
+    )
     try:
         # follow_redirects=False: open redirects on the CDN must not SSRF.
         async with client.stream(
