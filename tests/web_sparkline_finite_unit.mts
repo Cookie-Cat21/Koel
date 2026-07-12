@@ -67,7 +67,23 @@ function testRejectsNonNumberPrimitives(): void {
   assert(sneaky.length === 0, "string/undefined/bool must not coerce");
 }
 
+function testSanitizesTimestampEgress(): void {
+  const pts = finiteSparklinePoints([
+    { ts: "x".repeat(200), price: 1 },
+    { ts: "ok", price: 2 },
+    { ts: "bad\u0000ts", price: 3 },
+    { ts: 123 as unknown as string, price: 4 },
+  ]);
+  // Prices still kept — only ts is fail-closed.
+  assert(pts.length === 4, `expected 4 finite prices, got ${pts.length}`);
+  assert(pts[0].ts === null, "overlong ts dropped");
+  assert(pts[1].ts === "ok", "short ts kept");
+  assert(pts[2].ts === null, "control ts dropped");
+  assert(pts[3].ts === null, "non-string ts dropped");
+}
+
 testDropsNonFiniteAndEmpty();
 testKeepsFiniteSeries();
 testRejectsNonNumberPrimitives();
+testSanitizesTimestampEgress();
 console.log("WEB_SPARKLINE_FINITE_UNIT_OK");
