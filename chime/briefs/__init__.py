@@ -55,10 +55,10 @@ class BriefSettings:
     """Env knobs (see root ``.env.example``):
 
     - ``AI_BRIEFS_ENABLED`` — ``1`` to opt in (default ``0``)
-    - ``AI_PROVIDER`` — ``gemini`` or ``groq`` (default ``gemini``)
+    - ``AI_PROVIDER`` — ``gemini``, ``groq``, or ``openrouter`` (default ``gemini``)
     - ``AI_API_KEY`` — required with enabled for ``briefs_enabled()``
     - ``AI_MODEL`` — provider soft-default when unset (``gemini-2.0-flash``;
-      ``llama-3.3-70b-versatile`` for groq)
+      ``llama-3.3-70b-versatile`` for groq; ``openai/gpt-4o-mini`` for openrouter)
     - ``AI_MAX_BRIEFS_PER_DAY`` — default ``50``
     - ``AI_MAX_INPUT_CHARS`` — default ``12000``
     - ``AI_HTTP_TIMEOUT_SECONDS`` — provider HTTP timeout (default ``30``)
