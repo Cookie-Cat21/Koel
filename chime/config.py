@@ -50,6 +50,8 @@ class Settings:
     market_open: str = "09:30"
     market_close: str = "14:30"
     bot_cmd_rate_per_minute: int = 20
+    # Polite pause between legacy /announcements PDF enrichment calls (per symbol).
+    pdf_enrich_sleep_seconds: float = 0.5
 
     @classmethod
     def from_env(cls, *, require_token: bool = True) -> Settings:
@@ -72,6 +74,7 @@ class Settings:
             market_open=os.getenv("MARKET_OPEN", "09:30"),
             market_close=os.getenv("MARKET_CLOSE", "14:30"),
             bot_cmd_rate_per_minute=_int("BOT_CMD_RATE_PER_MINUTE", 20),
+            pdf_enrich_sleep_seconds=_float("PDF_ENRICH_SLEEP_SECONDS", 0.5),
         )
 
 

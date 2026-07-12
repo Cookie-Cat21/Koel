@@ -261,7 +261,8 @@ class Storage:
 
         ON CONFLICT updates title so RETURNING id always yields a row — callers
         can re-evaluate rules after a crash between insert and claim without
-        permanently skipping the disclosure.
+        permanently skipping the disclosure. Existing ``pdf_url`` is preserved
+        and returned so enrichment can skip already-resolved rows.
 
         On a true insert (``xmax = 0``), enqueues a ``disclosure_briefs`` row:
         ``pending`` when briefs are enabled, ``skipped`` otherwise. Updates
@@ -276,11 +277,11 @@ class Storage:
                     """
                     INSERT INTO disclosures (
                         external_id, symbol, title, category, url, company_name,
-                        published_at, seen_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        published_at, seen_at, pdf_url
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (external_id, symbol) DO UPDATE SET
                         title = EXCLUDED.title
-                    RETURNING id, (xmax = 0) AS inserted
+                    RETURNING id, pdf_url, (xmax = 0) AS inserted
                     """,
                     (
                         disc.external_id,
@@ -291,12 +292,14 @@ class Storage:
                         disc.company_name,
                         disc.published_at,
                         disc.seen_at,
+                        disc.pdf_url,
                     ),
                 )
             ).fetchone()
             assert row is not None
             data = _as_row(row)
             disclosure_id = int(data["id"])
+            existing_pdf = data.get("pdf_url")
             if data.get("inserted"):
                 brief_status = (
                     BriefStatus.PENDING
@@ -311,7 +314,35 @@ class Storage:
                     """,
                     (disclosure_id, brief_status.value),
                 )
-        return disc.model_copy(update={"id": disclosure_id})
+        return disc.model_copy(
+            update={
+                "id": disclosure_id,
+                "pdf_url": existing_pdf if existing_pdf else disc.pdf_url,
+            }
+        )
+
+    async def set_disclosure_pdf_url(self, disclosure_id: int, pdf_url: str) -> bool:
+        """Fill ``disclosures.pdf_url`` when known; never overwrite an existing URL.
+
+        Returns True if a row was updated. Fail-soft callers treat False / errors
+        as non-blocking for alerts.
+        """
+        pdf_url = pdf_url.strip()
+        if not pdf_url:
+            return False
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    UPDATE disclosures
+                    SET pdf_url = %s
+                    WHERE id = %s AND pdf_url IS NULL
+                    RETURNING id
+                    """,
+                    (pdf_url, disclosure_id),
+                )
+            ).fetchone()
+        return row is not None
 
     async def insert_disclosure_if_new(self, disc: Disclosure) -> Disclosure | None:
         """Compat wrapper — prefer upsert_disclosure.

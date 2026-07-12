@@ -39,13 +39,36 @@ DEFAULT_HEADERS = {
 }
 
 ANNOUNCEMENTS_PAGE = "https://www.cse.lk/announcements"
+CDN_BASE = "https://cdn.cse.lk"
 TRADE_SUMMARY_ENDPOINT = "tradeSummary"
 TRADE_SUMMARY_PATH = "/tradeSummary"
+LEGACY_ANNOUNCEMENTS_ENDPOINT = "announcements"
+LEGACY_ANNOUNCEMENTS_PATH = "/announcements"
 
 
 def _announcement_url(external_id: str) -> str:
     """Public CSE announcement page anchor used in Telegram disclosure alerts."""
     return f"{ANNOUNCEMENTS_PAGE}#{external_id}"
+
+
+def resolve_pdf_url(file_path: str | None) -> str | None:
+    """Map legacy ``filePath`` to a public CDN PDF URL.
+
+    Observed shape: ``uploadAnnounceFiles/....pdf`` →
+    ``https://cdn.cse.lk/uploadAnnounceFiles/....pdf``. Absolute http(s) URLs
+    are returned unchanged. Empty / null paths yield ``None``.
+    """
+    if file_path is None:
+        return None
+    path = file_path.strip()
+    if not path:
+        return None
+    lower = path.lower()
+    if lower.startswith("https://") or lower.startswith("http://"):
+        return path
+    path = path.lstrip("/")
+    # Some frontend builds prefix with ``pdf/``; keep if already present.
+    return f"{CDN_BASE}/{path}"
 
 
 class TradeSummaryRow(BaseModel):
@@ -120,6 +143,41 @@ class ApprovedAnnouncementResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     approvedAnnouncements: list[AnnouncementRow] = Field(default_factory=list)
+
+
+class LegacyAnnouncementRow(BaseModel):
+    """Row from legacy ``POST /announcements`` (PDF archive via ``filePath``)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    announcementId: int | None = None
+    securityId: int | None = None
+    title: str | None = None
+    body: str | None = None
+    manualDate: int | None = None
+    addedDate: int | None = None
+    edited: int | None = None
+    deleted: int | None = None
+    filePath: str | None = None
+
+
+class LegacyAnnouncementResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    infoAnnouncement: list[LegacyAnnouncementRow] = Field(default_factory=list)
+
+
+def legacy_pdf_urls_by_id(rows: list[LegacyAnnouncementRow]) -> dict[str, str]:
+    """Build ``announcementId`` → CDN PDF URL map (skips null / empty paths)."""
+    out: dict[str, str] = {}
+    for row in rows:
+        if row.announcementId is None:
+            continue
+        pdf_url = resolve_pdf_url(row.filePath)
+        if pdf_url is None:
+            continue
+        out[str(row.announcementId)] = pdf_url
+    return out
 
 
 def _retryable(exc: BaseException) -> bool:
@@ -481,6 +539,38 @@ class CSEClient:
 
         # CircuitOpenError propagates (do not swallow as [] — empty means HTTP OK)
         return cast(list[AnnouncementRow], await self._guarded("approvedAnnouncement", _call))
+
+    async def fetch_legacy_announcements(self, symbol: str) -> list[LegacyAnnouncementRow]:
+        """Fetch legacy ``POST /announcements`` archive (includes ``filePath`` PDFs).
+
+        Prefer ``fetch_announcements_for_symbol`` for structured categories; use
+        this only to resolve CDN PDF URLs for enrichment.
+        """
+        symbol = symbol.strip().upper()
+
+        async def _call() -> list[LegacyAnnouncementRow]:
+            raw = await self._request(
+                "POST",
+                LEGACY_ANNOUNCEMENTS_PATH,
+                data={"symbol": symbol},
+                log_context={"symbol": symbol},
+            )
+            try:
+                parsed = LegacyAnnouncementResponse.model_validate(raw)
+            except ValidationError as exc:
+                log.error(
+                    "cse_schema_error",
+                    endpoint=LEGACY_ANNOUNCEMENTS_ENDPOINT,
+                    symbol=symbol,
+                    error=str(exc),
+                )
+                raise
+            return list(parsed.infoAnnouncement)
+
+        return cast(
+            list[LegacyAnnouncementRow],
+            await self._guarded(LEGACY_ANNOUNCEMENTS_ENDPOINT, _call),
+        )
 
     async def symbol_exists(self, symbol: str) -> bool:
         snap = await self.fetch_company_info(symbol)

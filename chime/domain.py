@@ -54,6 +54,8 @@ class Disclosure(BaseModel):
     seen_at: datetime
     # Parsed dateOfAnnouncement for logging/display only — never used for alert gating.
     doa_display: datetime | None = None
+    # CDN PDF from legacy ``filePath`` enrichment (optional; alerts do not wait on it).
+    pdf_url: str | None = None
     id: int | None = None
 
 

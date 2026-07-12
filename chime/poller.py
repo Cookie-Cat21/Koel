@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from chime.adapters.cse import CSEClient
+from chime.adapters.cse import CSEClient, legacy_pdf_urls_by_id
 from chime.circuit import CircuitOpenError
 from chime.config import Settings
 from chime.domain import (
@@ -72,6 +72,15 @@ class PendingSend:
     rule_id: int | None = None
     event: AlertEvent | None = None
     symbol: str | None = None
+
+
+@dataclass(frozen=True)
+class PendingPdfEnrich:
+    """Disclosure awaiting optional legacy PDF URL enrichment (after unlock)."""
+
+    disclosure_id: int
+    symbol: str
+    external_id: str
 
 
 def _normalize_send_result(result: SendResult | bool) -> SendResult:
@@ -159,6 +168,8 @@ class Poller:
         self._load_delivery_ok_ledger()
         # Dead-letter user notification is best-effort and one-shot per process.
         self._dead_letter_notify_attempted_ids: set[int] = set()
+        # Legacy PDF enrichment queued under lock; HTTP runs after unlock.
+        self._pending_pdf_enrich: list[PendingPdfEnrich] = []
 
     async def run_once(self, *, force: bool = False) -> list[AlertEvent]:
         """Single poll cycle. Returns events claimed (delivered after unlock)."""
@@ -183,8 +194,10 @@ class Poller:
         self.lock_held_skip = False
         fired: list[AlertEvent] = []
         pending: list[PendingSend] = []
+        pdf_enrich: list[PendingPdfEnrich] = []
         self._queue_sends = True
         self._pending_sends = pending
+        self._pending_pdf_enrich = pdf_enrich
         try:
             price_events, price_ok = await self._poll_prices()
             disc_events, disc_ok = await self._poll_disclosures()
@@ -219,11 +232,16 @@ class Poller:
         # CORE-004: Telegram I/O for this tick's new claims after unlock.
         # E2-C05: unsent drain uses row leases (SKIP LOCKED) — no advisory
         # re-hold, so RetryAfter may sleep without pinning the poll lock.
+        # PDF enrichment is fail-soft and rate-limited — never blocks alerts.
         try:
             await self._deliver_pending(pending)
             await self._retry_unsent_with_lock()
         except Exception as exc:
             log.exception("poll_deliver_failed", error=str(exc))
+        try:
+            await self._enrich_disclosure_pdfs(pdf_enrich)
+        except Exception as exc:
+            log.warning("pdf_enrich_batch_failed", error=str(exc))
         return fired
 
     async def _retry_unsent_with_lock(self) -> None:
@@ -534,7 +552,74 @@ class Poller:
                     claimed = await self._claim_and_send(event)
                     if claimed:
                         fired.append(event)
+                # Queue PDF enrichment after alerts are claimed — never blocks
+                # rule eval / Telegram. Skip rows that already have pdf_url.
+                if (
+                    stored.id is not None
+                    and not stored.pdf_url
+                    and self._pending_pdf_enrich is not None
+                ):
+                    self._pending_pdf_enrich.append(
+                        PendingPdfEnrich(
+                            disclosure_id=stored.id,
+                            symbol=stored.symbol,
+                            external_id=stored.external_id,
+                        )
+                    )
         return fired, not any_failure
+
+    async def _enrich_disclosure_pdfs(self, items: list[PendingPdfEnrich]) -> None:
+        """Resolve legacy filePath → CDN PDF URL. Fail-soft; polite per-symbol sleep.
+
+        Runs outside the advisory lock so CSE latency / sleeps never pin the
+        poller or delay Telegram delivery.
+        """
+        if not items:
+            return
+        by_symbol: dict[str, list[PendingPdfEnrich]] = {}
+        for item in items:
+            by_symbol.setdefault(item.symbol, []).append(item)
+
+        sleep_s = max(0.0, float(self.settings.pdf_enrich_sleep_seconds))
+        first = True
+        for symbol, rows in sorted(by_symbol.items()):
+            if not first and sleep_s > 0:
+                await asyncio.sleep(sleep_s)
+            first = False
+            try:
+                legacy = await self.cse.fetch_legacy_announcements(symbol)
+            except Exception as exc:
+                log.warning(
+                    "legacy_announcement_enrich_failed",
+                    symbol=symbol,
+                    error=str(exc),
+                )
+                continue
+            pdf_map = legacy_pdf_urls_by_id(legacy)
+            if not pdf_map:
+                continue
+            for item in rows:
+                pdf_url = pdf_map.get(item.external_id)
+                if not pdf_url:
+                    continue
+                try:
+                    updated = await self.storage.set_disclosure_pdf_url(
+                        item.disclosure_id, pdf_url
+                    )
+                    if updated:
+                        log.info(
+                            "disclosure_pdf_url_set",
+                            disclosure_id=item.disclosure_id,
+                            symbol=item.symbol,
+                            external_id=item.external_id,
+                        )
+                except Exception as exc:
+                    log.warning(
+                        "pdf_url_set_failed",
+                        disclosure_id=item.disclosure_id,
+                        symbol=item.symbol,
+                        error=str(exc),
+                    )
 
     async def _notify_dead_letter(
         self,
