@@ -7,7 +7,10 @@ with backoff; a per-endpoint circuit breaker short-circuits sustained outages.
 
 from __future__ import annotations
 
+import asyncio
+import math
 import re
+import time
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -293,15 +296,36 @@ def _retryable(exc: BaseException) -> bool:
     return False
 
 
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+
+def _try_ms_to_dt(ms: int) -> datetime | None:
+    """Convert CSE millisecond epoch to UTC, or ``None`` on overflow / invalid."""
+    try:
+        return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
+    except (OverflowError, ValueError, OSError):
+        return None
+
+
 def _ms_to_dt(ms: int | None) -> datetime:
     """Convert CSE millisecond epoch to aware UTC datetime.
 
-    ``None`` is treated as the Unix epoch — never ``datetime.now()`` — so a
-    missing timestamp cannot look "fresh" and bypass disclosure backfill gates.
+    ``None`` and unconvertible / overflow values are treated as the Unix
+    epoch — never ``datetime.now()`` — so a missing or hostile timestamp
+    cannot look "fresh" and bypass disclosure backfill gates. Callers that
+    need a poll-time fallback (trade / sector ticks) should use
+    ``_try_ms_to_dt`` instead.
     """
     if ms is None:
-        return datetime(1970, 1, 1, tzinfo=UTC)
-    return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
+        return _UNIX_EPOCH
+    return _try_ms_to_dt(ms) or _UNIX_EPOCH
+
+
+def _finite_or_none(value: float | None) -> float | None:
+    """Pass through finite floats; coerce ``None`` / NaN / ±Inf to ``None``."""
+    if value is None or not math.isfinite(value):
+        return None
+    return value
 
 
 _DATE_OF_ANNOUNCEMENT_FORMATS = (
@@ -331,28 +355,47 @@ def _parse_date_of_announcement(value: str | None) -> datetime | None:
     return None
 
 
-def trade_row_to_snapshot(row: TradeSummaryRow, *, now: datetime | None = None) -> PriceSnapshot:
-    ts = _ms_to_dt(row.lastTradedTime) if row.lastTradedTime else (now or datetime.now(UTC))
+def trade_row_to_snapshot(
+    row: TradeSummaryRow, *, now: datetime | None = None
+) -> PriceSnapshot | None:
+    """Normalize a tradeSummary row. ``None`` when price is non-finite.
+
+    Overflow ``lastTradedTime`` falls back to ``now`` (board tick time) so one
+    hostile/corrupt ms value cannot abort the whole market persist loop.
+    Optional float fields that are NaN/±Inf become ``None``.
+    """
+    if not math.isfinite(row.price):
+        return None
+    fallback = now or datetime.now(UTC)
+    if row.lastTradedTime:
+        ts = _try_ms_to_dt(row.lastTradedTime) or fallback
+    else:
+        ts = fallback
     return PriceSnapshot(
         symbol=row.symbol.strip().upper(),
         price=row.price,
-        previous_close=row.previousClose,
-        change=row.change,
-        change_pct=row.percentageChange,
-        volume=row.sharevolume,
-        trade_count=row.tradevolume,
-        turnover=row.turnover,
-        high=row.high,
-        low=row.low,
-        open=row.open,
-        market_cap=row.marketCap,
+        previous_close=_finite_or_none(row.previousClose),
+        change=_finite_or_none(row.change),
+        change_pct=_finite_or_none(row.percentageChange),
+        volume=_finite_or_none(row.sharevolume),
+        trade_count=_finite_or_none(row.tradevolume),
+        turnover=_finite_or_none(row.turnover),
+        high=_finite_or_none(row.high),
+        low=_finite_or_none(row.low),
+        open=_finite_or_none(row.open),
+        market_cap=_finite_or_none(row.marketCap),
         name=row.name,
         ts=ts,
     )
 
 
 def sector_row_to_snapshot(row: SectorRow, *, now: datetime | None = None) -> SectorSnapshot:
-    ts = _ms_to_dt(row.transactionTime) if row.transactionTime else (now or datetime.now(UTC))
+    """Normalize an allSectors row; overflow transactionTime → poll time."""
+    fallback = now or datetime.now(UTC)
+    if row.transactionTime:
+        ts = _try_ms_to_dt(row.transactionTime) or fallback
+    else:
+        ts = fallback
     return SectorSnapshot(
         sector_id=row.sectorId,
         symbol=row.symbol.strip().upper(),
@@ -360,32 +403,37 @@ def sector_row_to_snapshot(row: SectorRow, *, now: datetime | None = None) -> Se
         index_code=row.indexCode,
         index_code_sp=row.indexCodeSp,
         index_name=row.indexName,
-        index_value=row.indexValue,
-        change=row.change,
-        change_pct=row.percentage,
-        trade_today=row.sectorTradeToday,
-        volume_today=row.sectorVolumeToday,
-        turnover_today=row.sectorTurnoverToday,
-        previous_close=row.sectorPreviousClose,
+        index_value=_finite_or_none(row.indexValue),
+        change=_finite_or_none(row.change),
+        change_pct=_finite_or_none(row.percentage),
+        trade_today=_finite_or_none(row.sectorTradeToday),
+        volume_today=_finite_or_none(row.sectorVolumeToday),
+        turnover_today=_finite_or_none(row.sectorTurnoverToday),
+        previous_close=_finite_or_none(row.sectorPreviousClose),
         ts=ts,
         cse_row_id=row.id,
     )
 
 
-def symbol_info_to_snapshot(info: SymbolInfo, *, now: datetime | None = None) -> PriceSnapshot:
+def symbol_info_to_snapshot(
+    info: SymbolInfo, *, now: datetime | None = None
+) -> PriceSnapshot | None:
+    """Normalize companyInfoSummery. ``None`` when last price is non-finite."""
+    if not math.isfinite(info.lastTradedPrice):
+        return None
     return PriceSnapshot(
         symbol=info.symbol.strip().upper(),
         price=info.lastTradedPrice,
-        previous_close=info.previousClose,
-        change=info.change,
-        change_pct=info.changePercentage,
-        volume=info.tdyShareVolume,
-        trade_count=info.tdyTradeVolume,
-        turnover=info.tdyTurnover,
-        high=info.hiTrade,
-        low=info.lowTrade,
+        previous_close=_finite_or_none(info.previousClose),
+        change=_finite_or_none(info.change),
+        change_pct=_finite_or_none(info.changePercentage),
+        volume=_finite_or_none(info.tdyShareVolume),
+        trade_count=_finite_or_none(info.tdyTradeVolume),
+        turnover=_finite_or_none(info.tdyTurnover),
+        high=_finite_or_none(info.hiTrade),
+        low=_finite_or_none(info.lowTrade),
         open=None,
-        market_cap=info.marketCap,
+        market_cap=_finite_or_none(info.marketCap),
         name=info.name,
         ts=now or datetime.now(UTC),
     )
@@ -409,7 +457,7 @@ def announcement_to_disclosure(
     if row.createdDate is not None and row.createdDate > 0:
         published = _ms_to_dt(row.createdDate)
     else:
-        published = datetime(1970, 1, 1, tzinfo=UTC)
+        published = _UNIX_EPOCH
         if doa is not None:
             log.warning(
                 "cse_disclosure_doa_display_only",
@@ -506,6 +554,7 @@ class CSEClient:
         timeout: float = 15.0,
         fail_max: int = 5,
         reset_timeout: float = 60.0,
+        min_interval_seconds: float = 0.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
@@ -517,6 +566,12 @@ class CSEClient:
         self._breakers: dict[str, CircuitBreaker] = {}
         self._fail_max = fail_max
         self._reset_timeout = reset_timeout
+        # Soft global pacing between CSE HTTP calls (CSE_MIN_INTERVAL_SECONDS).
+        # 0 = off (default). Spaces bot + poller traffic on a shared client;
+        # distinct from PDF_ENRICH_SLEEP_SECONDS (legacy enrich only).
+        self._min_interval = max(0.0, float(min_interval_seconds))
+        self._last_request_at: float | None = None
+        self._pace_lock = asyncio.Lock()
 
     def _breaker(self, endpoint: str) -> CircuitBreaker:
         if endpoint not in self._breakers:
@@ -541,6 +596,24 @@ class CSEClient:
     async def __aexit__(self, *args: object) -> None:
         await self.aclose()
 
+    async def _pace(self) -> None:
+        """Sleep only when needed so consecutive CSE calls respect min interval.
+
+        No sleep before the first call. Concurrent callers serialize on the
+        pace lock so bot + poller sharing one client still honor the gap.
+        """
+        interval = self._min_interval
+        if interval <= 0:
+            return
+        async with self._pace_lock:
+            now = time.monotonic()
+            last = self._last_request_at
+            if last is not None:
+                wait = interval - (now - last)
+                if wait > 0:
+                    await asyncio.sleep(wait)
+            self._last_request_at = time.monotonic()
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential_jitter(initial=0.5, max=8),
@@ -556,6 +629,7 @@ class CSEClient:
         json_body: dict[str, Any] | None = None,
         log_context: dict[str, Any] | None = None,
     ) -> Any:
+        await self._pace()
         url = f"{self.base_url}{path}"
         context = log_context or {}
         try:
@@ -641,7 +715,16 @@ class CSEClient:
                         row=str(item)[:200],
                     )
                     continue
-                out.append(trade_row_to_snapshot(row, now=now))
+                snap = trade_row_to_snapshot(row, now=now)
+                if snap is None:
+                    log.warning(
+                        "cse_trade_row_skipped",
+                        endpoint=TRADE_SUMMARY_ENDPOINT,
+                        error="non-finite price",
+                        row=str(item)[:200],
+                    )
+                    continue
+                out.append(snap)
             return out
 
         return cast(list[PriceSnapshot], await self._guarded(TRADE_SUMMARY_ENDPOINT, _call))

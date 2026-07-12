@@ -173,6 +173,7 @@ async def _run_both(settings: Settings) -> None:
         timeout=settings.http_timeout_seconds,
         fail_max=settings.circuit_fail_max,
         reset_timeout=settings.circuit_reset_seconds,
+        min_interval_seconds=settings.cse_min_interval_seconds,
     )
     bot = Bot(settings.telegram_bot_token)
 
@@ -231,6 +232,7 @@ async def _run_poller(settings: Settings) -> None:
         timeout=settings.http_timeout_seconds,
         fail_max=settings.circuit_fail_max,
         reset_timeout=settings.circuit_reset_seconds,
+        min_interval_seconds=settings.cse_min_interval_seconds,
     )
     bot = Bot(settings.telegram_bot_token)
 
@@ -256,6 +258,7 @@ async def _run_bot(settings: Settings) -> None:
         timeout=settings.http_timeout_seconds,
         fail_max=settings.circuit_fail_max,
         reset_timeout=settings.circuit_reset_seconds,
+        min_interval_seconds=settings.cse_min_interval_seconds,
     )
     health = HealthState()
     server = start_health_server(settings.health_host, settings.health_port, health)
@@ -321,7 +324,13 @@ def main(argv: list[str] | None = None) -> None:
         async def _tick() -> None:
             storage = Storage(settings.database_url)
             await storage.open()
-            cse = CSEClient(base_url=settings.cse_base_url)
+            cse = CSEClient(
+                base_url=settings.cse_base_url,
+                timeout=settings.http_timeout_seconds,
+                fail_max=settings.circuit_fail_max,
+                reset_timeout=settings.circuit_reset_seconds,
+                min_interval_seconds=settings.cse_min_interval_seconds,
+            )
             bot = Bot(settings.telegram_bot_token)
 
             async def send(chat_id: int, text: str) -> SendResult:

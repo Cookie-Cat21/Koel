@@ -413,19 +413,24 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
-## Wave 16 — 100% coverage milestone
+## Wave 16 — 100% coverage milestone + CSE soft pacing
 
-**Theme:** Record the full-package coverage milestone after wave 15 residual push; report-only close (no empty farming).
+**Theme:** Record the full-package coverage milestone after wave 15 residual push; post-milestone harden/ops (CSE soft pacing).
 
 | SHA | Commit |
 |---|---|
-| _(this)_ | docs(w16): report push |
+| `72e3e3e` | docs(w16): report push |
+| `e6f55cf` | fix(w16): scripts lint |
+| `5130bb4` | feat(w16): watchlist CTA polish |
+| `314bdc4` | fix(w16): symbol brief a11y push |
+| _(this)_ | feat/docs(w16): cse pacing push |
 
 **Shipped**
 
 - **Milestone:** `pytest --cov=chime` → **TOTAL 3427 stmts / 0 miss / 100%** across every `chime` module (adapters, bot, briefs, circuit, config, domain, health, migrate, notify, poller, rules, scenarios, storage, `__main__`).
 - `TIJORI_WAVE_REPORT.md` — close wave 15 inventory; note 100% coverage milestone; post-milestone improve-loops are harden/ops (not cov gap-fill).
 - Floor remains `--cov-fail-under=85` in `pyproject.toml` (ratchet-to-100 measured here; keep CI floor unless a later lane intentionally raises it).
+- **`CSE_MIN_INTERVAL_SECONDS`** — soft gap between cse.lk HTTP calls on shared `CSEClient` (default `0` = off; raise under rate-limit). Wired Settings → adapter `_pace()`; docs in `.env.example` + `docs/runbooks/TIJORI.md`. Distinct from `PDF_ENRICH_SLEEP_SECONDS`.
 
 ---
 
@@ -448,7 +453,7 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | 13 (`wave13` / `w13`) | 9 |
 | 14 (`w14`) | 8 |
 | 15 (`w15`) | 8 |
-| 16 (`w16`) | 1+ (100% coverage milestone) |
+| 16 (`w16`) | 5+ (100% coverage + CSE pacing / harden) |
 | **Total** | **100+** |
 
 ---
@@ -458,7 +463,7 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 ### Phase 2 “live” (ops, not more code required for stub path)
 
 1. Enable `AI_BRIEFS_ENABLED=1` + `AI_API_KEY` in a controlled env (`AI_PROVIDER=gemini|groq|openrouter`).
-2. Watch rate caps / `AI_MAX_BRIEFS_PER_DAY` + `AI_BRIEF_SLEEP_SECONDS` under real CSE traffic.
+2. Watch rate caps / `AI_MAX_BRIEFS_PER_DAY` + `AI_BRIEF_SLEEP_SECONDS` under real CSE traffic; raise `CSE_MIN_INTERVAL_SECONDS` if cse.lk rate-limits.
 3. Confirm follow-up notify + NFA suffix in production Telegram.
 
 ### Still deferred

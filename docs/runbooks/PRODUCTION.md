@@ -119,7 +119,7 @@ p95 &lt; 5s under normal Telegram. CSE print → user message is bounded by
 
 ## Tijori / market browse
 
-See [TIJORI.md](TIJORI.md) — run poller for `/market`, `AI_BRIEFS_ENABLED`, `PDF_ENRICH_SLEEP_SECONDS`, optional `DISCLOSURE_BULK_FEED`.
+See [TIJORI.md](TIJORI.md) — run poller for `/market`, `AI_BRIEFS_ENABLED`, `PDF_ENRICH_SLEEP_SECONDS`, optional `CSE_MIN_INTERVAL_SECONDS` / `DISCLOSURE_BULK_FEED`.
 
 ## Disclaimer
 

@@ -58,7 +58,7 @@ Planning numbers for one poller replica at defaults. Not SLOs — capacity / quo
 
 → **~300 `price_snapshots` rows/min** during market hours (one row per symbol per tick). CSE HTTP stays **1** `POST /tradeSummary` per tick (bulk), not N per-symbol quote calls. Rule eval stays watchlist-scoped; empty watchlist still persists the board for `/market`.
 
-Optional extras per tick (fail-soft): `SECTORS_INGEST=1` → one `POST /allSectors`; disclosure rules → bulk and/or per-symbol announcement calls; PDF enrich → polite `PDF_ENRICH_SLEEP_SECONDS` before each legacy symbol call (outside the poll lock).
+Optional extras per tick (fail-soft): `SECTORS_INGEST=1` → one `POST /allSectors`; disclosure rules → bulk and/or per-symbol announcement calls; PDF enrich → polite `PDF_ENRICH_SLEEP_SECONDS` before each legacy symbol call (outside the poll lock). Soft global gap between CSE HTTP calls: `CSE_MIN_INTERVAL_SECONDS` (default `0` = off; raise if cse.lk rate-limits — applies on the shared `CSEClient`, including bot symbol lookup).
 
 ### Brief caps (Chime-side)
 
@@ -99,6 +99,16 @@ PDF_ENRICH_SLEEP_SECONDS=0.5   # default; set 0 to disable; raise if CSE rate-li
 ```
 
 Wired in `chime/config.py` → `Settings.pdf_enrich_sleep_seconds` (float; negative values clamp to 0).
+
+## CSE soft pacing (`CSE_MIN_INTERVAL_SECONDS`)
+
+Adapter-level soft gap between consecutive cse.lk HTTP calls on one `CSEClient` (poller + bot share the client in `both` mode). No sleep before the first call; concurrent callers serialize on an internal pace lock. Default **off** so tick latency stays unchanged; raise under rate-limit pressure (distinct from `PDF_ENRICH_SLEEP_SECONDS`, which only paces legacy PDF enrich):
+
+```bash
+CSE_MIN_INTERVAL_SECONDS=0     # default; e.g. 0.2 if CSE starts 429/blocking
+```
+
+Wired in `chime/config.py` → `Settings.cse_min_interval_seconds` → `CSEClient(min_interval_seconds=…)`. Also covered by tick spacing (`POLL_INTERVAL_SECONDS` + jitter) and sequential disclosure HTTP (natural spacing under the poll lock — avoid long sleeps under the advisory lock).
 
 ## Bulk disclosure feed (`DISCLOSURE_BULK_FEED`)
 

@@ -108,9 +108,11 @@ def test_nonneg_float_env_rejects_negative_jitter(
     monkeypatch.setenv("DATABASE_URL", _DSN)
     monkeypatch.setenv("POLL_JITTER_SECONDS", raw)
     monkeypatch.setenv("PDF_ENRICH_SLEEP_SECONDS", raw)
+    monkeypatch.setenv("CSE_MIN_INTERVAL_SECONDS", raw)
     settings = Settings.from_env(require_token=True)
     assert settings.poll_jitter_seconds == 5.0
     assert settings.pdf_enrich_sleep_seconds == 0.5
+    assert settings.cse_min_interval_seconds == 0.0
 
 
 @pytest.mark.parametrize("raw", ["0", "-1", "abc"])
