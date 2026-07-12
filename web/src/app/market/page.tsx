@@ -21,19 +21,78 @@ export const metadata = {
     "Thin CSE symbol browse from Chime snapshots — not a trading terminal.",
 };
 
+type MarketItem = {
+  symbol: string;
+  name: string | null;
+  sector: string | null;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
+  ts: string | null;
+};
+
 type MarketPayload = {
-  items: {
-    symbol: string;
-    name: string | null;
-    sector: string | null;
-    price: number | null;
-    change: number | null;
-    change_pct: number | null;
-    ts: string | null;
-  }[];
+  items: MarketItem[];
   limit: number;
   offset: number;
 };
+
+type MoversPayload = {
+  items: MarketItem[];
+  direction: "up" | "down";
+  limit: number;
+};
+
+function MoversList({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: MarketItem[];
+  emptyLabel: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        {title}
+      </h3>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">{emptyLabel}</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-border/60" aria-label={title}>
+          {items.map((item) => {
+            const pct = item.change_pct;
+            const tone =
+              pct == null
+                ? "text-muted-foreground"
+                : pct > 0
+                  ? "text-[oklch(0.42_0.09_165)]"
+                  : pct < 0
+                    ? "text-[oklch(0.45_0.12_25)]"
+                    : "text-muted-foreground";
+            return (
+              <li
+                key={item.symbol}
+                className="flex items-baseline justify-between gap-2 py-2"
+              >
+                <Link
+                  href={`/symbols/${encodeURIComponent(item.symbol)}`}
+                  className="rounded-sm font-mono text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  {item.symbol}
+                </Link>
+                <span className={`font-mono text-sm tabular-nums ${tone}`}>
+                  {formatPct(pct)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default async function MarketPage({
   searchParams,
@@ -47,10 +106,29 @@ export default async function MarketPage({
   const qs = new URLSearchParams({ limit: "100", sort: "change_pct" });
   if (q) qs.set("q", q);
 
-  const res = await serverApiGet(`/api/v1/symbols?${qs.toString()}`);
+  const [res, gainersRes, losersRes] = await Promise.all([
+    serverApiGet(`/api/v1/symbols?${qs.toString()}`),
+    // Top movers only when not searching — keeps browse discovery thin.
+    q
+      ? Promise.resolve(null)
+      : serverApiGet("/api/v1/market/movers?direction=up&limit=5"),
+    q
+      ? Promise.resolve(null)
+      : serverApiGet("/api/v1/market/movers?direction=down&limit=5"),
+  ]);
+
   const payload: MarketPayload | null = res.ok
     ? ((await res.json()) as MarketPayload)
     : null;
+  const gainers: MoversPayload | null =
+    gainersRes && gainersRes.ok
+      ? ((await gainersRes.json()) as MoversPayload)
+      : null;
+  const losers: MoversPayload | null =
+    losersRes && losersRes.ok
+      ? ((await losersRes.json()) as MoversPayload)
+      : null;
+  const showMovers = !q && (gainers !== null || losers !== null);
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -96,6 +174,32 @@ export default async function MarketPage({
         <p className="mt-3">
           <NfaInline />
         </p>
+
+        {showMovers ? (
+          <section className="mt-8" aria-labelledby="top-movers-heading">
+            <h2
+              id="top-movers-heading"
+              className="font-display text-lg font-semibold tracking-tight"
+            >
+              Top movers
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Largest daily % moves from the latest snapshots.
+            </p>
+            <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:gap-10">
+              <MoversList
+                title="Gainers"
+                items={gainers?.items ?? []}
+                emptyLabel="No gainers yet."
+              />
+              <MoversList
+                title="Losers"
+                items={losers?.items ?? []}
+                emptyLabel="No losers yet."
+              />
+            </div>
+          </section>
+        ) : null}
 
         {!payload ? (
           <EmptyState

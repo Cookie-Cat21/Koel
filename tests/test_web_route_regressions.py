@@ -134,16 +134,20 @@ def test_dashboard_pages_render_nfa_footer() -> None:
 def test_symbols_list_route_requires_snapshots_and_session() -> None:
     """P1-C: GET /api/v1/symbols is Postgres browse from snapshots only (INNER JOIN)."""
     route = WEB / "src" / "app" / "api" / "v1" / "symbols" / "route.ts"
+    browse = WEB / "src" / "lib" / "api" / "market-browse.ts"
     assert route.is_file()
+    assert browse.is_file()
     source = route.read_text(encoding="utf-8")
+    browse_src = browse.read_text(encoding="utf-8")
     assert "requireSession" in source
     # Safe GET: session only — must not demand CSRF.
     assert "requireSessionAndCsrf" not in source
-    assert "INNER JOIN LATERAL" in source
-    assert "LEFT JOIN LATERAL" not in source
-    assert "price_snapshots" in source
-    assert "escapeLikePattern" in source
-    assert "ESCAPE" in source
+    assert "queryMarketBrowse" in source
+    assert "INNER JOIN LATERAL" in browse_src
+    assert "LEFT JOIN LATERAL" not in browse_src
+    assert "price_snapshots" in browse_src
+    assert "escapeLikePattern" in browse_src
+    assert "ESCAPE" in browse_src
     assert "normalizeMarketQuery" in source
     assert "MAX_SYMBOLS_OFFSET" in source
     assert "cse.lk" not in source.lower() or all(
@@ -151,12 +155,19 @@ def test_symbols_list_route_requires_snapshots_and_session() -> None:
         for line in source.splitlines()
         if "cse.lk" in line.lower()
     )
+    assert "cse.lk" not in browse_src.lower() or all(
+        _is_comment_only_hit(line, "cse.lk")
+        for line in browse_src.splitlines()
+        if "cse.lk" in line.lower()
+    )
 
 
 def test_symbols_list_query_validation_static() -> None:
     """P1-C: limit clamp (default 50, max 200) + sort whitelist in route source."""
     route = WEB / "src" / "app" / "api" / "v1" / "symbols" / "route.ts"
+    browse = WEB / "src" / "lib" / "api" / "market-browse.ts"
     source = route.read_text(encoding="utf-8")
+    browse_src = browse.read_text(encoding="utf-8")
     assert "const DEFAULT_LIMIT = 50;" in source
     assert "const MAX_LIMIT = 200;" in source
     assert "Math.min(limit, MAX_LIMIT)" in source
@@ -165,17 +176,52 @@ def test_symbols_list_query_validation_static() -> None:
     )
     # Sort whitelist: only symbol|change_pct; anything else → change_pct.
     assert 'sortRaw === "symbol" ? "symbol" : "change_pct"' in source
-    assert 'sort === "symbol"' in source
-    assert "ps.change_pct DESC NULLS LAST" in source
-    assert "s.symbol ASC" in source
-    assert "INNER JOIN LATERAL" in source
-    assert "LEFT JOIN LATERAL" not in source
+    assert "queryMarketBrowse" in source
+    assert "ps.change_pct DESC NULLS LAST" in browse_src
+    assert "s.symbol ASC" in browse_src
+    assert "INNER JOIN LATERAL" in browse_src
+    assert "LEFT JOIN LATERAL" not in browse_src
     mq = WEB / "src" / "lib" / "api" / "market-query.ts"
     assert mq.is_file()
     mq_src = mq.read_text(encoding="utf-8")
     assert "MAX_MARKET_Q_LENGTH = 64" in mq_src
     assert "escapeLikePattern" in mq_src
     assert "normalizeMarketQuery" in mq_src
+
+
+def test_market_movers_route_static() -> None:
+    """Wave4: GET /api/v1/market/movers reuses browse query; session; thin fence."""
+    route = WEB / "src" / "app" / "api" / "v1" / "market" / "movers" / "route.ts"
+    browse = WEB / "src" / "lib" / "api" / "market-browse.ts"
+    assert route.is_file()
+    assert browse.is_file()
+    source = route.read_text(encoding="utf-8")
+    browse_src = browse.read_text(encoding="utf-8")
+    assert "requireSession" in source
+    assert "requireSessionAndCsrf" not in source
+    assert "queryMarketBrowse" in source
+    assert 'directionRaw === "down" ? "down" : "up"' in source
+    assert 'direction === "down" ? "change_pct_asc" : "change_pct"' in source
+    assert "const DEFAULT_LIMIT = 20;" in source
+    assert "const MAX_LIMIT = 50;" in source
+    assert "Math.min(limit, MAX_LIMIT)" in source
+    # Thin fence: no search/sector/volume filters on movers (comments ok).
+    assert "normalizeMarketQuery" not in source
+    for tok in ("sector", "volume", "market_cap", "ohlc"):
+        hits = [
+            line.strip()
+            for line in source.splitlines()
+            if tok in line.lower() and not _is_comment_only_hit(line, tok)
+        ]
+        assert hits == [], f"movers route must not use {tok}: {hits}"
+    assert "INNER JOIN LATERAL" in browse_src
+    assert "change_pct_asc" in browse_src
+    assert "ps.change_pct ASC NULLS LAST" in browse_src
+    assert "cse.lk" not in source.lower() or all(
+        _is_comment_only_hit(line, "cse.lk")
+        for line in source.splitlines()
+        if "cse.lk" in line.lower()
+    )
 
 
 def test_symbols_list_query_validation_unit() -> None:
@@ -213,6 +259,10 @@ def test_market_page_and_nav_browse_link() -> None:
     assert market.is_file()
     market_src = market.read_text(encoding="utf-8")
     assert "/api/v1/symbols" in market_src
+    assert "/api/v1/market/movers" in market_src
+    assert "direction=up" in market_src
+    assert "direction=down" in market_src
+    assert "Top movers" in market_src
     assert "NfaInline" in market_src
     assert "requirePageSession" in market_src
     assert "normalizeMarketQuery" in market_src
@@ -248,6 +298,10 @@ def test_market_page_fence_no_screener_or_quote_board() -> None:
     assert hits == [], f"screener/quote-board fence tokens on /market: {hits}"
     assert 'sort: "change_pct"' in market_src or "sort=change_pct" in market_src
     assert "sort=symbol" not in market_src
+    # Movers section is a thin gainers/losers peek — not a multi-filter board.
+    assert "Top movers" in market_src
+    assert "/api/v1/market/movers?direction=up&limit=5" in market_src
+    assert "/api/v1/market/movers?direction=down&limit=5" in market_src
 
 def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:
     """Wave2/3: disclosures API LEFT JOINs briefs; sanitizes pdf_url/brief egress."""

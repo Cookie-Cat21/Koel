@@ -1,11 +1,10 @@
 import type { NextRequest } from "next/server";
 
+import { queryMarketBrowse } from "@/lib/api/market-browse";
 import {
   MAX_SYMBOLS_OFFSET,
-  escapeLikePattern,
   normalizeMarketQuery,
 } from "@/lib/api/market-query";
-import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
 import { getPool } from "@/lib/db";
@@ -41,64 +40,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const pool = getPool();
-    const params: unknown[] = [];
-    let where = "";
-    if (q) {
-      // Case-insensitive substring; escape LIKE wildcards so user `%`/`_` are literal.
-      params.push(`%${escapeLikePattern(q.toUpperCase())}%`);
-      where = `WHERE UPPER(s.symbol) LIKE $1 ESCAPE '\\' OR UPPER(COALESCE(s.name, '')) LIKE $1 ESCAPE '\\'`;
-    }
-    const order =
-      sort === "symbol"
-        ? "s.symbol ASC"
-        : "ps.change_pct DESC NULLS LAST, s.symbol ASC";
-
-    params.push(limit);
-    const limitIdx = params.length;
-    params.push(offset);
-    const offsetIdx = params.length;
-
-    const result = await pool.query<{
-      symbol: string;
-      name: string | null;
-      sector: string | null;
-      price: number | null;
-      change: number | null;
-      change_pct: number | null;
-      ts: Date | string | null;
-    }>(
-      // INNER JOIN: browse is poller-persisted snapshots only (not stub stocks).
-      `SELECT
-         s.symbol,
-         s.name,
-         s.sector,
-         ps.price,
-         ps.change,
-         ps.change_pct,
-         ps.ts
-       FROM stocks s
-       INNER JOIN LATERAL (
-         SELECT price, change, change_pct, ts
-         FROM price_snapshots
-         WHERE symbol = s.symbol
-         ORDER BY ts DESC, id DESC
-         LIMIT 1
-       ) ps ON TRUE
-       ${where}
-       ORDER BY ${order}
-       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-      params,
-    );
-
-    const items = result.rows.map((row) => ({
-      symbol: row.symbol,
-      name: row.name,
-      sector: row.sector,
-      price: row.price == null ? null : Number(row.price),
-      change: row.change == null ? null : Number(row.change),
-      change_pct: row.change_pct == null ? null : Number(row.change_pct),
-      ts: toIso(row.ts),
-    }));
+    const items = await queryMarketBrowse(pool, {
+      limit,
+      offset,
+      q: q || undefined,
+      sort,
+    });
 
     return jsonOk({
       items,
