@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { redirectToLogin } from "@/lib/auth/session-redirect";
 
 type MePayload = {
@@ -13,11 +14,31 @@ type MePayload = {
   csrf_token?: string;
 };
 
-function chipLabel(me: MePayload): string {
-  if (me.telegram_id != null && Number.isFinite(me.telegram_id)) {
-    return String(me.telegram_id);
+/**
+ * Fail-closed /me parse — digits-only SafeInteger ids. Hostile JSON must not
+ * mint a chip with precision-lost telegram_id aliases.
+ */
+function parseMePayload(body: unknown): MePayload | null {
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return null;
   }
-  return `user ${me.id}`;
+  const r = body as Record<string, unknown>;
+  const id = toSafePositiveInt(r.id);
+  const telegram_id = toSafePositiveInt(r.telegram_id);
+  if (id == null || telegram_id == null) return null;
+  const created_at =
+    typeof r.created_at === "string" && r.created_at ? r.created_at : "";
+  if (!created_at) return null;
+  return {
+    id,
+    telegram_id,
+    created_at,
+    csrf_token: typeof r.csrf_token === "string" ? r.csrf_token : undefined,
+  };
+}
+
+function chipLabel(me: MePayload): string {
+  return String(me.telegram_id);
 }
 
 export function NavSession({ compact = false }: { compact?: boolean }) {
@@ -40,8 +61,8 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
           return;
         }
         if (!res.ok) return;
-        const data = (await res.json()) as MePayload;
-        if (!cancelled) setMe(data);
+        const data = parseMePayload(await res.json());
+        if (!cancelled && data) setMe(data);
       } catch {
         /* chip stays empty */
       }

@@ -108,11 +108,10 @@ export default async function AlertHistoryPage({
   const sp = await searchParams;
   // Drop invalid / hostile filter params — same SYMBOL_RE as the API.
   const symbolFilter = normalizeSymbol(sp.symbol ?? "") ?? "";
-  const limitRaw = Number(sp.limit);
+  // Digits-only SafeInteger — Number("1e2") / precision-loss must not pass.
+  const limitParsed = toSafePositiveInt(sp.limit ?? "");
   const limit =
-    Number.isSafeInteger(limitRaw) && limitRaw >= 1
-      ? Math.min(limitRaw, 200)
-      : 50;
+    limitParsed != null ? Math.min(limitParsed, 200) : 50;
 
   const qs = new URLSearchParams();
   qs.set("limit", String(limit));

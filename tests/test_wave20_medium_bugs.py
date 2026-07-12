@@ -118,9 +118,15 @@ def test_row_to_rule_sanitizes_hostile_category() -> None:
 def test_alerts_delete_rejects_unsafe_ids() -> None:
     route = WEB / "src" / "app" / "api" / "v1" / "alerts" / "[id]" / "route.ts"
     source = route.read_text(encoding="utf-8")
-    assert r"/^\d{1,15}$/" in source or "/^\\d{1,15}$/" in source
-    assert "Number.isSafeInteger" in source
+    # Digits-only SafeInteger via shared helper (same contract as inline regex).
+    assert "toSafePositiveInt(rawId)" in source
+    assert "Number(rawId)" not in source
     assert "Number.isInteger(ruleId)" not in source
+    helper = (WEB / "src" / "lib" / "api" / "safe-int.ts").read_text(
+        encoding="utf-8"
+    )
+    assert r"/^\d{1,15}$/" in helper or "/^\\d{1,15}$/" in helper
+    assert "Number.isSafeInteger" in helper
 
 
 def test_me_route_fails_closed_on_nonfinite_ids() -> None:

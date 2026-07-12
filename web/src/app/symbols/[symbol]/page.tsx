@@ -8,7 +8,21 @@ import { NfaInline } from "@/components/nfa-inline";
 import { Sparkline } from "@/components/sparkline";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
-import { safeFilingHref, safePdfUrl, sanitizeBriefText } from "@/lib/api/disclosure-safe";
+import {
+  MAX_DISCLOSURE_CATEGORY_LENGTH,
+  MAX_DISCLOSURE_COMPANY_LENGTH,
+  MAX_DISCLOSURE_EXTERNAL_ID_LENGTH,
+  MAX_DISCLOSURE_TITLE_LENGTH,
+  MAX_HISTORY_SYMBOL_LENGTH,
+  MAX_STOCK_NAME_LENGTH,
+  MAX_STOCK_SECTOR_LENGTH,
+  normalizeBriefStatus,
+  safeFilingHref,
+  safePdfUrl,
+  sanitizeBriefText,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
+import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { requirePageSession } from "@/lib/auth/page-session";
@@ -24,6 +38,10 @@ function isStaleTs(ts: string | null | undefined): boolean {
   const t = Date.parse(ts);
   if (Number.isNaN(t)) return false;
   return Date.now() - t > STALE_MS;
+}
+
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export async function generateMetadata({
@@ -44,7 +62,7 @@ type SymbolPayload = {
   name: string | null;
   sector: string | null;
   last: {
-    price: number;
+    price: number | null;
     change: number | null;
     change_pct: number | null;
     volume: number | null;
@@ -76,6 +94,116 @@ type DisclosuresPayload = {
       | null;
   }[];
 };
+
+/** Fail-closed symbol JSON — never cast the body to SymbolPayload. */
+function parseSymbolPayload(body: unknown): SymbolPayload | null {
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return null;
+  }
+  const r = body as Record<string, unknown>;
+  const symbol =
+    sanitizeDisclosureText(
+      typeof r.symbol === "string" ? r.symbol : null,
+      MAX_HISTORY_SYMBOL_LENGTH,
+    ) ?? "";
+  if (!symbol) return null;
+  let last: SymbolPayload["last"] = null;
+  if (r.last != null && typeof r.last === "object" && !Array.isArray(r.last)) {
+    const L = r.last as Record<string, unknown>;
+    const tsRaw = L.ts;
+    last = {
+      price: finiteOrNull(L.price),
+      change: finiteOrNull(L.change),
+      change_pct: finiteOrNull(L.change_pct),
+      volume: finiteOrNull(L.volume),
+      ts: typeof tsRaw === "string" && tsRaw ? tsRaw : null,
+    };
+  }
+  return {
+    symbol,
+    name: sanitizeDisclosureText(
+      typeof r.name === "string" ? r.name : null,
+      MAX_STOCK_NAME_LENGTH,
+    ),
+    sector: sanitizeDisclosureText(
+      typeof r.sector === "string" ? r.sector : null,
+      MAX_STOCK_SECTOR_LENGTH,
+    ),
+    last,
+  };
+}
+
+/** Fail-closed snapshots JSON — missing/hostile ``points`` must not 500. */
+function parseSnapshotsPayload(body: unknown): SnapshotsPayload {
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return { points: [] };
+  }
+  const pointsRaw = (body as { points?: unknown }).points;
+  if (!Array.isArray(pointsRaw)) return { points: [] };
+  const points: SnapshotsPayload["points"] = [];
+  for (const row of pointsRaw) {
+    if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
+    const r = row as Record<string, unknown>;
+    const tsRaw = r.ts;
+    points.push({
+      ts: typeof tsRaw === "string" && tsRaw ? tsRaw : null,
+      price: finiteOrNull(r.price),
+      change_pct: finiteOrNull(r.change_pct),
+    });
+  }
+  return { points };
+}
+
+/** Fail-closed disclosures JSON — SafeInteger ids + sanitized text/urls. */
+function parseDisclosuresPayload(body: unknown): DisclosuresPayload {
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return { items: [] };
+  }
+  const itemsRaw = (body as { items?: unknown }).items;
+  if (!Array.isArray(itemsRaw)) return { items: [] };
+  const items: DisclosuresPayload["items"] = [];
+  for (const row of itemsRaw) {
+    if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
+    const r = row as Record<string, unknown>;
+    const id = toSafePositiveInt(r.id);
+    if (id == null) continue;
+    const title =
+      sanitizeDisclosureText(
+        typeof r.title === "string" ? r.title : null,
+        MAX_DISCLOSURE_TITLE_LENGTH,
+      ) ?? "";
+    if (!title) continue;
+    const external_id =
+      sanitizeDisclosureText(
+        typeof r.external_id === "string" ? r.external_id : null,
+        MAX_DISCLOSURE_EXTERNAL_ID_LENGTH,
+      ) ?? "";
+    const brief_status = normalizeBriefStatus(
+      typeof r.brief_status === "string" ? r.brief_status : null,
+    );
+    const publishedRaw = r.published_at;
+    items.push({
+      id,
+      external_id,
+      title,
+      category: sanitizeDisclosureText(
+        typeof r.category === "string" ? r.category : null,
+        MAX_DISCLOSURE_CATEGORY_LENGTH,
+      ),
+      url: typeof r.url === "string" ? r.url : null,
+      published_at:
+        typeof publishedRaw === "string" && publishedRaw ? publishedRaw : null,
+      company_name: sanitizeDisclosureText(
+        typeof r.company_name === "string" ? r.company_name : null,
+        MAX_DISCLOSURE_COMPANY_LENGTH,
+      ),
+      pdf_url: typeof r.pdf_url === "string" ? r.pdf_url : null,
+      brief: typeof r.brief === "string" ? r.brief : null,
+      brief_status,
+    });
+  }
+  return { items };
+}
 
 export default async function SymbolDetailPage({
   params,
@@ -130,13 +258,44 @@ export default async function SymbolDetailPage({
     );
   }
 
-  const data = (await symRes.json()) as SymbolPayload;
-  const snaps = snapRes.ok
-    ? ((await snapRes.json()) as SnapshotsPayload)
-    : { points: [] };
-  const discs = discRes.ok
-    ? ((await discRes.json()) as DisclosuresPayload)
-    : { items: [] };
+  let data: SymbolPayload | null = null;
+  try {
+    data = parseSymbolPayload(await symRes.json());
+  } catch {
+    data = null;
+  }
+  if (!data) {
+    return (
+      <Shell>
+        <EmptyState
+          title={`Couldn’t load ${symbol}`}
+          description="Chime got an unexpected symbol payload. Retry in a moment."
+          action={
+            <Button asChild variant="outline">
+              <Link href={`/symbols/${encoded}`}>Try again</Link>
+            </Button>
+          }
+        />
+      </Shell>
+    );
+  }
+
+  let snaps: SnapshotsPayload = { points: [] };
+  let discs: DisclosuresPayload = { items: [] };
+  if (snapRes.ok) {
+    try {
+      snaps = parseSnapshotsPayload(await snapRes.json());
+    } catch {
+      snaps = { points: [] };
+    }
+  }
+  if (discRes.ok) {
+    try {
+      discs = parseDisclosuresPayload(await discRes.json());
+    } catch {
+      discs = { items: [] };
+    }
+  }
 
   const snapsFailed = !snapRes.ok;
   const discsFailed = !discRes.ok;

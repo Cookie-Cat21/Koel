@@ -41,8 +41,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   let limit = 20;
   const limitRaw = request.nextUrl.searchParams.get("limit");
   if (limitRaw != null) {
-    const n = Number(limitRaw);
-    if (!Number.isSafeInteger(n) || n < 1) {
+    // Digits-only SafeInteger — Number("1e2") / precision-loss must not pass.
+    const n = toSafePositiveInt(limitRaw);
+    if (n == null) {
       return jsonError(400, "validation_error", "limit must be a positive integer.");
     }
     limit = Math.min(n, 100);

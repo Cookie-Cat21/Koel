@@ -1,5 +1,10 @@
 import { AppNav } from "@/components/app-nav";
 import { NfaFooter } from "@/components/nfa-footer";
+import {
+  MAX_HISTORY_SYMBOL_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
+import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatTs } from "@/lib/format";
@@ -13,6 +18,9 @@ export const metadata = {
 
 /** Health timestamps older than this need explicit ops attention. */
 const STALE_HEALTH_AGE_MS = 24 * 60 * 60 * 1000;
+const HEALTH_UI_STRING_MAX = 512;
+const HEALTH_UI_WATCHED_MAX = 64;
+const HEALTH_UI_CIRCUITS_MAX = 32;
 
 type BriefQueueHint = {
   pending_briefs?: number;
@@ -42,13 +50,151 @@ type HealthPayload = {
   } | null;
 };
 
+function healthUiString(raw: unknown): string | null {
+  return sanitizeDisclosureText(
+    typeof raw === "string" ? raw : null,
+    HEALTH_UI_STRING_MAX,
+  );
+}
+
+/**
+ * Fail-closed health UI parse — hostile / wrong-shape JSON must not 500 the
+ * ops page or render unbounded strings / unsafe React keys.
+ */
+function parseHealthPayload(body: unknown): HealthPayload | null {
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return null;
+  }
+  const r = body as Record<string, unknown>;
+  const status = r.status === "ok" || r.status === "degraded" ? r.status : null;
+  if (!status) return null;
+  if (typeof r.db_ok !== "boolean") return null;
+
+  let poller: HealthPayload["poller"] = null;
+  if (r.poller != null && typeof r.poller === "object" && !Array.isArray(r.poller)) {
+    const p = r.poller as Record<string, unknown>;
+    const watched: string[] = [];
+    if (Array.isArray(p.watched_missing)) {
+      for (const item of p.watched_missing) {
+        const sym =
+          sanitizeDisclosureText(
+            typeof item === "string" ? item : null,
+            MAX_HISTORY_SYMBOL_LENGTH,
+          ) ?? "";
+        if (!sym) continue;
+        watched.push(sym);
+        if (watched.length >= HEALTH_UI_WATCHED_MAX) break;
+      }
+    }
+
+    let circuits: NonNullable<
+      NonNullable<HealthPayload["poller"]>["circuits"]
+    > | undefined;
+    if (p.circuits != null && typeof p.circuits === "object" && !Array.isArray(p.circuits)) {
+      circuits = {};
+      for (const [key, value] of Object.entries(
+        p.circuits as Record<string, unknown>,
+      )) {
+        if (Object.keys(circuits).length >= HEALTH_UI_CIRCUITS_MAX) break;
+        const name = healthUiString(key);
+        if (!name || name.length > 64) continue;
+        if (value == null || typeof value !== "object" || Array.isArray(value)) {
+          continue;
+        }
+        const snap = value as Record<string, unknown>;
+        const state =
+          typeof snap.state === "string" ? healthUiString(snap.state) : null;
+        const failuresRaw = toNonNegativeSafeInt(snap.failures, -1);
+        const failures = failuresRaw >= 0 ? failuresRaw : undefined;
+        circuits[name] = {
+          ...(state ? { state } : {}),
+          ...(failures !== undefined ? { failures } : {}),
+        };
+      }
+      if (Object.keys(circuits).length === 0) circuits = undefined;
+    }
+
+    let brief_queue: BriefQueueHint | undefined;
+    if (
+      p.brief_queue != null &&
+      typeof p.brief_queue === "object" &&
+      !Array.isArray(p.brief_queue)
+    ) {
+      const bq = p.brief_queue as Record<string, unknown>;
+      const hint: BriefQueueHint = {};
+      const pending = toNonNegativeSafeInt(bq.pending_briefs, -1);
+      if (pending >= 0) hint.pending_briefs = pending;
+      if (
+        bq.pdf_enrich != null &&
+        typeof bq.pdf_enrich === "object" &&
+        !Array.isArray(bq.pdf_enrich)
+      ) {
+        const pe = bq.pdf_enrich as Record<string, unknown>;
+        const pdf: NonNullable<BriefQueueHint["pdf_enrich"]> = {};
+        for (const key of [
+          "in_flight_tasks",
+          "last_batch_size",
+          "batches_started",
+        ] as const) {
+          const n = toNonNegativeSafeInt(pe[key], -1);
+          if (n >= 0) pdf[key] = n;
+        }
+        if (Object.keys(pdf).length > 0) hint.pdf_enrich = pdf;
+      }
+      if (Object.keys(hint).length > 0) brief_queue = hint;
+    }
+
+    poller = {
+      last_tick_at:
+        p.last_tick_at === null
+          ? null
+          : typeof p.last_tick_at === "string"
+            ? healthUiString(p.last_tick_at)
+            : undefined,
+      last_tick_ok:
+        typeof p.last_tick_ok === "boolean" ? p.last_tick_ok : undefined,
+      price_poll_ok:
+        typeof p.price_poll_ok === "boolean" ? p.price_poll_ok : undefined,
+      disclosure_poll_ok:
+        typeof p.disclosure_poll_ok === "boolean"
+          ? p.disclosure_poll_ok
+          : undefined,
+      lock_held_skip:
+        typeof p.lock_held_skip === "boolean" ? p.lock_held_skip : undefined,
+      last_error:
+        p.last_error === null
+          ? null
+          : typeof p.last_error === "string"
+            ? healthUiString(p.last_error)
+            : undefined,
+      watched_missing: watched,
+      circuits,
+      brief_queue,
+    };
+  } else if (r.poller === null) {
+    poller = null;
+  }
+
+  return {
+    status,
+    db_ok: r.db_ok,
+    started_at:
+      typeof r.started_at === "string" ? healthUiString(r.started_at) : null,
+    last_snapshot_at:
+      typeof r.last_snapshot_at === "string"
+        ? healthUiString(r.last_snapshot_at)
+        : null,
+    poller,
+  };
+}
+
 export default async function HealthPage() {
   await requirePageSession();
 
   const res = await serverApiGet("/api/v1/health");
   let payload: HealthPayload | null = null;
   try {
-    payload = (await res.json()) as HealthPayload;
+    payload = parseHealthPayload(await res.json());
   } catch {
     payload = null;
   }

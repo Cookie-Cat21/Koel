@@ -71,8 +71,9 @@ export async function GET(request: NextRequest) {
   let limit = 50;
   const limitRaw = url.searchParams.get("limit");
   if (limitRaw != null) {
-    const n = Number(limitRaw);
-    if (!Number.isSafeInteger(n) || n < 1) {
+    // Digits-only SafeInteger — Number("1e2") / precision-loss must not pass.
+    const n = toSafePositiveInt(limitRaw);
+    if (n == null) {
       return jsonError(400, "validation_error", "limit must be a positive integer.");
     }
     limit = Math.min(n, 200);
@@ -81,8 +82,9 @@ export async function GET(request: NextRequest) {
   let offset = 0;
   const offsetRaw = url.searchParams.get("offset");
   if (offsetRaw != null) {
-    const n = Number(offsetRaw);
-    if (!Number.isSafeInteger(n) || n < 0) {
+    // Digits-only — reject scientific notation / float trunc aliases.
+    const n = toNonNegativeSafeInt(offsetRaw, -1);
+    if (n < 0) {
       return jsonError(400, "validation_error", "offset must be a non-negative integer.");
     }
     // Soft-cap like GET /symbols — reject pathological OFFSET scans.
