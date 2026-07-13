@@ -146,10 +146,13 @@ function sanitizeWatchedMissing(raw: unknown): string[] | undefined {
     // Fail closed — only CSE SYMBOL_RE (no sanitize length-cap fallback).
     // Hostile HEALTH_URL used to egress 512-char non-ticker strings into ops JSON.
     const sym = normalizeSymbol(item);
-    if (!sym) return undefined;
+    if (!sym) continue;
     out.push(sym);
     if (out.length >= HEALTH_WATCHED_MISSING_MAX) break;
   }
+  // All-junk nested lists must omit (undefined) — not [] — so a merge cannot
+  // clear a good top-level watched_missing with an empty overwrite.
+  if (out.length === 0 && raw.length > 0) return undefined;
   return out;
 }
 

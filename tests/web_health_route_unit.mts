@@ -315,6 +315,45 @@ async function testNestedPollerCannotOverwriteSanitizedFields(): Promise<void> {
   }
 }
 
+async function testAllJunkNestedWatchedMissingDoesNotClearTop(): Promise<void> {
+  installDbPool();
+  process.env.DASH_SESSION_SECRET = SECRET;
+  process.env.HEALTH_URL = "http://127.0.0.1:8080/health";
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    assert(url === process.env.HEALTH_URL, `unexpected health fetch URL ${url}`);
+    return new Response(
+      JSON.stringify({
+        started_at: "2026-07-11T00:00:00.000Z",
+        last_tick_ok: true,
+        price_poll_ok: true,
+        disclosure_poll_ok: true,
+        last_error: null,
+        watched_missing: ["COMB.N0000"],
+        poller: {
+          watched_missing: [1, null, "X".repeat(2000)],
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const res = await healthGet(makeRequest());
+    const body = await readBody(res);
+    const missing = body.poller?.watched_missing ?? [];
+    assert(
+      missing.length === 1 && missing[0] === "COMB.N0000",
+      `all-junk nested must not clear top watched_missing, got ${JSON.stringify(missing)}`,
+    );
+    assert(res.status === 503, `top watched_missing should degrade, got ${res.status}`);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 async function testNonLoopbackHealthUrlRejectedWithoutFetch(): Promise<void> {
   installDbPool();
   process.env.DASH_SESSION_SECRET = SECRET;
@@ -351,6 +390,7 @@ async function main(): Promise<void> {
   await testHealthProxyTimeoutAbortsAndDegrades();
   await testBriefQueueForwardedWithoutDegrading();
   await testNestedPollerCannotOverwriteSanitizedFields();
+  await testAllJunkNestedWatchedMissingDoesNotClearTop();
   console.log("WEB_HEALTH_ROUTE_UNIT_OK");
 }
 

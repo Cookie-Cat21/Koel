@@ -75,3 +75,37 @@ async def test_upsert_disclosure_conflict_returns_stored_watermark() -> None:
         created_at=datetime(2026, 7, 12, 8, 0, tzinfo=UTC),
     )
     assert evaluate_disclosure_rules(disclosure=stored, rules=[rule]) == []
+
+
+@pytest.mark.asyncio
+async def test_upsert_disclosure_conflict_rejects_poisoned_stored_strings() -> None:
+    """Non-str RETURNING title/category/url/company_name fall back to incoming."""
+    incoming = _disc()
+    conn = _Conn(
+        [
+            None,
+            {
+                "id": 92,
+                "title": True,
+                "category": 1,
+                "url": {"u": 1},
+                "company_name": ["Co"],
+                "published_at": "not-a-datetime",
+                "seen_at": None,
+                "pdf_url": True,
+                "inserted": False,
+            },
+        ]
+    )
+    store = _store(conn)
+
+    stored = await store.upsert_disclosure(incoming)
+
+    assert stored.id == 92
+    assert stored.title == incoming.title
+    assert stored.category == incoming.category
+    assert stored.url == incoming.url
+    assert stored.company_name == incoming.company_name
+    assert stored.published_at == incoming.published_at
+    assert stored.seen_at == incoming.seen_at
+    assert stored.pdf_url == incoming.pdf_url
