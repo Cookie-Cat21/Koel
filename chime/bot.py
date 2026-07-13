@@ -55,6 +55,10 @@ ALERT_USAGE = (
     "/alert SYMBOL below PRICE\n"
     "/alert SYMBOL move PERCENT\n"
     "/alert SYMBOL disclosure [CATEGORY]\n"
+    "/alert SYMBOL eps above|below X\n"
+    "/alert SYMBOL eps yoy above|below PCT\n"
+    "/alert SYMBOL rev yoy above|below PCT\n"
+    "/alert SYMBOL profit yoy above|below PCT\n"
     "/alert SYMBOL volume MULTIPLIER\n"
     "/alert SYMBOL volup MULTIPLIER\n"
     "/alert SYMBOL voldown MULTIPLIER\n"
@@ -279,6 +283,72 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
         raw_cat = " ".join(cat_parts).strip() or None
         category = sanitize_disclosure_category(raw_cat)
         return ParsedAlert(AlertType.DISCLOSURE, None, category), None
+
+    # Financial PDF calc / YoY: /alert SYMBOL eps above X
+    # /alert SYMBOL eps yoy above PCT | rev yoy … | profit yoy …
+    if kind in ("eps", "rev", "revenue", "profit", "pat"):
+        rest = [a.lower() if isinstance(a, str) else "" for a in args[2:]]
+        metric = "eps" if kind == "eps" else ("rev" if kind in ("rev", "revenue") else "profit")
+        direction: str | None = None
+        threshold_token: str | None = None
+        if rest and rest[0] in ("above", "below") and len(rest) >= 2:
+            # absolute EPS only
+            if metric != "eps":
+                return None, (
+                    "Absolute thresholds are only for EPS. "
+                    f"Try: /alert SYMBOL eps above X\n{ALERT_USAGE}"
+                )
+            direction = rest[0]
+            threshold_token = args[3] if len(args) > 3 else None
+            if len(args) > 4:
+                return None, (
+                    f"Unexpected extra text after eps {direction}. "
+                    f"Example: /alert JKH.N0000 eps {direction} 5\n{ALERT_USAGE}"
+                )
+            alert_map = {
+                "above": AlertType.EPS_ABOVE,
+                "below": AlertType.EPS_BELOW,
+            }
+        elif rest and rest[0] == "yoy" and len(rest) >= 3 and rest[1] in ("above", "below"):
+            direction = rest[1]
+            threshold_token = args[4] if len(args) > 4 else None
+            if len(args) > 5:
+                return None, (
+                    f"Unexpected extra text after yoy {direction}. "
+                    f"Example: /alert JKH.N0000 {kind} yoy {direction} 10\n{ALERT_USAGE}"
+                )
+            alert_map = {
+                ("eps", "above"): AlertType.EPS_YOY_ABOVE,
+                ("eps", "below"): AlertType.EPS_YOY_BELOW,
+                ("rev", "above"): AlertType.REV_YOY_ABOVE,
+                ("rev", "below"): AlertType.REV_YOY_BELOW,
+                ("profit", "above"): AlertType.PROFIT_YOY_ABOVE,
+                ("profit", "below"): AlertType.PROFIT_YOY_BELOW,
+            }
+            key = (metric, direction)
+            if key not in alert_map:
+                return None, ALERT_USAGE
+            threshold = _parse_threshold_token(str(threshold_token or ""))
+            if threshold is None:
+                return None, (
+                    "YoY threshold must be a positive percent "
+                    f"(e.g. 10 for +10% / decline of 10%).\n{ALERT_USAGE}"
+                )
+            return ParsedAlert(alert_map[key], threshold), None
+        else:
+            return None, (
+                "Try: /alert SYMBOL eps above X\n"
+                "Or: /alert SYMBOL eps yoy above PCT\n"
+                f"{ALERT_USAGE}"
+            )
+        threshold = _parse_threshold_token(str(threshold_token or ""))
+        if threshold is None:
+            return None, (
+                "EPS threshold must be a positive finite number. "
+                f"Example: /alert JKH.N0000 eps {direction} 5\n{ALERT_USAGE}"
+            )
+        return ParsedAlert(alert_map[direction], threshold), None
+
     # Activity / notice kinds (peers: Tijori volume, Stock Alarm gap/volume).
     activity_kinds = {
         "volume": AlertType.VOLUME_SPIKE,
@@ -535,6 +605,28 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         desc = f"{symbol} bid-heavy order book ≥ {thr_s}× (bids/asks)"
     elif alert_type == AlertType.ASK_HEAVY:
         desc = f"{symbol} ask-heavy order book ≥ {thr_s}× (asks/bids)"
+    elif alert_type == AlertType.EPS_ABOVE:
+        desc = (
+            f"{symbol} next financial filing basic EPS above {thr_s} "
+            "(not live price)"
+        )
+    elif alert_type == AlertType.EPS_BELOW:
+        desc = (
+            f"{symbol} next financial filing basic EPS below {thr_s} "
+            "(not live price)"
+        )
+    elif alert_type == AlertType.EPS_YOY_ABOVE:
+        desc = f"{symbol} filing EPS YoY above +{thr_s}%"
+    elif alert_type == AlertType.EPS_YOY_BELOW:
+        desc = f"{symbol} filing EPS YoY below -{thr_s}%"
+    elif alert_type == AlertType.REV_YOY_ABOVE:
+        desc = f"{symbol} filing revenue YoY above +{thr_s}%"
+    elif alert_type == AlertType.REV_YOY_BELOW:
+        desc = f"{symbol} filing revenue YoY below -{thr_s}%"
+    elif alert_type == AlertType.PROFIT_YOY_ABOVE:
+        desc = f"{symbol} filing profit YoY above +{thr_s}%"
+    elif alert_type == AlertType.PROFIT_YOY_BELOW:
+        desc = f"{symbol} filing profit YoY below -{thr_s}%"
     else:
         desc = f"{symbol} alert"
 

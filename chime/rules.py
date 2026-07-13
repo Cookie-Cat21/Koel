@@ -17,10 +17,12 @@ from chime.domain import (
     AlertType,
     BigPrint,
     Disclosure,
+    FILING_METRICS_ALERT_TYPES,
     MarketNotice,
     OrderBookSnapshot,
     PreviousPriceState,
     PriceSnapshot,
+    YOY_ALERT_TYPES,
 )
 
 _COLOMBO = ZoneInfo("Asia/Colombo")
@@ -670,6 +672,137 @@ def evaluate_order_book_rules(
                 current_price=book.best_bid,
                 snapshot_id=None,
                 event_key=key,
+            )
+        )
+    return events
+
+
+def evaluate_filing_metrics_rules(
+    *,
+    metrics: dict,
+    comparison: dict | None,
+    disclosure: Disclosure,
+    rules: list[AlertRule],
+    settings: object | None = None,
+) -> list[AlertEvent]:
+    """Fire absolute EPS / YoY % rules against a filing_metrics row.
+
+    Fail closed when ``extract_ok`` is false, currency is not LKR, or (for YoY)
+    comparison quality is not exact/approx. Thresholds are positive; YoY *below*
+    means ``delta_pct < -threshold``.
+    """
+    from chime.metrics import MetricsSettings
+
+    cfg = settings if isinstance(settings, MetricsSettings) else MetricsSettings.from_env()
+    events: list[AlertEvent] = []
+    if not metrics.get("extract_ok"):
+        return events
+    if str(metrics.get("currency") or "LKR").upper() != "LKR":
+        return events
+    if disclosure.id is None:
+        return events
+    eps = metrics.get("eps_basic")
+    match_ok = bool(
+        comparison
+        and comparison.get("match_quality") in ("exact_yoy", "approx_yoy")
+    )
+
+    for rule in rules:
+        if not rule.active:
+            continue
+        if rule.type not in FILING_METRICS_ALERT_TYPES:
+            continue
+        if rule.symbol != disclosure.symbol:
+            continue
+        thr = rule.threshold
+        if thr is None or not _finite(thr) or thr <= 0:
+            continue
+
+        # Feature flags
+        if rule.type in (AlertType.EPS_ABOVE, AlertType.EPS_BELOW):
+            if not cfg.eps_calc_alerts_enabled and not cfg.metrics_shadow_mode:
+                continue
+        if rule.type in YOY_ALERT_TYPES:
+            if not cfg.yoy_compare_alerts_enabled and not cfg.metrics_shadow_mode:
+                continue
+            if not match_ok or comparison is None:
+                continue
+
+        fired = False
+        trigger = ""
+        event_key = ""
+
+        if rule.type == AlertType.EPS_ABOVE:
+            if not _finite(eps):
+                continue
+            if float(eps) > float(thr):
+                fired = True
+                trigger = (
+                    f"basic EPS {float(eps):.4g} above {float(thr):g} "
+                    f"({metrics.get('kind')})"
+                )
+                event_key = f"eps:{rule.id}:{disclosure.id}"
+        elif rule.type == AlertType.EPS_BELOW:
+            if not _finite(eps):
+                continue
+            if float(eps) < float(thr):
+                fired = True
+                trigger = (
+                    f"basic EPS {float(eps):.4g} below {float(thr):g} "
+                    f"({metrics.get('kind')})"
+                )
+                event_key = f"eps:{rule.id}:{disclosure.id}"
+        elif rule.type in YOY_ALERT_TYPES:
+            assert comparison is not None
+            metric_key = {
+                AlertType.EPS_YOY_ABOVE: "eps_delta_pct",
+                AlertType.EPS_YOY_BELOW: "eps_delta_pct",
+                AlertType.REV_YOY_ABOVE: "revenue_delta_pct",
+                AlertType.REV_YOY_BELOW: "revenue_delta_pct",
+                AlertType.PROFIT_YOY_ABOVE: "profit_delta_pct",
+                AlertType.PROFIT_YOY_BELOW: "profit_delta_pct",
+            }[rule.type]
+            label = {
+                AlertType.EPS_YOY_ABOVE: "EPS",
+                AlertType.EPS_YOY_BELOW: "EPS",
+                AlertType.REV_YOY_ABOVE: "revenue",
+                AlertType.REV_YOY_BELOW: "revenue",
+                AlertType.PROFIT_YOY_ABOVE: "profit",
+                AlertType.PROFIT_YOY_BELOW: "profit",
+            }[rule.type]
+            delta_pct = comparison.get(metric_key)
+            if not _finite(delta_pct):
+                continue
+            above = rule.type.value.endswith("_above")
+            if above and float(delta_pct) > float(thr):
+                fired = True
+            elif (not above) and float(delta_pct) < -float(thr):
+                fired = True
+            if fired:
+                trigger = (
+                    f"{label} YoY {float(delta_pct):+.2f}% "
+                    f"(threshold {'+' if above else '-'}{float(thr):g}%; "
+                    f"{comparison.get('match_quality')})"
+                )
+                event_key = f"yoy:{rule.id}:{disclosure.id}:{metric_key}"
+
+        if not fired:
+            continue
+        events.append(
+            AlertEvent(
+                rule_id=rule.id,
+                user_id=rule.user_id,
+                telegram_id=rule.telegram_id,
+                symbol=rule.symbol,
+                type=rule.type,
+                threshold=thr,
+                trigger=trigger,
+                current_price=None,
+                disclosure_url=disclosure.url or metrics.get("pdf_url"),
+                disclosure_title=disclosure.title,
+                disclosure_id=disclosure.id,
+                snapshot_id=None,
+                event_key=event_key,
             )
         )
     return events

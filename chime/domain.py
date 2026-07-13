@@ -40,6 +40,15 @@ class AlertType(StrEnum):
     # Public order book imbalance (POST /orderBook totalBids / totalAsks).
     BID_HEAVY = "bid_heavy"
     ASK_HEAVY = "ask_heavy"
+    # Financial PDF calc / YoY alerts (feature-flagged).
+    EPS_ABOVE = "eps_above"
+    EPS_BELOW = "eps_below"
+    EPS_YOY_ABOVE = "eps_yoy_above"
+    EPS_YOY_BELOW = "eps_yoy_below"
+    REV_YOY_ABOVE = "rev_yoy_above"
+    REV_YOY_BELOW = "rev_yoy_below"
+    PROFIT_YOY_ABOVE = "profit_yoy_above"
+    PROFIT_YOY_BELOW = "profit_yoy_below"
 
 
 # Alert types that need a positive numeric threshold.
@@ -56,6 +65,39 @@ THRESHOLD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.GAP,
         AlertType.BID_HEAVY,
         AlertType.ASK_HEAVY,
+        AlertType.EPS_ABOVE,
+        AlertType.EPS_BELOW,
+        AlertType.EPS_YOY_ABOVE,
+        AlertType.EPS_YOY_BELOW,
+        AlertType.REV_YOY_ABOVE,
+        AlertType.REV_YOY_BELOW,
+        AlertType.PROFIT_YOY_ABOVE,
+        AlertType.PROFIT_YOY_BELOW,
+    }
+)
+
+# Filing-metrics alerts (absolute EPS or YoY %).
+FILING_METRICS_ALERT_TYPES: frozenset[AlertType] = frozenset(
+    {
+        AlertType.EPS_ABOVE,
+        AlertType.EPS_BELOW,
+        AlertType.EPS_YOY_ABOVE,
+        AlertType.EPS_YOY_BELOW,
+        AlertType.REV_YOY_ABOVE,
+        AlertType.REV_YOY_BELOW,
+        AlertType.PROFIT_YOY_ABOVE,
+        AlertType.PROFIT_YOY_BELOW,
+    }
+)
+
+YOY_ALERT_TYPES: frozenset[AlertType] = frozenset(
+    {
+        AlertType.EPS_YOY_ABOVE,
+        AlertType.EPS_YOY_BELOW,
+        AlertType.REV_YOY_ABOVE,
+        AlertType.REV_YOY_BELOW,
+        AlertType.PROFIT_YOY_ABOVE,
+        AlertType.PROFIT_YOY_BELOW,
     }
 )
 
@@ -391,6 +433,46 @@ def sanitize_disclosure_category(category: str | None) -> str | None:
 def disclaimer() -> str:
     return "Not financial advice — informational only."
 
+
+def format_yoy_comparison_block(
+    *,
+    metrics: dict,
+    comparison: dict | None,
+) -> str | None:
+    """Short YoY block for disclosure Telegram append. None if not comparable."""
+    if not metrics.get("extract_ok"):
+        return None
+    if not comparison or comparison.get("match_quality") not in (
+        "exact_yoy",
+        "approx_yoy",
+    ):
+        return None
+    lines: list[str] = []
+    kind = str(metrics.get("kind") or "filing")
+    entity = str(metrics.get("entity") or "unknown")
+    eps = metrics.get("eps_basic")
+    if eps is not None and comparison.get("eps_delta_pct") is not None:
+        lines.append(
+            f"Basic EPS {float(eps):.4g} "
+            f"(YoY {float(comparison['eps_delta_pct']):+.2f}%)"
+        )
+    elif eps is not None:
+        lines.append(f"Basic EPS {float(eps):.4g}")
+    rev_pct = comparison.get("revenue_delta_pct")
+    pat_pct = comparison.get("profit_delta_pct")
+    bits: list[str] = []
+    if rev_pct is not None:
+        bits.append(f"Revenue YoY {float(rev_pct):+.2f}%")
+    if pat_pct is not None:
+        bits.append(f"Profit YoY {float(pat_pct):+.2f}%")
+    if bits:
+        lines.append(" · ".join(bits))
+    lines.append(
+        f"{kind} · {entity} · {metrics.get('currency') or 'LKR'} · "
+        f"{comparison.get('match_quality')}"
+    )
+    lines.append("Extracted numbers — verify in the filing.")
+    return "\n".join(lines)
 
 def truncate_disclosure_title(title: str, max_len: int = DISCLOSURE_TITLE_MAX) -> str:
     """Truncate long filing titles so Telegram alert bodies stay readable.

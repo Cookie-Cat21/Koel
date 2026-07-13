@@ -1348,6 +1348,183 @@ class Storage:
             ).fetchone()
         return row is not None
 
+    async def get_disclosure_by_id(self, disclosure_id: int) -> Disclosure | None:
+        """Load a disclosure row by id (metrics worker)."""
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT id, external_id, symbol, title, category, url, company_name,
+                           published_at, seen_at, pdf_url
+                    FROM disclosures
+                    WHERE id = %s
+                    """,
+                    (disclosure_id,),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        r = _as_row(row)
+        try:
+            return Disclosure(
+                id=int(r["id"]),
+                external_id=str(r["external_id"]),
+                symbol=str(r["symbol"]),
+                title=str(r["title"]),
+                category=r.get("category"),
+                url=str(r["url"]),
+                company_name=r.get("company_name"),
+                published_at=r["published_at"],
+                seen_at=r["seen_at"],
+                pdf_url=r.get("pdf_url"),
+            )
+        except Exception:
+            return None
+
+    async def upsert_filing_metrics(self, row: dict[str, Any]) -> dict[str, Any]:
+        """Insert or update filing_metrics by disclosure_id."""
+        import json as _json
+
+        notes = row.get("extract_notes") or {}
+        if not isinstance(notes, str):
+            notes = _json.dumps(notes)
+        async with self._pool.connection() as conn:
+            saved = await (
+                await conn.execute(
+                    """
+                    INSERT INTO filing_metrics (
+                        disclosure_id, symbol, kind, fiscal_period_end, fiscal_quarter,
+                        entity, scale, currency, revenue, profit, eps_basic, eps_diluted,
+                        extract_ok, extract_notes, pdf_url
+                    ) VALUES (
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s::jsonb, %s
+                    )
+                    ON CONFLICT (disclosure_id) DO UPDATE SET
+                        kind = EXCLUDED.kind,
+                        fiscal_period_end = EXCLUDED.fiscal_period_end,
+                        fiscal_quarter = EXCLUDED.fiscal_quarter,
+                        entity = EXCLUDED.entity,
+                        scale = EXCLUDED.scale,
+                        currency = EXCLUDED.currency,
+                        revenue = EXCLUDED.revenue,
+                        profit = EXCLUDED.profit,
+                        eps_basic = EXCLUDED.eps_basic,
+                        eps_diluted = EXCLUDED.eps_diluted,
+                        extract_ok = EXCLUDED.extract_ok,
+                        extract_notes = EXCLUDED.extract_notes,
+                        pdf_url = EXCLUDED.pdf_url
+                    RETURNING *
+                    """,
+                    (
+                        row["disclosure_id"],
+                        row["symbol"],
+                        row.get("kind") or "unknown",
+                        row.get("fiscal_period_end"),
+                        row.get("fiscal_quarter"),
+                        row.get("entity") or "unknown",
+                        row.get("scale") or "unknown",
+                        row.get("currency") or "LKR",
+                        row.get("revenue"),
+                        row.get("profit"),
+                        row.get("eps_basic"),
+                        row.get("eps_diluted"),
+                        bool(row.get("extract_ok")),
+                        notes,
+                        row.get("pdf_url"),
+                    ),
+                )
+            ).fetchone()
+        assert saved is not None
+        return dict(_as_row(saved))
+
+    async def list_filing_metrics_for_symbol(
+        self, symbol: str, *, kind: str | None = None
+    ) -> list[dict[str, Any]]:
+        async with self._pool.connection() as conn:
+            if kind:
+                rows = await (
+                    await conn.execute(
+                        """
+                        SELECT * FROM filing_metrics
+                        WHERE symbol = %s AND kind = %s
+                        ORDER BY fiscal_period_end DESC NULLS LAST, id DESC
+                        """,
+                        (symbol, kind),
+                    )
+                ).fetchall()
+            else:
+                rows = await (
+                    await conn.execute(
+                        """
+                        SELECT * FROM filing_metrics
+                        WHERE symbol = %s
+                        ORDER BY fiscal_period_end DESC NULLS LAST, id DESC
+                        """,
+                        (symbol,),
+                    )
+                ).fetchall()
+        return [dict(_as_row(r)) for r in rows]
+
+    async def upsert_filing_comparison(self, row: dict[str, Any]) -> dict[str, Any]:
+        async with self._pool.connection() as conn:
+            saved = await (
+                await conn.execute(
+                    """
+                    INSERT INTO filing_comparisons (
+                        filing_metrics_id, prior_filing_metrics_id, match_quality,
+                        eps_delta, eps_delta_pct,
+                        revenue_delta, revenue_delta_pct,
+                        profit_delta, profit_delta_pct
+                    ) VALUES (
+                        %s, %s, %s,
+                        %s, %s,
+                        %s, %s,
+                        %s, %s
+                    )
+                    ON CONFLICT (filing_metrics_id) DO UPDATE SET
+                        prior_filing_metrics_id = EXCLUDED.prior_filing_metrics_id,
+                        match_quality = EXCLUDED.match_quality,
+                        eps_delta = EXCLUDED.eps_delta,
+                        eps_delta_pct = EXCLUDED.eps_delta_pct,
+                        revenue_delta = EXCLUDED.revenue_delta,
+                        revenue_delta_pct = EXCLUDED.revenue_delta_pct,
+                        profit_delta = EXCLUDED.profit_delta,
+                        profit_delta_pct = EXCLUDED.profit_delta_pct
+                    RETURNING *
+                    """,
+                    (
+                        row["filing_metrics_id"],
+                        row.get("prior_filing_metrics_id"),
+                        row["match_quality"],
+                        row.get("eps_delta"),
+                        row.get("eps_delta_pct"),
+                        row.get("revenue_delta"),
+                        row.get("revenue_delta_pct"),
+                        row.get("profit_delta"),
+                        row.get("profit_delta_pct"),
+                    ),
+                )
+            ).fetchone()
+        assert saved is not None
+        return dict(_as_row(saved))
+
+    async def get_filing_comparison_for_metrics(
+        self, filing_metrics_id: int
+    ) -> dict[str, Any] | None:
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT * FROM filing_comparisons
+                    WHERE filing_metrics_id = %s
+                    """,
+                    (filing_metrics_id,),
+                )
+            ).fetchone()
+        return dict(_as_row(row)) if row is not None else None
+
     async def get_ready_filing_brief(
         self,
         *,

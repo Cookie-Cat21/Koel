@@ -1112,6 +1112,7 @@ class Poller:
                             symbol=item.symbol,
                             external_id=item.external_id,
                         )
+                        self._schedule_metrics_job(item.disclosure_id, item.symbol)
                 except Exception as exc:
                     log.warning(
                         "pdf_url_set_failed",
@@ -1119,6 +1120,147 @@ class Poller:
                         symbol=item.symbol,
                         error=str(exc),
                     )
+
+    def _schedule_metrics_job(self, disclosure_id: int, symbol: str) -> None:
+        """Fire-and-forget filing metrics extract after pdf_url lands."""
+        from chime.metrics import metrics_enabled
+
+        if not metrics_enabled():
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        loop.create_task(
+            self._run_metrics_job_safe(disclosure_id, symbol),
+            name=f"metrics-{disclosure_id}",
+        )
+
+    async def _run_metrics_job_safe(self, disclosure_id: int, symbol: str) -> None:
+        try:
+            await self._run_metrics_job(disclosure_id, symbol)
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "metrics_job_failed",
+                disclosure_id=disclosure_id,
+                symbol=symbol,
+                error=str(exc)[:240],
+            )
+
+    async def _run_metrics_job(self, disclosure_id: int, symbol: str) -> None:
+        from chime.domain import format_alert_message
+        from chime.metrics import MetricsSettings
+        from chime.metrics.worker import process_disclosure_metrics
+
+        disc = await self.storage.get_disclosure_by_id(disclosure_id)
+        if disc is None or not disc.pdf_url:
+            return
+        rules = await self.storage.active_rules_for_symbols([symbol])
+        cfg = MetricsSettings.from_env()
+        result = await process_disclosure_metrics(
+            storage=self.storage,
+            disclosure=disc,
+            rules=rules,
+            settings=cfg,
+        )
+        if result is None:
+            return
+        if (
+            cfg.yoy_append_to_disclosure
+            and result.metrics_id is not None
+            and result.compared
+        ):
+            await self._maybe_send_yoy_append(disc, result.metrics_id, rules)
+        if not result.events:
+            return
+        for event in result.events:
+            text = format_alert_message(event)
+            shadow_only = cfg.metrics_shadow_mode and (
+                (
+                    event.type.value in ("eps_above", "eps_below")
+                    and not cfg.eps_calc_alerts_enabled
+                )
+                or (
+                    "yoy" in event.type.value and not cfg.yoy_compare_alerts_enabled
+                )
+            )
+            if shadow_only:
+                text = f"[shadow] {text}"
+            alert_id = await self.storage.claim_alert(event, text)
+            if alert_id is None:
+                continue
+            if shadow_only:
+                await self.storage.mark_alert_sent(alert_id)
+                log.info(
+                    "metrics_shadow_fire",
+                    alert_log_id=alert_id,
+                    event_key=event.event_key,
+                    symbol=symbol,
+                )
+                continue
+            pending = PendingSend(
+                log_id=alert_id,
+                telegram_id=event.telegram_id,
+                message=text,
+                already_claimed_new=True,
+                rule_id=event.rule_id,
+                event=event,
+                symbol=event.symbol,
+            )
+            await self._deliver_one(pending)
+
+    async def _maybe_send_yoy_append(
+        self, disc: Disclosure, metrics_id: int, rules: list
+    ) -> None:
+        """Follow-up Telegram with YoY block for users watching disclosures."""
+        from chime.domain import (
+            AlertEvent,
+            AlertType,
+            format_alert_message,
+            format_yoy_comparison_block,
+        )
+
+        comparison = await self.storage.get_filing_comparison_for_metrics(metrics_id)
+        metrics_rows = await self.storage.list_filing_metrics_for_symbol(disc.symbol)
+        metrics = next((m for m in metrics_rows if int(m["id"]) == metrics_id), None)
+        if not metrics or not comparison:
+            return
+        block = format_yoy_comparison_block(metrics=metrics, comparison=comparison)
+        if not block:
+            return
+        for rule in rules:
+            if not rule.active or rule.type != AlertType.DISCLOSURE:
+                continue
+            if rule.symbol != disc.symbol:
+                continue
+            event = AlertEvent(
+                rule_id=rule.id,
+                user_id=rule.user_id,
+                telegram_id=rule.telegram_id,
+                symbol=rule.symbol,
+                type=AlertType.DISCLOSURE,
+                threshold=None,
+                trigger=f"filing metrics YoY for {disc.title}",
+                disclosure_url=disc.url or disc.pdf_url,
+                disclosure_title=disc.title,
+                disclosure_id=disc.id,
+                filing_brief=block,
+                event_key=f"yoy_append:{rule.id}:{disc.id}",
+            )
+            text = format_alert_message(event)
+            alert_id = await self.storage.claim_alert(event, text)
+            if alert_id is None:
+                continue
+            pending = PendingSend(
+                log_id=alert_id,
+                telegram_id=event.telegram_id,
+                message=text,
+                already_claimed_new=True,
+                rule_id=event.rule_id,
+                event=event,
+                symbol=event.symbol,
+            )
+            await self._deliver_one(pending)
 
     async def _notify_dead_letter(
         self,
