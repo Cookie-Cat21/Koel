@@ -359,10 +359,12 @@ def format_dead_letter_notify(symbol: str, attempts: int) -> str:
     clean = _CTRL_RE.sub("", symbol).strip() or "?"
     if len(clean) > 32:
         clean = clean[:31].rstrip() + "…"
-    try:
-        n = int(attempts)
-    except (TypeError, ValueError, OverflowError):
-        n = 0
+    # Fail closed — bool soft-accepts via int(True)==1 mid dead-letter notify.
+    n = (
+        0
+        if isinstance(attempts, bool) or not isinstance(attempts, int)
+        else attempts
+    )
     # Bound display so a pathological int cannot pad the body past 4096.
     if n < 0 or n > 1_000_000:
         n = 0 if n < 0 else 1_000_000

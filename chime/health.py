@@ -88,7 +88,11 @@ class HealthState:
     def update(self, **kwargs: Any) -> None:
         self.details.update(kwargs)
         if "ok" in kwargs:
-            self.ok = bool(kwargs["ok"])
+            # Fail closed — bool("false")/1 used to mislabel health ok
+            # (parity dash === true / row mapper active flags).
+            raw_ok = kwargs["ok"]
+            if isinstance(raw_ok, bool):
+                self.ok = raw_ok
 
 
 def start_health_server(host: str, port: int, state: HealthState) -> ThreadingHTTPServer:

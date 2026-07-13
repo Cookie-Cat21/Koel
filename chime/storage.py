@@ -1220,7 +1220,11 @@ class Storage:
                 )
             ).fetchone()
         assert row is not None
-        return int(_as_row(row)["id"])
+        # Fail closed — bool ids soft-accept via int(True)==1 mid /start.
+        raw_id = _as_row(row).get("id")
+        if isinstance(raw_id, bool) or not isinstance(raw_id, int):
+            raise ValueError("ensure_user RETURNING id failed validation")
+        return raw_id
 
     async def add_watch(self, user_id: int, symbol: str) -> None:
         # Fail closed — non-string symbol used to throw on .strip mid watch.
