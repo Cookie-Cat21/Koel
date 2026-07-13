@@ -1826,6 +1826,32 @@ class Storage:
             what="mark_alert_attempt RETURNING attempt_count",
         )
 
+    async def mark_alert_deferred_attempt(self, alert_log_id: int) -> int:
+        """Increment deferred_attempt_count for a RetryAfter defer. Returns the new count.
+
+        Kept separate from ``attempt_count`` so a flood-waited alert is judged
+        against ``MAX_DEFERRED_ATTEMPTS``, not the tighter ``MAX_SEND_ATTEMPTS``
+        shared with ordinary send failures.
+        """
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    UPDATE alert_log
+                    SET deferred_attempt_count = deferred_attempt_count + 1,
+                        delivery_lease_until = NULL
+                    WHERE id = %s
+                    RETURNING deferred_attempt_count
+                    """,
+                    (alert_log_id,),
+                )
+            ).fetchone()
+        assert row is not None
+        return _require_pg_int(
+            _as_row(row).get("deferred_attempt_count"),
+            what="mark_alert_deferred_attempt RETURNING deferred_attempt_count",
+        )
+
     async def dead_letter(self, alert_log_id: int) -> None:
         """Mark an unsent alert as abandoned (skip further retries)."""
         async with self._pool.connection() as conn:

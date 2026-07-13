@@ -324,12 +324,13 @@ Join `alert_log` → `alert_rules` scoped to session `user_id`. Path is **`/aler
 
 Storage does **not** have a `delivery_state` enum column. For dashboards,
 runbooks, and ad-hoc SQL, derive state from the real `alert_log` columns in
-`db/migrations/001_initial.sql` through `004_delivery_lease.sql`:
+`db/migrations/001_initial.sql` through `009_alert_log_deferred_attempts.sql`:
 
 | Column | Meaning |
 |---|---|
 | `message_sent` | Final UI/audit flag: the normal Telegram success path completed `mark_alert_sent`. |
-| `attempt_count` | Count of failed or deferred Telegram attempts recorded by `mark_alert_attempt`. |
+| `attempt_count` | Count of hard (non-flood-control) Telegram send failures recorded by `mark_alert_attempt`. Dead-letters at `MAX_SEND_ATTEMPTS` (5). |
+| `deferred_attempt_count` | Count of Telegram `RetryAfter` flood-control defers recorded by `mark_alert_deferred_attempt` (migration `009`). Kept separate from `attempt_count` so alternating ordinary failures and flood-waits don't burn down the tighter ceiling meant only for the former. Dead-letters at `MAX_DEFERRED_ATTEMPTS` (30). |
 | `dead_lettered` | Terminal abandon flag. Excluded from future unsent claims. |
 | `delivery_attempted_ok` | Telegram accepted delivery before `message_sent` was durably marked. Excluded from unsent claims to prevent duplicate pushes after restart. |
 | `delivery_lease_until` | Short in-flight claim lease. Claimers skip the row until this is null or expired. |
@@ -339,11 +340,11 @@ Derived states, in precedence order:
 | State | Predicate | Retry / claim behavior | Ops note |
 |---|---|---|---|
 | `sent` | `message_sent = TRUE` | Terminal; not claimable. | Normal success. `mark_alert_sent` also sets `delivery_attempted_ok = TRUE` and clears any lease. |
-| `dead-letter` | `message_sent = FALSE AND dead_lettered = TRUE` | Terminal; not claimable. | Attempts exhausted or final send-mark persistence was abandoned. The reason is in logs (`alert_dead_lettered.reason = failed \| deferred`), not a DB column. If `delivery_attempted_ok = TRUE`, Telegram may already have accepted the message; do not manually resend. |
+| `dead-letter` | `message_sent = FALSE AND dead_lettered = TRUE` | Terminal; not claimable. | Attempts exhausted or final send-mark persistence was abandoned. The reason is in logs (`alert_dead_lettered.reason = failed \| deferred`), and now also inferable from whether `attempt_count` or `deferred_attempt_count` reached its ceiling. If `delivery_attempted_ok = TRUE`, Telegram may already have accepted the message; do not manually resend. |
 | `delivered-unmarked` | `message_sent = FALSE AND dead_lettered = FALSE AND delivery_attempted_ok = TRUE` | Not claimable. | Telegram returned OK, but the later `message_sent` update did not complete. Treat as delivered for duplicate-prevention; investigate `mark_alert_sent_failed` / `mark_alert_sent_abandoned`. |
 | `leased` | `message_sent = FALSE AND dead_lettered = FALSE AND delivery_attempted_ok = FALSE AND delivery_lease_until >= now()` | Temporarily not claimable. | A poller has claimed the row for Telegram I/O. Lease clears on success/failure/defer, or naturally expires. |
-| `deferred` | Same predicate as `unsent` after a `RetryAfter` path incremented `attempt_count`; usually `attempt_count > 0` and recent logs show `alert_send_deferred`. | Claimable when no active lease. Dead-letters at `MAX_DEFERRED_ATTEMPTS` (30). | There is no DB column that distinguishes defer vs hard failure; use logs for the last outcome. |
-| `unsent` | `message_sent = FALSE AND dead_lettered = FALSE AND delivery_attempted_ok = FALSE AND (delivery_lease_until IS NULL OR delivery_lease_until < now())` | Claimable by `claim_unsent_batch` while the rule remains active. | Includes never-attempted rows (`attempt_count = 0`) and retryable failures (`attempt_count > 0`). Hard failures dead-letter at `MAX_SEND_ATTEMPTS` (5). |
+| `deferred` | Same predicate as `unsent`, with `deferred_attempt_count > 0` and recent logs showing `alert_send_deferred`. | Claimable when no active lease. Dead-letters at `MAX_DEFERRED_ATTEMPTS` (30), tracked independently of `attempt_count`. | A second `RetryAfter` on the same send attempt (still-active flood control) also lands here rather than counting as a hard failure. |
+| `unsent` | `message_sent = FALSE AND dead_lettered = FALSE AND delivery_attempted_ok = FALSE AND (delivery_lease_until IS NULL OR delivery_lease_until < now())` | Claimable by `claim_unsent_batch` while the rule remains active. | Includes never-attempted rows (`attempt_count = 0 AND deferred_attempt_count = 0`) and retryable failures. Hard failures dead-letter at `MAX_SEND_ATTEMPTS` (5). |
 
 `claim_unsent_batch` additionally requires the joined `alert_rules.active = TRUE`
 and uses `FOR UPDATE SKIP LOCKED` before setting a new `delivery_lease_until`.

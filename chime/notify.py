@@ -90,6 +90,16 @@ async def send_message(
             return SendResult.OK
         except asyncio.CancelledError:
             raise
+        except RetryAfter as retry_exc:
+            # Flood control is still active — this is a defer, not a failure.
+            # Counting it as FAILED would burn down MAX_SEND_ATTEMPTS for an
+            # alert that was never actually undeliverable.
+            log.warning(
+                "telegram_retry_after_still_active",
+                chat_id=chat_id,
+                retry_after=str(retry_exc.retry_after),
+            )
+            return SendResult.DEFERRED
         except TelegramError as retry_exc:
             log.warning("telegram_retry_failed", error=str(retry_exc), chat_id=chat_id)
             return SendResult.FAILED

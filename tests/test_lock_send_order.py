@@ -30,7 +30,7 @@ async def test_deferred_send_result_does_not_mark_message_sent() -> None:
         return SendResult.DEFERRED
 
     storage = AsyncMock()
-    storage.mark_alert_attempt = AsyncMock(return_value=1)
+    storage.mark_alert_deferred_attempt = AsyncMock(return_value=1)
     storage.mark_alert_sent = AsyncMock()
     storage.mark_delivery_attempted_ok = AsyncMock()
 
@@ -46,7 +46,7 @@ async def test_deferred_send_result_does_not_mark_message_sent() -> None:
         )
     )
 
-    storage.mark_alert_attempt.assert_awaited_once_with(701)
+    storage.mark_alert_deferred_attempt.assert_awaited_once_with(701)
     storage.mark_alert_sent.assert_not_awaited()
     storage.mark_delivery_attempted_ok.assert_not_awaited()
 
@@ -152,7 +152,7 @@ async def test_new_claim_unlocks_before_deferred_send_attempt_mark() -> None:
     storage.persist_market_snapshots = AsyncMock(side_effect=lambda snaps: list(snaps))
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=95.0))
     storage.claim_and_disarm = AsyncMock(side_effect=claim_and_disarm)
-    storage.mark_alert_attempt = AsyncMock(side_effect=mark_attempt)
+    storage.mark_alert_deferred_attempt = AsyncMock(side_effect=mark_attempt)
     storage.mark_alert_sent = AsyncMock()
     storage.set_rule_armed = AsyncMock()
     storage.claim_unsent_batch = AsyncMock(side_effect=claim_unsent_batch)
@@ -168,7 +168,7 @@ async def test_new_claim_unlocks_before_deferred_send_attempt_mark() -> None:
     assert len(events) == 1
     assert order == ["lock", "claim", "unlock", "send", "attempt", "retry_probe"]
     storage.advisory_unlock.assert_awaited_once()
-    storage.mark_alert_attempt.assert_awaited_once_with(601)
+    storage.mark_alert_deferred_attempt.assert_awaited_once_with(601)
     storage.mark_alert_sent.assert_not_awaited()
 
 

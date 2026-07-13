@@ -174,33 +174,36 @@ def test_load_delivery_ok_ledger_handles_read_errors_and_bad_lines(
     exc_log.assert_any_call("delivery_ok_ledger_load_failed", path=str(bad))
 
 
-def test_durably_remember_skips_rewrite_when_token_cached(
+@pytest.mark.asyncio
+async def test_durably_remember_skips_rewrite_when_token_cached(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     ledger = tmp_path / "ok.jsonl"
     monkeypatch.setenv(DELIVERY_OK_LEDGER_ENV, str(ledger))
     poller = _poller()
     pending = _pending(log_id=7, message="hello")
-    t1 = poller._durably_remember_delivery_ok(pending, event_key="k")
+    t1 = await poller._durably_remember_delivery_ok(pending, event_key="k")
     size_after_first = ledger.stat().st_size
-    t2 = poller._durably_remember_delivery_ok(pending, event_key="k")
+    t2 = await poller._durably_remember_delivery_ok(pending, event_key="k")
     assert t1 == t2
     assert ledger.stat().st_size == size_after_first
 
 
-def test_durably_remember_and_forget_without_ledger_path(
+@pytest.mark.asyncio
+async def test_durably_remember_and_forget_without_ledger_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv(DELIVERY_OK_LEDGER_ENV, "")
     poller = _poller()
     pending = _pending(log_id=8, message="no-path")
-    token = poller._durably_remember_delivery_ok(pending, event_key=None)
+    token = await poller._durably_remember_delivery_ok(pending, event_key=None)
     assert token in poller._delivery_ok_records
-    poller._forget_durable_delivery_ok(token)
+    await poller._forget_durable_delivery_ok(token)
     assert token not in poller._delivery_ok_records
 
 
-def test_durably_remember_and_forget_log_write_failures(
+@pytest.mark.asyncio
+async def test_durably_remember_and_forget_log_write_failures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import chime.poller as poller_mod
@@ -212,7 +215,7 @@ def test_durably_remember_and_forget_log_write_failures(
     poller = _poller()
     pending = _pending(log_id=9, message="write-fail")
     with patch.object(poller_mod.log, "exception") as exc_log:
-        poller._durably_remember_delivery_ok(pending, event_key="ek")
+        await poller._durably_remember_delivery_ok(pending, event_key="ek")
     exc_log.assert_any_call(
         "delivery_ok_ledger_write_failed",
         alert_log_id=9,
@@ -223,7 +226,7 @@ def test_durably_remember_and_forget_log_write_failures(
 
     poller._delivered_ok_tokens.add("tok-x")
     with patch.object(poller_mod.log, "exception") as exc_log:
-        poller._forget_durable_delivery_ok("tok-x")
+        await poller._forget_durable_delivery_ok("tok-x")
     exc_log.assert_any_call("delivery_ok_ledger_forget_failed", path=str(blocked))
 
 

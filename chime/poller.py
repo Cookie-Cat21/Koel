@@ -404,7 +404,23 @@ class Poller:
             message=pending.message,
         )
 
-    def _durably_remember_delivery_ok(
+    @staticmethod
+    def _append_ledger_record_blocking(path: Path, record: dict[str, Any]) -> None:
+        """Blocking file write + fsync — run via ``asyncio.to_thread`` only.
+
+        Durability (fsync before returning) is the point of this call, so it
+        cannot be fire-and-forget — but the syscalls themselves can block for
+        a long time under disk contention, so this must never run directly on
+        the event loop thread.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, sort_keys=True, separators=(",", ":")))
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+
+    async def _durably_remember_delivery_ok(
         self,
         pending: PendingSend,
         *,
@@ -431,12 +447,7 @@ class Poller:
             self._delivery_ok_records[token] = record
             return token
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(record, sort_keys=True, separators=(",", ":")))
-                fh.write("\n")
-                fh.flush()
-                os.fsync(fh.fileno())
+            await asyncio.to_thread(self._append_ledger_record_blocking, path, record)
             self._delivery_ok_records[token] = record
         except Exception:
             log.exception(
@@ -448,7 +459,7 @@ class Poller:
             )
         return token
 
-    def _forget_durable_delivery_ok(self, token: str) -> None:
+    async def _forget_durable_delivery_ok(self, token: str) -> None:
         self._delivered_ok_tokens.discard(token)
         self._delivery_ok_records.pop(token, None)
         path = self._delivery_ok_ledger_path
@@ -460,12 +471,7 @@ class Poller:
             "recorded_at": datetime.now(UTC).isoformat(),
         }
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(record, sort_keys=True, separators=(",", ":")))
-                fh.write("\n")
-                fh.flush()
-                os.fsync(fh.fileno())
+            await asyncio.to_thread(self._append_ledger_record_blocking, path, record)
         except Exception:
             log.exception("delivery_ok_ledger_forget_failed", path=str(path))
 
@@ -489,7 +495,7 @@ class Poller:
             event_key=None,
         )
         if delivery_marked or marked:
-            self._forget_durable_delivery_ok(token)
+            await self._forget_durable_delivery_ok(token)
 
     async def _poll_prices(self) -> tuple[list[AlertEvent], bool]:
         """Fetch full tradeSummary, persist market-wide, evaluate watchlist only.
@@ -1016,8 +1022,13 @@ class Poller:
         telegram_id: int | None = None,
         symbol: str | None = None,
     ) -> None:
-        """Bump attempt_count on RetryAfter defer; dead-letter at MAX_DEFERRED_ATTEMPTS."""
-        attempts = await self.storage.mark_alert_attempt(alert_log_id)
+        """Bump deferred_attempt_count on RetryAfter defer; dead-letter at MAX_DEFERRED_ATTEMPTS.
+
+        Uses its own counter, separate from ``attempt_count``, so alternating
+        ordinary failures and flood-wait defers on the same alert don't burn
+        down the tighter ``MAX_SEND_ATTEMPTS`` ceiling meant only for the former.
+        """
+        attempts = await self.storage.mark_alert_deferred_attempt(alert_log_id)
         if attempts >= MAX_DEFERRED_ATTEMPTS:
             await self.storage.dead_letter(alert_log_id)
             log.warning(
@@ -1123,7 +1134,7 @@ class Poller:
             # E12-C01: write a local durable OK marker before any DB marks. If
             # all post-send DB writes fail and the process restarts, retry drain
             # will reconcile this row without re-sending Telegram.
-            token = self._durably_remember_delivery_ok(pending, event_key=event_key)
+            token = await self._durably_remember_delivery_ok(pending, event_key=event_key)
             # Durable guard before message_sent (E2-C04): survives restart when
             # mark_alert_sent fails but this lighter UPDATE succeeds.
             delivery_marked = await self._mark_delivery_ok_best_effort(
@@ -1143,7 +1154,7 @@ class Poller:
                     event_key=event_key,
                 )
             if delivery_marked or marked:
-                self._forget_durable_delivery_ok(token)
+                await self._forget_durable_delivery_ok(token)
         elif result is SendResult.FAILED:
             await self._record_send_failure(
                 pending.log_id,

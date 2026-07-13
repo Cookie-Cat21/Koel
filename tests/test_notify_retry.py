@@ -119,6 +119,34 @@ async def test_retry_after_then_telegram_error_returns_failed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_second_retry_after_returns_deferred_not_failed() -> None:
+    """A still-active flood wait on retry is a defer, not a permanent failure.
+
+    Regression guard: this used to fall through the generic ``TelegramError``
+    handler and return FAILED, burning down the tight MAX_SEND_ATTEMPTS
+    ceiling for an alert that was never actually undeliverable.
+    """
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(side_effect=[RetryAfter(1), RetryAfter(45)])
+
+    with (
+        capture_logs() as logs,
+        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        result = await send_message(bot, chat_id=1001, text="hello")
+
+    assert result is SendResult.DEFERRED
+    assert bot.send_message.await_count == 2
+    sleep.assert_awaited_once()
+    assert {
+        "event": "telegram_retry_after_still_active",
+        "log_level": "warning",
+        "chat_id": 1001,
+        "retry_after": "45",
+    } in logs
+
+
+@pytest.mark.asyncio
 async def test_retry_after_deferred_when_nonblocking() -> None:
     bot = AsyncMock()
     bot.send_message = AsyncMock(side_effect=RetryAfter(60))

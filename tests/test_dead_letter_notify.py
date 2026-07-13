@@ -86,7 +86,7 @@ async def test_record_send_failure_notifies_once_at_ceiling() -> None:
 @pytest.mark.asyncio
 async def test_record_send_deferred_notifies_once_at_ceiling() -> None:
     storage = AsyncMock()
-    storage.mark_alert_attempt = AsyncMock(return_value=MAX_DEFERRED_ATTEMPTS)
+    storage.mark_alert_deferred_attempt = AsyncMock(return_value=MAX_DEFERRED_ATTEMPTS)
     storage.dead_letter = AsyncMock()
     send = AsyncMock(return_value=True)
 
