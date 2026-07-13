@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from chime.bot import ALERT_USAGE, parse_alert_args
 from chime.domain import AlertRule, AlertType, Disclosure, disclaimer, format_yoy_comparison_block
+from chime.extractors.financial_pdf import infer_filing_kind, is_financial_filing
 from chime.metrics import MetricsSettings
 from chime.metrics.compare import MetricsRow, resolve_prior
+from chime.metrics.worker import process_disclosure_metrics
 from chime.rules import evaluate_filing_metrics_rules
 
 
@@ -66,6 +72,13 @@ def test_parse_eps_and_yoy_alert_kinds() -> None:
         assert parsed is not None
         assert parsed.alert_type == alert_type
         assert parsed.threshold == threshold
+
+
+def test_is_financial_filing_and_kind() -> None:
+    assert is_financial_filing(title="Interim Financial Statements")
+    assert not is_financial_filing(title="Board Meeting")
+    assert infer_filing_kind(title="Annual Report 2025") == "annual"
+    assert infer_filing_kind(title="Interim Financial Statements Q3") == "quarterly"
 
 
 def test_resolve_prior_exact_yoy() -> None:
@@ -200,3 +213,85 @@ def test_format_yoy_block() -> None:
     assert "3.69" in block
     assert "YoY" in block
     assert "verify in the filing" in block
+
+
+@pytest.mark.asyncio
+async def test_process_disclosure_metrics_disabled() -> None:
+    storage = MagicMock()
+    out = await process_disclosure_metrics(
+        storage=storage,
+        disclosure=_disc(),
+        settings=MetricsSettings(financial_metrics_enabled=False),
+    )
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_process_disclosure_metrics_skips_non_financial() -> None:
+    storage = MagicMock()
+    out = await process_disclosure_metrics(
+        storage=storage,
+        disclosure=_disc(title="Board Meeting Notice", category="Corporate"),
+        settings=MetricsSettings(financial_metrics_enabled=True),
+    )
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_process_disclosure_metrics_extract_ok_path() -> None:
+    stored: dict[str, Any] = {
+        "id": 9,
+        "symbol": "VONE.N0000",
+        "kind": "annual",
+        "fiscal_period_end": "2026-03-31",
+        "fiscal_quarter": None,
+        "entity": "group",
+        "scale": "thousands",
+        "currency": "LKR",
+        "revenue": 200.0,
+        "profit": 50.0,
+        "eps_basic": 3.69,
+        "extract_ok": True,
+    }
+    storage = MagicMock()
+    storage.upsert_filing_metrics = AsyncMock(return_value=stored)
+    storage.list_filing_metrics_for_symbol = AsyncMock(return_value=[stored])
+    storage.upsert_filing_comparison = AsyncMock(
+        return_value={"id": 1, "match_quality": "missing_prior"}
+    )
+
+    fake_result = MagicMock()
+    fake_result.kind = "annual"
+    fake_result.entity = "group"
+    fake_result.scale = "thousands"
+    fake_result.currency = "LKR"
+    fake_result.revenue = 200.0
+    fake_result.profit = 50.0
+    fake_result.eps_basic = 3.69
+    fake_result.eps_diluted = 3.69
+    fake_result.fiscal_period_end = date(2026, 3, 31)
+    fake_result.fiscal_quarter = None
+    fake_result.extract_ok = True
+    fake_result.notes = {"source": "test"}
+
+    with patch(
+        "chime.metrics.worker.extract_filing_from_bytes",
+        return_value=fake_result,
+    ):
+        out = await process_disclosure_metrics(
+            storage=storage,
+            disclosure=_disc(),
+            rules=[],
+            settings=MetricsSettings(
+                financial_metrics_enabled=True,
+                filing_compare_enabled=True,
+                metrics_shadow_mode=True,
+            ),
+            pdf_bytes=b"%PDF-1.4 fake",
+        )
+    assert out is not None
+    assert out.extract_ok is True
+    assert out.metrics_id == 9
+    assert out.compared is True
+    storage.upsert_filing_metrics.assert_awaited()
+    storage.upsert_filing_comparison.assert_awaited()

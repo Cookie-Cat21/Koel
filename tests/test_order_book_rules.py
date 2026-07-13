@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from chime.domain import AlertRule, AlertType, OrderBookSnapshot
-from chime.rules import evaluate_order_book_rules, filter_fireable
-from chime.bot import parse_alert_args
 from chime.adapters.cse import (
     OrderBookLevel,
     OrderBookTotal,
     order_book_to_snapshot,
 )
+from chime.bot import parse_alert_args
+from chime.domain import AlertRule, AlertType, OrderBookSnapshot
+from chime.rules import evaluate_order_book_rules, filter_fireable
 
 
 def _book(*, bids: float, asks: float) -> OrderBookSnapshot:

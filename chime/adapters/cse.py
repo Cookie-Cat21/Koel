@@ -444,8 +444,10 @@ def _retryable(exc: BaseException) -> bool:
 _UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
-def _try_ms_to_dt(ms: int) -> datetime | None:
+def _try_ms_to_dt(ms: int | None) -> datetime | None:
     """Convert CSE millisecond epoch to UTC, or ``None`` on overflow / invalid."""
+    if ms is None:
+        return None
     try:
         return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
     except (OverflowError, ValueError, OSError):

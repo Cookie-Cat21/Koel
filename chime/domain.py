@@ -436,8 +436,8 @@ def disclaimer() -> str:
 
 def format_yoy_comparison_block(
     *,
-    metrics: dict,
-    comparison: dict | None,
+    metrics: dict[str, Any],
+    comparison: dict[str, Any] | None,
 ) -> str | None:
     """Short YoY block for disclosure Telegram append. None if not comparable."""
     if not metrics.get("extract_ok"):

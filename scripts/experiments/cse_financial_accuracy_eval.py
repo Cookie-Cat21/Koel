@@ -346,9 +346,7 @@ def _is_leading_note_or_toc_token(raw: str, v: float) -> bool:
     if re.fullmatch(r"\d{1,2}\.\d", t):
         return True
     # TOC / contents page numbers (e.g. "EPS .... 253")
-    if re.fullmatch(r"\d{2,3}", t) and v == int(v) and 50 <= abs(v) <= 450:
-        return True
-    return False
+    return bool(re.fullmatch(r"\d{2,3}", t) and v == int(v) and 50 <= abs(v) <= 450)
 
 
 def _is_prose_or_address_line(nxt: str) -> bool:
@@ -415,7 +413,6 @@ def _collect_following_nums(
 
     j = i + 1
     empty_streak = 0
-    hit_prose = False
     while j < len(lines) and j <= i + (14 if not eps_mode else 8):
         nxt = lines[j].strip()
         if not nxt:
@@ -426,7 +423,6 @@ def _collect_following_nums(
             continue
         empty_streak = 0
         if eps_mode and _is_prose_or_address_line(nxt):
-            hit_prose = True
             break
         cls = _classify(nxt)
         if cls and cls not in (
@@ -983,7 +979,7 @@ def extract_from_pages(
             # Strongly prefer the current-quarter statement when present
             if re.search(r"for the quarter|three months", (p.label or ""), re.I):
                 score += 8
-            low_notes = " ".join(p.notes)
+            " ".join(p.notes)
             if "on_quarter_page" in p.notes and "on_ytd_page" not in p.notes:
                 score += 8
         if "on_group_page" in p.notes:
@@ -1214,7 +1210,7 @@ def eval_one(meta: dict) -> FilingResult:
             r"basic\s+and\s+diluted|basic\s+eps",
             re.I,
         )
-        for p, h, t in scored:
+        for p, _h, t in scored:
             if p in top_idx:
                 continue
             if eps_page_re.search(t or ""):
@@ -1222,7 +1218,7 @@ def eval_one(meta: dict) -> FilingResult:
             if len(top_idx) >= budget + 25:
                 break
         pages = [(i, text_by_page[i]) for i in top_idx if i in text_by_page]
-        for p, h, t in scored[:12]:
+        for p, _h, t in scored[:12]:
             if p not in {i for i, _ in pages}:
                 pages.append((p, t))
 

@@ -178,7 +178,7 @@ async def test_catalog_all_bot_command_responses(capsys: pytest.CaptureFixture[s
         )
     )
 
-    for label, args, alert_type, threshold in ALERT_CASES:
+    for _label, args, alert_type, threshold in ALERT_CASES:
         category = None
         if alert_type == AlertType.DISCLOSURE and len(args) > 2:
             category = " ".join(args[2:])

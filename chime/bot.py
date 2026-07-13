@@ -305,11 +305,18 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                     f"Unexpected extra text after eps {direction}. "
                     f"Example: /alert JKH.N0000 eps {direction} 5\n{ALERT_USAGE}"
                 )
-            alert_map = {
+            abs_map = {
                 "above": AlertType.EPS_ABOVE,
                 "below": AlertType.EPS_BELOW,
             }
-        elif rest and rest[0] == "yoy" and len(rest) >= 3 and rest[1] in ("above", "below"):
+            threshold = _parse_threshold_token(str(threshold_token or ""))
+            if threshold is None:
+                return None, (
+                    "EPS threshold must be a positive finite number. "
+                    f"Example: /alert JKH.N0000 eps {direction} 5\n{ALERT_USAGE}"
+                )
+            return ParsedAlert(abs_map[direction], threshold), None
+        if rest and rest[0] == "yoy" and len(rest) >= 3 and rest[1] in ("above", "below"):
             direction = rest[1]
             threshold_token = args[4] if len(args) > 4 else None
             if len(args) > 5:
@@ -317,7 +324,7 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                     f"Unexpected extra text after yoy {direction}. "
                     f"Example: /alert JKH.N0000 {kind} yoy {direction} 10\n{ALERT_USAGE}"
                 )
-            alert_map = {
+            yoy_map: dict[tuple[str, str], AlertType] = {
                 ("eps", "above"): AlertType.EPS_YOY_ABOVE,
                 ("eps", "below"): AlertType.EPS_YOY_BELOW,
                 ("rev", "above"): AlertType.REV_YOY_ABOVE,
@@ -326,7 +333,7 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                 ("profit", "below"): AlertType.PROFIT_YOY_BELOW,
             }
             key = (metric, direction)
-            if key not in alert_map:
+            if key not in yoy_map:
                 return None, ALERT_USAGE
             threshold = _parse_threshold_token(str(threshold_token or ""))
             if threshold is None:
@@ -334,20 +341,12 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                     "YoY threshold must be a positive percent "
                     f"(e.g. 10 for +10% / decline of 10%).\n{ALERT_USAGE}"
                 )
-            return ParsedAlert(alert_map[key], threshold), None
-        else:
-            return None, (
-                "Try: /alert SYMBOL eps above X\n"
-                "Or: /alert SYMBOL eps yoy above PCT\n"
-                f"{ALERT_USAGE}"
-            )
-        threshold = _parse_threshold_token(str(threshold_token or ""))
-        if threshold is None:
-            return None, (
-                "EPS threshold must be a positive finite number. "
-                f"Example: /alert JKH.N0000 eps {direction} 5\n{ALERT_USAGE}"
-            )
-        return ParsedAlert(alert_map[direction], threshold), None
+            return ParsedAlert(yoy_map[key], threshold), None
+        return None, (
+            "Try: /alert SYMBOL eps above X\n"
+            "Or: /alert SYMBOL eps yoy above PCT\n"
+            f"{ALERT_USAGE}"
+        )
 
     # Activity / notice kinds (peers: Tijori volume, Stock Alarm gap/volume).
     activity_kinds = {

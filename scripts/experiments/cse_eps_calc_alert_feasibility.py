@@ -22,10 +22,8 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
-
 from importlib.machinery import SourceFileLoader
+from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO / "docs" / "experiments"
@@ -128,9 +126,8 @@ def _is_sopl(text: str) -> bool:
         r"price\s+earnings|earnings\s+yield|earnings\s+highlights|"
         r"^\s*contents\b|about\s+this\s+report",
         head,
-    ):
-        if "statement of profit" not in low:
-            return False
+    ) and "statement of profit" not in low:
+        return False
     if re.search(r"price\s+earnings|earnings\s+yield|earnings\s+highlights", low):
         # Investor highlights / ratio pages are not the primary SOPL
         if "statement of profit" not in low and "income statement" not in low:
@@ -574,15 +571,9 @@ def simulate_alerts(gold: list[GoldEps]) -> dict:
                 correct = False
                 reason = "extract_missing"
             else:
-                if rule == "eps_above":
-                    did = extracted > thr
-                else:
-                    did = extracted < thr
+                did = extracted > thr if rule == "eps_above" else extracted < thr
                 # Correct fire decision vs gold truth
-                if rule == "eps_above":
-                    should_real = g.eps_basic > thr
-                else:
-                    should_real = g.eps_basic < thr
+                should_real = g.eps_basic > thr if rule == "eps_above" else g.eps_basic < thr
                 correct = did == should_real and abs(extracted - g.eps_basic) < 0.05
                 reason = None if correct else (
                     "wrong_eps_value" if abs(extracted - g.eps_basic) >= 0.05 else "logic_bug"
@@ -633,12 +624,11 @@ def crossing_test(gold: list[GoldEps]) -> dict:
         thr = (lo + hi) / 2.0
         # Simulate: old=a, new=b, rule eps_above thr
         for old, new in ((a, b), (b, a)):
-            should = new.eps_basic > thr and old.eps_basic <= thr
             r_new = ACC.eval_one(
                 {"symbol": new.symbol, "kind": new.kind, "title": "", "url": ""}
             )
             got = r_new.eps_basic.value if r_new.eps_basic else None
-            did = bool(got is not None and got > thr)
+            bool(got is not None and got > thr)
             # Only count "crossing" cases
             if not (new.eps_basic > thr and old.eps_basic <= thr) and not (
                 new.eps_basic <= thr and old.eps_basic > thr

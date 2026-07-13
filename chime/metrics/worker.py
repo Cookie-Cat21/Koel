@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
 
+import httpx
 import structlog
 
 from chime.briefs.extract import CdnPdfPermanentError, fetch_cdn_pdf
@@ -20,6 +22,8 @@ from chime.metrics.compare import MetricsRow, resolve_prior
 from chime.rules import evaluate_filing_metrics_rules
 
 log = structlog.get_logger("chime.metrics.worker")
+
+_DEFAULT_PDF_MAX_BYTES = 5_242_880
 
 
 class MetricsStorage(Protocol):
@@ -99,7 +103,20 @@ async def process_disclosure_metrics(
                 events=[],
             )
         try:
-            data = await fetch_cdn_pdf(pdf_url)
+            max_bytes = int(os.getenv("PDF_MAX_BYTES", str(_DEFAULT_PDF_MAX_BYTES)))
+        except (TypeError, ValueError):
+            max_bytes = _DEFAULT_PDF_MAX_BYTES
+        max_bytes = max(1, max_bytes)
+        try:
+            async with httpx.AsyncClient(
+                timeout=60.0,
+                follow_redirects=False,
+            ) as client:
+                data = await fetch_cdn_pdf(
+                    pdf_url,
+                    max_bytes=max_bytes,
+                    client=client,
+                )
         except CdnPdfPermanentError as exc:
             log.warning(
                 "metrics_pdf_permanent_fail",

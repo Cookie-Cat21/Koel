@@ -39,9 +39,10 @@ from chime.briefs.worker import claim_pending_briefs
 from chime.circuit import CircuitOpenError
 from chime.config import Settings
 from chime.domain import (
-    AlertEvent,
-    Disclosure,
     MARKET_SYMBOL,
+    AlertEvent,
+    AlertRule,
+    Disclosure,
     PriceSnapshot,
     format_alert_message,
     format_dead_letter_notify,
@@ -1210,7 +1211,7 @@ class Poller:
             await self._deliver_one(pending)
 
     async def _maybe_send_yoy_append(
-        self, disc: Disclosure, metrics_id: int, rules: list
+        self, disc: Disclosure, metrics_id: int, rules: list[AlertRule]
     ) -> None:
         """Follow-up Telegram with YoY block for users watching disclosures."""
         from chime.domain import (

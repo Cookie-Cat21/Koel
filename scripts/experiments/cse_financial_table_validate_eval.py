@@ -958,7 +958,7 @@ def apply_validators(row: ValidatedExtract, extracted: dict[str, Any]) -> None:
 
 def local_pdf_for(row: dict) -> Path | None:
     """Map prior eval row to /tmp PDF (symbol_kind_id.pdf)."""
-    url = row.get("url") or ""
+    row.get("url") or ""
     # id often in filename on disk from prior harness
     symbol = row["symbol"]
     kind = row["kind"]
@@ -1156,7 +1156,7 @@ def write_markdown(summary: dict, rows: list[ValidatedExtract], out_path: Path, 
         "Extractor: FinTable-style SOPL page ranking (PyMuPDF) → **page-text line "
         "parse** (primary) + **pdfplumber** tables (gap-fill). Camelot/FinTable "
         "GUI stack not used (install friction); **no LLM API keys** here.  ",
-        f"Harness: `scripts/experiments/cse_financial_table_validate_eval.py`",
+        "Harness: `scripts/experiments/cse_financial_table_validate_eval.py`",
         "",
         "## Headline",
         "",
@@ -1298,7 +1298,7 @@ def write_markdown(summary: dict, rows: list[ValidatedExtract], out_path: Path, 
         "2. Offline extract + validators is useful for research / brief enrichment "
         "with “verify in filing”.",
         "3. Highest-value next step with an API key: LLM extract on the "
-        f"non-gated bucket, still behind the same validators.",
+        "non-gated bucket, still behind the same validators.",
         "",
         f"Raw JSON: `{meta['json_name']}`",
         "",

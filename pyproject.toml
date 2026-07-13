@@ -47,10 +47,18 @@ markers = [
     "slow: optional slow harness (excluded from default local loops when selected)",
 ]
 
+[tool.coverage.run]
+omit = [
+    # Research CLI / eval helpers promoted beside the typed financial_pdf surface.
+    "chime/extractors/cse_pdf_core.py",
+]
+
 [tool.ruff]
 line-length = 100
 # Align with CI (actions/setup-python 3.12); runtime still allows >=3.11.
 target-version = "py312"
+# Research harnesses: long markdown/report strings; not part of runtime package.
+exclude = ["scripts/experiments"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -64,5 +72,10 @@ warn_unused_configs = true
 packages = ["chime"]
 
 [[tool.mypy.overrides]]
-module = ["apscheduler.*", "telegram.*", "pypdf.*"]
+module = ["apscheduler.*", "telegram.*", "pypdf.*", "fitz"]
 ignore_missing_imports = true
+
+# Research-grade PDF core (CLI + eval helpers); typed surface is financial_pdf.py.
+[[tool.mypy.overrides]]
+module = ["chime.extractors.cse_pdf_core"]
+ignore_errors = true

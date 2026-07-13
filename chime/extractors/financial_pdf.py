@@ -165,7 +165,7 @@ def pick_pages_and_extract(
         r"basic\s+and\s+diluted|basic\s+eps",
         re.I,
     )
-    for p, h, t in scored:
+    for p, _h, t in scored:
         if p in top_idx:
             continue
         if eps_page_re.search(t or ""):
@@ -173,7 +173,7 @@ def pick_pages_and_extract(
         if len(top_idx) >= budget + 25:
             break
     pages = [(i, text_by_page[i]) for i in top_idx if i in text_by_page]
-    for p, h, t in scored[:12]:
+    for p, _h, t in scored[:12]:
         if p not in {i for i, _ in pages}:
             pages.append((p, t))
     extracted = core.extract_from_pages(
@@ -210,7 +210,11 @@ def extract_filing_from_path(
     period_end = _parse_period_end(sample) or _parse_period_end(
         "\n".join(t for _, t in pages)
     )
-    currency = "USD" if re.search(r"indicative\s+us\s*dollar|us\s*dollar\s+income", sample, re.I) else "LKR"
+    currency = (
+        "USD"
+        if re.search(r"indicative\s+us\s*dollar|us\s*dollar\s+income", sample, re.I)
+        else "LKR"
+    )
 
     def _val(pick: Any) -> float | None:
         if pick is None:

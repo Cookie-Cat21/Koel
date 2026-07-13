@@ -61,7 +61,8 @@ PROFIT_LABEL = re.compile(
     r"profit\s*/\s*\(?\s*loss\s*\)?\s+after\s+tax|"
     r"group\s+profit\s+after\s+tax|"
     r"profit\s+after\s+tax(?:ation)?|"
-    r"profit\s+before\s+tax(?:ation)?|"  # last-resort; ranked lower via before-tax skip unless needed
+    # last-resort; ranked lower via before-tax skip unless needed
+    r"profit\s+before\s+tax(?:ation)?|"
     r"profit\s*(?:\(\s*/?\s*loss\s*\)|/\s*\(?\s*loss\s*\)?)?\s+attributable|"
     r"profit\s+attributable\s+to"
     r")\b",
@@ -288,14 +289,23 @@ def _classify(line: str) -> str | None:
     # Bare continuation tag
     if re.fullmatch(r"\(?\s*basic\s*/\s*diluted\s*\)?", low):
         return "eps_combined_tag"
-    if re.fullmatch(r"[\-\u2013—]?\s*basic\b.*", low) and "earning" not in low and "share" not in low and "loss" not in low:
+    if (
+        re.fullmatch(r"[\-\u2013—]?\s*basic\b.*", low)
+        and "earning" not in low
+        and "share" not in low
+        and "loss" not in low
+    ):
         return "eps_basic_tag"
     # Continuation row: "- Basic Earnings Per Share"
     if re.match(r"^[\-\u2013—]\s*basic\b.*(earning|share)", low):
         if "dilut" in low:
             return "eps_combined"
         return "eps_basic"
-    if re.fullmatch(r"[\-\u2013—]?\s*diluted\b.*", low) and "earning" not in low and "share" not in low:
+    if (
+        re.fullmatch(r"[\-\u2013—]?\s*diluted\b.*", low)
+        and "earning" not in low
+        and "share" not in low
+    ):
         return "eps_diluted_tag"
     # Skip annualized / continuing-ops / USD EPS lines as primary picks
     if EPS_SKIP.search(lab) and re.search(r"per\s+share|eps", lab, re.I):
@@ -304,7 +314,9 @@ def _classify(line: str) -> str | None:
         return "eps_basic"
     if EPS_DILUTED.search(lab):
         return "eps_diluted"
-    if EPS_COMBINED.search(lab) and ("earning" in low or "eps" in low or "per share" in low or "loss" in low):
+    if EPS_COMBINED.search(lab) and (
+        "earning" in low or "eps" in low or "per share" in low or "loss" in low
+    ):
         return "eps_combined"
     if EPS_GENERIC.search(lab):
         return "eps_generic"
@@ -340,9 +352,7 @@ def _is_leading_note_or_toc_token(raw: str, v: float) -> bool:
     if re.fullmatch(r"\d{1,2}\.\d", t):
         return True
     # TOC / contents page numbers (e.g. "EPS .... 253")
-    if re.fullmatch(r"\d{2,3}", t) and v == int(v) and 50 <= abs(v) <= 450:
-        return True
-    return False
+    return bool(re.fullmatch(r"\d{2,3}", t) and v == int(v) and 50 <= abs(v) <= 450)
 
 
 def _is_prose_or_address_line(nxt: str) -> bool:
@@ -409,7 +419,6 @@ def _collect_following_nums(
 
     j = i + 1
     empty_streak = 0
-    hit_prose = False
     while j < len(lines) and j <= i + (14 if not eps_mode else 8):
         nxt = lines[j].strip()
         if not nxt:
@@ -420,7 +429,6 @@ def _collect_following_nums(
             continue
         empty_streak = 0
         if eps_mode and _is_prose_or_address_line(nxt):
-            hit_prose = True
             break
         cls = _classify(nxt)
         if cls and cls not in (
@@ -790,7 +798,10 @@ def extract_from_pages(
                     bucket = "eps_combined"
                     label = f"{label} {nxt}".strip()
                     collect_idx = i + 1
-            if bucket in ("eps_generic", "eps_combined", "eps_basic", "eps_diluted") and i + 2 < len(lines):
+            if (
+                bucket in ("eps_generic", "eps_combined", "eps_basic", "eps_diluted")
+                and i + 2 < len(lines)
+            ):
                 for k in (i + 1, i + 2):
                     if re.search(r"basic\s*/\s*di|basic\s+and\s+di", lines[k], re.I):
                         bucket = "eps_combined"
@@ -977,7 +988,7 @@ def extract_from_pages(
             # Strongly prefer the current-quarter statement when present
             if re.search(r"for the quarter|three months", (p.label or ""), re.I):
                 score += 8
-            low_notes = " ".join(p.notes)
+            " ".join(p.notes)
             if "on_quarter_page" in p.notes and "on_ytd_page" not in p.notes:
                 score += 8
         if "on_group_page" in p.notes:
@@ -1208,7 +1219,7 @@ def eval_one(meta: dict) -> FilingResult:
             r"basic\s+and\s+diluted|basic\s+eps",
             re.I,
         )
-        for p, h, t in scored:
+        for p, _h, t in scored:
             if p in top_idx:
                 continue
             if eps_page_re.search(t or ""):
@@ -1216,7 +1227,7 @@ def eval_one(meta: dict) -> FilingResult:
             if len(top_idx) >= budget + 25:
                 break
         pages = [(i, text_by_page[i]) for i in top_idx if i in text_by_page]
-        for p, h, t in scored[:12]:
+        for p, _h, t in scored[:12]:
             if p not in {i for i, _ in pages}:
                 pages.append((p, t))
 
@@ -1450,8 +1461,15 @@ def main() -> None:
 
     summary = summarize(rows)
     gold_path = Path(args.gold)
-    gold = score_gold(gold_path) if gold_path.exists() else {"n": 0, "hits": 0, "accuracy_pct": 0.0, "rows": []}
-    print("GOLD", json.dumps({k: gold[k] for k in ("n", "hits", "accuracy_pct")}, indent=2))
+    gold = (
+        score_gold(gold_path)
+        if gold_path.exists()
+        else {"n": 0, "hits": 0, "accuracy_pct": 0.0, "rows": []}
+    )
+    print(
+        "GOLD",
+        json.dumps({k: gold[k] for k in ("n", "hits", "accuracy_pct")}, indent=2),
+    )
 
     ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     json_name = f"cse_financial_accuracy_eval_{ts}.json"
@@ -1459,7 +1477,10 @@ def main() -> None:
         "generated_at": datetime.now(UTC).isoformat(),
         "prior": str(prior.name),
         "target": args.target,
-        "note": "Research only. Primary metric = human gold value match; coverage = adjacency-verified extract.",
+        "note": (
+            "Research only. Primary metric = human gold value match; "
+            "coverage = adjacency-verified extract."
+        ),
         "summary": summary,
         "gold": gold,
         "rows": [asdict(r) for r in rows],

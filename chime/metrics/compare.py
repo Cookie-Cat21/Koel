@@ -63,7 +63,7 @@ def scale_factor(scale: str) -> float | None:
 
 
 def normalize_amount(value: float | None, scale: str) -> float | None:
-    if not _finite(value):
+    if value is None or not _finite(value):
         return None
     factor = scale_factor(scale)
     if factor is None:
@@ -96,16 +96,18 @@ def resolve_prior(
             continue
         if row.currency.upper() != current.currency.upper():
             continue
-        if current.entity in ("group", "company") and row.entity in ("group", "company"):
-            if row.entity != current.entity:
-                continue
-        if current.kind == "quarterly":
-            if (
-                current.fiscal_quarter is not None
-                and row.fiscal_quarter is not None
-                and row.fiscal_quarter != current.fiscal_quarter
-            ):
-                continue
+        if (
+            current.entity in ("group", "company")
+            and row.entity in ("group", "company")
+            and row.entity != current.entity
+        ):
+            continue
+        if current.kind == "quarterly" and (
+            current.fiscal_quarter is not None
+            and row.fiscal_quarter is not None
+            and row.fiscal_quarter != current.fiscal_quarter
+        ):
+            continue
         days_off = abs((row.fiscal_period_end - target).days)
         if days_off > _APPROX_DAYS:
             continue
@@ -117,12 +119,16 @@ def resolve_prior(
         return ComparisonResult(prior_id=None, match_quality="missing_prior")
 
     _, prior, quality = best
-    if scale_factor(current.scale) is None or scale_factor(prior.scale) is None:
-        if current.scale != prior.scale and current.scale != "unknown" and prior.scale != "unknown":
-            return ComparisonResult(
-                prior_id=prior.id,
-                match_quality="scale_mismatch",
-            )
+    if (
+        (scale_factor(current.scale) is None or scale_factor(prior.scale) is None)
+        and current.scale != prior.scale
+        and current.scale != "unknown"
+        and prior.scale != "unknown"
+    ):
+        return ComparisonResult(
+            prior_id=prior.id,
+            match_quality="scale_mismatch",
+        )
 
     # Normalize rev/profit when scales differ but both known
     cur_rev = normalize_amount(current.revenue, current.scale) or current.revenue

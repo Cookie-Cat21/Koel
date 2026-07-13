@@ -412,7 +412,7 @@ def detect_unextractable(meta: dict, result_row: dict) -> str | None:
         return "eps_label_without_number"
     fails = result_row.get("fail_reasons") or []
     if "revenue:missing" in fails and (
-        "eps_basic:missing" in fails or "eps_basic:unverified" in fails or True
+        True
     ):
         # Classic image-SOPL / sparse statement: chrome without usable revenue cells
         if re.search(r"statement of profit|income statement|revenue", low):
@@ -584,7 +584,7 @@ def write_report(payload: dict, path: Path) -> None:
     no_fin = s.get("remaining_no_financials_on_cse") or []
     if no_fin:
         lines.append(
-            f"- Board symbols with **no** CSE financial PDFs listed: "
+            "- Board symbols with **no** CSE financial PDFs listed: "
             + ", ".join(f"`{x}`" for x in no_fin)
         )
     lines += [

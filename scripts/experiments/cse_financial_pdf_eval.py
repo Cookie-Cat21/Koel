@@ -136,7 +136,7 @@ def extract_pypdf(data: bytes, *, max_pages: int = 40) -> tuple[int, str]:
     reader = PdfReader(BytesIO(data))
     n = len(reader.pages)
     parts: list[str] = []
-    for i, page in enumerate(reader.pages[:max_pages]):
+    for _i, page in enumerate(reader.pages[:max_pages]):
         try:
             parts.append(page.extract_text() or "")
         except Exception:

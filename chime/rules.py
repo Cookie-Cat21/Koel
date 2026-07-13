@@ -8,21 +8,21 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime
-from typing import TypeGuard
+from typing import Any, TypeGuard
 from zoneinfo import ZoneInfo
 
 from chime.domain import (
+    FILING_METRICS_ALERT_TYPES,
+    YOY_ALERT_TYPES,
     AlertEvent,
     AlertRule,
     AlertType,
     BigPrint,
     Disclosure,
-    FILING_METRICS_ALERT_TYPES,
     MarketNotice,
     OrderBookSnapshot,
     PreviousPriceState,
     PriceSnapshot,
-    YOY_ALERT_TYPES,
 )
 
 _COLOMBO = ZoneInfo("Asia/Colombo")
@@ -679,8 +679,8 @@ def evaluate_order_book_rules(
 
 def evaluate_filing_metrics_rules(
     *,
-    metrics: dict,
-    comparison: dict | None,
+    metrics: dict[str, Any],
+    comparison: dict[str, Any] | None,
     disclosure: Disclosure,
     rules: list[AlertRule],
     settings: object | None = None,
@@ -719,9 +719,12 @@ def evaluate_filing_metrics_rules(
             continue
 
         # Feature flags
-        if rule.type in (AlertType.EPS_ABOVE, AlertType.EPS_BELOW):
-            if not cfg.eps_calc_alerts_enabled and not cfg.metrics_shadow_mode:
-                continue
+        if (
+            rule.type in (AlertType.EPS_ABOVE, AlertType.EPS_BELOW)
+            and not cfg.eps_calc_alerts_enabled
+            and not cfg.metrics_shadow_mode
+        ):
+            continue
         if rule.type in YOY_ALERT_TYPES:
             if not cfg.yoy_compare_alerts_enabled and not cfg.metrics_shadow_mode:
                 continue
@@ -774,9 +777,9 @@ def evaluate_filing_metrics_rules(
             if not _finite(delta_pct):
                 continue
             above = rule.type.value.endswith("_above")
-            if above and float(delta_pct) > float(thr):
-                fired = True
-            elif (not above) and float(delta_pct) < -float(thr):
+            if (above and float(delta_pct) > float(thr)) or (
+                (not above) and float(delta_pct) < -float(thr)
+            ):
                 fired = True
             if fired:
                 trigger = (
