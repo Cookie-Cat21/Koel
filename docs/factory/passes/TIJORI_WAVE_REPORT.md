@@ -1,10 +1,10 @@
-# Tijori CSE — Waves 1–91 report
+# Tijori CSE — Waves 1–95 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-13  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … wave 91 (post-100% harden → soft ~100)
+**Range:** `a802cb7` … wave 95 (post-100% harden → soft ~100)
 
 ---
 
@@ -25,7 +25,7 @@ Matches the plan constraint note in [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md).
 
 Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves 1–5. Waves 6–7 add sectors browse, storage/SQL harden, retention/sectors coverage, Groq provider, disclosure baseline watermark, and briefs PDF grace / late follow-up sweep. Waves 8–9 add OpenRouter provider, brief drain pacing, market UX/a11y polish, adversarial grace/storage close, env-example completeness, storage brief-method coverage, and a Phase 3 scenario stub fence (`AI_SCENARIOS_ENABLED=0`). Wave 10 hardens briefs ops (smoke, rate limits, CDN requeue, poller/disclosure coverage) and audits poll↔brief advisory locks as a non-issue. Wave 11 aligns `/brief` empty-state test copy with AI-off messaging. Wave 12 records parallelism honesty (plus follow-on fix/docs/test lanes). Wave 13 closes browse API examples, env sync, Telegram/dash URL egress caps, web adversarial harden, and coverage pushes (migrate / storage / CSE / poller / bot). Wave 14 ships coverage/harden lanes (web regress, health/circuit, config/migrate, main, rules format fuzz, worker) plus fail-closed non-finite float env knobs. Wave 15 adds `make tijori-report`, briefs extra-install docs, help-budget / web movers / briefs / residual coverage, and ops-knob harden. **Wave 16 milestone:** full-package `pytest --cov=chime` at **100%** (3427 stmts / 0 miss) — coverage ratchet complete; post-milestone CSE pacing, brief egress, NFA chrome, and integration-collect harden. **Wave 17** closes post-100% harden (loop status, storage NaN defense, CSE pace concurrency, login a11y, factory verify, health proxy timeout, DL/`myalerts`/lease floor, finite price egress). **Wave 18** hardens dash/ops (brief-queue health UI, category cancel, watchlist duplicate soft flag, sparkline finite filter, category confirm / history egress / nested health). **Wave 19** documents dash CSRF, aligns `/unwatch` copy, adds dash disclosure category, and hardens history/watchlist/browse egress. **Wave 20** advances loop status + report, START browse note, and cancel-id / category-read / dash egress harden. **Wave 21** hardens alerts history/list/forms symbol filters (`normalizeSymbol` / `invalid_symbol`), disclosure SafeInteger ids, and logout hard-redirect UX. **Wave 22** pushes loop status + symbol not-found Browse link (late sectors/alerts/health egress pin). **Wave 23** hardens sectors/health/browse egress + safe ids and rolls the report. **Wave 24** points `/market` empty state at `make tick` / poller seed (late history/watchlist/login SafeInteger pin). **Wave 25** hard-redirects mid-use 401 / missing CSRF to `/login?expired=1` and pins egress harden. **Wave 26** advances loop status (late mapRule/alerts/watchlist fail-closed pin). **Wave 27** hardens toIso/delivery/SafeInteger egress and rolls the report. **Wave 28** restores web `tsc` (`BigInt()` / sanitize string guards) + loop status (late sector ids / browse limits / toIso / session pin). **Wave 29** hardens demo auth telegram_id / allowlist via digits-only `toSafePositiveInt`. **Wave 30** keeps alert-form disclosure category a11y (`aria-describedby` / maxLength / `aria-busy`) (late symbol/health/nav fail-closed pin). **Wave 31** rolls the report (late session exp/sid / market numbers / health timeout / labels pin). **Wave 32** advances loop status + hardens `toFiniteNumber` / health SafeInt / alert thresholds. **Wave 33** resolves AppNav active state for `/scenarios` (longest-prefix) (late session/CSRF token caps + health body bound). **Wave 34** extends loading NFA chrome to browse/health/symbol shells (late history pagination / strict booleans / client finite). **Wave 35** hardens SSRF host / session mint / CSRF+symbol decode / formatTs. **Wave 36** advances loop status + hardens SSR loopback / HEALTH_URL SSRF / JSON body / CSRF path. **Wave 37** gates `apiMutate` to `/api/v1/*` and fails closed NavSession `/me` timestamps/CSRF. **Wave 38** bounds SSR fetch timeout/body and caps alert thresholds. **Wave 39** hardens `/me` parse, cancel id, session TTL, threshold, and SSR bounds. **Wave 40** pins SSR origin / HEALTH_URL / JSON body / CSRF path. **Wave 41** advances loop status + caps CSRF cookie / mapRule threshold / SSR Content-Length early-reject. **Wave 42** caps `jsonError` egress + pins SSR Cookie/CT/CL. **Wave 43** centralizes session/CSRF cookie Secure+SameSite helpers. **Wave 44** caps mapRule thresholds (parity GET `/alerts`). **Wave 45** bounds client mutate/login/NavSession, gates Unwatch, fail-closed SYMBOL_RE egress. **Wave 46** advances loop status + SYMBOL_RE page egress / health watched+CL. **Wave 47** early-rejects client Content-Length before body allocate. **Wave 48** aligns alerts empty CTAs with Browse + sectors SYMBOL_RE / SSR statusText / client CL. **Wave 49** sanitizes sparkline timestamps + pins circuit/sectors. **Wave 50** caps toast/inline copy, fail-closes format digits, bounds sparkline series, and appends the 46–50 rollup. **Wave 51** advances loop status + fail-closes bounded-reader `maxBytes`. **Wave 52** bounds GET `/alerts`/`/watchlist` SQL LIMITs + toast tone/timers + demo allowlist. **Wave 53** stream-bounds response bodies (`readBoundedResponseText`) so missing/understated Content-Length cannot bypass allocate caps. **Wave 54** fail-closes sanitize `maxLen`, caps EmptyState titles, typeof-guards InlineError, clamps skeleton rows, and caps page list parsers. **Wave 55** fail-closes format abs-caps + `alertTypeLabel` typeof and appends the 51–55 rollup. **Wave 56** advances loop status + fail-closed brief/PDF max caps. **Wave 57** typeof/length-caps API path/nav/CSRF. **Wave 58** history pagination a11y + threshold/sanitize. **Wave 59** sparkline abs-cap + toIso range. **Wave 60** toFiniteNumber abs-cap + report. **Wave 61** advances loop status + body abs-cap / formatTs range / session+category typeof. **Wave 62** bot threshold abs-cap + HEALTH_URL typeof. **Wave 63** sparkline/stale ts range + attempt cap. **Wave 64** health age range + dash auth env. **Wave 65** filing URL isinstance + notify symbol + mint secret. **Wave 66** advances loop status + pins briefs/scenarios/bot env + list isinstance. **Wave 67** bot/poller/storage/brief env isinstance. **Wave 68** brief prompt / resolve / alert parse / storage symbol isinstance. **Wave 69** isinstance/typeof fail-closed + price/log + env typeof. **Wave 70** config/poller/guardrails/browse/session + disclosure/DoA/sanitize guards. **Wave 71** advances loop status + wave67 pin import hygiene. **Wave 72** pins cancel/brief/CSE/persist isinstance/typeof fail-closed. **Wave 73** adds layout viewport meta and broad state/CSE/web fail-closed guards. **Wave 74** pins rule.type getattr + stock-name/board persist guards. **Wave 75** rolls 71–75 and late rate/row-mapper harden. **Wave 76** advances loop status + wraps the wave75 pin + fail-closed soft-accept pin (cmd_brief / claim / unsent / category / row mappers). **Wave 77** closes late w71 brief follow-up `str()` soft-accept (+ late health ok / DL attempts / ensure_user id). **Wave 78** restores isinstance pins and fail-closes persist/disclosure ids + promote counts. **Wave 79** lands the soft-accept implementation (cmd_brief / claim / unsent / category / row ids). **Wave 80** pins the soft-accept contract and appends the 76–80 rollup toward soft ~100 — not cov gap-fill. **Wave 81** advances loop status (+ late notify/CSE soft-accept close). **Wave 82** pins claim/attempt/lock/health/count soft-accepts. **Wave 83** adversarial CLEAN (diminishing returns on further `int(True)` / `True==1` pin churn) + late CDN status/length/redirect soft-accept. **Wave 84** lands claim/lock/health/count fail-closed helpers + pins. **Wave 85** pins the same contract and appends the 81–85 rollup. **Wave 86** advances loop status + post-CDN adversarial CLEAN. **Wave 87** CLEANs WS-087 clock-skew claim invariant (+ lands CSE HTTP classify fail-closed). **Wave 88** ops-polish runbook + brief daily-cap/lease soft-accept harden. **Wave 89** records the CSE status/CT/pace soft-accept close. **Wave 90** pins CSE status/CT/pace and appends this 86–90 rollup toward soft ~100. Live LLM briefs remain **flag/key gated** (`AI_BRIEFS_ENABLED=0` default; `AI_PROVIDER=gemini|groq|openrouter`). Phase 3 scenario AI is **stub only** — no LLM wiring yet.
 
-Wave 91 lands focused bool numeric / CLI / disclosure / health / alert-lookup / briefs harden and refreshes the loop snapshot toward w92–w100.
+Wave 91 lands focused bool numeric / CLI / disclosure / health / alert-lookup / briefs harden. Waves 92–95 close watched-missing poison fallback retention, snapshot bool reject, history cap, brief PDF type checks, filing URL path validation, cancel trailing tokens plus circuit knobs, watchlist symbol listing, and daily-move fallback crossings; the loop snapshot now points at the finishing w96–w100 horizon.
 
 | Track | Status |
 |---|---|
@@ -33,7 +33,7 @@ Wave 91 lands focused bool numeric / CLI / disclosure / health / alert-lookup / 
 | Phase 2 Tijori core | ◐ mostly done — live LLM still off until keyed |
 | Phase 3 scenario AI | ◐ stub fence only (`AI_SCENARIOS_ENABLED=0`) |
 | `chime` unit coverage | ✅ **100%** (wave 16 milestone) |
-| Improve-loop / CI on touched paths | ongoing — wave 91 post-100% harden → soft ~100 loops |
+| Improve-loop / CI on touched paths | ongoing — wave 95 post-100% harden → finishing w96–w100 |
 
 ---
 
@@ -1786,6 +1786,74 @@ Wave 91 lands focused bool numeric / CLI / disclosure / health / alert-lookup / 
 
 ---
 
+## Wave 92 — Watched-missing poison fallback + snapshot retention bool reject
+
+**Theme:** Preserve good `watched_missing` data through mixed nested fallback payloads, keep all-junk nested lists from clearing good top-level missing lists, and reject boolean snapshot-retention knobs before numeric coercion.
+
+| SHA | Commit |
+|---|---|
+| `ffd4f062` | fix(w92): preserve mixed watched_missing + poison fallbacks |
+| `c09018f3` | fix(w92): reject bool snapshot retention |
+
+**Shipped**
+
+- Mixed nested `watched_missing` keeps valid symbols while all-junk nested fallback data is ignored.
+- Disclosure upsert string/datetime poison RETURNING fallbacks are pinned.
+- Snapshot retention rejects boolean values instead of accepting `True` / `False` as numeric retention settings.
+
+---
+
+## Wave 93 — History pagination cap + brief PDF fetch type checks
+
+**Theme:** Stop history `next` links at the offset cap and harden brief PDF fetch inputs / response type checks.
+
+| SHA | Commit |
+|---|---|
+| `4fa930ce` | fix(w93): stop history next link at offset cap |
+| `eded1f98` | fix(w93): harden brief PDF fetch type checks |
+
+**Shipped**
+
+- History pagination no longer emits a next link once the configured offset cap is reached.
+- Brief PDF fetch rejects non-string / malformed response metadata before downstream parse paths.
+- Current pre-doc HEAD is `eded1f98`; docs status records `VERIFY_OK` there.
+
+---
+
+## Wave 94 — Filing URL path validation + cancel/circuit knobs
+
+**Theme:** Harden CSE filing URL path validation and close cancel-alert trailing-token parsing alongside circuit knob harden in the same sibling batch.
+
+| SHA | Commit |
+|---|---|
+| `d9d56618` | Harden CSE filing URL path validation |
+| `e5c73da5` | Fix cancel alert trailing tokens |
+
+**Shipped**
+
+- CSE filing URLs validate path shape before accepting source links.
+- Cancel-alert parsing rejects trailing tokens instead of soft-accepting ambiguous commands.
+- Circuit breaker knobs were hardened in the same `e5c73da5` sibling commit batch.
+
+---
+
+## Wave 95 — Watchlist symbol listing + daily-move fallback crossings
+
+**Theme:** Harden watchlist symbol listing and detect daily-move fallback crossings instead of missing eligible alerts.
+
+| SHA | Commit |
+|---|---|
+| `cf3f96c0` | fix(w95): harden watchlist symbol listing |
+| `eca7c582` | fix(w95): detect daily move fallback crossings |
+
+**Shipped**
+
+- Watchlist symbol listing fails closed around malformed rows / symbols.
+- Daily-move fallback crossing detection is pinned so fallback values can still fire eligible move alerts.
+- Waves completed progress through w95; remaining horizon is w96–w100.
+
+---
+
 ## Commit counts
 
 | Wave | Commits (scoped) |
@@ -1881,6 +1949,10 @@ Wave 91 lands focused bool numeric / CLI / disclosure / health / alert-lookup / 
 | 89 (`w89`) | 1 (CSE status/CT/pace soft-accept close docs) |
 | 90 (`w90`) | 2 (CSE soft-accept pin + report rollup) |
 | 91 (`w91`) | 7+ (bool numeric + CLI/disclosure/health/alert/CSE/briefs harden + report) |
+| 92 (`w92`) | 2 (watched_missing poison fallback + snapshot retention bool reject) |
+| 93 (`w93`) | 2 (history next-link cap + brief PDF fetch type checks) |
+| 94 (`w94`) | 2 (filing URL path validation + cancel/circuit knobs) |
+| 95 (`w95`) | 2 (watchlist symbol listing + daily-move fallback crossings) |
 | **Total** | **100+** |
 
 ---
@@ -1905,7 +1977,7 @@ Wave 91 lands focused bool numeric / CLI / disclosure / health / alert-lookup / 
 
 ### Suggested next improve-loop focus
 
-- Wave 92+ only on **new** medium+ fuel — PG claim/lock/health/count soft-accept hunting exhausted (w83); CDN soft-accept closed (late w83); CSE HTTP classify soft-accepts closed (w89/w90); clock-skew claim CLEAN (w87); Wave 91 bool/CLI/disclosure/health/alert/CSE/briefs fixes landed. Do not farm duplicate pins.
+- Wave 96+ only on **new** medium+ fuel — PG claim/lock/health/count soft-accept hunting exhausted (w83); CDN soft-accept closed (late w83); CSE HTTP classify soft-accepts closed (w89/w90); clock-skew claim CLEAN (w87); Waves 91–95 bool/CLI/disclosure/health/alert/CSE/briefs/history/watchlist/daily-move fixes landed. Do not farm duplicate pins.
 - Optionally raise `--cov-fail-under` toward 100 once CI owners agree (measured 100% already).
 - Controlled briefs-on soak (not default-on in prod) — see runbook soak checklist.
 - Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.
