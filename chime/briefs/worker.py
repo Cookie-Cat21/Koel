@@ -520,6 +520,12 @@ async def claim_pending_briefs(
                 for i, row in enumerate(rows):
                     if i > 0 and sleep_s > 0:
                         await asyncio.sleep(sleep_s)
+                    if not isinstance(row, dict):
+                        log.warning(
+                            "brief_drain_row_poisoned",
+                            row_type=type(row).__name__,
+                        )
+                        continue
                     # Fail closed — poisoned disclosure_id used to throw on
                     # int() (lists) or soft-accept bool→1 mid brief drain.
                     raw_did = row.get("disclosure_id")
