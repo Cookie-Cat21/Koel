@@ -400,11 +400,14 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     status, info = await _lookup_symbol(cse, symbol)
     if status == "upstream":
-        await update.effective_message.reply_text("cse.lk unreachable, try again.")
+        await update.effective_message.reply_text(
+            f"cse.lk unreachable, try again.\n{disclaimer()}"
+        )
         return
     if status == "not_found":
         await update.effective_message.reply_text(
-            f"Couldn't find {symbol} on cse.lk. Check the ticker and try again."
+            f"Couldn't find {symbol} on cse.lk. Check the ticker and try again.\n"
+            f"{disclaimer()}"
         )
         return
     assert info is not None
