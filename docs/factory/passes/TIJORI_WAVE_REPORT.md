@@ -1,10 +1,10 @@
-# Tijori CSE — Waves 1–85 report
+# Tijori CSE — Waves 1–89 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-13  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … wave 85 (post-100% harden → soft ~100)
+**Range:** `a802cb7` … wave 89 (post-100% harden → soft ~100)
 
 ---
 
@@ -1781,9 +1781,18 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | Empty “100 loops” theater | Soft horizon only; wave 14+ continues quality-gated loops, not pad-to-N |
 | Poll↔brief advisory deadlock “fix” | Audited non-issue; keep distinct lock IDs ([ADVISORY_LOCK_DEADLOCK.md](ADVISORY_LOCK_DEADLOCK.md)) |
 
+### Waves 86–89 (post-rollup)
+
+| Wave | Ship |
+|---|---|
+| 86 | docs — loop status push |
+| 87 | adversarial CLEAN — WS-087 clock-skew claim invariant + pin |
+| 88 | docs — ops polish (`make tijori-smoke` / sectors tick note) |
+| 89 | **fix** — CSE `_request` status/CT + `min_interval` / `_retryable` soft-accepts (`True >= 400` success, non-str CT, `float(True)` pace); pin `tests/test_wave89_medium_bugs.py` — see [W89_ADVERSARIAL.md](W89_ADVERSARIAL.md) |
+
 ### Suggested next improve-loop focus
 
-- Wave 86+ only on **new** medium+ fuel — soft-accept isinstance hunting on claim/lock/health/count is exhausted (w83 CLEAN / diminishing returns). STOP early on CLEAN×2; do not farm pins.
+- Wave 90+ only on **new** medium+ fuel — PG claim/lock/health/count soft-accept hunting exhausted (w83); CSE HTTP classify soft-accepts closed (w89). Do not farm duplicate pins.
 - Optionally raise `--cov-fail-under` toward 100 once CI owners agree (measured 100% already).
 - Controlled briefs-on soak (not default-on in prod).
 - Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.
