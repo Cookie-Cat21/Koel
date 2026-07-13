@@ -99,9 +99,10 @@ def allow_command(
 
 def _cmd_rate_limit(context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = context.application.bot_data.get("cmd_rate_per_minute")
-    if raw is not None:
-        return int(raw)
-    return 20
+    # Fail closed — non-int / bool bot_data used to throw on int() mid /watch.
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return 20
+    return raw if raw >= 0 else 20
 
 
 async def _rate_limited(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -605,7 +606,8 @@ def format_brief_lookup_reply(
         clean_title = truncate_disclosure_title(title)
         if clean_title:
             lines.append(f"Disclosure: {clean_title}")
-    safe_url = allowed_filing_url(url) if url else None
+    # Fail closed — truthy non-string url must not reach allowlist gate.
+    safe_url = allowed_filing_url(url) if isinstance(url, str) and url else None
     if safe_url:
         lines.append(safe_url)
     budget = min(BRIEF_BODY_MAX, brief_budget_for_prefix(lines))

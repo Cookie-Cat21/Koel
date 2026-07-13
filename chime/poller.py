@@ -351,7 +351,11 @@ class Poller:
             return Path(raw) if raw else None
         if raw is not None:
             return None
-        digest = hashlib.sha256(self.settings.database_url.encode("utf-8")).hexdigest()[:16]
+        # Fail closed — non-string database_url used to throw on .encode mid ledger.
+        db_url = self.settings.database_url
+        if not isinstance(db_url, str) or not db_url:
+            return None
+        digest = hashlib.sha256(db_url.encode("utf-8")).hexdigest()[:16]
         return Path("/tmp/chime") / f"delivery-ok-{digest}.jsonl"
 
     def _load_delivery_ok_ledger(self) -> None:

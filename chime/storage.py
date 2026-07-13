@@ -1142,13 +1142,34 @@ class Storage:
             text = brief.strip()
             if not text:
                 return None
+            # Fail closed — non-string PG fields used to soft-accept via str()
+            # (ints/None became "123"/"None" in /brief lookup egress).
+            raw_sym = data.get("symbol")
+            sym_out = (
+                raw_sym.strip().upper()
+                if isinstance(raw_sym, str) and raw_sym.strip()
+                else sym
+            )
+            raw_title = data.get("title")
+            raw_url = data.get("url")
+            raw_ext = data.get("external_id")
             return {
                 "brief": text,
-                "symbol": str(data.get("symbol") or sym).strip().upper(),
-                "title": (str(data["title"]).strip() if data.get("title") else None),
-                "url": (str(data["url"]).strip() if data.get("url") else None),
+                "symbol": sym_out,
+                "title": (
+                    raw_title.strip()
+                    if isinstance(raw_title, str) and raw_title.strip()
+                    else None
+                ),
+                "url": (
+                    raw_url.strip()
+                    if isinstance(raw_url, str) and raw_url.strip()
+                    else None
+                ),
                 "external_id": (
-                    str(data["external_id"]).strip() if data.get("external_id") else None
+                    raw_ext.strip()
+                    if isinstance(raw_ext, str) and raw_ext.strip()
+                    else None
                 ),
                 "disclosure_id": data.get("disclosure_id"),
             }
@@ -1396,7 +1417,12 @@ class Storage:
                     (user_id,),
                 )
             ).fetchall()
-        return [_row_to_rule(_as_row(r)) for r in rows]
+        out: list[AlertRule] = []
+        for r in rows:
+            rule = _row_to_rule(_as_row(r))
+            if rule is not None:
+                out.append(rule)
+        return out
 
     async def active_rules_for_symbols(self, symbols: Sequence[str]) -> list[AlertRule]:
         if not symbols:
@@ -1413,7 +1439,12 @@ class Storage:
                     (list(symbols),),
                 )
             ).fetchall()
-        return [_row_to_rule(_as_row(r)) for r in rows]
+        out: list[AlertRule] = []
+        for r in rows:
+            rule = _row_to_rule(_as_row(r))
+            if rule is not None:
+                out.append(rule)
+        return out
 
     async def set_rule_armed(self, rule_id: int, armed: bool) -> None:
         async with self._pool.connection() as conn:
@@ -1805,11 +1836,28 @@ class Storage:
         return snapshot
 
 
-def _row_to_snapshot(row: dict[str, Any]) -> PriceSnapshot:
+def _row_to_snapshot(row: dict[str, Any]) -> PriceSnapshot | None:
+    # Fail closed — non-string / blank symbol used to coerce via pydantic or
+    # abort latest/previous snapshot reads mid poller.
+    raw_sym = row.get("symbol")
+    if not isinstance(raw_sym, str) or not raw_sym.strip():
+        return None
+    try:
+        price = float(row["price"])
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(price):
+        return None
+    ts = row.get("ts")
+    if not isinstance(ts, datetime):
+        try:
+            ts = datetime.fromisoformat(str(ts))
+        except (TypeError, ValueError):
+            return None
     return PriceSnapshot(
         id=int(row["id"]),
-        symbol=row["symbol"],
-        price=float(row["price"]),
+        symbol=raw_sym.strip().upper(),
+        price=price,
         previous_close=row.get("previous_close"),
         change=row.get("change"),
         change_pct=row.get("change_pct"),
@@ -1820,14 +1868,17 @@ def _row_to_snapshot(row: dict[str, Any]) -> PriceSnapshot:
         low=row.get("low"),
         open=row.get("open"),
         market_cap=row.get("market_cap"),
-        ts=row["ts"] if isinstance(row["ts"], datetime) else datetime.fromisoformat(str(row["ts"])),
+        ts=ts,
     )
 
 
-def _row_to_rule(row: dict[str, Any]) -> AlertRule:
+def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
     created = row.get("created_at")
     if created is not None and not isinstance(created, datetime):
-        created = datetime.fromisoformat(str(created))
+        try:
+            created = datetime.fromisoformat(str(created))
+        except (TypeError, ValueError):
+            created = None
     # Legacy / poisoned rows may still hold C0 controls or oversize categories —
     # sanitize on read so matching + Telegram egress share one egress bar.
     # Fail closed — never str()-coerce non-string PG values into category
@@ -1836,12 +1887,30 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule:
     cat = sanitize_disclosure_category(
         raw_cat if isinstance(raw_cat, str) else None
     )
+    # Fail closed — invalid / non-string type or symbol used to raise mid
+    # list_alerts / active_rules_for_symbols and abort the tick.
+    raw_type = row.get("type")
+    if not isinstance(raw_type, str):
+        return None
+    try:
+        alert_type = AlertType(raw_type)
+    except ValueError:
+        return None
+    raw_sym = row.get("symbol")
+    if not isinstance(raw_sym, str) or not raw_sym.strip():
+        return None
+    try:
+        rule_id = int(row["id"])
+        user_id = int(row["user_id"])
+        telegram_id = int(row["telegram_id"])
+    except (TypeError, ValueError, KeyError):
+        return None
     return AlertRule(
-        id=int(row["id"]),
-        user_id=int(row["user_id"]),
-        telegram_id=int(row["telegram_id"]),
-        symbol=row["symbol"],
-        type=AlertType(row["type"]),
+        id=rule_id,
+        user_id=user_id,
+        telegram_id=telegram_id,
+        symbol=raw_sym.strip().upper(),
+        type=alert_type,
         threshold=row.get("threshold"),
         category=cat,
         active=bool(row["active"]),
