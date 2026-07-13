@@ -239,9 +239,12 @@ export default async function AlertHistoryPage({
   const pageLimit = payload?.limit ?? limit;
   const pageOffset = payload?.offset ?? offset;
   const hasPrev = pageOffset > 0;
-  const hasNext = payload != null && payload.events.length >= pageLimit;
   const prevOffset = Math.max(0, pageOffset - pageLimit);
   const nextOffset = Math.min(pageOffset + pageLimit, MAX_HISTORY_OFFSET);
+  const hasNext =
+    payload != null &&
+    payload.events.length >= pageLimit &&
+    nextOffset > pageOffset;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
