@@ -88,12 +88,26 @@ async def send_message(
         try:
             await bot.send_message(chat_id=chat_id, text=text, **_SEND_KWARGS)
             return SendResult.OK
+        except asyncio.CancelledError:
+            raise
         except TelegramError as retry_exc:
             log.warning("telegram_retry_failed", error=str(retry_exc), chat_id=chat_id)
+            return SendResult.FAILED
+        except Exception as retry_exc:
+            log.exception(
+                "telegram_retry_unexpected_error",
+                error=str(retry_exc),
+                chat_id=chat_id,
+            )
             return SendResult.FAILED
     except (TimedOut, NetworkError) as exc:
         log.warning("telegram_transient", error=str(exc), chat_id=chat_id)
         return SendResult.FAILED
     except TelegramError as exc:
         log.error("telegram_error", error=str(exc), chat_id=chat_id)
+        return SendResult.FAILED
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        log.exception("telegram_unexpected_error", error=str(exc), chat_id=chat_id)
         return SendResult.FAILED

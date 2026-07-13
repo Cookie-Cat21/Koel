@@ -6,6 +6,7 @@ import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
@@ -80,6 +81,40 @@ def _positive_int(name: str, default: int) -> int:
     return value if value >= 1 else default
 
 
+def _env_str(name: str, default: str) -> str:
+    raw = os.getenv(name, default)
+    return raw if isinstance(raw, str) else default
+
+
+def _timezone(name: str, default: str) -> str:
+    value = _env_str(name, default).strip()
+    if not value:
+        return default
+    try:
+        ZoneInfo(value)
+    except ZoneInfoNotFoundError:
+        return default
+    return value
+
+
+def _hhmm(name: str, default: str) -> str:
+    value = _env_str(name, default).strip()
+    try:
+        hour_raw, minute_raw = value.split(":", 1)
+        hour = int(hour_raw)
+        minute = int(minute_raw)
+    except ValueError:
+        return default
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return default
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _minutes(value: str) -> int:
+    hour_raw, minute_raw = value.split(":", 1)
+    return int(hour_raw) * 60 + int(minute_raw)
+
+
 # Soft floors for ops knobs (fail closed to defaults when below).
 _MIN_POLL_INTERVAL_SECONDS = 5.0
 _MIN_HTTP_TIMEOUT_SECONDS = 1.0
@@ -138,14 +173,15 @@ class Settings:
         if bot_rate < 0:
             bot_rate = 20
 
-        def _env_str(name: str, default: str) -> str:
-            raw = os.getenv(name, default)
-            return raw if isinstance(raw, str) else default
-
         cse_base = _env_str("CSE_BASE_URL", "https://www.cse.lk/api")
         log_raw = _env_str("LOG_LEVEL", "INFO")
         bulk_raw = _env_str("DISCLOSURE_BULK_FEED", "0")
         sectors_raw = _env_str("SECTORS_INGEST", "0")
+        market_open = _hhmm("MARKET_OPEN", "09:30")
+        market_close = _hhmm("MARKET_CLOSE", "14:30")
+        if _minutes(market_close) < _minutes(market_open):
+            market_open = "09:30"
+            market_close = "14:30"
         return cls(
             telegram_bot_token=token,
             database_url=_require("DATABASE_URL"),
@@ -166,9 +202,9 @@ class Settings:
             health_host=_env_str("HEALTH_HOST", "127.0.0.1"),
             health_port=health_port,
             log_level=log_raw.upper(),
-            market_tz=_env_str("MARKET_TZ", "Asia/Colombo"),
-            market_open=_env_str("MARKET_OPEN", "09:30"),
-            market_close=_env_str("MARKET_CLOSE", "14:30"),
+            market_tz=_timezone("MARKET_TZ", "Asia/Colombo"),
+            market_open=market_open,
+            market_close=market_close,
             bot_cmd_rate_per_minute=bot_rate,
             pdf_enrich_sleep_seconds=_nonneg_float("PDF_ENRICH_SLEEP_SECONDS", 0.5),
             disclosure_bulk_feed=bulk_raw.strip() == "1",
