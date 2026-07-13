@@ -661,6 +661,7 @@ def extract_from_pages(
     page_has_period_profit: dict[int, bool] = {}
     page_has_year_profit_only: dict[int, bool] = {}
     page_is_highlights: dict[int, bool] = {}
+    page_is_usd: dict[int, bool] = {}
 
     for page, text in pages:
         text = _normalize_pdf_text(text)
@@ -677,7 +678,15 @@ def extract_from_pages(
                 head25,
             )
         )
-        page_is_sopl[page] = (not notes_band) and (
+        page_is_usd[page] = bool(
+            re.search(
+                r"indicative\s+us\s*dollar|us\s*dollar\s+income|"
+                r"income\s+statement\s+in\s+usd|\(usd\)|in\s+us\s*dollars",
+                head25,
+            )
+        )
+        # USD / indicative dollar statements are not primary LKR SOPL
+        page_is_sopl[page] = (not notes_band) and (not page_is_usd[page]) and (
             "statement of profit" in low_page
             or "income statement" in low_page
             or (
@@ -853,6 +862,8 @@ def extract_from_pages(
                 notes.append("page_has_year_profit_only")
             if page_is_highlights.get(page):
                 notes.append("on_highlights_page")
+            if page_is_usd.get(page):
+                notes.append("on_usd_page")
             raw, val = nums[0]
             if bucket.startswith("eps") and abs(val) > 5000:
                 i += 1
@@ -958,6 +969,8 @@ def extract_from_pages(
             score -= 25
         if "on_highlights_page" in p.notes:
             score -= 20
+        if "on_usd_page" in p.notes:
+            score -= 40
         if kind == "quarterly":
             if "on_quarter_page" in p.notes:
                 score += 12

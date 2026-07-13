@@ -579,6 +579,15 @@ def write_report(payload: dict, path: Path) -> None:
         f"- Text-ok filings: **{s['text_ok']}**",
         f"- Strong (rev+profit+EPS labels): **{s['strong']}**",
         f"- Scanned / text-poor (excluded from extract perfection): **{s['scanned']}**",
+        f"- Remaining downloadable companies without PDFs: **{s.get('remaining_companies', '?')}**",
+    ]
+    no_fin = s.get("remaining_no_financials_on_cse") or []
+    if no_fin:
+        lines.append(
+            f"- Board symbols with **no** CSE financial PDFs listed: "
+            + ", ".join(f"`{x}`" for x in no_fin)
+        )
+    lines += [
         "",
         "## Extract + calc-alert gates (strong set)",
         "",
@@ -645,6 +654,29 @@ def write_report(payload: dict, path: Path) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def companies_without_downloadable_financials() -> list[str]:
+    """Board symbols that have no quarterly/annual PDF rows on cse.lk."""
+    have = local_symbols()
+    missing = [s for s in live_symbols() if s not in have]
+    empty: list[str] = []
+    for sym in missing:
+        time.sleep(SLEEP_S)
+        try:
+            fin = post_json("financials", form=f"symbol={sym}")
+        except Exception:
+            empty.append(sym)
+            continue
+        if not isinstance(fin, dict):
+            empty.append(sym)
+            continue
+        q = fin.get("infoQuarterlyData") or []
+        a = fin.get("infoAnnualData") or []
+        if (isinstance(q, list) and q) or (isinstance(a, list) and a):
+            continue
+        empty.append(sym)
+    return empty
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -692,6 +724,9 @@ def main() -> None:
     gold_path = OUT_DIR / "cse_financial_eps_gold_expanded.json"
     gold_path.write_text(json.dumps(result["gold"], indent=2), encoding="utf-8")
 
+    no_fin = companies_without_downloadable_financials()
+    remaining_raw = max(0, len(board) - len(local_symbols()))
+    remaining_downloadable = max(0, remaining_raw - len(no_fin))
     summary = {
         "board_symbols": len(board),
         "local_symbols": len(local_symbols()),
@@ -715,7 +750,8 @@ def main() -> None:
         "crossing_n": result["crossing_n"],
         "disagree": result["gold_build"].get("disagree", 0),
         "perfect": result["perfect"],
-        "remaining_companies": max(0, len(board) - len(local_symbols())),
+        "remaining_companies": remaining_downloadable,
+        "remaining_no_financials_on_cse": no_fin,
     }
     print("SUMMARY", json.dumps(summary, indent=2))
 
@@ -738,7 +774,14 @@ def main() -> None:
     write_report(payload, OUT_DIR / "CSE_EPS_REALWORLD_STRESS.md")
     print(f"Wrote {OUT_DIR / json_name}")
     print(f"Perfect? {'YES' if result['perfect'] else 'NOT YET'}")
-    print(f"Remaining companies without PDFs: {summary['remaining_companies']}")
+    print(
+        f"Remaining downloadable companies without PDFs: {summary['remaining_companies']}"
+    )
+    if summary.get("remaining_no_financials_on_cse"):
+        print(
+            "No CSE financial PDFs listed for: "
+            + ", ".join(summary["remaining_no_financials_on_cse"])
+        )
 
     if args.require_perfect and not result["perfect"]:
         raise SystemExit(2)

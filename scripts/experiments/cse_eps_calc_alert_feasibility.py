@@ -370,6 +370,12 @@ def build_expanded_gold(strong: list[dict]) -> tuple[list[GoldEps], dict]:
             if _is_notes_or_restatement_page(text):
                 continue
             if re.search(
+                r"indicative\s+us\s*dollar|us\s*dollar\s+income|"
+                r"income\s+statement\s+in\s+usd|\bin\s+us\s*dollars\b",
+                head,
+            ):
+                continue
+            if re.search(
                 r"financial\s+highlights|income\s+statement\s+data|"
                 r"quarterly\s+analysis|table\s+of\s+contents|price\s+earnings|"
                 r"earnings\s+yield|earnings\s+highlights",
