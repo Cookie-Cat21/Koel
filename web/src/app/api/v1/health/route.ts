@@ -146,7 +146,7 @@ function sanitizeWatchedMissing(raw: unknown): string[] | undefined {
     // Fail closed — only CSE SYMBOL_RE (no sanitize length-cap fallback).
     // Hostile HEALTH_URL used to egress 512-char non-ticker strings into ops JSON.
     const sym = normalizeSymbol(item);
-    if (!sym) continue;
+    if (!sym) return undefined;
     out.push(sym);
     if (out.length >= HEALTH_WATCHED_MISSING_MAX) break;
   }
@@ -212,8 +212,10 @@ export function sanitizePollerHealth(raw: unknown): PollerHealth | null {
     } else {
       const cleaned = sanitizeHealthString(body.last_tick_at);
       // Require parseable ISO — sanitize-only left hostile non-dates in ops JSON.
-      poller.last_tick_at =
-        cleaned === undefined ? null : cleaned == null ? null : toIso(cleaned);
+      const lastTickAt = cleaned == null ? null : toIso(cleaned);
+      if (cleaned !== undefined && lastTickAt !== null) {
+        poller.last_tick_at = lastTickAt;
+      }
     }
   }
   if (typeof body.last_tick_ok === "boolean") {
@@ -229,10 +231,16 @@ export function sanitizePollerHealth(raw: unknown): PollerHealth | null {
     poller.lock_held_skip = body.lock_held_skip;
   }
   if ("last_error" in body) {
-    poller.last_error = sanitizeHealthString(body.last_error) ?? null;
+    const lastError = sanitizeHealthString(body.last_error);
+    if (lastError !== undefined) {
+      poller.last_error = lastError;
+    }
   }
   if ("watched_missing" in body) {
-    poller.watched_missing = sanitizeWatchedMissing(body.watched_missing) ?? [];
+    const watchedMissing = sanitizeWatchedMissing(body.watched_missing);
+    if (watchedMissing !== undefined) {
+      poller.watched_missing = watchedMissing;
+    }
   }
   const circuits = sanitizeCircuits(body.circuits);
   if (circuits) {
