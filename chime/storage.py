@@ -50,6 +50,13 @@ def _pg_count(value: Any) -> int | None:
     return value
 
 
+def _clean_symbol(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    symbol = value.strip().upper()
+    return symbol or None
+
+
 # Transaction-scoped daily-cap serializer for claim_pending_briefs.
 # Distinct from poller.POLL_LOCK_ID (4_201_337): same bigint would let a
 # session poll hold block brief xact waiters on a second pool connection and
@@ -1390,19 +1397,38 @@ class Storage:
                     """
                     SELECT symbol FROM watchlist_items
                     WHERE user_id = %s
+                      AND btrim(symbol) <> ''
                     ORDER BY symbol
                     """,
                     (user_id,),
                 )
             ).fetchall()
-        return [r["symbol"] for r in _as_rows(rows)]
+        out: list[str] = []
+        for row in _as_rows(rows):
+            symbol = _clean_symbol(row.get("symbol"))
+            if symbol is not None:
+                out.append(symbol)
+        return out
 
     async def watched_symbols(self) -> list[str]:
         async with self._pool.connection() as conn:
             rows = await (
-                await conn.execute("SELECT DISTINCT symbol FROM watchlist_items ORDER BY symbol")
+                await conn.execute(
+                    """
+                    SELECT DISTINCT symbol FROM watchlist_items
+                    WHERE btrim(symbol) <> ''
+                    ORDER BY symbol
+                    """
+                )
             ).fetchall()
-        return [r["symbol"] for r in _as_rows(rows)]
+        out: list[str] = []
+        seen: set[str] = set()
+        for row in _as_rows(rows):
+            symbol = _clean_symbol(row.get("symbol"))
+            if symbol is not None and symbol not in seen:
+                seen.add(symbol)
+                out.append(symbol)
+        return out
 
     async def create_alert_rule(
         self,
