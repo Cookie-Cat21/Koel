@@ -1031,7 +1031,16 @@ class Storage:
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (external_id, symbol) DO UPDATE SET
                         title = EXCLUDED.title
-                    RETURNING id, pdf_url, (xmax = 0) AS inserted
+                    RETURNING
+                        id,
+                        title,
+                        category,
+                        url,
+                        company_name,
+                        published_at,
+                        seen_at,
+                        pdf_url,
+                        (xmax = 0) AS inserted
                     """,
                     (
                         disc.external_id,
@@ -1055,6 +1064,26 @@ class Storage:
                 raise ValueError("disclosure row id failed validation")
             disclosure_id = raw_id
             existing_pdf = data.get("pdf_url")
+            stored_published_at = data.get("published_at")
+            if not isinstance(stored_published_at, datetime):
+                stored_published_at = disc.published_at
+            stored_seen_at = data.get("seen_at")
+            if not isinstance(stored_seen_at, datetime):
+                stored_seen_at = disc.seen_at
+            stored_title = data.get("title") if "title" in data else disc.title
+            if not isinstance(stored_title, str):
+                stored_title = disc.title
+            stored_category = data.get("category") if "category" in data else disc.category
+            if stored_category is not None and not isinstance(stored_category, str):
+                stored_category = disc.category
+            stored_url = data.get("url") if "url" in data else disc.url
+            if not isinstance(stored_url, str):
+                stored_url = disc.url
+            stored_company_name = (
+                data.get("company_name") if "company_name" in data else disc.company_name
+            )
+            if stored_company_name is not None and not isinstance(stored_company_name, str):
+                stored_company_name = disc.company_name
             # Fail closed — bool("false")/1 used to soft-accept via bool() and
             # falsely mark re-upserts as just_inserted (duplicate alert fires).
             raw_ins = data.get("inserted")
@@ -1072,7 +1101,17 @@ class Storage:
         return disc.model_copy(
             update={
                 "id": disclosure_id,
-                "pdf_url": existing_pdf if existing_pdf else disc.pdf_url,
+                "title": stored_title,
+                "category": stored_category,
+                "url": stored_url,
+                "company_name": stored_company_name,
+                "published_at": stored_published_at,
+                "seen_at": stored_seen_at,
+                "pdf_url": (
+                    existing_pdf
+                    if isinstance(existing_pdf, str) and existing_pdf
+                    else disc.pdf_url
+                ),
                 "just_inserted": just_inserted,
             }
         )
