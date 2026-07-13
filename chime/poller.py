@@ -282,6 +282,7 @@ class Poller:
         price_ok = False
         disc_ok = False
         try:
+            self.last_error = None
             price_events, price_ok = await self._poll_prices()
             disc_events, disc_ok = await self._poll_disclosures()
             await self._poll_sectors()
@@ -303,7 +304,8 @@ class Poller:
                 ok = False
             self.last_tick_ok = ok
             if not ok:
-                self.last_error = "poll_degraded"
+                if self.last_error is None:
+                    self.last_error = "poll_degraded"
             else:
                 self.last_error = None
         except Exception as exc:
@@ -713,7 +715,18 @@ class Poller:
                 # Always upsert + evaluate. Crash between insert and claim used to
                 # permanently skip (insert_if_new → None). Claim uniqueness
                 # prevents duplicate Telegram sends; created_at gates history.
-                stored = await self.storage.upsert_disclosure(disc)
+                try:
+                    stored = await self.storage.upsert_disclosure(disc)
+                except Exception as exc:
+                    any_failure = True
+                    self.last_error = str(exc)
+                    log.exception(
+                        "disclosure_persist_failed",
+                        symbol=symbol,
+                        external_id=getattr(disc, "external_id", None),
+                        error=str(exc),
+                    )
+                    continue
                 events = evaluate_disclosure_rules(disclosure=stored, rules=symbol_rules)
                 for event in filter_fireable(events):
                     claimed = await self._claim_and_send(event)
