@@ -7,7 +7,9 @@ CDN fetch is size-capped via ``PDF_MAX_BYTES`` / ``BriefSettings.pdf_max_bytes``
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from io import BytesIO
+from typing import Any
 
 import httpx
 import structlog
@@ -26,16 +28,47 @@ _PDF_MAX_BYTES_ABS = 20_971_520  # 20 MiB
 
 # Client errors that will not heal on retry — fail the brief permanently.
 _CDN_PERMANENT_STATUS = frozenset({401, 403, 410, 451})
+_PDF_CONTENT_TYPES = frozenset(
+    {
+        "application/pdf",
+        "application/x-pdf",
+        "application/octet-stream",
+    }
+)
 
 
 class CdnPdfPermanentError(RuntimeError):
     """Non-retryable CDN PDF failure.
 
-    Covers oversized bodies, redirects, host allowlist rejects, and permanent
-    HTTP statuses (401/403/410/451). Distinct from soft ``None`` returns
+    Covers oversized/non-PDF bodies, redirects, host allowlist rejects, and
+    permanent HTTP statuses (401/403/410/451). Distinct from soft ``None`` returns
     (transport / 5xx / 404) so the brief worker can mark ``failed`` instead of
     requeue-hammering the CDN forever.
     """
+
+
+def _response_headers(response: Any) -> Mapping[str, Any]:
+    raw = getattr(response, "headers", {})
+    return raw if isinstance(raw, Mapping) else {}
+
+
+def _header_value(headers: Mapping[str, Any], name: str) -> Any:
+    value = headers.get(name)
+    if value is not None:
+        return value
+    lower_name = name.lower()
+    for key, candidate in headers.items():
+        if isinstance(key, str) and key.lower() == lower_name:
+            return candidate
+    return None
+
+
+def _header_media_type(value: Any) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return ""
+    return value.split(";", 1)[0].strip().lower()
 
 
 def extract_pdf_text(data: bytes) -> str:
@@ -101,7 +134,7 @@ async def fetch_cdn_pdf(
 
     Returns ``None`` for transient misses (transport error, 404/5xx) so the
     worker can requeue with backoff. Raises ``CdnPdfPermanentError`` for
-    oversized bodies, redirects (never followed — SSRF / poison loops),
+    oversized/non-PDF bodies, redirects (never followed — SSRF / poison loops),
     host allowlist rejects, and permanent HTTP statuses.
     """
     allowed = allowed_cdn_pdf_url(pdf_url)
@@ -130,7 +163,7 @@ async def fetch_cdn_pdf(
                 if isinstance(raw_status, int) and not isinstance(raw_status, bool)
                 else 0
             )
-            headers = getattr(response, "headers", {}) or {}
+            headers = _response_headers(response)
             # Fail closed — bool("yes") used to soft-accept redirects.
             if status in {301, 302, 303, 307, 308} or getattr(
                 response, "is_redirect", False
@@ -139,7 +172,7 @@ async def fetch_cdn_pdf(
                     "pdf_fetch_redirect_rejected",
                     pdf_url=allowed,
                     status_code=status,
-                    location=headers.get("location"),
+                    location=_header_value(headers, "location"),
                 )
                 raise CdnPdfPermanentError(
                     f"CDN PDF redirect rejected for {allowed!r} (status={status})"
@@ -160,7 +193,17 @@ async def fetch_cdn_pdf(
                     status_code=status,
                 )
                 return None
-            content_length = response.headers.get("content-length")
+            content_type = _header_media_type(_header_value(headers, "content-type"))
+            if content_type is not None and content_type not in _PDF_CONTENT_TYPES:
+                log.warning(
+                    "pdf_fetch_bad_content_type",
+                    pdf_url=allowed,
+                    content_type=content_type,
+                )
+                raise CdnPdfPermanentError(
+                    f"CDN PDF content-type rejected for {allowed!r}: {content_type!r}"
+                )
+            content_length = _header_value(headers, "content-length")
             if content_length is not None:
                 # Fail closed — bool soft-accepts via int(True)==1; non-digit
                 # headers must not coerce into a fake length gate.
@@ -204,7 +247,15 @@ async def fetch_cdn_pdf(
                         f"(bytes_read={total} > {cap})"
                     )
                 chunks.append(chunk)
-            return b"".join(chunks)
+            data = b"".join(chunks)
+            if not data.lstrip().startswith(b"%PDF"):
+                log.warning(
+                    "pdf_fetch_bad_body_type",
+                    pdf_url=allowed,
+                    bytes_read=total,
+                )
+                raise CdnPdfPermanentError(f"CDN PDF body was not a PDF for {allowed!r}")
+            return data
     except CdnPdfPermanentError:
         raise
     except Exception as exc:
