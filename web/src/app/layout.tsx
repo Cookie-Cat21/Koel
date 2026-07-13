@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Sora, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "@/components/providers";
@@ -27,6 +27,11 @@ export const metadata: Metadata = {
   title: "Chime",
   description:
     "Telegram-first CSE alerting — manage watchlists and alert rules.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
