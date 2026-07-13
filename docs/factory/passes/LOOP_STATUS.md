@@ -2,7 +2,7 @@
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-13  
-**HEAD (pre-this-commit):** `c578d60a`  
+**HEAD (pre-this-commit):** `a2d54b0f`  
 **Report:** [TIJORI_WAVE_REPORT.md](TIJORI_WAVE_REPORT.md)  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)
 
@@ -12,8 +12,8 @@
 
 | Metric | Value |
 |---|---|
-| Waves completed | **89** (`wave` / `waveN` / `wN` through w89; w86/w88 docs interleaved) |
-| This status push | **w89** (CSE status/CT/pace soft-accept close — docs) |
+| Waves completed | **90** (`wave` / `waveN` / `wN` through w90) |
+| This status push | **w90** (CSE status/CT/pace soft-accept fix) |
 | Commits ahead of `main` | **293+** |
 | `chime` unit coverage | ✅ **100%** (wave 16 milestone — keep `--cov-fail-under=100`) |
 | Horizon | **Continuing to 100 waves** (quality-gated; early STOP on CLEAN×2) |
@@ -42,6 +42,6 @@ Wave 16 closed the package coverage ratchet: full-package `pytest --cov=chime` a
 
 ## Next
 
-1. Spawn w90+ only on **new** medium+ fuel (not duplicate CSE status/CT/pace or PG soft-accept pins).
+1. Spawn w91+ only on **new** medium+ fuel (not duplicate CSE/CDN status pins).
 2. Prefer controlled briefs-on soak / rate-cap ops over doc thrash when fuel remains.
-3. Keep [LOOP_STATUS.md](LOOP_STATUS.md) honest; CLEAN×2 on unrelated surfaces does not block real new fuel.
+3. Keep [LOOP_STATUS.md](LOOP_STATUS.md) honest; CLEAN×2 still favors early STOP.
