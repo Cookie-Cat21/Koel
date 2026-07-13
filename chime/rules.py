@@ -18,6 +18,7 @@ from chime.domain import (
     BigPrint,
     Disclosure,
     MarketNotice,
+    OrderBookSnapshot,
     PreviousPriceState,
     PriceSnapshot,
 )
@@ -601,6 +602,74 @@ def evaluate_disclosure_rules(
                 disclosure_id=disclosure.id,
                 snapshot_id=None,
                 event_key=_event_key_disclosure(rule, disclosure),
+            )
+        )
+    return events
+
+
+def evaluate_order_book_rules(
+    *,
+    book: OrderBookSnapshot,
+    rules: list[AlertRule],
+    fired_keys: set[str] | None = None,
+) -> list[AlertEvent]:
+    """Fire when public order-book bid/ask totals are imbalanced.
+
+    ``bid_heavy``: total_bids / total_asks >= threshold
+    ``ask_heavy``: total_asks / total_bids >= threshold
+
+    Day-bucketed like volume alerts. Requires both sides > 0.
+    """
+    events: list[AlertEvent] = []
+    claimed = fired_keys or set()
+    if not (_finite(book.total_bids) and _finite(book.total_asks)):
+        return events
+    if book.total_bids <= 0 or book.total_asks <= 0:
+        return events
+    try:
+        day = book.ts.astimezone(_COLOMBO).date().isoformat()
+    except (OverflowError, ValueError, OSError):
+        return events
+
+    for rule in rules:
+        if not rule.active or rule.symbol != book.symbol:
+            continue
+        if rule.type not in (AlertType.BID_HEAVY, AlertType.ASK_HEAVY):
+            continue
+        if rule.threshold is None or not math.isfinite(rule.threshold):
+            continue
+        thr = abs(rule.threshold)
+        if thr <= 0:
+            continue
+        if rule.type == AlertType.BID_HEAVY:
+            ratio = book.total_bids / book.total_asks
+            prefix = "bidheavy"
+            label = "bid-heavy book"
+        else:
+            ratio = book.total_asks / book.total_bids
+            prefix = "askheavy"
+            label = "ask-heavy book"
+        key = f"{prefix}:{rule.id}:{day}"
+        if key in claimed:
+            continue
+        if ratio < thr:
+            continue
+        events.append(
+            AlertEvent(
+                rule_id=rule.id,
+                user_id=rule.user_id,
+                telegram_id=rule.telegram_id,
+                symbol=rule.symbol,
+                type=rule.type,
+                threshold=thr,
+                trigger=(
+                    f"{label} {ratio:.2f}× "
+                    f"(bids {book.total_bids:,.0f} / asks {book.total_asks:,.0f}; "
+                    f"threshold {thr:g}×)"
+                ),
+                current_price=book.best_bid,
+                snapshot_id=None,
+                event_key=key,
             )
         )
     return events

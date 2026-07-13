@@ -49,6 +49,8 @@ export const ALERT_TYPES = [
   "buy_in",
   "non_compliance",
   "halt",
+  "bid_heavy",
+  "ask_heavy",
 ] as const;
 
 /** Alert types that require a positive numeric threshold. */
@@ -62,6 +64,8 @@ export const THRESHOLD_ALERT_TYPES = [
   "crossing_volume",
   "big_print",
   "gap",
+  "bid_heavy",
+  "ask_heavy",
 ] as const;
 
 /** Notice-style alerts with no threshold. */
@@ -70,6 +74,8 @@ export const NOTICE_ALERT_TYPES = [
   "buy_in",
   "non_compliance",
   "halt",
+  "bid_heavy",
+  "ask_heavy",
 ] as const;
 
 export type AlertType = (typeof ALERT_TYPES)[number];

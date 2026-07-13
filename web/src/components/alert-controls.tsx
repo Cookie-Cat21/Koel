@@ -40,6 +40,8 @@ const TYPE_OPTIONS: { value: AlertType; label: string }[] = [
   { value: "buy_in", label: "Buy-in board" },
   { value: "non_compliance", label: "Non-compliance" },
   { value: "halt", label: "Market halt (MARKET)" },
+  { value: "bid_heavy", label: "Bid-heavy book (×)" },
+  { value: "ask_heavy", label: "Ask-heavy book (×)" },
 ];
 
 type FieldErrors = {

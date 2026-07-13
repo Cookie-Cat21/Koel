@@ -53,6 +53,7 @@ from chime.rules import (
     evaluate_big_print_rules,
     evaluate_disclosure_rules,
     evaluate_notice_rules,
+    evaluate_order_book_rules,
     evaluate_price_rules,
     filter_fireable,
 )
@@ -290,17 +291,20 @@ class Poller:
         disc_ok = False
         print_ok = False
         notice_ok = False
+        book_ok = False
         try:
             self.last_error = None
             price_events, price_ok = await self._poll_prices()
             disc_events, disc_ok = await self._poll_disclosures()
             print_events, print_ok = await self._poll_big_prints()
             notice_events, notice_ok = await self._poll_market_notices()
+            book_events, book_ok = await self._poll_order_books()
             await self._poll_sectors()
             fired.extend(price_events)
             fired.extend(disc_events)
             fired.extend(print_events)
             fired.extend(notice_events)
+            fired.extend(book_events)
             symbols = await self.storage.watched_symbols()
             rules = await self.storage.active_rules_for_symbols(symbols) if symbols else []
             # Fail closed — non-enum rule.type used to throw on .value mid tick
@@ -327,6 +331,12 @@ class Poller:
             if needs_prints and not print_ok:
                 ok = False
             if needs_notices and not notice_ok:
+                ok = False
+            needs_book = any(
+                getattr(r.type, "value", r.type) in {"bid_heavy", "ask_heavy"}
+                for r in rules
+            )
+            if needs_book and not book_ok:
                 ok = False
             self.last_tick_ok = ok
             if not ok:
@@ -882,6 +892,63 @@ class Poller:
                 )
                 continue
             events = evaluate_notice_rules(notice=stored, rules=notice_rules)
+            for event in filter_fireable(events):
+                claimed = await self._claim_and_send(event)
+                if claimed:
+                    fired.append(event)
+        return fired, not any_failure
+
+
+    async def _poll_order_books(self) -> tuple[list[AlertEvent], bool]:
+        """Poll public order-book totals for bid_heavy / ask_heavy rules."""
+        symbols = await self.storage.watched_symbols()
+        if not symbols:
+            return [], True
+        rules = await self.storage.active_rules_for_symbols(symbols)
+        book_rules = [
+            r
+            for r in rules
+            if getattr(r.type, "value", r.type) in {"bid_heavy", "ask_heavy"}
+        ]
+        book_symbols = sorted({r.symbol for r in book_rules})
+        if not book_symbols:
+            return [], True
+
+        any_failure = False
+        fired: list[AlertEvent] = []
+        for symbol in book_symbols:
+            try:
+                book = await self.cse.fetch_order_book(symbol)
+            except Exception as exc:
+                any_failure = True
+                log.warning("order_book_poll_failed", symbol=symbol, error=str(exc))
+                continue
+            if book is None:
+                continue
+            try:
+                stored = await self.storage.persist_order_book(book)
+            except Exception as exc:
+                any_failure = True
+                log.exception(
+                    "order_book_persist_failed",
+                    symbol=symbol,
+                    error=str(exc),
+                )
+                continue
+            try:
+                fired_keys = await self.storage.order_book_fired_keys(symbol)
+            except Exception as exc:
+                any_failure = True
+                log.exception(
+                    "order_book_fired_keys_failed",
+                    symbol=symbol,
+                    error=str(exc),
+                )
+                fired_keys = set()
+            symbol_rules = [r for r in book_rules if r.symbol == symbol]
+            events = evaluate_order_book_rules(
+                book=stored, rules=symbol_rules, fired_keys=fired_keys
+            )
             for event in filter_fireable(events):
                 claimed = await self._claim_and_send(event)
                 if claimed:

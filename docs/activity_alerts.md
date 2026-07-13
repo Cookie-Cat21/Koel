@@ -28,3 +28,20 @@ not full trading terminals):
 CSE public JSON does **not** label trades as buy vs sell. `volup` / `voldown`
 are **proxies** (volume × price direction), not order-flow attribution. Chime
 does not scrape competitors and does not add a volume screener to the thin dash.
+
+
+## Order-book imbalance (deeper CSE dive — 2026-07-13)
+
+Public `POST /api/orderBook` with form `symbol=` returns:
+
+- `reqOrderBookTotal.totalBids` / `totalAsks` — **aggregate bid vs ask size**
+- `reqOrderBook[]` — depth ladder (public feed currently returns **one bid level**, `buySell=1`)
+
+This is **not** the paid Level-2 product (IAL2MD / RTEMD). Full multi-level depth and trade aggressor tags are still commercial. But public bid/ask **totals** let Chime alert on real book imbalance:
+
+| Alert | Bot | Meaning |
+|---|---|---|
+| `bid_heavy` | `/alert SYM bidheavy N` | totalBids / totalAsks ≥ N |
+| `ask_heavy` | `/alert SYM askheavy N` | totalAsks / totalBids ≥ N |
+
+`volup` / `voldown` remain price×volume proxies; book alerts are the honest side-aware upgrade from public CSE data.

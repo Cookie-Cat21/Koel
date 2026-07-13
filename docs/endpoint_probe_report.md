@@ -280,3 +280,32 @@ From `getAnnouncementByCompany` / `approvedAnnouncement`:
 ## Sample files
 
 All under [`docs/sample_responses/`](sample_responses/) — truncated where large but structure preserved.
+
+
+---
+
+## Order book (probed 2026-07-13)
+
+### `POST /api/orderBook` — **works** (public bid/ask totals)
+
+| | |
+|---|---|
+| Status | `200` |
+| Body | form `symbol=JKH.N0000` (JSON body → 400; GET → 405) |
+
+Response:
+
+- `reqOrderBookTotal`: `{ id, totalBids, totalAsks }`
+- `reqOrderBook[]`: levels with `buySell`, `price`, `quantity`, `priceLevel`, …
+
+**Observed public behaviour:** depth array often contains a **single bid level** (`buySell=1`). Ask levels are usually absent from the array, but `totalAsks` is still populated. Use the **totals** for imbalance; do not assume full Level-2 depth on the public website API.
+
+Official paid products (see `CSE_DATAPRODUCTDESCRIPTION.pdf`): RTEMD / IAL1MD / IAL2MD include full order book — separate commercial feed, not this JSON endpoint.
+
+Sample: [`sample_responses/orderBook.json`](sample_responses/orderBook.json)
+
+### Also live (bonus)
+
+| Endpoint | Notes |
+|---|---|
+| `POST /api/topGainers` | Array of top gainers (screener-adjacent; not used by Chime v1 alerts) |

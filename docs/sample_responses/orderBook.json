@@ -1,0 +1,20 @@
+{
+  "reqOrderBookTotal": {
+    "id": 46170304,
+    "totalBids": 1667674,
+    "totalAsks": 1953840
+  },
+  "reqOrderBook": [
+    {
+      "id": 46166981,
+      "securityId": 297,
+      "board": "-1",
+      "splits": 30,
+      "buySell": 1,
+      "priceLevel": 1,
+      "yield": 1.0,
+      "price": 19.9,
+      "quantity": 127979.0
+    }
+  ]
+}

@@ -64,6 +64,8 @@ ALERT_USAGE = (
     "/alert SYMBOL buyin\n"
     "/alert SYMBOL noncompliance\n"
     "/alert MARKET halt\n"
+    "/alert SYMBOL bidheavy MULTIPLIER\n"
+    "/alert SYMBOL askheavy MULTIPLIER\n"
     "Example: /alert JKH.N0000 volume 5\n"
     f"{disclaimer()}"
 )
@@ -288,6 +290,10 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
         "print": AlertType.BIG_PRINT,
         "bigprint": AlertType.BIG_PRINT,
         "gap": AlertType.GAP,
+        "bidheavy": AlertType.BID_HEAVY,
+        "bid_heavy": AlertType.BID_HEAVY,
+        "askheavy": AlertType.ASK_HEAVY,
+        "ask_heavy": AlertType.ASK_HEAVY,
     }
     if kind in activity_kinds:
         if len(args) < 3:
@@ -525,6 +531,10 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         desc = f"{symbol} non-compliance notice"
     elif alert_type == AlertType.HALT:
         desc = f"{symbol} market halt/notice"
+    elif alert_type == AlertType.BID_HEAVY:
+        desc = f"{symbol} bid-heavy order book ≥ {thr_s}× (bids/asks)"
+    elif alert_type == AlertType.ASK_HEAVY:
+        desc = f"{symbol} ask-heavy order book ≥ {thr_s}× (asks/bids)"
     else:
         desc = f"{symbol} alert"
 
@@ -664,6 +674,10 @@ async def cmd_myalerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 lines.append(f"#{r.id} {sym} print {thr_s}")
             elif r.type == AlertType.GAP:
                 lines.append(f"#{r.id} {sym} gap {thr_s}%")
+            elif r.type == AlertType.BID_HEAVY:
+                lines.append(f"#{r.id} {sym} bidheavy {thr_s}x")
+            elif r.type == AlertType.ASK_HEAVY:
+                lines.append(f"#{r.id} {sym} askheavy {thr_s}x")
             else:
                 lines.append(f"#{r.id} {sym} {r.type.value} {thr_s}")
     # Category disclosure rules share a symbol with any-disclosure rules; the

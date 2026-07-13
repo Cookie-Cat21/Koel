@@ -102,6 +102,10 @@ export function alertTypeLabel(type: unknown): string {
       return "Non-compliance";
     case "halt":
       return "Market halt";
+    case "bid_heavy":
+      return "Bid-heavy book";
+    case "ask_heavy":
+      return "Ask-heavy book";
     default:
       // Fail closed — never echo unknown / hostile type strings into the UI.
       return "Unknown";

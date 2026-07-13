@@ -17,6 +17,8 @@ def test_alert_usage_lists_activity_forms_and_nfa() -> None:
         "/alert SYMBOL buyin",
         "/alert SYMBOL noncompliance",
         "/alert MARKET halt",
+        "/alert SYMBOL bidheavy MULTIPLIER",
+        "/alert SYMBOL askheavy MULTIPLIER",
         disclaimer(),
     ):
         assert needle in ALERT_USAGE
@@ -33,6 +35,8 @@ def test_parse_activity_alert_kinds() -> None:
         (["JKH.N0000", "buyin"], AlertType.BUY_IN, None),
         (["JKH.N0000", "noncompliance"], AlertType.NON_COMPLIANCE, None),
         (["MARKET", "halt"], AlertType.HALT, None),
+        (["JKH.N0000", "bidheavy", "2"], AlertType.BID_HEAVY, 2.0),
+        (["JKH.N0000", "askheavy", "1.5"], AlertType.ASK_HEAVY, 1.5),
     ]
     for args, alert_type, threshold in cases:
         parsed, err = parse_alert_args(args)

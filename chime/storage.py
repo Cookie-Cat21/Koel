@@ -20,6 +20,7 @@ from chime.domain import (
     BigPrint,
     Disclosure,
     MarketNotice,
+    OrderBookSnapshot,
     PreviousPriceState,
     PriceSnapshot,
     SectorSnapshot,
@@ -2188,6 +2189,68 @@ class Storage:
                 continue
             snapshot[key] = value
         return snapshot
+
+
+
+    async def persist_order_book(self, book: OrderBookSnapshot) -> OrderBookSnapshot:
+        """Insert an order-book imbalance snapshot row."""
+        if not isinstance(book.symbol, str) or not book.symbol.strip():
+            raise ValueError("order book symbol required")
+        symbol = book.symbol.strip().upper()
+        await self.upsert_stock(symbol)
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    INSERT INTO order_book_snapshots
+                        (symbol, total_bids, total_asks, best_bid, best_bid_qty, ts)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, symbol, total_bids, total_asks, best_bid, best_bid_qty, ts
+                    """,
+                    (
+                        symbol,
+                        book.total_bids,
+                        book.total_asks,
+                        book.best_bid,
+                        book.best_bid_qty,
+                        book.ts,
+                    ),
+                )
+            ).fetchone()
+        assert row is not None
+        r = _as_row(row)
+        return OrderBookSnapshot(
+            id=r["id"],
+            symbol=r["symbol"],
+            total_bids=float(r["total_bids"]),
+            total_asks=float(r["total_asks"]),
+            best_bid=r.get("best_bid"),
+            best_bid_qty=r.get("best_bid_qty"),
+            ts=r["ts"],
+        )
+
+    async def order_book_fired_keys(self, symbol: str) -> set[str]:
+        """Day-bucket event keys already claimed for book imbalance rules."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return set()
+        symbol = symbol.strip().upper()
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT al.event_key
+                    FROM alert_log al
+                    JOIN alert_rules ar ON ar.id = al.rule_id
+                    WHERE ar.symbol = %s
+                      AND (
+                        al.event_key LIKE 'bidheavy:%%'
+                        OR al.event_key LIKE 'askheavy:%%'
+                      )
+                    """,
+                    (symbol,),
+                )
+            ).fetchall()
+        return {r["event_key"] for r in _as_rows(rows)}
 
 
 def _row_to_snapshot(row: dict[str, Any]) -> PriceSnapshot | None:

@@ -73,6 +73,7 @@ queued messages from downtime are discarded on restart (avoids replaying stale
 | `/alert SYMBOL gap PERCENT` | Open gap vs previous close |
 | `/alert SYMBOL buyin` / `noncompliance` | Buy-in board / non-compliance notice |
 | `/alert MARKET halt` | Market-wide halt / system notice |
+| `/alert SYMBOL bidheavy N` / `askheavy N` | Order-book bid/ask size imbalance (≥ N×) |
 | `/cancel ALERT_ID` | Soft-cancel an active rule |
 | `/myalerts` | List active alerts only (cancelled omitted) |
 | `/mywatchlist` | List watched symbols |

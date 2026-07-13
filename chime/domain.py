@@ -37,6 +37,9 @@ class AlertType(StrEnum):
     BUY_IN = "buy_in"
     NON_COMPLIANCE = "non_compliance"
     HALT = "halt"
+    # Public order book imbalance (POST /orderBook totalBids / totalAsks).
+    BID_HEAVY = "bid_heavy"
+    ASK_HEAVY = "ask_heavy"
 
 
 # Alert types that need a positive numeric threshold.
@@ -51,6 +54,8 @@ THRESHOLD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.CROSSING_VOLUME,
         AlertType.BIG_PRINT,
         AlertType.GAP,
+        AlertType.BID_HEAVY,
+        AlertType.ASK_HEAVY,
     }
 )
 
@@ -271,6 +276,35 @@ class BigPrint(BaseModel):
     @field_validator("price", mode="before")
     @classmethod
     def _price_opt_must_not_be_bool(cls, value: Any) -> Any:
+        return _none_if_bool_numeric(value)
+
+
+
+class OrderBookSnapshot(BaseModel):
+    """Normalized public order-book totals from ``POST /orderBook``.
+
+    Full depth is truncated on the public API (often one bid level), but
+    ``total_bids`` / ``total_asks`` are populated and usable for imbalance.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    symbol: str
+    total_bids: float
+    total_asks: float
+    best_bid: float | None = None
+    best_bid_qty: float | None = None
+    ts: datetime
+    id: int | None = None
+
+    @field_validator("total_bids", "total_asks", mode="before")
+    @classmethod
+    def _totals_must_not_be_bool(cls, value: Any) -> Any:
+        return _reject_bool_numeric(value)
+
+    @field_validator("best_bid", "best_bid_qty", mode="before")
+    @classmethod
+    def _opt_must_not_be_bool(cls, value: Any) -> Any:
         return _none_if_bool_numeric(value)
 
 

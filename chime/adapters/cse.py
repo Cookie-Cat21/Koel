@@ -28,7 +28,14 @@ from tenacity import (
 )
 
 from chime.circuit import CircuitBreaker, CircuitOpenError
-from chime.domain import BigPrint, Disclosure, MarketNotice, PriceSnapshot, SectorSnapshot
+from chime.domain import (
+    BigPrint,
+    Disclosure,
+    MarketNotice,
+    OrderBookSnapshot,
+    PriceSnapshot,
+    SectorSnapshot,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -64,6 +71,8 @@ NON_COMPLIANCE_ENDPOINT = "getNonComplianceAnnouncements"
 NON_COMPLIANCE_PATH = "/getNonComplianceAnnouncements"
 NOTIFICATIONS_ENDPOINT = "notifications"
 NOTIFICATIONS_PATH = "/notifications"
+ORDER_BOOK_ENDPOINT = "orderBook"
+ORDER_BOOK_PATH = "/orderBook"
 LEGACY_ANNOUNCEMENTS_ENDPOINT = "announcements"
 LEGACY_ANNOUNCEMENTS_PATH = "/announcements"
 
@@ -866,6 +875,90 @@ def flexible_row_to_notice(
         seen_at=now or datetime.now(UTC),
     )
 
+
+
+class OrderBookTotal(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: int | None = None
+    totalBids: float | None = None
+    totalAsks: float | None = None
+
+    @field_validator("id", "totalBids", "totalAsks", mode="before")
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
+
+
+class OrderBookLevel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: int | None = None
+    securityId: int | None = None
+    board: str | None = None
+    splits: int | None = None
+    buySell: int | None = None  # observed: 1 = bid on public feed
+    priceLevel: int | None = None
+    price: float | None = None
+    quantity: float | None = None
+
+    @field_validator(
+        "id",
+        "securityId",
+        "splits",
+        "buySell",
+        "priceLevel",
+        "price",
+        "quantity",
+        mode="before",
+    )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
+
+
+class OrderBookResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    reqOrderBookTotal: OrderBookTotal | None = None
+    reqOrderBook: list[OrderBookLevel] = Field(default_factory=list)
+
+
+def order_book_to_snapshot(
+    *,
+    symbol: str,
+    total: OrderBookTotal | None,
+    levels: list[OrderBookLevel],
+    now: datetime | None = None,
+) -> OrderBookSnapshot | None:
+    """Normalize public order-book totals; require finite positive bid+ask sizes."""
+    if not isinstance(symbol, str) or not symbol.strip():
+        return None
+    if total is None:
+        return None
+    bids = _finite_or_none(total.totalBids)
+    asks = _finite_or_none(total.totalAsks)
+    if bids is None or asks is None or bids < 0 or asks < 0:
+        return None
+    if bids == 0 and asks == 0:
+        return None
+    best_bid = None
+    best_bid_qty = None
+    # Public feed typically returns one bid level (buySell=1).
+    for lvl in levels:
+        if lvl.buySell == 1:
+            best_bid = _finite_or_none(lvl.price)
+            best_bid_qty = _finite_or_none(lvl.quantity)
+            break
+    return OrderBookSnapshot(
+        symbol=symbol.strip().upper(),
+        total_bids=bids,
+        total_asks=asks,
+        best_bid=best_bid,
+        best_bid_qty=best_bid_qty,
+        ts=now or datetime.now(UTC),
+    )
+
 class CSEClient:
     """HTTP adapter for cse.lk with retries + per-endpoint circuit breakers."""
 
@@ -1421,3 +1514,43 @@ class CSEClient:
 
         return cast(list[MarketNotice], await self._guarded(endpoint, _call))
 
+    async def fetch_order_book(self, symbol: str) -> OrderBookSnapshot | None:
+        """Fetch public order-book totals (``POST /orderBook`` form ``symbol=``)."""
+
+        if not isinstance(symbol, str) or not symbol.strip():
+            return None
+        sym = symbol.strip().upper()
+
+        async def _call() -> OrderBookSnapshot | None:
+            raw = await self._request(
+                "POST",
+                ORDER_BOOK_PATH,
+                data={"symbol": sym},
+            )
+            if not isinstance(raw, dict):
+                log.error(
+                    "cse_schema_error",
+                    endpoint=ORDER_BOOK_ENDPOINT,
+                    error="expected object",
+                )
+                raise ValueError(f"{ORDER_BOOK_ENDPOINT}: expected JSON object")
+            try:
+                parsed = OrderBookResponse.model_validate(raw)
+            except ValidationError as exc:
+                log.warning(
+                    "cse_order_book_invalid",
+                    endpoint=ORDER_BOOK_ENDPOINT,
+                    symbol=sym,
+                    error=str(exc),
+                )
+                return None
+            return order_book_to_snapshot(
+                symbol=sym,
+                total=parsed.reqOrderBookTotal,
+                levels=parsed.reqOrderBook,
+                now=datetime.now(UTC),
+            )
+
+        return cast(
+            OrderBookSnapshot | None, await self._guarded(ORDER_BOOK_ENDPOINT, _call)
+        )
