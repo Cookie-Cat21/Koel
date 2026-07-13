@@ -1,10 +1,10 @@
-# Tijori CSE — Waves 1–80 report
+# Tijori CSE — Waves 1–85 report
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-13  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)  
 **Ops:** [docs/runbooks/TIJORI.md](../../runbooks/TIJORI.md)  
-**Range:** `a802cb7` … wave 80 (post-100% harden → soft ~100)
+**Range:** `a802cb7` … wave 85 (post-100% harden → soft ~100)
 
 ---
 
@@ -1591,6 +1591,54 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ---
 
+---
+
+## Wave 81 — Loop status (docs)
+
+**Theme:** Honest loop-status advance after wave 80 rollup (STOP on CLEAN×2; no empty farming).
+
+| SHA | Commit |
+|---|---|
+| `b1c7a060` | docs(w81): loop status push |
+
+**Shipped**
+
+- `LOOP_STATUS.md` — waves completed **80**; status push **w81** (docs only); continue quality-gated toward soft ~100.
+
+---
+
+## Wave 82 / 84 / 85 — Claim/lock/health/count soft-accept close
+
+**Theme:** Fail-closed PG RETURNING / COUNT / advisory-lock / health / pool-stat soft-accepts (parity w76–w80 isinstance wave). Parallel lanes landed overlapping pins.
+
+| SHA | Commit |
+|---|---|
+| `a99f3e80` | fix(w84): fail-closed claim/lock/health/count soft-accepts |
+| `943fa6c0` | fix(w82): fail-closed claim/attempt/lock/health/count soft-accepts |
+| `e8070d0d` | fix(w85): fail-closed claim/lock/health/count soft-accepts |
+
+**Shipped**
+
+- `_require_pg_int` / `_pg_count` helpers; `claim_alert` / `claim_and_disarm` / `mark_alert_attempt` / `ensure_user` RETURNING guards.
+- `try_advisory_lock` requires `locked is True`; `health_check` rejects `True == 1`; pool stats skip bools.
+- Pins: `tests/test_wave82_medium_bugs.py`, `tests/test_wave83_medium_bugs.py`, `tests/test_wave84_medium_bugs.py`, `tests/test_wave85_medium_bugs.py`.
+
+---
+
+## Wave 83 — Adversarial CLEAN (diminishing returns)
+
+**Theme:** Adversarial re-probe after w82/w84/w85 soft-accept closes. **CLEAN — 0 findings above minor.** Docs-only; note diminishing returns on further `int(True)` / `True==1` pin churn toward soft ~100 (STOP on CLEAN×2; no empty farming).
+
+| SHA | Commit |
+|---|---|
+| _(this)_ | docs(w83): CLEAN pass noting diminishing returns |
+
+**Shipped**
+
+- [W83_ADVERSARIAL.md](W83_ADVERSARIAL.md) — CLEAN verdict at `e8070d0d`; soft-accept isinstance hunting on claim/lock/health/count surfaces called exhausted.
+- `LOOP_STATUS.md` — adversarial CLEAN + diminishing-returns posture; prefer briefs soak / user-visible fuel over duplicate pins.
+
+
 ## Commit counts
 
 | Wave | Commits (scoped) |
@@ -1675,6 +1723,11 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 | 78 (`w78`) | 2 (isinstance pin restore + persist/disclosure/promote) |
 | 79 (`w79`) | 1 (soft-accept implementation) |
 | 80 (`w80`) | 2 (soft-accept pin + report rollup) |
+| 81 (`w81`) | 1 (loop status docs) |
+| 82 (`w82`) | 1 (claim/attempt/lock/health/count soft-accept) |
+| 83 (`w83`) | 1 (adversarial CLEAN + diminishing returns) |
+| 84 (`w84`) | 1 (claim/lock/health/count soft-accept + pins) |
+| 85 (`w85`) | 1 (claim/lock/health/count soft-accept pin) |
 | **Total** | **100+** |
 
 ---
@@ -1699,7 +1752,7 @@ Phase 1 foundations and Phase 2 Tijori-core plumbing are **landed** across waves
 
 ### Suggested next improve-loop focus
 
-- Wave 80+ post-100% harden/ops only (STOP early on CLEAN×2); do not farm commits to pad loops.
+- Wave 86+ only on **new** medium+ fuel — soft-accept isinstance hunting on claim/lock/health/count is exhausted (w83 CLEAN / diminishing returns). STOP early on CLEAN×2; do not farm pins.
 - Optionally raise `--cov-fail-under` toward 100 once CI owners agree (measured 100% already).
 - Controlled briefs-on soak (not default-on in prod).
 - Keep `AI_SCENARIOS_ENABLED=0` until Phase 2 live brief path is proven.

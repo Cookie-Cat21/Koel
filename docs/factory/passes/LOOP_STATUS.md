@@ -2,7 +2,7 @@
 
 **Branch:** `cursor/tijori-cse-phase1-e44e`  
 **Date:** 2026-07-13  
-**HEAD (pre-this-commit):** `a105856b`  
+**HEAD (pre-this-commit):** `e8070d0d`  
 **Report:** [TIJORI_WAVE_REPORT.md](TIJORI_WAVE_REPORT.md)  
 **Plan:** [TIJORI_CSE_PLAN.md](../TIJORI_CSE_PLAN.md)
 
@@ -12,11 +12,12 @@
 
 | Metric | Value |
 |---|---|
-| Waves completed | **80** (`wave` / `waveN` / `wN` through w80) |
-| This status push | **w81** (docs only) |
-| Commits ahead of `main` | **282** |
+| Waves completed | **85** (`wave` / `waveN` / `wN` through w85) |
+| This status push | **w83** (adversarial CLEAN — docs only) |
+| Commits ahead of `main` | **286** |
 | `chime` unit coverage | ✅ **100%** (wave 16 milestone — 3427 stmts / 0 miss) |
 | Horizon | **Continuing to 100 waves** (quality-gated; early STOP on CLEAN×2) |
+| Adversarial (w83) | **CLEAN** — 0 findings above minor |
 
 ---
 
@@ -32,11 +33,12 @@ Wave 16 closed the package coverage ratchet: full-package `pytest --cov=chime` a
 - Soft ~100-wave / ~100-loop horizon — continue quality-gated discover → implement → test → fix → re-test.
 - Do **not** farm commits to pad wave count; STOP early when gates are green / CLEAN×2.
 - Live LLM briefs remain flag/key gated (`AI_BRIEFS_ENABLED=0` default). Phase 3 scenario AI stays stub-fenced.
+- **Diminishing returns (w83):** PG RETURNING / COUNT / lock / health `int(True)` / `True==1` soft-accept hunting is exhausted (closed across w76–w85). Further isinstance pin churn on the same paths is anti-fuel — prefer live briefs soak, ops honesty, or real user-visible gaps.
 
 ---
 
 ## Next
 
-1. Spawn w81+ harden/ops lanes inside product fences (not cov padding).
-2. Keep pushing wave reports + this status as the loop advances toward 100.
-3. Prefer real user-visible / resilience gaps over doc thrash when fuel remains.
+1. Spawn w86+ only on **new** medium+ fuel (not duplicate soft-accept pins).
+2. Prefer controlled briefs-on soak / rate-cap ops over doc thrash when fuel remains.
+3. Keep [LOOP_STATUS.md](LOOP_STATUS.md) honest; second CLEAN → consider early STOP for this lane.
