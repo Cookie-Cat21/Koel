@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -31,6 +32,24 @@ class CircuitBreaker:
     _state: CircuitState = CircuitState.CLOSED
     _half_open_trial: bool = False
     _lock_note: str = field(default="", repr=False)
+
+    def __post_init__(self) -> None:
+        """Normalize breaker knobs so direct callers cannot bypass env guards."""
+        if (
+            isinstance(self.fail_max, bool)
+            or not isinstance(self.fail_max, int)
+            or self.fail_max < 1
+        ):
+            self.fail_max = 5
+        if (
+            isinstance(self.reset_timeout, bool)
+            or not isinstance(self.reset_timeout, (int, float))
+            or not math.isfinite(float(self.reset_timeout))
+            or float(self.reset_timeout) <= 0
+        ):
+            self.reset_timeout = 60.0
+        else:
+            self.reset_timeout = float(self.reset_timeout)
 
     @property
     def state(self) -> CircuitState:

@@ -470,6 +470,11 @@ async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not context.args:
         await update.effective_message.reply_text(CANCEL_USAGE)
         return
+    if len(context.args) > 1:
+        await update.effective_message.reply_text(
+            f"Unexpected extra text after alert id.\n{CANCEL_USAGE}"
+        )
+        return
     raw_arg = context.args[0]
     rule_id = parse_cancel_alert_id(raw_arg)
     if rule_id is None:
