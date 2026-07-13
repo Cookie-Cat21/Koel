@@ -303,7 +303,15 @@ def _retryable(exc: BaseException) -> bool:
     if isinstance(exc, (httpx.TransportError, httpx.TimeoutException)):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
-        return exc.response.status_code in {429, 500, 502, 503, 504}
+        raw_status = getattr(exc.response, "status_code", None)
+        # Fail closed — bool soft-accepts via ``True in {…}`` never, but
+        # ``int(True)==1`` must not classify a poisoned status as retryable.
+        status = (
+            raw_status
+            if isinstance(raw_status, int) and not isinstance(raw_status, bool)
+            else None
+        )
+        return status in {429, 500, 502, 503, 504}
     return False
 
 
@@ -622,7 +630,16 @@ class CSEClient:
         # Soft global pacing between CSE HTTP calls (CSE_MIN_INTERVAL_SECONDS).
         # 0 = off (default). Spaces bot + poller traffic on a shared client;
         # distinct from PDF_ENRICH_SLEEP_SECONDS (legacy enrich only).
-        self._min_interval = max(0.0, float(min_interval_seconds))
+        # Fail closed — bool soft-accepts via float(True)==1.0 mid pace;
+        # non-finite / non-numeric → pacing off.
+        if (
+            isinstance(min_interval_seconds, bool)
+            or not isinstance(min_interval_seconds, (int, float))
+            or not math.isfinite(float(min_interval_seconds))
+        ):
+            self._min_interval = 0.0
+        else:
+            self._min_interval = max(0.0, float(min_interval_seconds))
         self._last_request_at: float | None = None
         self._pace_lock = asyncio.Lock()
 
@@ -693,16 +710,32 @@ class CSEClient:
                 json=json_body,
             )
             # Treat HTML error pages / non-JSON as soft failures
-            content_type = response.headers.get("content-type", "")
-            if response.status_code >= 400:
+            raw_ct = response.headers.get("content-type", "")
+            # Fail closed — non-string CT mocks used to throw on ``"json" not in``.
+            content_type = raw_ct if isinstance(raw_ct, str) else ""
+            raw_status = getattr(response, "status_code", 0)
+            # Fail closed — bool soft-accepts via ``True >= 400`` is False, so a
+            # poisoned status used to soft-accept as HTTP success mid poll.
+            status: int | None = (
+                raw_status
+                if isinstance(raw_status, int) and not isinstance(raw_status, bool)
+                else None
+            )
+            if status is None or status >= 400:
                 log.warning(
                     "cse_http_error",
                     path=path,
-                    status=response.status_code,
+                    status=raw_status,
                     body=response.text[:300],
                     **context,
                 )
-                response.raise_for_status()
+                if status is not None:
+                    response.raise_for_status()
+                raise httpx.HTTPStatusError(
+                    f"invalid CSE status_code={raw_status!r}",
+                    request=response.request,
+                    response=response,
+                )
             if "json" not in content_type and response.text[:1] not in ("{", "["):
                 log.warning("cse_non_json", path=path, content_type=content_type, **context)
                 raise httpx.HTTPStatusError(
