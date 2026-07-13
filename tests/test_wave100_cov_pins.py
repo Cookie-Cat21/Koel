@@ -12,7 +12,6 @@ from chime.config import Settings
 from chime.notify import send_message
 from chime.poller import Poller
 
-
 _DSN = "postgresql://chime:chime@localhost:5432/chime"
 
 
