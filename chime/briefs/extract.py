@@ -123,9 +123,18 @@ async def fetch_cdn_pdf(
             allowed,
             follow_redirects=False,
         ) as response:
-            status = int(getattr(response, "status_code", 0) or 0)
+            raw_status = getattr(response, "status_code", 0)
+            # Fail closed — bool soft-accepts via int(True)==1 mid CDN classify.
+            status = (
+                raw_status
+                if isinstance(raw_status, int) and not isinstance(raw_status, bool)
+                else 0
+            )
             headers = getattr(response, "headers", {}) or {}
-            if status in {301, 302, 303, 307, 308} or bool(getattr(response, "is_redirect", False)):
+            # Fail closed — bool("yes") used to soft-accept redirects.
+            if status in {301, 302, 303, 307, 308} or getattr(
+                response, "is_redirect", False
+            ) is True:
                 log.warning(
                     "pdf_fetch_redirect_rejected",
                     pdf_url=allowed,
@@ -153,22 +162,29 @@ async def fetch_cdn_pdf(
                 return None
             content_length = response.headers.get("content-length")
             if content_length is not None:
-                try:
-                    if int(content_length) > cap:
-                        log.warning(
-                            "pdf_fetch_too_large",
-                            pdf_url=allowed,
-                            content_length=int(content_length),
-                            max_bytes=cap,
-                        )
-                        raise CdnPdfPermanentError(
-                            f"CDN PDF too large for {allowed!r} "
-                            f"(content-length={int(content_length)} > {cap})"
-                        )
-                except ValueError:
-                    pass
-                except CdnPdfPermanentError:
-                    raise
+                # Fail closed — bool soft-accepts via int(True)==1; non-digit
+                # headers must not coerce into a fake length gate.
+                length: int | None = None
+                if isinstance(content_length, bool):
+                    length = None
+                elif isinstance(content_length, int):
+                    length = content_length
+                elif isinstance(content_length, str):
+                    try:
+                        length = int(content_length)
+                    except ValueError:
+                        length = None
+                if length is not None and length > cap:
+                    log.warning(
+                        "pdf_fetch_too_large",
+                        pdf_url=allowed,
+                        content_length=length,
+                        max_bytes=cap,
+                    )
+                    raise CdnPdfPermanentError(
+                        f"CDN PDF too large for {allowed!r} "
+                        f"(content-length={length} > {cap})"
+                    )
 
             chunks: list[bytes] = []
             total = 0
