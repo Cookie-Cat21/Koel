@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import math
 from collections.abc import Awaitable, Callable
 from typing import Any, Protocol
 
@@ -25,7 +26,7 @@ from chime.adapters.cse import allowed_cdn_pdf_url
 from chime.briefs import BriefSettings, BriefStatus, briefs_enabled, build_brief_prompt
 from chime.briefs.extract import CdnPdfPermanentError, extract_pdf_text, fetch_cdn_pdf
 from chime.briefs.provider import BriefProvider, make_brief_provider
-from chime.domain import format_brief_followup
+from chime.domain import format_brief_followup, resolve_positive_int_cap
 from chime.notify import SendResult
 
 log = structlog.get_logger("chime.briefs")
@@ -199,7 +200,8 @@ async def _input_text_for_row(
     raw_title = row.get("title")
     symbol = raw_sym.strip() if isinstance(raw_sym, str) else ""
     title = raw_title.strip() if isinstance(raw_title, str) else ""
-    max_chars = int(cfg.max_input_chars)
+    # Fail closed — bool soft-accepts via int(True)==1 shrink prompt budget.
+    max_chars = resolve_positive_int_cap(cfg.max_input_chars, default=12_000)
     pdf_url = row.get("pdf_url")
     if isinstance(pdf_url, str) and pdf_url.strip():
         url = pdf_url.strip()
@@ -376,7 +378,11 @@ async def _promote_skipped_if_needed(
     cfg: BriefSettings,
 ) -> None:
     """Best-effort: recent skipped → pending when AI briefs are on."""
-    hours = int(cfg.skipped_promote_hours)
+    # Fail closed — bool soft-accepts via int(True)==1 promote with a 1h window.
+    raw_hours = cfg.skipped_promote_hours
+    if isinstance(raw_hours, bool) or not isinstance(raw_hours, int):
+        return
+    hours = raw_hours
     if hours <= 0:
         return
     promote = getattr(storage, "promote_recent_skipped_briefs", None)
@@ -459,19 +465,30 @@ async def claim_pending_briefs(
     await _promote_skipped_if_needed(storage, cfg=cfg)
 
     processed = 0
-    used = await storage.count_briefs_today()
-    remaining = max(0, int(cfg.max_briefs_per_day) - used)
+    used_raw = await storage.count_briefs_today()
+    # Fail closed — bool soft-accepts via arithmetic True==1 understate daily
+    # use and over-claim past AI_MAX_BRIEFS_PER_DAY (parity ``_pg_count``).
+    if isinstance(used_raw, bool) or not isinstance(used_raw, int) or used_raw < 0:
+        log.warning("brief_drain_used_poisoned", used=used_raw)
+        return 0
+    used = used_raw
+    cap = cfg.max_briefs_per_day
+    # Fail closed — bool soft-accepts via int(True)==1 understate the daily cap.
+    if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
+        log.warning("brief_drain_cap_poisoned", max_briefs_per_day=cap)
+        return 0
+    remaining = max(0, cap - used)
     if remaining <= 0:
         log.info(
             "brief_drain_daily_cap",
             used=used,
-            max_briefs_per_day=cfg.max_briefs_per_day,
+            max_briefs_per_day=cap,
         )
     else:
         batch = min(max(1, limit), remaining)
         rows = await storage.claim_pending_briefs(
             limit=batch,
-            max_briefs_per_day=cfg.max_briefs_per_day,
+            max_briefs_per_day=cap,
             pdf_grace_seconds=cfg.pdf_grace_seconds,
             cdn_backoff_seconds=cfg.cdn_backoff_seconds,
         )
@@ -479,8 +496,26 @@ async def claim_pending_briefs(
             owns_provider = provider is None
             owns_http = http_client is None
             prov: BriefProvider = provider or make_brief_provider(cfg)
-            http = http_client or httpx.AsyncClient(timeout=float(cfg.http_timeout_seconds or 30.0))
-            sleep_s = max(0.0, float(cfg.sleep_seconds))
+            # Fail closed — bool/non-finite soft-accepts must not poison httpx.
+            raw_timeout = cfg.http_timeout_seconds
+            timeout_s = (
+                float(raw_timeout)
+                if isinstance(raw_timeout, (int, float))
+                and not isinstance(raw_timeout, bool)
+                and math.isfinite(raw_timeout)
+                and raw_timeout > 0
+                else 30.0
+            )
+            http = http_client or httpx.AsyncClient(timeout=timeout_s)
+            # Fail closed — bool/non-finite soft-accepts must not hang sleep(inf).
+            raw_sleep = cfg.sleep_seconds
+            sleep_s = (
+                max(0.0, float(raw_sleep))
+                if isinstance(raw_sleep, (int, float))
+                and not isinstance(raw_sleep, bool)
+                and math.isfinite(raw_sleep)
+                else 0.0
+            )
             try:
                 for i, row in enumerate(rows):
                     if i > 0 and sleep_s > 0:

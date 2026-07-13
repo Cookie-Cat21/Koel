@@ -668,10 +668,29 @@ class Storage:
         """
         if limit <= 0:
             return []
-        grace = max(0, int(pdf_grace_seconds))
-        cdn_backoff = max(0, int(cdn_backoff_seconds))
+        # Fail closed — bool soft-accepts via int(True)==1 shorten grace/backoff.
+        grace = (
+            max(0, pdf_grace_seconds)
+            if isinstance(pdf_grace_seconds, int)
+            and not isinstance(pdf_grace_seconds, bool)
+            else 0
+        )
+        cdn_backoff = (
+            max(0, cdn_backoff_seconds)
+            if isinstance(cdn_backoff_seconds, int)
+            and not isinstance(cdn_backoff_seconds, bool)
+            else 0
+        )
         async with self._pool.connection() as conn, conn.transaction():
             if max_briefs_per_day is not None:
+                # Fail closed — bool soft-accepts via int(True)==1 understate the
+                # daily cap and skew remaining batch size.
+                if (
+                    isinstance(max_briefs_per_day, bool)
+                    or not isinstance(max_briefs_per_day, int)
+                    or max_briefs_per_day < 0
+                ):
+                    return []
                 # Must stay distinct from poller.POLL_LOCK_ID (session try-lock).
                 # Same-id would nest session hold + blocking xact wait on a pool
                 # conn and can deadlock under max_size=2. See docs/factory/passes/
@@ -704,7 +723,7 @@ class Storage:
                 used = _pg_count(raw_n)
                 if used is None:
                     return []
-                remaining = max(0, int(max_briefs_per_day) - used)
+                remaining = max(0, max_briefs_per_day - used)
                 if remaining <= 0:
                     return []
                 batch = min(limit, remaining)
@@ -793,6 +812,9 @@ class Storage:
         msg = message_text if isinstance(message_text, str) else ""
         if not ext or not sym or not brief_text or not msg.strip():
             return []
+        # Fail closed — bool soft-accepts via int(True)==1 shorten reclaim races.
+        if isinstance(lease_seconds, bool) or not isinstance(lease_seconds, int):
+            lease_seconds = 120
         lease = max(1, int(lease_seconds))
         async with self._pool.connection() as conn, conn.transaction():
             rows = await (
@@ -1594,6 +1616,9 @@ class Storage:
         ``lease_seconds`` is floored to ``>= 1`` so a zero/negative lease cannot
         race with unsent drain (lease-until == now() is immediately reclaimable).
         """
+        # Fail closed — bool soft-accepts via int(True)==1 shorten reclaim races.
+        if isinstance(lease_seconds, bool) or not isinstance(lease_seconds, int):
+            lease_seconds = 120
         lease = max(1, int(lease_seconds))
         async with self._pool.connection() as conn:
             row = await (
@@ -1640,6 +1665,9 @@ class Storage:
         double-claim during the in-flight Telegram send.
         ``lease_seconds`` is floored to ``>= 1`` (same as ``claim_alert``).
         """
+        # Fail closed — bool soft-accepts via int(True)==1 shorten reclaim races.
+        if isinstance(lease_seconds, bool) or not isinstance(lease_seconds, int):
+            lease_seconds = 120
         lease = max(1, int(lease_seconds))
         async with self._pool.connection() as conn, conn.transaction():
             row = await (
@@ -1786,6 +1814,9 @@ class Storage:
         ``lease_seconds`` is floored to ``>= 1`` so zero/negative cannot make
         the lease immediately reclaimable (``<= now()``).
         """
+        # Fail closed — bool soft-accepts via int(True)==1 shorten reclaim races.
+        if isinstance(lease_seconds, bool) or not isinstance(lease_seconds, int):
+            lease_seconds = 120
         lease = max(1, int(lease_seconds))
         async with self._pool.connection() as conn, conn.transaction():
             rows = await (
