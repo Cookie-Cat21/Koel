@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import structlog
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from tenacity import (
     retry,
     retry_if_exception,
@@ -57,6 +57,13 @@ ALL_SECTORS_ENDPOINT = "allSectors"
 ALL_SECTORS_PATH = "/allSectors"
 LEGACY_ANNOUNCEMENTS_ENDPOINT = "announcements"
 LEGACY_ANNOUNCEMENTS_PATH = "/announcements"
+
+
+def _reject_bool_numeric_value(value: Any) -> Any:
+    """Keep hostile JSON booleans from becoming CSE numeric values."""
+    if isinstance(value, bool):
+        raise ValueError("boolean is not a valid CSE numeric value")
+    return value
 
 
 def _announcement_url(external_id: str) -> str:
@@ -190,6 +197,25 @@ class TradeSummaryRow(BaseModel):
     marketCap: float | None = None
     lastTradedTime: int | None = None
 
+    @field_validator(
+        "price",
+        "previousClose",
+        "change",
+        "percentageChange",
+        "sharevolume",
+        "tradevolume",
+        "turnover",
+        "high",
+        "low",
+        "open",
+        "marketCap",
+        "lastTradedTime",
+        mode="before",
+    )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
+
 
 class SymbolInfo(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -207,6 +233,24 @@ class SymbolInfo(BaseModel):
     hiTrade: float | None = None
     lowTrade: float | None = None
     marketCap: float | None = None
+
+    @field_validator(
+        "id",
+        "lastTradedPrice",
+        "previousClose",
+        "change",
+        "changePercentage",
+        "tdyShareVolume",
+        "tdyTradeVolume",
+        "tdyTurnover",
+        "hiTrade",
+        "lowTrade",
+        "marketCap",
+        mode="before",
+    )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
 
 
 class CompanyInfoResponse(BaseModel):
@@ -226,6 +270,11 @@ class AnnouncementRow(BaseModel):
     company: str | None = None
     remarks: str | None = None
     symbol: str | None = None
+
+    @field_validator("announcementId", "id", "createdDate", mode="before")
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
 
 
 class CompanyAnnouncementResponse(BaseModel):
@@ -261,6 +310,23 @@ class SectorRow(BaseModel):
     sectorPreviousClose: float | None = None
     transactionTime: int | None = None
 
+    @field_validator(
+        "id",
+        "sectorId",
+        "indexValue",
+        "change",
+        "percentage",
+        "sectorTradeToday",
+        "sectorVolumeToday",
+        "sectorTurnoverToday",
+        "sectorPreviousClose",
+        "transactionTime",
+        mode="before",
+    )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
+
 
 class LegacyAnnouncementRow(BaseModel):
     """Row from legacy ``POST /announcements`` (PDF archive via ``filePath``)."""
@@ -276,6 +342,19 @@ class LegacyAnnouncementRow(BaseModel):
     edited: int | None = None
     deleted: int | None = None
     filePath: str | None = None
+
+    @field_validator(
+        "announcementId",
+        "securityId",
+        "manualDate",
+        "addedDate",
+        "edited",
+        "deleted",
+        mode="before",
+    )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
 
 
 class LegacyAnnouncementResponse(BaseModel):
