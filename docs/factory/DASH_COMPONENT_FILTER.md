@@ -116,6 +116,9 @@ Prefer **extend shadcn in-tree** over importing Tremor wholesale.
 3. Log in `THIRD_PARTY.md`: name, MIT URL, date.  
 4. Verify: `make factory-verify` / dash smoke.  
 5. Adversarial check: “Does this look like a trading terminal?” → revert if yes.
+6. **Test loop (required):** `cd web && npm run typecheck && npm run lint`, then
+   `pytest tests/test_web_route_regressions.py -q --tb=short` (kit/badge/select/
+   history/symbol contracts). Do not land polish without green verify.
 
 ---
 

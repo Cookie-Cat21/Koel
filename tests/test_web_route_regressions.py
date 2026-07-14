@@ -816,3 +816,126 @@ def test_post_watchlist_duplicate_soft_messaging() -> None:
     assert "Already watching" in controls_src
     assert "Pushes still go to Telegram" in controls_src
     assert '"created"' in controls_src or "created" in controls_src
+
+
+def test_ardeno_kit_components_exist_and_are_wired() -> None:
+    """Brand kit ports stay MIT/pattern-only and land on landing + health."""
+    kit = WEB / "src" / "components" / "kit"
+    required = (
+        "chat-bubble.tsx",
+        "steps.tsx",
+        "faq-section.tsx",
+        "stat-card.tsx",
+        "alert-banner.tsx",
+        "status-badge.tsx",
+    )
+    for name in required:
+        path = kit / name
+        assert path.is_file(), f"missing kit component {name}"
+        src = path.read_text(encoding="utf-8")
+        # Fence: no marketplace dumps / second design systems.
+        for tok in ("daisyui", "tremor", "aceternity", "reactbits", "shadcnblocks"):
+            assert tok not in src.lower() or all(
+                _is_comment_only_hit(line, tok)
+                for line in src.splitlines()
+                if tok in line.lower()
+            ), f"{name} must not vendor {tok}"
+
+    landing = (WEB / "src" / "app" / "page.tsx").read_text(encoding="utf-8")
+    assert "ChatBubble" in landing
+    assert "Steps" in landing
+    assert "FaqSection" in landing
+    assert "ChimeWordmark" in landing
+
+    health = (WEB / "src" / "app" / "health" / "page.tsx").read_text(encoding="utf-8")
+    assert "StatCard" in health
+    assert "AlertBanner" in health
+    assert "LiveIndicator" in health
+    assert "PageHeader" in health
+
+
+def test_dash_status_badges_and_page_headers() -> None:
+    """P0 Badge wiring: armed on alerts, delivery on history, PageHeader chrome."""
+    badge = WEB / "src" / "components" / "ui" / "badge.tsx"
+    status = WEB / "src" / "components" / "kit" / "status-badge.tsx"
+    alerts = WEB / "src" / "app" / "alerts" / "page.tsx"
+    history = WEB / "src" / "app" / "alerts" / "history" / "page.tsx"
+    assert badge.is_file()
+    assert status.is_file()
+
+    status_src = status.read_text(encoding="utf-8")
+    assert "export function ArmedBadge" in status_src
+    assert "export function DeliveryBadge" in status_src
+    for key in ("sent", "delivered_unmarked", "retrying", "dead_lettered"):
+        assert key in status_src
+    # Soft-fill chips — not solid KPI walls.
+    assert "bg-primary/10" in status_src
+    assert "border-emerald-500/30" in status_src
+
+    alerts_src = alerts.read_text(encoding="utf-8")
+    assert "ArmedBadge" in alerts_src
+    assert "PageHeader" in alerts_src
+    assert 'eyebrow="Rules"' in alerts_src
+    assert "rule.armed ? \"Armed\"" not in alerts_src  # chip, not plain text pair
+
+    history_src = history.read_text(encoding="utf-8")
+    assert "DeliveryBadge" in history_src
+    assert "PageHeader" in history_src
+    assert 'eyebrow="Audit"' in history_src
+    assert "deliveryBadgeClassName" not in history_src
+
+
+def test_alert_create_uses_radix_select_fail_closed() -> None:
+    """Alert type control is shadcn Select; values still gate via isAlertType."""
+    form = WEB / "src" / "components" / "alert-controls.tsx"
+    select = WEB / "src" / "components" / "ui" / "select.tsx"
+    assert form.is_file()
+    assert select.is_file()
+    src = form.read_text(encoding="utf-8")
+    assert 'from "@/components/ui/select"' in src
+    assert "SelectTrigger" in src
+    assert "SelectItem" in src
+    assert "onValueChange" in src
+    assert "isAlertType(value)" in src
+    assert "as AlertType" not in src
+    assert 'id="alert_type"' in src
+    # Native <select> must not return for alert type (Radix owns this control).
+    assert "<select" not in src
+
+
+def test_history_limit_control_native_get_form() -> None:
+    """History limit stays a native GET select (works without client JS)."""
+    page = WEB / "src" / "app" / "alerts" / "history" / "page.tsx"
+    src = page.read_text(encoding="utf-8")
+    assert 'method="get"' in src
+    assert 'id="history_limit"' in src
+    assert 'name="limit"' in src
+    for value in ("25", "50", "100", "200"):
+        assert f'value="{value}"' in src
+    # Radix Select must not replace GET form controls (no name= submit).
+    assert "SelectTrigger" not in src
+    assert 'id="history_symbol_filter"' in src
+
+
+def test_symbol_page_watch_and_new_alert_shortcuts() -> None:
+    """DASH_IA: symbol detail exposes Watch + New alert without leaving the page."""
+    page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    controls = WEB / "src" / "components" / "watchlist-controls.tsx"
+    page_src = page.read_text(encoding="utf-8")
+    controls_src = controls.read_text(encoding="utf-8")
+
+    assert "WatchButton" in page_src
+    assert "export function WatchButton" in controls_src
+    assert 'method: "POST"' in controls_src
+    assert "/api/v1/watchlist" in controls_src
+    assert "normalizeSymbol(symbol)" in controls_src
+    assert "New alert" in page_src
+    assert "/alerts?symbol=${encoded}" in page_src or 'href={`/alerts?symbol=${encoded}`}' in page_src
+    assert "PageHeader" in page_src
+    assert 'eyebrow="Symbol"' in page_src
+    # Still no direct CSE scrape from the symbol page.
+    assert "cse.lk" not in page_src.lower() or all(
+        _is_comment_only_hit(line, "cse.lk")
+        for line in page_src.splitlines()
+        if "cse.lk" in line.lower()
+    )

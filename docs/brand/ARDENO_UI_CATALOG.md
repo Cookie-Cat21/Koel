@@ -37,3 +37,19 @@ Ceyfi already adapted HyperUI / DaisyUI-style / Aceternity under `frontend/compo
 - Alerts / History: `PageHeader`, `ArmedBadge` / `DeliveryBadge`, history **limit** control
 - Alert create: Radix `Select` with fail-closed `isAlertType`
 - Symbol detail: Watch + New alert shortcuts (DASH_IA gap)
+
+## Agentic loop gate (required each polish pass)
+
+Do **not** ship UI kit/dash changes without this verify loop:
+
+1. `cd web && npm run typecheck && npm run lint`
+2. `python3 -m pytest tests/test_web_route_regressions.py tests/test_wave34_medium_bugs.py::test_alert_type_select_uses_is_alert_type -q --tb=short --no-cov`
+3. Prefer `make factory-verify` when touching Python + web together
+
+Regression contracts live in `tests/test_web_route_regressions.py`:
+- `test_ardeno_kit_components_exist_and_are_wired`
+- `test_dash_status_badges_and_page_headers`
+- `test_alert_create_uses_radix_select_fail_closed`
+- `test_history_limit_control_native_get_form`
+- `test_symbol_page_watch_and_new_alert_shortcuts`
+
