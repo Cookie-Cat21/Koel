@@ -77,7 +77,7 @@ def test_float_env_rejects_nonfinite_and_invalid(
     monkeypatch.setenv("POLL_INTERVAL_SECONDS", raw)
     monkeypatch.setenv("HTTP_TIMEOUT_SECONDS", raw)
     settings = Settings.from_env(require_token=True)
-    assert settings.poll_interval_seconds == 60.0
+    assert settings.poll_interval_seconds == 15.0
     assert settings.http_timeout_seconds == 15.0
 
 
@@ -93,7 +93,7 @@ def test_positive_float_env_rejects_non_positive(
     monkeypatch.setenv("HTTP_TIMEOUT_SECONDS", raw)
     monkeypatch.setenv("CIRCUIT_RESET_SECONDS", raw)
     settings = Settings.from_env(require_token=True)
-    assert settings.poll_interval_seconds == 60.0
+    assert settings.poll_interval_seconds == 15.0
     assert settings.http_timeout_seconds == 15.0
     assert settings.circuit_reset_seconds == 60.0
 

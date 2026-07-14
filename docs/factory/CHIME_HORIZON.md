@@ -9,18 +9,18 @@
 
 ## 1. What Chime is right now
 
-**One-liner:** A Telegram-first background watcher for the Colombo Stock Exchange. You set a condition; Chime pushes when it fires — no tab left open.
+**One-liner:** CSE market **dashboard** (cake) + **Telegram push** when rules fire (cherry). See [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) and the full max roadmap [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md).
 
-**Not:** a portfolio tracker, trading terminal, screener, or charting product.
+**Not yet:** portfolio/tax, heavy screener, full TA terminal, payments (phased unlocks in the master plan).
 
 | Layer | Status | What it is |
 |---|---|---|
-| **Telegram bot** | Shipped | Primary UX — register, watch, alert, list, cancel |
+| **Telegram bot** | Shipped | Cherry — register, watch, alert, list, cancel, fire push |
 | **Poller** | Shipped | Market hours (09:30–14:30 SLT, weekdays); CSE JSON → snapshots → rules → send |
-| **Rule engine** | Shipped | Price above/below, daily % move, new disclosure |
+| **Rule engine** | Shipped | Price, move, disclosure, activity, filing metrics (flags) |
 | **Postgres** | Shipped | Stocks, snapshots, disclosures, users, watchlist, rules, alert_log (+ delivery leases) |
 | **Health / ops** | Shipped | `/health`, structlog, migrate CLI, Docker Compose, CI |
-| **Thin dashboard** | Shipped (secondary) | Next.js watchlist / alerts / history / symbol / health — demo session auth |
+| **Dashboard** | Shipped (primary) | Next.js Overview / Browse / Watchlist / Alerts / History / Symbol / Health |
 
 **Stack:** Python (`python-telegram-bot`, APScheduler) + Postgres + Next.js/Tailwind/shadcn for the thin dash.
 

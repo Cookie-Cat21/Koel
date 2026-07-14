@@ -3,7 +3,7 @@ import { Pool, type PoolClient } from "pg";
 import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/market-browse";
 import { cappedAlertThreshold } from "@/lib/api/finite-number";
-import { toSafePositiveInt } from "@/lib/api/safe-int";
+import { toNonNegativeSafeInt, toSafePositiveInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
 import { isAlertType, normalizeSymbol, type AlertType } from "@/lib/api/symbol";
 
@@ -47,6 +47,52 @@ export async function ensureUser(telegramId: number): Promise<number> {
     throw new Error("ensure_user returned non-safe id");
   }
   return id;
+}
+
+/** Record a dash session row for device list / logout-all (A2). */
+export async function recordDashSession(
+  userId: number,
+  sid: string,
+  userAgent: string | null,
+): Promise<void> {
+  if (!Number.isSafeInteger(userId) || userId <= 0) {
+    throw new Error("userId must be a positive SafeInteger");
+  }
+  if (typeof sid !== "string" || !sid || sid.length > 64) {
+    throw new Error("sid must be a non-empty string ≤64");
+  }
+  const ua =
+    typeof userAgent === "string" && userAgent
+      ? userAgent.slice(0, 200)
+      : null;
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO dash_sessions (user_id, sid, user_agent)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (sid) DO UPDATE
+       SET last_seen_at = now(),
+           revoked_at = NULL,
+           user_agent = COALESCE(EXCLUDED.user_agent, dash_sessions.user_agent)`,
+    [userId, sid, ua],
+  );
+}
+
+/**
+ * True when sid is known and revoked. Unknown sid (pre-migration cookies)
+ * returns false so existing sessions keep working until re-login.
+ */
+export async function isDashSessionRevoked(sid: string): Promise<boolean> {
+  if (typeof sid !== "string" || !sid || sid.length > 64) return true;
+  const pool = getPool();
+  const { rows } = await pool.query<{ revoked: boolean }>(
+    `SELECT (revoked_at IS NOT NULL) AS revoked
+       FROM dash_sessions
+      WHERE sid = $1
+      LIMIT 1`,
+    [sid],
+  );
+  if (rows.length === 0) return false;
+  return rows[0]?.revoked === true;
 }
 
 export type StockRow = {
@@ -131,6 +177,7 @@ export type AlertRuleRow = {
   active: boolean;
   armed: boolean;
   created_at: string | null;
+  muted_until: string | null;
 };
 
 function mapRule(row: {
@@ -142,6 +189,7 @@ function mapRule(row: {
   active: boolean;
   armed: boolean;
   created_at: Date | string;
+  muted_until?: Date | string | null;
 }): AlertRuleRow | null {
   // Digits-only SafeInteger — Number(oversized) used to precision-lose and
   // alias the wrong rule on create/idempotent return.
@@ -162,6 +210,7 @@ function mapRule(row: {
     active: row.active === true,
     armed: row.armed === true,
     created_at: toIso(row.created_at),
+    muted_until: toIso(row.muted_until ?? null),
   };
 }
 
@@ -182,8 +231,10 @@ async function fetchActiveRule(
     active: boolean;
     armed: boolean;
     created_at: Date | string;
+    muted_until: Date | string | null;
   }>(
-    `SELECT id, symbol, type, threshold, category, active, armed, created_at
+    `SELECT id, symbol, type, threshold, category, active, armed, created_at,
+            muted_until
      FROM alert_rules
      WHERE user_id = $1 AND symbol = $2 AND type = $3
        AND COALESCE(threshold, -1) = COALESCE($4::double precision, -1)
@@ -258,10 +309,12 @@ export async function createAlertRule(
         active: boolean;
         armed: boolean;
         created_at: Date | string;
+        muted_until: Date | string | null;
       }>(
         `INSERT INTO alert_rules (user_id, symbol, type, threshold, category, active, armed)
          VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)
-         RETURNING id, symbol, type, threshold, category, active, armed, created_at`,
+         RETURNING id, symbol, type, threshold, category, active, armed, created_at,
+                   muted_until`,
         [userId, symbol, alertType, threshold, cat],
       );
       const row = inserted.rows[0];
@@ -299,6 +352,32 @@ export async function createAlertRule(
   }
 }
 
+export async function activeAlertQuota(userId: number): Promise<{
+  active_count: number;
+  alert_quota_max: number;
+}> {
+  const pool = getPool();
+  const result = await pool.query<{
+    active_count: string | number;
+    alert_quota_max: string | number;
+  }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM alert_rules WHERE user_id = $1 AND active) AS active_count,
+       alert_quota_max
+     FROM users
+     WHERE id = $1`,
+    [userId],
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error("active_alert_quota returned no row");
+  const active_count = toNonNegativeSafeInt(row.active_count, 0);
+  const quota = toNonNegativeSafeInt(row.alert_quota_max, 100);
+  return {
+    active_count,
+    alert_quota_max: quota,
+  };
+}
+
 /**
  * Soft-cancel alert: active=false. Mirrors Storage.deactivate_alert.
  * Returns true if an active owned rule was deactivated.
@@ -316,6 +395,37 @@ export async function cancelAlert(
     [ruleId, userId],
   );
   return result.rowCount !== null && result.rowCount > 0;
+}
+
+/**
+ * Set or clear alert mute. Returns null when the rule is not owned.
+ */
+export async function muteAlert(
+  userId: number,
+  ruleId: number,
+  mutedUntil: string | null,
+): Promise<AlertRuleRow | null> {
+  const pool = getPool();
+  const result = await pool.query<{
+    id: string | number;
+    symbol: string;
+    type: string;
+    threshold: number | null;
+    category: string | null;
+    active: boolean;
+    armed: boolean;
+    created_at: Date | string;
+    muted_until: Date | string | null;
+  }>(
+    `UPDATE alert_rules
+     SET muted_until = $1
+     WHERE id = $2 AND user_id = $3
+     RETURNING id, symbol, type, threshold, category, active, armed, created_at,
+               muted_until`,
+    [mutedUntil, ruleId, userId],
+  );
+  const row = result.rows[0];
+  return row ? mapRule(row) : null;
 }
 
 /** True if rule id exists and belongs to user (active or not). */

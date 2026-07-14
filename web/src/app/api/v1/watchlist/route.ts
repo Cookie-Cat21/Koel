@@ -115,7 +115,11 @@ export async function POST(request: NextRequest) {
   try {
     const stock = await getStock(symbol);
     if (!stock) {
-      return jsonError(404, "not_found", "Unknown symbol.");
+      return jsonError(
+        404,
+        "not_found",
+        "Unknown symbol. The dashboard only accepts symbols already seeded in Postgres; wait for a poller tick or seed it from Telegram with /watch SYMBOL.",
+      );
     }
 
     const created = await addWatch(gated.session.user_id, symbol);

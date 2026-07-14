@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { isDashSessionRevoked } from "@/lib/db";
+
 import { getDashAuthConfig, SESSION_COOKIE } from "./config";
 import { LOGIN_EXPIRED_PATH } from "./session-redirect";
 import { type SessionPayload, verifySessionToken } from "./session";
@@ -22,6 +24,13 @@ export async function requirePageSession(): Promise<SessionPayload> {
     redirect(
       typeof raw === "string" && raw ? LOGIN_EXPIRED_PATH : "/login",
     );
+  }
+  try {
+    if (await isDashSessionRevoked(session.sid)) {
+      redirect(LOGIN_EXPIRED_PATH);
+    }
+  } catch {
+    // DB blip — keep HMAC session (availability over revoke check).
   }
   return session;
 }

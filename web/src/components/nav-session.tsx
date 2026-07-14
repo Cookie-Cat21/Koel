@@ -123,6 +123,25 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
     }
   }
 
+  async function onLogoutAll() {
+    setPending(true);
+    try {
+      const { ok, status, data } = await apiMutate("/api/v1/auth/logout-all", {
+        method: "POST",
+        authRedirect: false,
+      });
+      if (!ok && status !== 401) {
+        console.error(apiErrorMessage(data, "Logout all failed."));
+        setPending(false);
+        return;
+      }
+      setMe(null);
+      redirectToLogin();
+    } catch {
+      setPending(false);
+    }
+  }
+
   if (!me) {
     return (
       <div
@@ -153,10 +172,21 @@ export function NavSession({ compact = false }: { compact?: boolean }) {
       </span>
       <Button
         type="button"
+        variant="ghost"
+        size="sm"
+        disabled={pending}
+        onClick={() => void onLogoutAll()}
+        className="shrink-0"
+        title="Sign out every device"
+      >
+        All devices
+      </Button>
+      <Button
+        type="button"
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={onLogout}
+        onClick={() => void onLogout()}
         className="shrink-0"
       >
         {pending ? "Signing out…" : "Log out"}

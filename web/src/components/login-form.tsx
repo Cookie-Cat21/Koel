@@ -105,7 +105,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
         setError(loginError(detail));
         return;
       }
-      router.push("/watchlist");
+      router.push("/overview");
       router.refresh();
     } catch {
       setError(loginError("Chime couldn't reach the sign-in endpoint. Try again."));
@@ -119,6 +119,8 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
   return (
     <form
       onSubmit={onSubmit}
+      method="post"
+      action="/api/v1/auth/demo"
       className="flex w-full max-w-sm flex-col gap-4"
       aria-labelledby="login-sign-in-heading"
       noValidate

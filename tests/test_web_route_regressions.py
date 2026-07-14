@@ -118,6 +118,7 @@ def test_dashboard_pages_render_nfa_footer() -> None:
     page_paths = [
         WEB / "src" / "app" / "page.tsx",
         WEB / "src" / "app" / "login" / "page.tsx",
+        WEB / "src" / "app" / "overview" / "page.tsx",
         WEB / "src" / "app" / "watchlist" / "page.tsx",
         WEB / "src" / "app" / "market" / "page.tsx",
         WEB / "src" / "app" / "alerts" / "page.tsx",
@@ -145,6 +146,7 @@ def test_dashboard_price_surfaces_render_nfa_inline() -> None:
     page_paths = [
         WEB / "src" / "app" / "page.tsx",
         WEB / "src" / "app" / "login" / "page.tsx",
+        WEB / "src" / "app" / "overview" / "page.tsx",
         WEB / "src" / "app" / "watchlist" / "page.tsx",
         WEB / "src" / "app" / "market" / "page.tsx",
         WEB / "src" / "app" / "alerts" / "page.tsx",
@@ -476,13 +478,19 @@ def test_market_page_fence_no_screener_or_quote_board() -> None:
     assert 'aria-labelledby="sectors-heading"' in market_src
     assert 'aria-label="Sectors"' not in market_src
     # Wave9 a11y: movers Watch is one labelled link; sectors list labelled by heading.
-    assert "Open ${item.symbol} detail to watch" in market_src
+    # Bars live in kit/movers-bar-list (extracted from page); keep page heading ids.
+    movers_kit = (
+        WEB / "src" / "components" / "kit" / "movers-bar-list.tsx"
+    ).read_text(encoding="utf-8")
+    assert "Open ${item.symbol} detail to watch" in movers_kit
     assert "movers-gainers-heading" in market_src
     assert "movers-losers-heading" in market_src
-    assert "Watch\n                  </span>" in market_src
+    assert "Watch" in movers_kit and "</span>" in movers_kit
     assert "title={item.name}" in market_src
     assert 'role="status"' in market_src
-    assert "changeDirectionSr" in market_src
+    assert "changeDirectionSr" in market_src or "changeDirectionSr" in movers_kit
+    assert "MoversBarList" in market_src
+    assert "ChangeBadge" in market_src
 
 
 def test_scenarios_dash_stub_page() -> None:
@@ -561,6 +569,10 @@ def test_next_config_security_headers() -> None:
     assert "poweredByHeader: false" in source
     assert 'source: "/:path*"' in source
     assert "async headers()" in source
+    # Cloud Agent previews need non-localhost Hosts allowlisted in next dev,
+    # otherwise /_next/* is blocked → login never hydrates.
+    assert "allowedDevOrigins" in source
+    assert '"*.agent.cvm.dev"' in source or "'*.agent.cvm.dev'" in source
     # Strict CSP stays deferred — do not claim a full CSP ship.
     csp_lines = [
         line
@@ -570,6 +582,78 @@ def test_next_config_security_headers() -> None:
     ]
     assert csp_lines == [], f"unexpected CSP header ship: {csp_lines}"
     assert "deferred" in source.lower()  # comment documents CSP deferral
+
+
+def test_login_form_posts_demo_auth() -> None:
+    """Demo form: JS fetch preferred; native POST + relative redirect as fallback."""
+    form = WEB / "src" / "components" / "login-form.tsx"
+    route = WEB / "src" / "app" / "api" / "v1" / "auth" / "demo" / "route.ts"
+    assert form.is_file()
+    assert route.is_file()
+    form_src = form.read_text(encoding="utf-8")
+    route_src = route.read_text(encoding="utf-8")
+
+    assert 'fetch("/api/v1/auth/demo"' in form_src
+    assert "e.preventDefault()" in form_src
+    assert 'method="post"' in form_src
+    assert 'action="/api/v1/auth/demo"' in form_src
+    assert "application/x-www-form-urlencoded" in route_src
+    assert "overviewRedirect" in route_src
+    # Relative Location — absolute http://0.0.0.0 breaks Cloud Agent routing.
+    assert 'Location: "/overview"' in route_src
+    assert "toSafePositiveInt" in route_src
+    assert "allowlist.has(telegramId)" in route_src
+
+
+def test_overview_page_is_signed_in_home() -> None:
+    """Cake layer: signed-in home is /overview with movers + watch + alerts."""
+    page = WEB / "src" / "app" / "overview" / "page.tsx"
+    landing = WEB / "src" / "app" / "page.tsx"
+    nav = WEB / "src" / "components" / "app-nav.tsx"
+    login = WEB / "src" / "components" / "login-form.tsx"
+    assert page.is_file()
+    page_src = page.read_text(encoding="utf-8")
+    landing_src = landing.read_text(encoding="utf-8")
+    nav_src = nav.read_text(encoding="utf-8")
+    login_src = login.read_text(encoding="utf-8")
+
+    assert "requirePageSession" in page_src
+    assert "PageHeader" in page_src
+    assert 'eyebrow="Home"' in page_src
+    assert "/api/v1/watchlist" in page_src
+    assert "/api/v1/market/movers" in page_src
+    assert "/api/v1/alerts" in page_src
+    assert "ArmedBadge" in page_src
+    assert "StatCard" in page_src
+    assert "Telegram" in page_src
+    assert 'href: "/overview", label: "Overview"' in nav_src
+    assert 'redirect("/overview")' in landing_src
+    assert 'router.push("/overview")' in login_src
+    assert "max-w-6xl" in page_src
+
+
+def test_price_refresh_soft_reloads_from_postgres() -> None:
+    """Near-realtime: client refresh from Postgres — never cse.lk from web/."""
+    comp = WEB / "src" / "components" / "price-refresh.tsx"
+    assert comp.is_file()
+    src = comp.read_text(encoding="utf-8")
+    assert "router.refresh()" in src
+    assert "DEFAULT_PRICE_REFRESH_MS" in src
+    assert "MIN_PRICE_REFRESH_MS" in src
+    assert "cse.lk" not in src.lower()
+    for page in (
+        WEB / "src" / "app" / "overview" / "page.tsx",
+        WEB / "src" / "app" / "market" / "page.tsx",
+        WEB / "src" / "app" / "watchlist" / "page.tsx",
+        WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx",
+    ):
+        page_src = page.read_text(encoding="utf-8")
+        assert "PriceRefresh" in page_src, f"{page} missing PriceRefresh"
+        assert "cse.lk" not in page_src.lower() or all(
+            line.strip().startswith("//") or "cse.lk" not in line.lower()
+            for line in page_src.splitlines()
+            if "cse.lk" in line.lower()
+        )
 
 
 def test_sectors_route_static() -> None:
@@ -741,12 +825,17 @@ def test_symbol_page_prefers_pdf_and_shows_ready_brief() -> None:
     assert "NfaFooter" in source
     assert '"processing"' in source
     # W16 a11y: disclosures list labelled by heading; ready brief is a named group.
+    # Timeline kit owns brief group markup (Wave D6).
+    timeline = (
+        WEB / "src" / "components" / "kit" / "disclosure-timeline.tsx"
+    ).read_text(encoding="utf-8")
     assert 'id="disclosures-heading"' in source
     assert 'aria-labelledby="disclosures-heading"' in source
-    assert 'role="group"' in source
-    assert "Filing brief" in source
-    assert "disclosure-brief-" in source
-    assert "(opens in new tab)" in source
+    assert 'role="group"' in timeline
+    assert "Filing brief" in timeline
+    assert "disclosure-brief-" in timeline
+    assert "(opens in new tab)" in timeline
+    assert "DisclosureTimeline" in source
     assert "cse.lk" not in source.lower() or all(
         _is_comment_only_hit(line, "cse.lk")
         for line in source.splitlines()
@@ -816,3 +905,253 @@ def test_post_watchlist_duplicate_soft_messaging() -> None:
     assert "Already watching" in controls_src
     assert "Pushes still go to Telegram" in controls_src
     assert '"created"' in controls_src or "created" in controls_src
+
+
+def test_ardeno_kit_components_exist_and_are_wired() -> None:
+    """Brand kit ports stay MIT/pattern-only and land on landing + health."""
+    kit = WEB / "src" / "components" / "kit"
+    required = (
+        "chat-bubble.tsx",
+        "steps.tsx",
+        "faq-section.tsx",
+        "stat-card.tsx",
+        "alert-banner.tsx",
+        "status-badge.tsx",
+    )
+    for name in required:
+        path = kit / name
+        assert path.is_file(), f"missing kit component {name}"
+        src = path.read_text(encoding="utf-8")
+        # Fence: no marketplace dumps / second design systems.
+        for tok in ("daisyui", "tremor", "aceternity", "reactbits", "shadcnblocks"):
+            assert tok not in src.lower() or all(
+                _is_comment_only_hit(line, tok)
+                for line in src.splitlines()
+                if tok in line.lower()
+            ), f"{name} must not vendor {tok}"
+
+    landing = (WEB / "src" / "app" / "page.tsx").read_text(encoding="utf-8")
+    assert "ChatBubble" in landing
+    assert "Steps" in landing
+    assert "FaqSection" in landing
+    assert "ChimeWordmark" in landing
+
+    health = (WEB / "src" / "app" / "health" / "page.tsx").read_text(encoding="utf-8")
+    assert "StatCard" in health
+    assert "AlertBanner" in health
+    assert "LiveIndicator" in health
+    assert "PageHeader" in health
+
+
+def test_dash_status_badges_and_page_headers() -> None:
+    """P0 Badge wiring: armed on alerts, delivery on history, PageHeader chrome."""
+    badge = WEB / "src" / "components" / "ui" / "badge.tsx"
+    status = WEB / "src" / "components" / "kit" / "status-badge.tsx"
+    alerts = WEB / "src" / "app" / "alerts" / "page.tsx"
+    history = WEB / "src" / "app" / "alerts" / "history" / "page.tsx"
+    assert badge.is_file()
+    assert status.is_file()
+
+    status_src = status.read_text(encoding="utf-8")
+    assert "export function ArmedBadge" in status_src
+    assert "export function DeliveryBadge" in status_src
+    for key in ("sent", "delivered_unmarked", "retrying", "dead_lettered"):
+        assert key in status_src
+    # Soft-fill chips — not solid KPI walls.
+    assert "bg-primary/10" in status_src
+    assert "border-emerald-500/30" in status_src
+
+    alerts_src = alerts.read_text(encoding="utf-8")
+    assert "ArmedBadge" in alerts_src
+    assert "PageHeader" in alerts_src
+    assert 'eyebrow="Rules"' in alerts_src
+    assert "rule.armed ? \"Armed\"" not in alerts_src  # chip, not plain text pair
+
+    history_src = history.read_text(encoding="utf-8")
+    assert "DeliveryBadge" in history_src
+    assert "PageHeader" in history_src
+    assert 'eyebrow="Audit"' in history_src
+    assert "deliveryBadgeClassName" not in history_src
+
+
+def test_alert_create_uses_radix_select_fail_closed() -> None:
+    """Alert type control is shadcn Select; values still gate via isAlertType."""
+    form = WEB / "src" / "components" / "alert-controls.tsx"
+    select = WEB / "src" / "components" / "ui" / "select.tsx"
+    assert form.is_file()
+    assert select.is_file()
+    src = form.read_text(encoding="utf-8")
+    assert 'from "@/components/ui/select"' in src
+    assert "SelectTrigger" in src
+    assert "SelectItem" in src
+    assert "onValueChange" in src
+    assert "isAlertType(value)" in src
+    assert "as AlertType" not in src
+    assert 'id="alert_type"' in src
+    # Native <select> must not return for alert type (Radix owns this control).
+    assert "<select" not in src
+
+
+def test_history_limit_control_native_get_form() -> None:
+    """History limit stays a native GET select (works without client JS)."""
+    page = WEB / "src" / "app" / "alerts" / "history" / "page.tsx"
+    src = page.read_text(encoding="utf-8")
+    assert 'method="get"' in src
+    assert 'id="history_limit"' in src
+    assert 'name="limit"' in src
+    for value in ("25", "50", "100", "200"):
+        assert f'value="{value}"' in src
+    # Radix Select must not replace GET form controls (no name= submit).
+    assert "SelectTrigger" not in src
+    assert 'id="history_symbol_filter"' in src
+
+
+def test_symbol_page_watch_and_new_alert_shortcuts() -> None:
+    """DASH_IA: symbol detail exposes Watch + New alert without leaving the page."""
+    page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    controls = WEB / "src" / "components" / "watchlist-controls.tsx"
+    page_src = page.read_text(encoding="utf-8")
+    controls_src = controls.read_text(encoding="utf-8")
+
+    assert "WatchButton" in page_src
+    assert "export function WatchButton" in controls_src
+    assert 'method: "POST"' in controls_src
+    assert "/api/v1/watchlist" in controls_src
+    assert "normalizeSymbol(symbol)" in controls_src
+    assert "New alert" in page_src
+    assert "/alerts?symbol=${encoded}" in page_src or (
+        "href={`/alerts?symbol=${encoded}`}" in page_src
+    )
+    assert "PageHeader" in page_src
+    assert 'eyebrow="Symbol"' in page_src
+    # Still no direct CSE scrape from the symbol page.
+    assert "cse.lk" not in page_src.lower() or all(
+        _is_comment_only_hit(line, "cse.lk")
+        for line in page_src.splitlines()
+        if "cse.lk" in line.lower()
+    )
+
+
+def test_wave_master_plan_kit_wiring() -> None:
+    """Waves 1–5: kit + API surfaces stay wired (cake/cherry fence)."""
+    overview = (WEB / "src" / "app" / "overview" / "page.tsx").read_text(encoding="utf-8")
+    market = (WEB / "src" / "app" / "market" / "page.tsx").read_text(encoding="utf-8")
+    health = (WEB / "src" / "app" / "health" / "page.tsx").read_text(encoding="utf-8")
+    alerts = (WEB / "src" / "app" / "alerts" / "page.tsx").read_text(encoding="utf-8")
+    nav = (WEB / "src" / "components" / "app-nav.tsx").read_text(encoding="utf-8")
+    assert "CakeCherryBanner" in overview
+    assert "ChangeBadge" in overview
+    assert "MoversBarList" in overview
+    assert "IndexStrip" in overview
+    assert "SectorHeatStrip" in overview
+    assert "/api/v1/indexes" in overview
+    assert "MoversBarList" in market
+    assert "ChangeBadge" in market
+    assert "delivery-heading" in health
+    assert "retention-heading" in health
+    assert "TestFireButton" in alerts
+    assert "CommandPalette" in nav or "command-palette" in nav
+    assert (WEB / "src" / "app" / "api" / "v1" / "indexes" / "route.ts").is_file()
+    assert (WEB / "src" / "app" / "api" / "v1" / "stream" / "snapshots" / "route.ts").is_file()
+    assert (WEB / "src" / "app" / "api" / "v1" / "auth" / "telegram" / "route.ts").is_file()
+    assert (WEB / "src" / "app" / "api" / "v1" / "auth" / "logout-all" / "route.ts").is_file()
+    assert (WEB / "src" / "components" / "command-palette.tsx").is_file()
+    parity = Path("docs/factory/BOT_DASH_PARITY.md")
+    assert parity.is_file()
+    assert "price_above" in parity.read_text(encoding="utf-8")
+
+
+def test_bot_dash_parity_filing_metrics_and_settings() -> None:
+    """P0–P3: full alert types, metrics API, mute, settings on dash."""
+    symbol_ts = (WEB / "src" / "lib" / "api" / "symbol.ts").read_text(encoding="utf-8")
+    fmt = (WEB / "src" / "lib" / "format.ts").read_text(encoding="utf-8")
+    alerts_ctrl = (WEB / "src" / "components" / "alert-controls.tsx").read_text(
+        encoding="utf-8"
+    )
+    nav = (WEB / "src" / "components" / "app-nav.tsx").read_text(encoding="utf-8")
+    assert '"eps_yoy_above"' in symbol_ts
+    assert '"profit_yoy_below"' in symbol_ts
+    assert "bid_heavy" not in symbol_ts.split("NOTICE_ALERT_TYPES")[1].split("]")[0]
+    assert "isThresholdAlertType" in alerts_ctrl
+    assert "eps_yoy_above" in alerts_ctrl
+    assert "MuteAlertButton" in alerts_ctrl
+    assert "EPS YoY above" in fmt
+    metrics_route = (
+        WEB
+        / "src"
+        / "app"
+        / "api"
+        / "v1"
+        / "symbols"
+        / "[symbol]"
+        / "metrics"
+        / "route.ts"
+    )
+    assert metrics_route.is_file()
+    prefs_route = (
+        WEB / "src" / "app" / "api" / "v1" / "me" / "preferences" / "route.ts"
+    )
+    assert prefs_route.is_file()
+    assert (WEB / "src" / "app" / "settings" / "page.tsx").is_file()
+    assert 'href: "/settings"' in nav
+    assert "FilingMetricsPanel" in (
+        WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    ).read_text(encoding="utf-8")
+    panel = (
+        WEB / "src" / "components" / "kit" / "filing-metrics-panel.tsx"
+    ).read_text(encoding="utf-8")
+    assert "formatCompactNumber" in panel
+    assert "truncate" not in panel.split("MetricValue")[1].split("YoyBadge")[0]
+    assert "formatCompactNumber" in fmt
+    parity = Path("docs/factory/BOT_DASH_PARITY.md").read_text(encoding="utf-8")
+    assert "EPS above / below" in parity and "| Yes | Yes |" in parity
+
+
+def test_symbol_compare_chart_max_four() -> None:
+    """Price compare: SVG overlay capped at 4 symbols (Tremor/shadcn pattern)."""
+    compare_route = WEB / "src" / "app" / "api" / "v1" / "compare" / "route.ts"
+    compare_lib = WEB / "src" / "lib" / "compare-chart.ts"
+    compare_ui = WEB / "src" / "components" / "kit" / "symbol-compare-chart.tsx"
+    page = (WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert compare_route.is_file()
+    assert compare_lib.is_file()
+    assert compare_ui.is_file()
+    route_src = compare_route.read_text(encoding="utf-8")
+    lib_src = compare_lib.read_text(encoding="utf-8")
+    ui_src = compare_ui.read_text(encoding="utf-8")
+    assert "MAX_COMPARE_SYMBOLS = 4" in route_src
+    assert "MAX_COMPARE_SYMBOLS = 4" in lib_src
+    assert "price_snapshots" in route_src
+    assert "no cse.lk" in route_src.lower() or "No cse.lk" in route_src or "no cse" in route_src.lower()
+    assert "buildCompareChartRows" in lib_src
+    assert "indexed" in lib_src and "polyline" in ui_src
+    assert "SymbolCompareChart" in page
+    assert "SCALE_OPTIONS" in ui_src
+    assert "initialPeerSeries" in ui_src
+    assert "compare=" in page or "comparePeers" in page
+
+def test_dash_ux_improve_loops() -> None:
+    """UX loops: watch state, alert type deep-link, metrics fail, chips, 404."""
+    watch = (WEB / "src" / "components" / "watchlist-controls.tsx").read_text(encoding="utf-8")
+    alerts = (WEB / "src" / "app" / "alerts" / "page.tsx").read_text(encoding="utf-8")
+    panel = (WEB / "src" / "components" / "kit" / "filing-metrics-panel.tsx").read_text(encoding="utf-8")
+    overview = (WEB / "src" / "app" / "overview" / "page.tsx").read_text(encoding="utf-8")
+    chips = (WEB / "src" / "components" / "kit" / "disclosure-timeline.tsx").read_text(encoding="utf-8")
+    spark = (WEB / "src" / "components" / "sparkline.tsx").read_text(encoding="utf-8")
+    badge = (WEB / "src" / "components" / "kit" / "change-badge.tsx").read_text(encoding="utf-8")
+    assert "watching?: boolean" in watch or "watching = false" in watch
+    assert "initialType" in alerts or "typeFilter" in alerts
+    assert "loadFailed" in panel
+    assert "Exact prior-year" in panel
+    assert "rule.armed" in overview
+    assert "aria-current" in chips
+    assert (WEB / "src" / "app" / "overview" / "loading.tsx").is_file()
+    assert (WEB / "src" / "app" / "settings" / "loading.tsx").is_file()
+    assert (WEB / "src" / "app" / "not-found.tsx").is_file()
+    assert "ExpandableBrief" in panel or (WEB / "src" / "components" / "kit" / "expandable-brief.tsx").is_file()
+    assert "stored ticks" in spark
+    assert "sr-only" in badge
+    assert "safe-area-inset-bottom" in (WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx").read_text(encoding="utf-8")
+

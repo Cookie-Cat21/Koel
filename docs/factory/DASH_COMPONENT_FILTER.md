@@ -59,7 +59,7 @@ Cherry-pick **patterns** from blocks below; do not scaffold a second app from th
 | `filterbar` | 16 | **MAYBE** | Alerts history symbol + limit filters |
 | `dialogs` | 9 | **MAYBE** | Confirm unwatch / cancel alert |
 | `kpi-cards` | 29 | **REJECT default** | Quote/KPI walls → trading-terminal smell |
-| `area/bar/line/donut-charts` + compositions + tooltips | 83+ | **REJECT** | TA / analytics walls; sparkline only |
+| `area/bar/line/donut-charts` + compositions + tooltips | 83+ | **REJECT default** | TA / analytics walls — **exception:** one in-tree SVG **Price compare** (≤4 symbols, indexed overlay; Tremor/shadcn chart *pattern*) on symbol detail only |
 | `billing-usage` / `pricing-sections` | 18 | **REJECT** | Payments fence |
 | `feature-sections` / `onboarding-feed` | 28 | **REJECT** | Marketing |
 | `account-and-user-management` | 15 | **REJECT for now** | Multi-user admin ≠ thin dash |
@@ -103,6 +103,7 @@ Prefer **extend shadcn in-tree** over importing Tremor wholesale.
 | P2 | Polish `EmptyState` variants | Tremor empty-states / HyperUI | Copy UX, not dependency |
 | P2 | Health status chips | Tremor `status-monitoring` *pattern* | Still Postgres/health API only |
 | P3 | Optional Tremor Raw **SparkChart** | MIT | Only if it beats `sparkline.tsx` on a11y/size; else keep SVG |
+| P3 | **Symbol price compare** (scale 1–4) | Tremor/shadcn chart *pattern* → SVG | Indexed overlay; max 4; Postgres snapshots only — not TA |
 | — | Full Tremor template apps | — | **Do not** |
 | — | Chart walls / KPI dashboards | — | **Do not** |
 | — | React Bits / Pro shadcnblocks | — | **Do not** |
@@ -116,6 +117,9 @@ Prefer **extend shadcn in-tree** over importing Tremor wholesale.
 3. Log in `THIRD_PARTY.md`: name, MIT URL, date.  
 4. Verify: `make factory-verify` / dash smoke.  
 5. Adversarial check: “Does this look like a trading terminal?” → revert if yes.
+6. **Test loop (required):** `cd web && npm run typecheck && npm run lint`, then
+   `pytest tests/test_web_route_regressions.py -q --tb=short` (kit/badge/select/
+   history/symbol contracts). Do not land polish without green verify.
 
 ---
 

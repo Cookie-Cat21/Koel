@@ -31,6 +31,7 @@ from chime.circuit import CircuitBreaker, CircuitOpenError
 from chime.domain import (
     BigPrint,
     Disclosure,
+    IndexSnapshot,
     MarketNotice,
     OrderBookSnapshot,
     PriceSnapshot,
@@ -63,6 +64,10 @@ TRADE_SUMMARY_ENDPOINT = "tradeSummary"
 TRADE_SUMMARY_PATH = "/tradeSummary"
 ALL_SECTORS_ENDPOINT = "allSectors"
 ALL_SECTORS_PATH = "/allSectors"
+ASPI_DATA_ENDPOINT = "aspiData"
+ASPI_DATA_PATH = "/aspiData"
+SNP_DATA_ENDPOINT = "snpData"
+SNP_DATA_PATH = "/snpData"
 DAYS_TRADE_ENDPOINT = "daysTrade"
 DAYS_TRADE_PATH = "/daysTrade"
 BUY_IN_ENDPOINT = "getBuyInBoardAnnouncements"
@@ -375,6 +380,40 @@ class SectorRow(BaseModel):
         return _reject_bool_numeric_value(value)
 
 
+class IndexDataRow(BaseModel):
+    """Loose row from ``POST /aspiData`` / ``POST /snpData``."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    code: str | None = None
+    name: str | None = None
+    indexCode: str | None = None
+    indexName: str | None = None
+    value: float | None = None
+    indexValue: float | None = None
+    change: float | None = None
+    percentage: float | None = None
+    percentageChange: float | None = None
+    changePct: float | None = None
+    timestamp: int | None = None
+    transactionTime: int | None = None
+
+    @field_validator(
+        "value",
+        "indexValue",
+        "change",
+        "percentage",
+        "percentageChange",
+        "changePct",
+        "timestamp",
+        "transactionTime",
+        mode="before",
+    )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
+
+
 class LegacyAnnouncementRow(BaseModel):
     """Row from legacy ``POST /announcements`` (PDF archive via ``filePath``)."""
 
@@ -576,6 +615,42 @@ def sector_row_to_snapshot(
         previous_close=_finite_or_none(row.sectorPreviousClose),
         ts=ts,
         cse_row_id=row.id,
+    )
+
+
+def index_row_to_snapshot(
+    row: IndexDataRow,
+    *,
+    default_code: str,
+    default_name: str,
+    now: datetime | None = None,
+) -> IndexSnapshot | None:
+    """Normalize an ASPI/S&P index payload; missing timestamp falls back to poll time."""
+    code_raw = row.code or row.indexCode or default_code
+    if not isinstance(code_raw, str) or not code_raw.strip():
+        return None
+    value = row.value if row.value is not None else row.indexValue
+    if value is None or not math.isfinite(value):
+        return None
+    name_raw = row.name or row.indexName or default_name
+    name = name_raw.strip() if isinstance(name_raw, str) and name_raw.strip() else None
+    fallback = now or datetime.now(UTC)
+    raw_ts = row.timestamp if row.timestamp is not None else row.transactionTime
+    ts = _try_ms_to_dt(raw_ts) or fallback
+    pct = (
+        row.percentage
+        if row.percentage is not None
+        else row.percentageChange
+        if row.percentageChange is not None
+        else row.changePct
+    )
+    return IndexSnapshot(
+        code=code_raw.strip().upper(),
+        name=name,
+        value=value,
+        change=_finite_or_none(row.change),
+        change_pct=_finite_or_none(pct),
+        ts=ts,
     )
 
 
@@ -1217,6 +1292,68 @@ class CSEClient:
             return out
 
         return cast(list[SectorSnapshot], await self._guarded(ALL_SECTORS_ENDPOINT, _call))
+
+    async def _fetch_index_data(
+        self,
+        *,
+        endpoint: str,
+        path: str,
+        default_code: str,
+        default_name: str,
+    ) -> IndexSnapshot | None:
+        async def _call() -> IndexSnapshot | None:
+            raw = await self._request("POST", path, json_body={})
+            if not isinstance(raw, dict):
+                log.error(
+                    "cse_schema_error",
+                    endpoint=endpoint,
+                    error="expected object",
+                )
+                raise ValueError(f"{endpoint}: expected JSON object")
+            try:
+                row = IndexDataRow.model_validate(raw)
+            except ValidationError as exc:
+                log.warning(
+                    "cse_index_row_skipped",
+                    endpoint=endpoint,
+                    error=str(exc),
+                    row=str(raw)[:200],
+                )
+                return None
+            snap = index_row_to_snapshot(
+                row,
+                default_code=default_code,
+                default_name=default_name,
+                now=datetime.now(UTC),
+            )
+            if snap is None:
+                log.warning(
+                    "cse_index_row_skipped",
+                    endpoint=endpoint,
+                    error="blank code or non-finite value",
+                    row=str(raw)[:200],
+                )
+            return snap
+
+        return cast(IndexSnapshot | None, await self._guarded(endpoint, _call))
+
+    async def fetch_aspi_data(self) -> IndexSnapshot | None:
+        """Fetch ASPI index tick (``POST /aspiData``)."""
+        return await self._fetch_index_data(
+            endpoint=ASPI_DATA_ENDPOINT,
+            path=ASPI_DATA_PATH,
+            default_code="ASPI",
+            default_name="All Share Price Index",
+        )
+
+    async def fetch_snp_data(self) -> IndexSnapshot | None:
+        """Fetch S&P Sri Lanka 20 index tick (``POST /snpData``)."""
+        return await self._fetch_index_data(
+            endpoint=SNP_DATA_ENDPOINT,
+            path=SNP_DATA_PATH,
+            default_code="SNP_SL20",
+            default_name="S&P Sri Lanka 20",
+        )
 
     async def fetch_company_info(self, symbol: str) -> PriceSnapshot | None:
         # Fail closed — non-string symbol used to throw on .strip mid quote fetch.

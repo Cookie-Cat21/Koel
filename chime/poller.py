@@ -300,6 +300,7 @@ class Poller:
             print_events, print_ok = await self._poll_big_prints()
             notice_events, notice_ok = await self._poll_market_notices()
             book_events, book_ok = await self._poll_order_books()
+            await self._poll_indexes()
             await self._poll_sectors()
             fired.extend(price_events)
             fired.extend(disc_events)
@@ -651,6 +652,35 @@ class Poller:
             log.info("sectors_persist_ok", fetched=len(sectors), persisted=len(stored))
         except Exception as exc:
             log.exception("sectors_persist_failed", error=str(exc), count=len(sectors))
+
+    async def _poll_indexes(self) -> None:
+        """Market index board persist — fail-soft, never degrades tick."""
+        indexes = []
+        fetchers = (
+            getattr(self.cse, "fetch_aspi_data", None),
+            getattr(self.cse, "fetch_snp_data", None),
+        )
+        for fetch in fetchers:
+            if fetch is None:
+                continue
+            try:
+                index = await fetch()
+            except Exception as exc:
+                log.warning(
+                    "index_poll_failed",
+                    endpoint=getattr(fetch, "__name__", ""),
+                    error=str(exc),
+                )
+                continue
+            if index is not None:
+                indexes.append(index)
+        if not indexes:
+            return
+        try:
+            stored = await self.storage.persist_index_snapshots(indexes)
+            log.info("indexes_persist_ok", fetched=len(indexes), persisted=len(stored))
+        except Exception as exc:
+            log.exception("indexes_persist_failed", error=str(exc), count=len(indexes))
 
     async def _evaluate_price_snaps(
         self,
@@ -1467,8 +1497,55 @@ class Poller:
             symbol=event.symbol,
         )
 
+    async def _telegram_in_quiet_hours(self, telegram_id: int) -> bool:
+        """True when Colombo local hour is inside the user's quiet window.
+
+        Window may wrap midnight (e.g. 22→6). Both ends required; otherwise off.
+        """
+        try:
+            prefs = await self.storage.get_user_quiet_hours_by_telegram(telegram_id)
+        except AttributeError:
+            # Older / test storage stubs without the prefs method — treat as off.
+            return False
+        except Exception:
+            log.exception("quiet_hours_lookup_failed", telegram_id=telegram_id)
+            return False
+        if prefs is None:
+            return False
+        if not isinstance(prefs, tuple) or len(prefs) != 2:
+            return False
+        start, end = prefs
+        if start is None or end is None:
+            return False
+        if not isinstance(start, int) or not isinstance(end, int):
+            return False
+        if isinstance(start, bool) or isinstance(end, bool):
+            return False
+        if start == end:
+            return False
+        if not (0 <= start <= 23 and 0 <= end <= 23):
+            return False
+        try:
+            hour = datetime.now(ZoneInfo("Asia/Colombo")).hour
+        except Exception:
+            return False
+        if start < end:
+            return start <= hour < end
+        # Wraps midnight: quiet from start..23 and 0..end-1
+        return hour >= start or hour < end
+
     async def _deliver_one(self, pending: PendingSend) -> None:
         """Send one claimed alert and update alert_log (OK / FAILED / DEFERRED)."""
+        # Quiet hours (user prefs) — hold the row (message_sent=false) for retry;
+        # do not burn deferred/failure attempt counters.
+        if await self._telegram_in_quiet_hours(pending.telegram_id):
+            log.info(
+                "alert_held_quiet_hours",
+                rule_id=pending.rule_id,
+                telegram_id=pending.telegram_id,
+                log_id=pending.log_id,
+            )
+            return
         result = _normalize_send_result(await self.send(pending.telegram_id, pending.message))
         symbol = pending.symbol
         if symbol is None and pending.event is not None:

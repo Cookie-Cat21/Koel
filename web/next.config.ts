@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Don't advertise the framework to clients.
   poweredByHeader: false,
+  // Cloud Agent / CVM port previews hit Next on a non-localhost Host.
+  // Without this, Next 16 blocks /_next/* (no hydration) so demo login
+  // falls through to a native GET and never POSTs /api/v1/auth/demo.
+  allowedDevOrigins: [
+    "*.agent.cvm.dev",
+    "*.cvm.dev",
+  ],
   async headers() {
     return [
       {

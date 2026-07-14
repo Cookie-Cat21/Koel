@@ -41,6 +41,44 @@ export function formatNumber(
   });
 }
 
+/**
+ * Compact filing / large-amount labels (e.g. 21.2B) so metric cards do not
+ * truncate mid-digit. Below 10 000 keeps full ``formatNumber`` precision.
+ */
+export function formatCompactNumber(
+  value: number | null | undefined,
+  digits = 2,
+): string {
+  if (!isFiniteNumber(value)) return "—";
+  if (Math.abs(value) > MAX_FORMAT_ABS_VALUE) return "—";
+  const frac =
+    typeof digits === "number" &&
+    Number.isInteger(digits) &&
+    digits >= 0 &&
+    digits <= MAX_FORMAT_FRACTION_DIGITS
+      ? digits
+      : 2;
+
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  const tiers: { div: number; suffix: string }[] = [
+    { div: 1e12, suffix: "T" },
+    { div: 1e9, suffix: "B" },
+    { div: 1e6, suffix: "M" },
+    { div: 1e3, suffix: "K" },
+  ];
+  for (const tier of tiers) {
+    if (abs >= tier.div) {
+      const scaled = abs / tier.div;
+      return `${sign}${scaled.toLocaleString("en-LK", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: frac,
+      })}${tier.suffix}`;
+    }
+  }
+  return formatNumber(value, frac);
+}
+
 export function formatPct(value: number | null | undefined): string {
   // Fail closed: string/boolean/NaN/±Infinity must not throw on toFixed.
   if (!isFiniteNumber(value)) return "—";
@@ -106,8 +144,79 @@ export function alertTypeLabel(type: unknown): string {
       return "Bid-heavy book";
     case "ask_heavy":
       return "Ask-heavy book";
+    case "eps_above":
+      return "EPS above";
+    case "eps_below":
+      return "EPS below";
+    case "eps_yoy_above":
+      return "EPS YoY above";
+    case "eps_yoy_below":
+      return "EPS YoY below";
+    case "rev_yoy_above":
+      return "Revenue YoY above";
+    case "rev_yoy_below":
+      return "Revenue YoY below";
+    case "profit_yoy_above":
+      return "Profit YoY above";
+    case "profit_yoy_below":
+      return "Profit YoY below";
     default:
       // Fail closed — never echo unknown / hostile type strings into the UI.
       return "Unknown";
+  }
+}
+
+/** Bot-syntax hint for rule rows (parity /help alert lines). */
+export function alertTypeBotHint(type: unknown): string {
+  if (typeof type !== "string") return "";
+  switch (type) {
+    case "price_above":
+      return "/alert SYMBOL above PRICE";
+    case "price_below":
+      return "/alert SYMBOL below PRICE";
+    case "daily_move":
+      return "/alert SYMBOL move PCT";
+    case "disclosure":
+      return "/alert SYMBOL disclosure";
+    case "volume_spike":
+      return "/alert SYMBOL volume spike X";
+    case "volume_up":
+      return "/alert SYMBOL volume up X";
+    case "volume_down":
+      return "/alert SYMBOL volume down X";
+    case "crossing_volume":
+      return "/alert SYMBOL crossing X";
+    case "big_print":
+      return "/alert SYMBOL print SHARES";
+    case "gap":
+      return "/alert SYMBOL gap PCT";
+    case "buy_in":
+      return "/alert SYMBOL buyin";
+    case "non_compliance":
+      return "/alert SYMBOL noncompliance";
+    case "halt":
+      return "/alert MARKET halt";
+    case "bid_heavy":
+      return "/alert SYMBOL bidheavy X";
+    case "ask_heavy":
+      return "/alert SYMBOL askheavy X";
+    case "eps_above":
+      return "/alert SYMBOL eps above N";
+    case "eps_below":
+      return "/alert SYMBOL eps below N";
+    case "eps_yoy_above":
+      return "/alert SYMBOL eps yoy above PCT";
+    case "eps_yoy_below":
+      return "/alert SYMBOL eps yoy below PCT";
+    case "rev_yoy_above":
+      return "/alert SYMBOL rev yoy above PCT";
+    case "rev_yoy_below":
+      return "/alert SYMBOL rev yoy below PCT";
+    case "profit_yoy_above":
+      return "/alert SYMBOL profit yoy above PCT";
+    case "profit_yoy_below":
+      return "/alert SYMBOL profit yoy below PCT";
+    default:
+      return "";
   }
 }

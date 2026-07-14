@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 from datetime import datetime
 from enum import StrEnum
@@ -224,6 +225,29 @@ class SectorSnapshot(BaseModel):
     cse_row_id: int | None = None
 
 
+class IndexSnapshot(BaseModel):
+    """Normalized CSE market index row (POST /aspiData, /snpData)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    code: str
+    name: str | None = None
+    value: float
+    change: float | None = None
+    change_pct: float | None = None
+    ts: datetime
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _value_must_not_be_bool(cls, value: Any) -> Any:
+        return _reject_bool_numeric(value)
+
+    @field_validator("change", "change_pct", mode="before")
+    @classmethod
+    def _optional_numeric_must_not_be_bool(cls, value: Any) -> Any:
+        return _none_if_bool_numeric(value)
+
+
 class AlertRule(BaseModel):
     """Active user alert rule loaded from storage for evaluation."""
 
@@ -241,6 +265,7 @@ class AlertRule(BaseModel):
     active: bool = True
     armed: bool = True
     created_at: datetime | None = None
+    muted_until: datetime | None = None
 
     @field_validator("threshold", mode="before")
     @classmethod
@@ -434,6 +459,30 @@ def disclaimer() -> str:
     return "Not financial advice — informational only."
 
 
+def _dash_symbol_link(symbol: str) -> str | None:
+    """Optional deep link to the dash symbol page (C3).
+
+    Only when ``DASH_PUBLIC_URL`` is an https origin. Symbol must already be
+    control-stripped; path-encodes for safety.
+    """
+    from urllib.parse import quote
+
+    raw = os.environ.get("DASH_PUBLIC_URL", "")
+    if not isinstance(raw, str):
+        return None
+    base = raw.strip().rstrip("/")
+    if not base.startswith("https://") or len(base) > 200:
+        return None
+    if any(ch in base for ch in (" ", "\n", "\r", "\t")):
+        return None
+    # Fail closed — reject userinfo / query / fragment in base.
+    if "@" in base or "?" in base or "#" in base:
+        return None
+    if not symbol or symbol == "?" or len(symbol) > 32:
+        return None
+    return f"{base}/symbols/{quote(symbol, safe='')}"
+
+
 def format_yoy_comparison_block(
     *,
     metrics: dict[str, Any],
@@ -600,6 +649,9 @@ def format_alert_message(
         safe_url = allowed_filing_url(event.disclosure_url)
         if safe_url:
             lines.append(safe_url)
+    dash_link = _dash_symbol_link(symbol)
+    if dash_link:
+        lines.append(dash_link)
     brief = filing_brief if filing_brief is not None else event.filing_brief
     budget = min(BRIEF_BODY_MAX, brief_budget_for_prefix(lines))
     brief_text = sanitize_brief_body(brief, max_len=budget) if budget > 0 else None

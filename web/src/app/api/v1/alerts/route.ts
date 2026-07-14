@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/symbol";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession, requireSessionAndCsrf } from "@/lib/auth/guard";
-import { createAlertRule, getPool, getStock } from "@/lib/db";
+import { activeAlertQuota, createAlertRule, getPool, getStock } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -89,8 +89,10 @@ export async function GET(request: NextRequest) {
       active: boolean;
       armed: boolean;
       created_at: Date | string;
+      muted_until: Date | string | null;
     }>(
-      `SELECT id, symbol, type, threshold, category, active, armed, created_at
+      `SELECT id, symbol, type, threshold, category, active, armed, created_at,
+              muted_until
        FROM alert_rules
        WHERE ${clauses.join(" AND ")}
        ORDER BY id ASC
@@ -121,6 +123,7 @@ export async function GET(request: NextRequest) {
           active: row.active === true,
           armed: row.armed === true,
           created_at: toIso(row.created_at),
+          muted_until: toIso(row.muted_until),
         },
       ];
     });
@@ -160,7 +163,7 @@ export async function POST(request: NextRequest) {
     return jsonError(
       400,
       "validation_error",
-      "type must be a supported alert type (price, move, disclosure, volume, print, gap, or notice).",
+      "type must be a supported alert type (price, move, disclosure, volume, print, gap, notice, book, or filing metrics).",
     );
   }
   const alertType = obj.type;
@@ -224,6 +227,15 @@ export async function POST(request: NextRequest) {
     const stock = await getStock(symbol);
     if (!stock) {
       return jsonError(404, "not_found", "Unknown symbol.");
+    }
+
+    const quota = await activeAlertQuota(gated.session.user_id);
+    if (quota.active_count >= quota.alert_quota_max) {
+      return jsonError(
+        429,
+        "alert_quota_exceeded",
+        "Active alert quota reached.",
+      );
     }
 
     const { rule, created } = await createAlertRule(

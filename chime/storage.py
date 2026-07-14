@@ -19,6 +19,7 @@ from chime.domain import (
     AlertType,
     BigPrint,
     Disclosure,
+    IndexSnapshot,
     MarketNotice,
     OrderBookSnapshot,
     PreviousPriceState,
@@ -432,6 +433,57 @@ class Storage:
                     [s.previous_close for s in rows],
                     [s.ts for s in rows],
                     [s.cse_row_id for s in rows],
+                ),
+            )
+        return rows
+
+    async def persist_index_snapshots(
+        self,
+        indexes: list[IndexSnapshot],
+    ) -> list[IndexSnapshot]:
+        """Insert market index snapshots from ``aspiData`` / ``snpData``."""
+        if not indexes:
+            return []
+
+        by_code: dict[str, IndexSnapshot] = {}
+        for index in indexes:
+            # Fail closed — non-string code used to throw on .strip and abort
+            # both index persists.
+            if not isinstance(index.code, str):
+                continue
+            code = index.code.strip().upper()
+            if not code:
+                continue
+            if not math.isfinite(index.value):
+                continue
+            by_code[code] = index.model_copy(update={"code": code})
+        if not by_code:
+            return []
+
+        rows = list(by_code.values())
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                """
+                INSERT INTO index_snapshots (
+                    code, name, value, change, change_pct, ts
+                )
+                SELECT code, name, value, change, change_pct, ts
+                FROM UNNEST(
+                    %s::text[],
+                    %s::text[],
+                    %s::double precision[],
+                    %s::double precision[],
+                    %s::double precision[],
+                    %s::timestamptz[]
+                ) AS t(code, name, value, change, change_pct, ts)
+                """,
+                (
+                    [s.code for s in rows],
+                    [s.name for s in rows],
+                    [s.value for s in rows],
+                    [s.change for s in rows],
+                    [s.change_pct for s in rows],
+                    [s.ts for s in rows],
                 ),
             )
         return rows
@@ -1875,6 +1927,42 @@ class Storage:
             raise ValueError("inserted alert rule row failed validation")
         return rule
 
+    async def get_user_quiet_hours_by_telegram(
+        self, telegram_id: int
+    ) -> tuple[int | None, int | None] | None:
+        """Return (start_hour, end_hour) in Asia/Colombo local hours, or None.
+
+        Missing user → None. Malformed hours fail closed to (None, None)
+        meaning quiet hours off.
+        """
+        if not isinstance(telegram_id, int) or isinstance(telegram_id, bool):
+            return None
+        if telegram_id <= 0 or not (telegram_id.bit_length() <= 63):
+            return None
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT quiet_hours_start, quiet_hours_end
+                      FROM users
+                     WHERE telegram_id = %s
+                    """,
+                    (telegram_id,),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        r = _as_row(row)
+        start = r.get("quiet_hours_start")
+        end = r.get("quiet_hours_end")
+        def _hour(v: object) -> int | None:
+            if v is None:
+                return None
+            if isinstance(v, bool) or not isinstance(v, int):
+                return None
+            return v if 0 <= v <= 23 else None
+        return _hour(start), _hour(end)
+
     async def _fetch_active_rule(
         self,
         conn: Any,
@@ -2517,6 +2605,16 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
                 created = datetime.fromisoformat(created)
             except (TypeError, ValueError):
                 created = None
+    muted_until = row.get("muted_until")
+    if muted_until is not None and not isinstance(muted_until, datetime):
+        # Fail closed — never str()-coerce non-string muted_until values.
+        if not isinstance(muted_until, str):
+            muted_until = None
+        else:
+            try:
+                muted_until = datetime.fromisoformat(muted_until)
+            except (TypeError, ValueError):
+                muted_until = None
     # Legacy / poisoned rows may still hold C0 controls or oversize categories —
     # sanitize on read so matching + Telegram egress share one egress bar.
     # Fail closed — never str()-coerce non-string PG values into category
@@ -2570,4 +2668,5 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
         active=raw_active,
         armed=raw_armed,
         created_at=created,
+        muted_until=muted_until,
     )

@@ -1,36 +1,36 @@
-# Chime — CSE Alerting Layer
+# Chime — CSE market dash + Telegram alerts
 
 ## What this is
 
-Chime is a Telegram-first alerting product for the Colombo Stock Exchange (CSE).
-It is NOT a portfolio tracker, NOT a trading terminal, and NOT a dashboard the
-user is expected to open regularly. It is a background watcher that pushes a
-message the moment something the user cares about happens: a price crossing a
-threshold, a daily % move, or a new company disclosure/announcement.
+Chime is a **Colombo Stock Exchange dashboard** for browsing symbols, watching
+what you care about, and managing alert rules — with **Telegram push** as the
+differentiator on top (the cherry). When a price crosses a threshold, a daily
+% move fires, or a disclosure lands, Chime pings Telegram even if the browser
+is closed.
 
-The one thing every existing tool in this space fails to do (CSE's own mobile
-app, CSE Tracker Pro, TradingView, etc.) is real push notification that works
-without the user having a browser tab or app open. That is Chime's entire
-reason to exist. Everything else is secondary.
+CSE Tracker Pro and friends cover portfolio / screener / charts well, but their
+price alerts are still browser-open-only. Chime’s wedge is real push. The web
+app is the daily surface; Telegram is how you hear the market when you’re away.
 
-**Non-goals for v1 (do not build these yet):**
-- No portfolio / P&L tracking
-- No tax reports
-- No stock screener
-- No technical analysis charts
-- No native mobile app
-- No payment integration
+**Deferred (not yet — do not build these yet):**
+- Portfolio quantities / cost basis / P&L tracking
+- Tax reports
+- Heavy multi-filter stock screener / trading terminal
+- Full technical analysis chart suites
+- Native mobile app
+- Payment integration
 
-**Thin web dashboard (greenlit — secondary to Telegram):**
-A minimal management UI is allowed: watchlist, alerts, fire history, symbol
-detail (last price + disclosures), and poller health. It must not become a
-trading terminal or replace push as the primary experience. Stack when built:
-Next.js + Tailwind + shadcn/ui. See `docs/factory/COMMIT_FACTORY.md` and
-`docs/factory/DASH_IA.md`.
+**Web dashboard (primary surface):**
+Overview home, market browse, watchlist, alerts + fire history, symbol detail
+(last price, sparkline, disclosures), and poller health. Stack: Next.js +
+Tailwind + shadcn/ui. See `docs/factory/DASH_IA.md`,
+`docs/factory/DASH_CAKE_CHERRY.md`, `docs/factory/CHIME_MASTER_PLAN.md`
+(maximum fence-legal roadmap), and `docs/factory/COMMIT_FACTORY.md`.
 
-If a feature isn't required to make "user sets an alert condition and gets
-pinged on Telegram when it fires" work end to end — or to manage that setup
-in the thin dashboard — it does not belong in v1.
+**Telegram (cherry on top):**
+`/watch`, `/alert`, `/myalerts`, and fire pushes. Same Postgres truth as the
+dash. If a feature doesn’t help “see the market in the dash” or “get pinged on
+Telegram when a rule fires,” it does not belong yet.
 
 ## Context / competitive landscape (for reasoning, not for building yet)
 
@@ -46,7 +46,8 @@ in the thin dashboard — it does not belong in v1.
   shipped "Tijori Alerts" — a standalone WhatsApp-first filing/alert summarizer
   — specifically to close it, even after Kite already had in-app alerts.
 
-Chime is the CSE equivalent of Tijori Alerts, not a CSE Tracker Pro clone.
+Chime = denser CSE dash **plus** Tijori-style push. Not a pure Tracker Pro clone,
+and not alerts-only chrome anymore.
 
 ## Data sources (observed 2026-07-11 — see `docs/endpoint_probe_report.md`)
 

@@ -21,7 +21,7 @@ def test_demo_auth_route_uses_to_safe_positive_int() -> None:
     route = WEB / "src" / "app" / "api" / "v1" / "auth" / "demo" / "route.ts"
     source = route.read_text(encoding="utf-8")
     assert "toSafePositiveInt" in source
-    assert "toSafePositiveInt(body.telegram_id)" in source
+    assert "toSafePositiveInt(parsed.telegramId)" in source
     assert 'typeof rawId !== "number"' not in source
     assert "Number.isSafeInteger(rawId)" not in source
 

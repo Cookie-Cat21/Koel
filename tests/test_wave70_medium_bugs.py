@@ -54,7 +54,7 @@ def test_settings_env_helpers_reject_non_string_getenv(
 
     with patch("chime.config.os.getenv", side_effect=_hostile):
         settings = Settings.from_env(require_token=True)
-    assert settings.poll_interval_seconds == 60.0
+    assert settings.poll_interval_seconds == 15.0
     assert settings.log_level == "INFO"
     assert settings.disclosure_bulk_feed is False
     assert settings.sectors_ingest is False

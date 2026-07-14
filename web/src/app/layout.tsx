@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   title: "Chime",
   description:
     "Telegram-first CSE alerting — manage watchlists and alert rules.",
+  icons: {
+    icon: [{ url: "/brand/chime-mark.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/brand/chime-mark.png" }],
+  },
 };
 
 export const viewport: Viewport = {

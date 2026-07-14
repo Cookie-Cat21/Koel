@@ -5,6 +5,17 @@ import { useState } from "react";
 
 import { InlineError } from "@/components/inline-error";
 import { useToast } from "@/components/toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,13 +110,95 @@ export function WatchlistAddForm() {
   );
 }
 
-export function UnwatchButton({ symbol }: { symbol: string }) {
+/** Watch or Unwatch CTA — pass ``watching`` from SSR watchlist membership. */
+export function WatchButton({
+  symbol,
+  watching = false,
+}: {
+  symbol: string;
+  watching?: boolean;
+}) {
+  if (watching) return <UnwatchButton symbol={symbol} />;
+  return <WatchAddButton symbol={symbol} />;
+}
+
+function WatchAddButton({ symbol }: { symbol: string }) {
   const router = useRouter();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function onClick() {
+    setError(null);
+    // Fail closed — hostile / non-SYMBOL_RE props must not hit POST.
+    const normalized = normalizeSymbol(symbol);
+    if (!normalized) {
+      const msg = "Invalid CSE symbol.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    setPending(true);
+    try {
+      const { ok, status, data } = await apiMutate("/api/v1/watchlist", {
+        method: "POST",
+        body: { symbol: normalized },
+      });
+      if (!ok) {
+        const msg = apiErrorMessage(data, `Could not watch (${status}).`);
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      const created =
+        data &&
+        typeof data === "object" &&
+        "created" in data &&
+        typeof (data as { created: unknown }).created === "boolean"
+          ? (data as { created: boolean }).created
+          : status === 201;
+      toast.success(
+        created
+          ? `Watching ${normalized}. Pushes still go to Telegram.`
+          : `Already watching ${normalized}. Pushes still go to Telegram.`,
+      );
+      router.refresh();
+    } catch {
+      const msg = "Network error.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        type="button"
+        size="sm"
+        disabled={pending}
+        onClick={onClick}
+        aria-busy={pending || undefined}
+      >
+        {pending ? "…" : "Watch"}
+      </Button>
+      <InlineError
+        message={error}
+        className="max-w-[12rem] px-2 py-1 text-right text-xs"
+      />
+    </div>
+  );
+}
+
+export function UnwatchButton({ symbol }: { symbol: string }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function confirmUnwatch() {
     setError(null);
     // Fail closed — hostile / non-SYMBOL_RE props must not hit DELETE.
     const normalized = normalizeSymbol(symbol);
@@ -128,6 +221,7 @@ export function UnwatchButton({ symbol }: { symbol: string }) {
         return;
       }
       toast.success(`Removed ${normalized}. Telegram pushes for it are off.`);
+      setOpen(false);
       router.refresh();
     } catch {
       const msg = "Network error.";
@@ -140,15 +234,34 @@ export function UnwatchButton({ symbol }: { symbol: string }) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={pending}
-        onClick={onClick}
-      >
-        {pending ? "…" : "Unwatch"}
-      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant="outline" size="sm" disabled={pending}>
+            Unwatch
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unwatch {symbol}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removes it from your watchlist and deactivates related alerts.
+              Telegram pushes for this symbol stop.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Keep</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmUnwatch();
+              }}
+            >
+              {pending ? "…" : "Unwatch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <InlineError
         message={error}
         className="max-w-[12rem] px-2 py-1 text-right text-xs"

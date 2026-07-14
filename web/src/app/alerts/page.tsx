@@ -3,12 +3,19 @@ import Link from "next/link";
 import {
   AlertCreateForm,
   CancelAlertButton,
+  MuteAlertButton,
+  TestFireButton,
 } from "@/components/alert-controls";
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { ArmedBadge } from "@/components/kit/status-badge";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { sanitizeDisclosureCategory } from "@/lib/api/disclosure-safe";
 import {
@@ -19,7 +26,12 @@ import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
-import { alertTypeLabel, formatNumber, formatTs } from "@/lib/format";
+import {
+  alertTypeBotHint,
+  alertTypeLabel,
+  formatNumber,
+  formatTs,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +39,12 @@ export const metadata = {
   title: "Alerts · Chime",
   description: "Active alert rules for your Chime watchlist.",
 };
+
+function isActivelyMuted(mutedUntil: string | null): boolean {
+  if (!mutedUntil) return false;
+  const t = Date.parse(mutedUntil);
+  return Number.isFinite(t) && t > Date.now();
+}
 
 type AlertsPayload = {
   rules: {
@@ -38,18 +56,20 @@ type AlertsPayload = {
     active: boolean;
     armed: boolean;
     created_at: string | null;
+    muted_until: string | null;
   }[];
 };
 
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ symbol?: string }>;
+  searchParams: Promise<{ symbol?: string; type?: string }>;
 }) {
   await requirePageSession();
   const sp = await searchParams;
   // Drop invalid / hostile filter params — same SYMBOL_RE as the API.
   const symbolFilter = normalizeSymbol(sp.symbol ?? "") ?? "";
+  const typeFilter = isAlertType(sp.type) ? sp.type : null;
 
   const qs = new URLSearchParams();
   if (symbolFilter) qs.set("symbol", symbolFilter);
@@ -93,6 +113,7 @@ export default async function AlertsPage({
             active: r.active === true,
             armed: r.armed === true,
             created_at: toIso(r.created_at),
+            muted_until: toIso(r.muted_until),
           });
           // Cap parser — hostile / uncapped API JSON must not balloon SSR.
           if (rules.length >= 500) break;
@@ -107,35 +128,31 @@ export default async function AlertsPage({
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav active="/alerts" />
-      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Alerts
-        </h1>
-        <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-          Active rules only. Create a price, move, or disclosure alert here;
-          Chime adds the symbol to your watchlist and sends the push on
-          Telegram.
-        </p>
+      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+        <PageHeader
+          eyebrow="Rules"
+          title="Alerts"
+          description="Active rules only. Create a price, move, or disclosure alert here; Chime adds the symbol to your watchlist and sends the push on Telegram."
+        />
 
         <form
           method="get"
           className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
-          <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
-            <span className="text-muted-foreground">Symbol filter</span>
-            <input
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="alerts_symbol_filter">Symbol filter</Label>
+            <Input
+              id="alerts_symbol_filter"
               name="symbol"
               defaultValue={symbolFilter}
               placeholder="e.g. JKH.N0000"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="h-10 font-mono"
+              autoComplete="off"
             />
-          </label>
-          <button
-            type="submit"
-            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+          </div>
+          <Button type="submit" className="h-10 shrink-0">
             Apply
-          </button>
+          </Button>
           {symbolFilter ? (
             <Button asChild variant="outline" className="h-10 shrink-0">
               <Link href="/alerts">Clear</Link>
@@ -143,7 +160,18 @@ export default async function AlertsPage({
           ) : null}
         </form>
 
-        <AlertCreateForm />
+        <AlertCreateForm
+          initialSymbol={symbolFilter}
+          initialType={typeFilter}
+        />
+        <p className="mt-3 text-xs text-muted-foreground">
+          Quiet hours / digest:{" "}
+          <Link href="/settings" className="underline underline-offset-4">
+            Settings
+          </Link>
+          . Mute a rule below to pause Telegram fires. Filing EPS/YoY rules need
+          metrics flags to live-fire.
+        </p>
 
         {!payload ? (
           <EmptyState
@@ -221,33 +249,61 @@ export default async function AlertsPage({
           />
         ) : (
           <ul className="mt-8 divide-y divide-border/60">
-            {payload.rules.map((rule) => (
-              <li
-                key={rule.id}
-                className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/symbols/${encodeURIComponent(rule.symbol)}`}
-                    className="font-mono text-sm font-medium underline-offset-4 hover:underline"
-                  >
-                    {rule.symbol}
-                  </Link>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    #{rule.id} · {alertTypeLabel(rule.type)}
-                    {rule.threshold != null
-                      ? ` · ${formatNumber(rule.threshold)}`
-                      : ""}
-                    {rule.category ? ` · ${rule.category}` : ""}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {rule.armed ? "Armed" : "Disarmed"} ·{" "}
-                    {formatTs(rule.created_at)}
-                  </p>
-                </div>
-                <CancelAlertButton ruleId={rule.id} />
-              </li>
-            ))}
+            {payload.rules.map((rule) => {
+              const hint = alertTypeBotHint(rule.type);
+              return (
+                <li
+                  key={rule.id}
+                  className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/symbols/${encodeURIComponent(rule.symbol)}`}
+                        className="font-mono text-sm font-medium underline-offset-4 hover:underline"
+                      >
+                        {rule.symbol}
+                      </Link>
+                      <ArmedBadge armed={rule.armed} />
+                      {isActivelyMuted(rule.muted_until) ? (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                        >
+                          Muted
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      #{rule.id} · {alertTypeLabel(rule.type)}
+                      {rule.threshold != null
+                        ? ` · ${formatNumber(rule.threshold)}`
+                        : ""}
+                      {rule.category ? ` · ${rule.category}` : ""}
+                    </p>
+                    {hint ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        {hint}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Created {formatTs(rule.created_at)}
+                      {isActivelyMuted(rule.muted_until)
+                        ? ` · muted until ${formatTs(rule.muted_until)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <TestFireButton ruleId={rule.id} />
+                    <MuteAlertButton
+                      ruleId={rule.id}
+                      mutedUntil={rule.muted_until}
+                    />
+                    <CancelAlertButton ruleId={rule.id} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
 

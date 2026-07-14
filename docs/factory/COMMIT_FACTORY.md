@@ -21,7 +21,7 @@ Read and obey [CLAUDE.md](../CLAUDE.md). Hard fences:
 
 | Decision | Choice |
 |---|---|
-| Dashboard | **Unlock thin web** (watchlist / alerts / fire history / symbol+disclosures). Still **no** portfolio, screener, TA, payments. |
+| Dashboard | **Unlock denser CSE dash** (Overview / Browse / Watchlist / Alerts / Symbol / Health) per [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md). Portfolio/tax/heavy screener/TA = phased unlocks only after cake+cherry are excellent. |
 | Dash data path | Postgres-backed API; CSE traffic stays in poller/bot adapters |
 | Auth (v1) | Server-side session after verified identity — **not** client-supplied `telegram_id` + shared secret alone |
 | PR style | One long-lived factory PR per epoch; pass reports in `docs/factory/` |

@@ -84,7 +84,7 @@ queued messages from downtime are discarded on restart (avoids replaying stale
 
 Alert **claim → Telegram send** is instrumented (`alert_latency_ms`) and targeted
 at p95 &lt; 5s. End-to-end CSE print → Telegram is bounded by
-`POLL_INTERVAL_SECONDS` (default 60s, with jitter) — the honest product SLO is
+`POLL_INTERVAL_SECONDS` (default 15s, with jitter) — the honest product SLO is
 “within one poll cycle during market hours,” not sub-5s from the exchange tick.
 
 When `bot`, `poller`, or `both` is running:

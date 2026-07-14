@@ -19,6 +19,13 @@ const PROCESS_STARTED_AT = new Date().toISOString();
 /** Default bound for HEALTH_URL proxy (headers + body). */
 export const HEALTH_PROXY_TIMEOUT_MS_DEFAULT = 3000;
 
+function snapshotRetentionDays(): number {
+  const rawEnv = process.env.SNAPSHOT_RETENTION_DAYS;
+  const raw = typeof rawEnv === "string" ? rawEnv.trim() : "";
+  if (!raw) return 0;
+  return toNonNegativeSafeInt(raw, 0);
+}
+
 /** Bound HEALTH_URL proxy. Fail-closed on bad/non-positive env → default. */
 export function healthProxyTimeoutMs(): number {
   // Fail closed — non-string env mocks used to throw on .trim mid timeout parse
@@ -268,6 +275,11 @@ export async function GET(request: NextRequest) {
   let lastSnapshotAt: string | null = null;
   let startedAt = PROCESS_STARTED_AT;
   let poller: PollerHealth | null = null;
+  let delivery = {
+    delivered_24h: 0,
+    retrying: 0,
+    dead_lettered: 0,
+  };
 
   try {
     const pool = getPool();
@@ -277,6 +289,37 @@ export async function GET(request: NextRequest) {
       `SELECT MAX(ts) AS max_ts FROM price_snapshots`,
     );
     lastSnapshotAt = toIso(snap.rows[0]?.max_ts ?? null);
+    try {
+      const deliveryResult = await pool.query<{
+        delivered_24h: string | number;
+        retrying: string | number;
+        dead_lettered: string | number;
+      }>(
+        `SELECT
+           COUNT(*) FILTER (
+             WHERE fired_at >= now() - interval '24 hours'
+               AND (message_sent = TRUE OR delivery_attempted_ok = TRUE)
+           )::int AS delivered_24h,
+           COUNT(*) FILTER (
+             WHERE attempt_count > 0
+               AND dead_lettered = FALSE
+               AND delivery_attempted_ok = FALSE
+               AND message_sent = FALSE
+           )::int AS retrying,
+           COUNT(*) FILTER (WHERE dead_lettered = TRUE)::int AS dead_lettered
+         FROM alert_log`,
+      );
+      const deliveryRow = deliveryResult.rows[0];
+      if (deliveryRow) {
+        delivery = {
+          delivered_24h: toNonNegativeSafeInt(deliveryRow.delivered_24h, 0),
+          retrying: toNonNegativeSafeInt(deliveryRow.retrying, 0),
+          dead_lettered: toNonNegativeSafeInt(deliveryRow.dead_lettered, 0),
+        };
+      }
+    } catch (err) {
+      console.error("GET /health delivery stats failed", err);
+    }
   } catch (err) {
     console.error("GET /health db ping failed", err);
     dbOk = false;
@@ -382,6 +425,10 @@ export async function GET(request: NextRequest) {
     db_ok: dbOk,
     started_at: startedAt,
     last_snapshot_at: lastSnapshotAt,
+    delivery,
+    retention: {
+      snapshot_retention_days: snapshotRetentionDays(),
+    },
   };
   if (poller != null) {
     payload.poller = poller;

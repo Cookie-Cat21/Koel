@@ -4,14 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { ChimeWordmark } from "@/components/brand/chime-brand";
+import { CommandPalette } from "@/components/command-palette";
 import { NavSession } from "@/components/nav-session";
+import { Button } from "@/components/ui/button";
 
 const links = [
+  { href: "/overview", label: "Overview" },
   { href: "/market", label: "Browse" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/alerts", label: "Alerts" },
   { href: "/alerts/history", label: "History" },
   { href: "/scenarios", label: "Scenarios" },
+  { href: "/settings", label: "Settings" },
   { href: "/health", label: "Health" },
 ] as const;
 
@@ -48,17 +53,19 @@ export function resolveActiveNavHref(
 export function AppNav({ active }: { active?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const activeHref = resolveActiveNavHref(active ?? pathname);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          className="rounded-sm font-display text-xl font-semibold tracking-tight text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+          aria-label="Chime home"
+          className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
           onClick={() => setOpen(false)}
         >
-          Chime
+          <ChimeWordmark size="sm" className="motion-safe:transition-opacity motion-safe:hover:opacity-80" />
         </Link>
 
         {/* Desktop / tablet */}
@@ -83,6 +90,21 @@ export function AppNav({ active }: { active?: string }) {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSearchOpen(true);
+              setOpen(false);
+            }}
+            aria-haspopup="dialog"
+          >
+            Search
+            <span className="ml-1 hidden text-xs text-muted-foreground md:inline">
+              Ctrl K
+            </span>
+          </Button>
           <NavSession />
 
           {/* Mobile menu toggle */}
@@ -142,6 +164,7 @@ export function AppNav({ active }: { active?: string }) {
           <NavSession compact />
         </div>
       </nav>
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 }

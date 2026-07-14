@@ -1,9 +1,9 @@
 # Chime Dashboard — Information Architecture & API Sketch
 
-**Lane:** DASH · **Stack:** Next.js + Tailwind + shadcn/ui · **Scope:** thin management UI only  
-**Constitution:** [COMMIT_FACTORY.md](COMMIT_FACTORY.md) §7 · [CLAUDE.md](../../CLAUDE.md)
+**Lane:** DASH · **Stack:** Next.js + Tailwind + shadcn/ui  
+**Product:** CSE market dash (cake) + Telegram push (cherry) — [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [CLAUDE.md](../../CLAUDE.md)
 
-Telegram remains the push channel. The dashboard is for CRUD + inspection — not a trading terminal.
+The dashboard is the daily surface. Telegram remains the push channel when you’re away.
 
 ---
 
@@ -11,18 +11,19 @@ Telegram remains the push channel. The dashboard is for CRUD + inspection — no
 
 | Route | Purpose | Auth |
 |---|---|---|
-| `/` | Redirect → `/watchlist` (or `/login` if unauthenticated) | — |
+| `/` | Marketing landing (signed-out) · redirect → `/overview` when signed in | — |
 | `/login` | Local/demo sign-in (v1); Telegram Login Widget later | public |
-| `/market` | Thin CSE symbol browse (latest snapshots from Postgres) | user |
+| `/overview` | Signed-in home: movers, watch peek, armed alerts, recent fires | user |
+| `/market` | CSE symbol browse (latest snapshots from Postgres) | user |
 | `/watchlist` | User watchlist + last price / change | user |
 | `/alerts` | Active alert rules CRUD | user |
 | `/alerts/history` | Fire history (`alert_log`) | user |
 | `/symbols/[symbol]` | Symbol detail: last tick, sparkline, disclosures | user |
 | `/health` | Ops: poller liveness / last poll (read-only) | ops-gated (session; see ADR 001) |
 
-No nested app shell beyond a single top nav: Browse · Watchlist · Alerts · History · (Health).
+App shell: sticky top nav — Overview · Browse · Watchlist · Alerts · History · (Health). Content width `max-w-6xl`.
 
-**Browse fence:** `/market` is a slim discovery list (symbol · name · last · change_pct · link to symbol detail). Not a quote board, screener, or trading terminal. Data comes from poller-persisted `price_snapshots` only — no cse.lk from `web/`. See [TIJORI_CSE_PLAN.md](TIJORI_CSE_PLAN.md).
+**Browse fence:** `/market` is discovery (symbol · name · last · change_pct · link to detail) plus movers/sectors. Not a full quant screener or order-book terminal. Data from poller-persisted `price_snapshots` only — no cse.lk from `web/`. See [TIJORI_CSE_PLAN.md](TIJORI_CSE_PLAN.md).
 
 ---
 
@@ -45,7 +46,7 @@ No nested app shell beyond a single top nav: Browse · Watchlist · Alerts · Hi
 - Sorted by `change_pct` desc by default (thin movers view — not a screener)
 - Empty state: no snapshots yet — run `make tick` (or leave poller/both running), then refresh; search miss is a separate empty
 - NFA under price-adjacent copy + site footer
-- Fence: no OHLC board, no multi-column sort UI, no live ticks, no cse.lk from `web/`
+- Fence: no OHLC board, no multi-column sort UI, no cse.lk from `web/` (near-realtime = poller → Postgres → `PriceRefresh`)
 
 ### `/watchlist`
 - Header: “Watchlist” + add-symbol control (input + Add)
@@ -139,7 +140,9 @@ Proxy or re-expose existing poller `/health` — do not invent a second source o
 ### Conventions
 - Symbol normalize: uppercase, same regex as bot (`SYMBOL_RE`).
 - NFA is **UI-only** (`disclaimer()` chrome) — not required on JSON bodies.
-- No WebSocket in v1; pages refresh on navigation only (no short-poll quote loop).
+- No WebSocket quote stream in v1 (CSE has no public tape). **Near-realtime:**
+  dash pages soft-refresh from Postgres via `PriceRefresh` (~15s); freshness
+  tracks poller `POLL_INTERVAL_SECONDS` (floor 5s). Never call cse.lk from `web/`.
 
 ---
 
@@ -162,7 +165,7 @@ Do not introduce email/password, OAuth providers, or multi-tenant orgs in v1. Da
 | Page | Out of scope |
 |---|---|
 | `/login` | Marketing site, waitlist, payments, multi-provider SSO |
-| `/market` | Screener, OHLC board, multi-sort UI, live ticks, portfolio actions |
+| `/market` | Screener, OHLC board, multi-sort UI, broker-style live tape, portfolio actions |
 | `/watchlist` | Portfolio quantities, cost basis, P&L, sector allocation |
 | `/alerts` | Complex boolean rules, trailing stops, backtests, quiet hours UI |
 | `/alerts/history` | Analytics funnels, export-to-tax, “would have made” sims |

@@ -2,9 +2,13 @@ import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { DeliveryBadge } from "@/components/kit/status-badge";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   MAX_HISTORY_EVENT_KEY_LENGTH,
   sanitizeDisclosureText,
@@ -50,6 +54,7 @@ type HistoryPayload = {
   }[];
   limit: number;
   offset: number;
+  total: number | null;
 };
 
 /**
@@ -68,19 +73,6 @@ function cappedAttemptCount(raw: unknown): number {
 function pluralizeAttempts(count: number): string {
   const n = cappedAttemptCount(count);
   return `${n} ${n === 1 ? "attempt" : "attempts"}`;
-}
-
-function deliveryBadgeClassName(status: DeliveryStatus): string {
-  switch (status) {
-    case "sent":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-    case "delivered_unmarked":
-      return "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
-    case "retrying":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
-    case "dead_lettered":
-      return "border-destructive/30 bg-destructive/10 text-destructive";
-  }
 }
 
 function deliveryCopy(event: HistoryPayload["events"][number]): {
@@ -216,10 +208,18 @@ export default async function AlertHistoryPage({
             : offset,
           offset,
         );
+        const totalRaw =
+          body && typeof body === "object" && !Array.isArray(body)
+            ? ((body as { total?: unknown; count?: unknown }).total ??
+              (body as { count?: unknown }).count)
+            : null;
+        const total =
+          totalRaw == null ? null : toNonNegativeSafeInt(totalRaw, -1);
         payload = {
           events,
           limit: Math.min(Math.max(limitOut, 1), 200),
           offset: Math.min(offsetOut, MAX_HISTORY_OFFSET),
+          total: total != null && total >= 0 ? total : null,
         };
       }
     } catch {
@@ -245,41 +245,71 @@ export default async function AlertHistoryPage({
     payload != null &&
     payload.events.length >= pageLimit &&
     nextOffset > pageOffset;
+  const showingStart = pageOffset + 1;
+  const showingEnd = pageOffset + (payload?.events.length ?? 0);
+  const showingLabel =
+    payload && payload.events.length > 0
+      ? payload.total == null
+        ? `Showing ${showingStart}–${showingEnd} (limit ${pageLimit})`
+        : `Showing ${showingStart}–${showingEnd} of ${payload.total}`
+      : null;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav active="/alerts/history" />
-      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          History
-        </h1>
-        <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-          When your rules fire, Telegram gets the push. This list is the audit
-          trail from Postgres.
-        </p>
+      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+        <PageHeader
+          eyebrow="Audit"
+          title="History"
+          description="When your rules fire, Telegram gets the push. This list is the audit trail from Postgres."
+        />
 
         <form
           method="get"
           className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
-          {/* New filter resets OFFSET; preserve limit across Apply. */}
-          <input type="hidden" name="limit" value={limit} />
-          <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
-            <span className="text-muted-foreground">Symbol filter</span>
-            <input
+          {/* New filter resets OFFSET (omit offset field). */}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="history_symbol_filter">Symbol filter</Label>
+            <Input
+              id="history_symbol_filter"
               name="symbol"
               defaultValue={symbolFilter}
               placeholder="e.g. JKH.N0000"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="h-10 font-mono"
+              autoComplete="off"
             />
-          </label>
-          <button
-            type="submit"
-            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+          </div>
+          <div className="flex w-full flex-col gap-1.5 sm:w-28">
+            <Label htmlFor="history_limit">Limit</Label>
+            {/* Native select — GET form must submit without client JS. */}
+            <select
+              id="history_limit"
+              name="limit"
+              defaultValue={String(limit)}
+              className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </div>
+          <Button type="submit" className="h-10 shrink-0">
             Apply
-          </button>
+          </Button>
+          {symbolFilter ? (
+            <Button asChild variant="outline" className="h-10 shrink-0">
+              <Link href={`/alerts/history?limit=${limit}`}>Clear</Link>
+            </Button>
+          ) : null}
         </form>
+
+        {showingLabel ? (
+          <p className="mt-4 text-sm text-muted-foreground" role="status">
+            {showingLabel}
+          </p>
+        ) : null}
 
         {!payload ? (
           <EmptyState
@@ -364,11 +394,10 @@ export default async function AlertHistoryPage({
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
                     <span>{alertTypeLabel(ev.type)}</span>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${deliveryBadgeClassName(ev.delivery_status)}`}
-                    >
-                      {delivery.label}
-                    </span>
+                    <DeliveryBadge
+                      status={ev.delivery_status}
+                      label={delivery.label}
+                    />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {delivery.description}

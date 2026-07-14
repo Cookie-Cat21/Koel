@@ -151,7 +151,7 @@ def test_tiny_positive_poll_knobs_fail_closed(
     monkeypatch.setenv("HTTP_TIMEOUT_SECONDS", raw)
     monkeypatch.setenv("CIRCUIT_RESET_SECONDS", raw)
     settings = Settings.from_env(require_token=True)
-    assert settings.poll_interval_seconds == (float(raw) if poll_ok else 60.0)
+    assert settings.poll_interval_seconds == (float(raw) if poll_ok else 15.0)
     assert settings.http_timeout_seconds == (float(raw) if timeout_ok else 15.0)
     assert settings.circuit_reset_seconds == (float(raw) if reset_ok else 60.0)
 

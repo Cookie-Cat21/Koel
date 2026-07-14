@@ -57,7 +57,7 @@ export function ListPageSkeleton({
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <div className="sticky top-0 z-40 border-b border-border/70 bg-background/80 px-4 py-3 sm:px-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Skeleton className="h-7 w-20" />
           <div className="hidden gap-4 sm:flex">
             <Skeleton className="h-4 w-16" />
@@ -67,7 +67,7 @@ export function ListPageSkeleton({
         </div>
       </div>
       <div
-        className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10"
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10"
         role="status"
         aria-busy="true"
         aria-label="Loading"

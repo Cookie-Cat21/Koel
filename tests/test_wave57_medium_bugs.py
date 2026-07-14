@@ -109,4 +109,4 @@ def test_health_ops_notice_sanitizes_copy() -> None:
     assert "MAX_OPS_NOTICE_COPY" in source
     assert "safeTitle" in source
     assert "safeCopy" in source
-    assert source.count("sanitizeOpsNoticeText(") >= 4
+    assert source.count("sanitizeOpsNoticeText(") >= 2

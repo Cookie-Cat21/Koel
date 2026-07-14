@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
+import { ChimeWordmark } from "@/components/brand/chime-brand";
 import { LoginForm } from "@/components/login-form";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
@@ -14,7 +15,7 @@ import { verifySessionToken } from "@/lib/auth/session";
 
 export const metadata = {
   title: "Sign in · Chime",
-  description: "Sign in to manage Chime CSE alerts that push to Telegram.",
+  description: "Sign in to the Chime CSE dashboard — Telegram alerts on top.",
 };
 
 export default async function LoginPage({
@@ -30,7 +31,7 @@ export default async function LoginPage({
       ? verifySessionToken(raw, cfg.sessionSecret)
       : null;
   if (session) {
-    redirect("/watchlist");
+    redirect("/overview");
   }
 
   const sp = await searchParams;
@@ -43,21 +44,22 @@ export default async function LoginPage({
     cfg.defaultTelegramId && cfg.allowlist.has(cfg.defaultTelegramId)
       ? cfg.defaultTelegramId
       : null;
+  const telegramLoginEnabled = process.env.DASH_TELEGRAM_LOGIN === "1";
 
   return (
     <main id="main-content" tabIndex={-1} className="chime-atmosphere flex min-h-full flex-1 flex-col">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
-        <p className="chime-rise font-display text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
+        <div className="chime-rise">
           <Link
             href="/"
-            className="transition-opacity hover:opacity-80"
+            className="inline-block motion-safe:transition-opacity motion-safe:hover:opacity-80"
             aria-label="Chime home"
           >
-            Chime
+            <ChimeWordmark size="hero" priority />
           </Link>
-        </p>
+        </div>
         <h1 className="chime-rise chime-rise-delay-1 mt-5 text-xl font-medium text-foreground sm:text-2xl">
-          CSE alerts, Telegram first
+          CSE dash. Telegram when it fires.
         </h1>
         {sessionExpired ? (
           <p
@@ -65,24 +67,24 @@ export default async function LoginPage({
             data-testid="session-expired-notice"
             className="chime-rise chime-rise-delay-1 mt-4 text-sm text-foreground"
           >
-            Your session expired. Sign in again to manage watchlists and alerts.
+            Your session expired. Sign in again to open the dashboard.
           </p>
         ) : null}
         <p
           id="login-explainer"
           className="chime-rise chime-rise-delay-2 mt-3 text-sm text-muted-foreground sm:text-base"
         >
-          Use this thin page to manage symbols and rules. Chime watches in the
-          background and pings Telegram when a price, move, or disclosure rule
-          fires.
+          Browse the market, watch symbols, and manage rules here. Telegram is
+          the cherry — you still get the ping when a rule fires with the tab
+          closed.
         </p>
         <ul
           className="chime-rise chime-rise-delay-2 mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground"
           aria-labelledby="login-explainer"
         >
-          <li>Price crosses above or below your threshold</li>
-          <li>Daily moves exceed your chosen percent</li>
-          <li>New company disclosures appear for watched symbols</li>
+          <li>Overview of movers, watchlist, and armed rules</li>
+          <li>Price, move, and disclosure alerts</li>
+          <li>Push on Telegram when something matches</li>
         </ul>
         <NfaInline className="chime-rise chime-rise-delay-2 mt-4" />
         <div className="chime-rise chime-rise-delay-3 mt-8">
@@ -91,6 +93,15 @@ export default async function LoginPage({
             defaultTelegramId={defaultId}
             demoEnabled={cfg.demoAuthEnabled}
           />
+          {telegramLoginEnabled ? (
+            <p
+              aria-disabled="true"
+              className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+            >
+              Telegram Login Widget when{" "}
+              <code className="font-mono text-xs">DASH_TELEGRAM_LOGIN=1</code>
+            </p>
+          ) : null}
         </div>
       </div>
       <NfaFooter />

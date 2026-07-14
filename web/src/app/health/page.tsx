@@ -1,5 +1,12 @@
+import { Activity, Database, Radio, Timer } from "lucide-react";
+
 import { AppNav } from "@/components/app-nav";
+import { AlertBanner } from "@/components/kit/alert-banner";
+import { StatCard } from "@/components/kit/stat-card";
+import { LiveIndicator } from "@/components/live-indicator";
 import { NfaFooter } from "@/components/nfa-footer";
+import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { sanitizeDisclosureText } from "@/lib/api/disclosure-safe";
 import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
@@ -50,6 +57,14 @@ type HealthPayload = {
     /** Ops hint only — omit section when absent. */
     brief_queue?: BriefQueueHint;
   } | null;
+  delivery?: {
+    delivered_24h: number;
+    retrying: number;
+    dead_lettered: number;
+  };
+  retention?: {
+    snapshot_retention_days: number;
+  };
 };
 
 function healthUiString(raw: unknown): string | null {
@@ -187,7 +202,37 @@ function parseHealthPayload(body: unknown): HealthPayload | null {
     started_at: healthTs(r.started_at),
     last_snapshot_at: healthTs(r.last_snapshot_at),
     poller,
+    delivery: parseDelivery(r.delivery),
+    retention: parseRetention(r.retention),
   };
+}
+
+function parseDelivery(raw: unknown): HealthPayload["delivery"] {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const d = raw as Record<string, unknown>;
+  const delivered = toNonNegativeSafeInt(d.delivered_24h, -1);
+  const retrying = toNonNegativeSafeInt(d.retrying, -1);
+  const dead = toNonNegativeSafeInt(d.dead_lettered, -1);
+  if (delivered < 0 || retrying < 0 || dead < 0) return undefined;
+  return {
+    delivered_24h: delivered,
+    retrying,
+    dead_lettered: dead,
+  };
+}
+
+function parseRetention(raw: unknown): HealthPayload["retention"] {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const days = toNonNegativeSafeInt(
+    (raw as Record<string, unknown>).snapshot_retention_days,
+    -1,
+  );
+  if (days < 0) return undefined;
+  return { snapshot_retention_days: days };
 }
 
 export default async function HealthPage() {
@@ -206,6 +251,8 @@ export default async function HealthPage() {
   const missing = payload?.poller?.watched_missing ?? [];
   const circuits = payload?.poller?.circuits ?? null;
   const briefQueue = payload?.poller?.brief_queue ?? null;
+  const delivery = payload?.delivery ?? null;
+  const retention = payload?.retention ?? null;
   const snapshotAge = timestampAge(payload?.last_snapshot_at);
   const tickAge = timestampAge(payload?.poller?.last_tick_at);
   const pollerUnreachable =
@@ -222,14 +269,28 @@ export default async function HealthPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav active="/health" />
-      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Health
-        </h1>
-        <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-          Read-only ops view — database ping and optional poller status. No
-          deploy controls here.
-        </p>
+      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+        <PageHeader
+          eyebrow="Ops"
+          title="Health"
+          description="Read-only ops view — database ping and optional poller status. No deploy controls here."
+          action={
+            payload ? (
+              <LiveIndicator
+                tone={pollerUnreachable || !ok ? (pollerUnreachable ? "down" : "stale") : "ok"}
+                label={
+                  pollerUnreachable
+                    ? "Unreachable"
+                    : ok
+                      ? "Live"
+                      : "Degraded"
+                }
+              />
+            ) : (
+              <LiveIndicator tone="down" label="Unreachable" />
+            )
+          }
+        />
 
         {!payload ? (
           <p className="mt-8 text-sm text-muted-foreground">
@@ -252,18 +313,47 @@ export default async function HealthPage() {
             </div>
 
             {pollerUnreachable ? (
-              <OpsNotice
-                tone="danger"
-                title="Poller health unreachable"
-                copy="HEALTH_URL is configured, but the dashboard could not reach the poller health endpoint. DB liveness is separate; check HEALTH_URL, routing, and the poller process before trusting alert freshness."
-              />
+              <div className="mt-6">
+                <AlertBanner
+                  tone="danger"
+                  icon={Radio}
+                  title="Poller health unreachable"
+                  description="HEALTH_URL is configured, but the dashboard could not reach the poller health endpoint. DB liveness is separate; check HEALTH_URL, routing, and the poller process before trusting alert freshness."
+                />
+              </div>
             ) : pollerDegraded ? (
-              <OpsNotice
-                tone="warning"
-                title="Poller reachable but degraded"
-                copy="The poller health endpoint responded, but one or more poller checks reported unhealthy. Review tick flags, price/disclosure poll flags, watched-missing symbols, circuits, and recent poller logs."
-              />
+              <div className="mt-6">
+                <AlertBanner
+                  tone="warning"
+                  icon={Activity}
+                  title="Poller reachable but degraded"
+                  description="The poller health endpoint responded, but one or more poller checks reported unhealthy. Review tick flags, price/disclosure poll flags, watched-missing symbols, circuits, and recent poller logs."
+                />
+              </div>
             ) : null}
+
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatCard
+                label="Database"
+                value={payload.db_ok ? "ok" : "down"}
+                icon={Database}
+              />
+              <StatCard
+                label="Status"
+                value={statusLabel}
+                icon={Activity}
+              />
+              <StatCard
+                label="Snapshot age"
+                value={formatAge(snapshotAge)}
+                icon={Timer}
+              />
+              <StatCard
+                label="Tick age"
+                value={formatAge(tickAge)}
+                icon={Radio}
+              />
+            </div>
 
             <dl className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Row label="Database" value={payload.db_ok ? "ok" : "down"} />
@@ -379,6 +469,62 @@ export default async function HealthPage() {
                 </dl>
               </section>
             )}
+
+            {delivery != null ? (
+              <section
+                className="mt-10 border-t border-border/60 pt-6"
+                aria-labelledby="delivery-heading"
+              >
+                <h2
+                  id="delivery-heading"
+                  className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+                >
+                  Telegram delivery
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Cherry reliability slice — fire attempts from alert_log (not
+                  a send console).
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <StatCard
+                    label="Delivered (24h)"
+                    value={String(delivery.delivered_24h)}
+                    hint="message_sent or attempted_ok"
+                  />
+                  <StatCard
+                    label="Retrying"
+                    value={String(delivery.retrying)}
+                    hint="Pending retries"
+                  />
+                  <StatCard
+                    label="Dead-lettered"
+                    value={String(delivery.dead_lettered)}
+                    hint="Stopped after max attempts"
+                  />
+                </div>
+              </section>
+            ) : null}
+
+            {retention != null ? (
+              <section
+                className="mt-10 border-t border-border/60 pt-6"
+                aria-labelledby="retention-heading"
+              >
+                <h2
+                  id="retention-heading"
+                  className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+                >
+                  Snapshot retention
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Poller setting{" "}
+                  <code className="font-mono text-xs">SNAPSHOT_RETENTION_DAYS</code>
+                  {retention.snapshot_retention_days === 0
+                    ? " — 0 means keep all price snapshots (no prune)."
+                    : ` — prune snapshots older than ${retention.snapshot_retention_days} day(s).`}
+                </p>
+              </section>
+            ) : null}
 
             {briefQueue != null && (
               <section className="mt-10 border-t border-border/60 pt-6">
@@ -497,44 +643,6 @@ function sanitizeOpsNoticeText(
   return cleaned ?? fallback;
 }
 
-function OpsNotice({
-  tone,
-  title,
-  copy,
-}: {
-  tone: "danger" | "warning";
-  title: string;
-  copy: string;
-}) {
-  const className =
-    tone === "danger"
-      ? "border-[oklch(0.72_0.12_25)] bg-[oklch(0.97_0.03_25)]"
-      : "border-[oklch(0.78_0.08_65)] bg-[oklch(0.97_0.03_80)]";
-  const titleClassName =
-    tone === "danger"
-      ? "text-[oklch(0.36_0.13_25)]"
-      : "text-[oklch(0.36_0.1_55)]";
-  const copyClassName =
-    tone === "danger"
-      ? "text-[oklch(0.32_0.09_25)]"
-      : "text-[oklch(0.32_0.07_55)]";
-  const safeTitle = sanitizeOpsNoticeText(
-    title,
-    MAX_OPS_NOTICE_TITLE,
-    "Notice",
-  );
-  const safeCopy = sanitizeOpsNoticeText(copy, MAX_OPS_NOTICE_COPY, "");
-
-  return (
-    <div className={`mt-5 rounded-lg border p-4 ${className}`}>
-      <p className={`text-sm font-medium ${titleClassName}`}>{safeTitle}</p>
-      {safeCopy ? (
-        <p className={`mt-1 text-sm ${copyClassName}`}>{safeCopy}</p>
-      ) : null}
-    </div>
-  );
-}
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-b border-border/40 pb-3 sm:border-0 sm:pb-0">
@@ -554,13 +662,9 @@ function StaleOpsNotice({ title, copy }: { title: string; copy: string }) {
   );
   const safeCopy = sanitizeOpsNoticeText(copy, MAX_OPS_NOTICE_COPY, "");
   return (
-    <div className="mt-5 rounded-lg border border-[oklch(0.78_0.08_65)] bg-[oklch(0.97_0.03_80)] p-4">
-      <p className="text-sm font-medium text-[oklch(0.36_0.1_55)]">
-        {safeTitle}
-      </p>
-      {safeCopy ? (
-        <p className="mt-1 text-sm text-[oklch(0.32_0.07_55)]">{safeCopy}</p>
-      ) : null}
-    </div>
+    <Alert className="mt-5" variant="default">
+      <AlertTitle>{safeTitle}</AlertTitle>
+      {safeCopy ? <AlertDescription>{safeCopy}</AlertDescription> : null}
+    </Alert>
   );
 }

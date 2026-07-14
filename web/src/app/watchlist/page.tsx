@@ -2,8 +2,11 @@ import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { ChangeBadge } from "@/components/kit/change-badge";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
+import { PageHeader } from "@/components/page-header";
+import { PriceRefresh } from "@/components/price-refresh";
 import { Button } from "@/components/ui/button";
 import {
   UnwatchButton,
@@ -19,7 +22,7 @@ import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
-import { formatNumber, formatPct, formatTs } from "@/lib/format";
+import { formatNumber, formatTs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -95,16 +98,29 @@ export default async function WatchlistPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav active="/watchlist" />
-      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Watchlist
-        </h1>
-        <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-          Symbols you watch for price and disclosure alerts. Pushes still go to
-          Telegram.
-        </p>
+      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+        <PageHeader
+          eyebrow="Watch"
+          title="Watchlist"
+          description="Symbols you watch for price and disclosure alerts. Pushes still go to Telegram."
+          action={
+            <PriceRefresh
+              lastSnapshotAt={
+                payload
+                  ? payload.items
+                      .map((i) => i.ts)
+                      .filter((t): t is string => typeof t === "string" && !!t)
+                      .sort()
+                      .at(-1) ?? null
+                  : null
+              }
+            />
+          }
+        />
 
-        <WatchlistAddForm />
+        <div className="mt-6">
+          <WatchlistAddForm />
+        </div>
 
         {!payload ? (
           <EmptyState
@@ -139,7 +155,10 @@ export default async function WatchlistPage() {
                 </Link>{" "}
                 to discover tickers, or use{" "}
                 <code className="font-mono text-xs">/watch SYMBOL</code> in
-                Telegram — Chime keeps the list in sync either way.
+                Telegram — Chime keeps the list in sync either way. New symbols
+                appear here after a poller tick, and Telegram{" "}
+                <code className="font-mono text-xs">/watch</code> can seed the
+                stocks table before the dashboard sees them.
               </>
             }
             action={
@@ -154,56 +173,111 @@ export default async function WatchlistPage() {
             }
           />
         ) : (
-          <ul className="mt-8 divide-y divide-border/60">
-            {payload.items.map((item) => {
-              const pct = item.change_pct;
-              const tone =
-                pct == null
-                  ? "text-muted-foreground"
-                  : pct > 0
-                    ? "text-[oklch(0.42_0.09_165)]"
-                    : pct < 0
-                      ? "text-destructive"
-                      : "text-muted-foreground";
-              return (
+          <>
+            <div className="mt-8 hidden overflow-hidden rounded-lg border border-border/70 md:block">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Watchlist symbols</caption>
+                <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 font-medium">
+                      Symbol
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-medium">
+                      Name
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">
+                      Price
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">
+                      Change%
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">
+                      Updated
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {payload.items.map((item, idx) => (
+                    <tr
+                      key={item.symbol}
+                      className={idx % 2 === 1 ? "bg-muted/25" : undefined}
+                    >
+                      <th scope="row" className="px-4 py-3 font-mono font-medium">
+                        <Link
+                          href={`/symbols/${encodeURIComponent(item.symbol)}`}
+                          className="rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                        >
+                          {item.symbol}
+                        </Link>
+                      </th>
+                      <td className="max-w-xs px-4 py-3 text-muted-foreground">
+                        <span className="block truncate" title={item.name ?? undefined}>
+                          {item.name ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">
+                        {formatNumber(item.price)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <ChangeBadge changePct={item.change_pct} />
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                        {formatTs(item.ts)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end">
+                          <UnwatchButton symbol={item.symbol} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="mt-8 divide-y divide-border/60 md:hidden">
+              {payload.items.map((item) => (
                 <li
                   key={item.symbol}
-                  className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  className="flex flex-col gap-3 py-4 first:pt-0"
                 >
-                  <Link
-                    href={`/symbols/${encodeURIComponent(item.symbol)}`}
-                    className="group min-w-0 flex-1 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    aria-label={`Open ${item.symbol} detail`}
-                  >
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                      <div className="min-w-0">
-                        <p className="font-mono text-sm font-medium group-hover:underline group-hover:underline-offset-4">
-                          {item.symbol}
+                  <div className="flex items-start justify-between gap-3">
+                    <Link
+                      href={`/symbols/${encodeURIComponent(item.symbol)}`}
+                      className="group min-w-0 flex-1 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                      aria-label={`Open ${item.symbol} detail`}
+                    >
+                      <p className="font-mono text-sm font-medium group-hover:underline group-hover:underline-offset-4">
+                        {item.symbol}
+                      </p>
+                      {item.name ? (
+                        <p
+                          className="truncate text-xs text-muted-foreground"
+                          title={item.name}
+                        >
+                          {item.name}
                         </p>
-                        {item.name ? (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {item.name}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 sm:justify-end">
-                        <span className="font-mono text-sm">
-                          {formatNumber(item.price)}
-                        </span>
-                        <span className={`font-mono text-sm ${tone}`}>
-                          {formatPct(item.change_pct)}
-                        </span>
-                        <span className="w-full text-xs text-muted-foreground sm:w-auto">
-                          {formatTs(item.ts)}
-                        </span>
-                      </div>
+                      ) : null}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatTs(item.ts)}
+                      </p>
+                    </Link>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="font-mono text-sm tabular-nums">
+                        {formatNumber(item.price)}
+                      </span>
+                      <ChangeBadge changePct={item.change_pct} />
                     </div>
-                  </Link>
-                  <UnwatchButton symbol={item.symbol} />
+                  </div>
+                  <div className="flex justify-end">
+                    <UnwatchButton symbol={item.symbol} />
+                  </div>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          </>
         )}
 
         <NfaInline className="mt-8" />

@@ -3,11 +3,29 @@ import { notFound } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { ChangeBadge } from "@/components/kit/change-badge";
+import {
+  DisclosureCategoryHint,
+  DisclosureTimeline,
+} from "@/components/kit/disclosure-timeline";
+import {
+  FilingMetricsPanel,
+  type FilingMetricComparison,
+  type FilingMetricRow,
+  type LatestBrief,
+} from "@/components/kit/filing-metrics-panel";
+import { SymbolCompareChart } from "@/components/kit/symbol-compare-chart";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
+import { OptionalLwcNote } from "@/components/optional-lwc-note";
+import { PageHeader } from "@/components/page-header";
+import { PriceRefresh } from "@/components/price-refresh";
 import { Sparkline } from "@/components/sparkline";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
+import {
+  WatchButton,
+} from "@/components/watchlist-controls";
 import {
   MAX_DISCLOSURE_CATEGORY_LENGTH,
   MAX_DISCLOSURE_COMPANY_LENGTH,
@@ -20,6 +38,7 @@ import {
   safeFilingHref,
   safePdfUrl,
   sanitizeBriefText,
+  sanitizeDisclosureCategory,
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/finite-number";
@@ -28,7 +47,7 @@ import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol, normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
-import { formatNumber, formatPct, formatTs } from "@/lib/format";
+import { formatNumber, formatTs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +57,10 @@ const STALE_MS = 24 * 60 * 60 * 1000;
 const MAX_PAGE_SNAPSHOT_POINTS = 200;
 /** Cap disclosures parse — parity with disclosures API max 100. */
 const MAX_PAGE_DISCLOSURES = 100;
+/** Short filing metric labels; never echo arbitrary long extraction text. */
+const MAX_METRIC_KIND_LENGTH = 32;
+const MAX_METRIC_ENTITY_LENGTH = 128;
+const MAX_METRIC_CURRENCY_LENGTH = 16;
 
 /** ECMAScript Date absolute millisecond bound (parity sparkline / toIso). */
 const MAX_DATE_MS = 8.64e15;
@@ -68,6 +91,7 @@ type SymbolPayload = {
   symbol: string;
   name: string | null;
   sector: string | null;
+  market_cap: number | null;
   last: {
     price: number;
     change: number | null;
@@ -137,6 +161,7 @@ function parseSymbolPayload(body: unknown): SymbolPayload | null {
       typeof r.sector === "string" ? r.sector : null,
       MAX_STOCK_SECTOR_LENGTH,
     ),
+    market_cap: toFiniteNumber(r.market_cap),
     last,
   };
 }
@@ -223,26 +248,176 @@ function parseDisclosuresPayload(body: unknown): DisclosuresPayload {
   return { items };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function firstRecord(value: unknown): Record<string, unknown> | null {
+  if (isRecord(value)) return value;
+  if (!Array.isArray(value)) return null;
+  for (const item of value) {
+    if (isRecord(item)) return item;
+  }
+  return null;
+}
+
+function normalizeMetricText(raw: unknown, maxLen: number): string | null {
+  return sanitizeDisclosureText(typeof raw === "string" ? raw : null, maxLen);
+}
+
+function parseMetricRow(raw: unknown): FilingMetricRow | null {
+  if (!isRecord(raw)) return null;
+  const eps_basic = toFiniteNumber(raw.eps_basic);
+  const revenue = toFiniteNumber(raw.revenue);
+  const profit = toFiniteNumber(raw.profit ?? raw.profit_after_tax);
+  const hasMetric = eps_basic != null || revenue != null || profit != null;
+  if (!hasMetric && raw.extract_ok !== true) return null;
+
+  return {
+    kind: normalizeMetricText(raw.kind, MAX_METRIC_KIND_LENGTH),
+    entity: normalizeMetricText(raw.entity, MAX_METRIC_ENTITY_LENGTH),
+    currency: normalizeMetricText(raw.currency, MAX_METRIC_CURRENCY_LENGTH),
+    fiscal_period_end: toIso(raw.fiscal_period_end),
+    eps_basic,
+    revenue,
+    profit,
+    extract_ok: raw.extract_ok === true,
+  };
+}
+
+function parseMetricComparison(raw: unknown): FilingMetricComparison | null {
+  if (!isRecord(raw)) return null;
+  const matchRaw =
+    typeof raw.match_quality === "string" ? raw.match_quality : null;
+  const match_quality =
+    matchRaw === "exact_yoy" || matchRaw === "approx_yoy" ? matchRaw : null;
+  return {
+    match_quality,
+    eps_delta_pct: toFiniteNumber(raw.eps_delta_pct),
+    revenue_delta_pct: toFiniteNumber(raw.revenue_delta_pct),
+    profit_delta_pct: toFiniteNumber(raw.profit_delta_pct),
+  };
+}
+
+function parseMetricsPayload(body: unknown): {
+  metrics: FilingMetricRow | null;
+  comparison: FilingMetricComparison | null;
+} {
+  if (!isRecord(body)) return { metrics: null, comparison: null };
+  const latestRaw =
+    body.latest ??
+    body.metric ??
+    body.filing_metric ??
+    body.item ??
+    firstRecord(body.items) ??
+    firstRecord(body.metrics);
+  const latest = isRecord(latestRaw) ? latestRaw : null;
+  const metrics = parseMetricRow(latest ?? body);
+  const comparisonRaw =
+    (latest && latest.comparison) ??
+    body.comparison ??
+    body.latest_comparison ??
+    body.filing_comparison;
+  return {
+    metrics,
+    comparison: parseMetricComparison(comparisonRaw),
+  };
+}
+
+function parseLatestBriefPayload(body: unknown): LatestBrief | null {
+  if (!isRecord(body)) return null;
+  const candidateRaw =
+    (isRecord(body.brief) && body.brief) ||
+    (isRecord(body.latest_brief) && body.latest_brief) ||
+    (isRecord(body.item) && body.item) ||
+    body;
+  const candidate = isRecord(candidateRaw) ? candidateRaw : null;
+  if (!candidate) return null;
+
+  const statusRaw = candidate.status ?? candidate.brief_status;
+  const status =
+    typeof statusRaw === "string" ? normalizeBriefStatus(statusRaw) : null;
+  if (statusRaw != null && status !== "ready") return null;
+
+  const title = sanitizeDisclosureText(
+    typeof candidate.title === "string"
+      ? candidate.title
+      : typeof candidate.disclosure_title === "string"
+        ? candidate.disclosure_title
+        : null,
+    MAX_DISCLOSURE_TITLE_LENGTH,
+  );
+  const textRaw = candidate.text ?? candidate.brief;
+  const text = sanitizeBriefText(textRaw, "ready");
+  if (!title || !text) return null;
+  return { title, text };
+}
+
+function latestBriefFromDisclosures(discs: DisclosuresPayload): LatestBrief | null {
+  const item = discs.items.find(
+    (disc) => disc.brief_status === "ready" && Boolean(disc.brief?.trim()),
+  );
+  if (!item?.brief) return null;
+  return { title: item.title, text: item.brief };
+}
+
+function parseCompareSearchParam(raw: unknown): string[] {
+  const text = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof text !== "string" || !text.trim()) return [];
+  const out: string[] = [];
+  for (const part of text.split(",")) {
+    const symbol = normalizeSymbol(part);
+    if (!symbol || out.includes(symbol)) continue;
+    out.push(symbol);
+    if (out.length >= 3) break; // base + 3 peers = max 4
+  }
+  return out;
+}
+
 export default async function SymbolDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ symbol: string }>;
+  searchParams: Promise<{
+    category?: string | string[];
+    compare?: string | string[];
+  }>;
 }) {
   await requirePageSession();
 
   const { symbol: raw } = await params;
+  const sp = await searchParams;
   // safeDecode — malformed % sequences → notFound (not URIError 500).
   const symbol = normalizeSymbolParam(raw);
   if (!symbol) {
     notFound();
   }
+  const categoryRaw = Array.isArray(sp.category)
+    ? sp.category[0]
+    : sp.category;
+  const categoryFilter = sanitizeDisclosureCategory(categoryRaw);
+  const comparePeers = parseCompareSearchParam(sp.compare).filter(
+    (peer) => peer !== symbol,
+  );
 
   const encoded = encodeURIComponent(symbol);
-  const [symRes, snapRes, discRes] = await Promise.all([
-    serverApiGet(`/api/v1/symbols/${encoded}`),
-    serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=60`),
-    serverApiGet(`/api/v1/symbols/${encoded}/disclosures?limit=20`),
-  ]);
+  const compareQs =
+    comparePeers.length > 0
+      ? `/api/v1/compare?symbols=${encodeURIComponent(
+          [symbol, ...comparePeers].join(","),
+        )}&limit=60`
+      : null;
+  const [symRes, snapRes, discRes, metricsRes, briefRes, compareRes, watchRes] =
+    await Promise.all([
+      serverApiGet(`/api/v1/symbols/${encoded}`),
+      serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=60`),
+      serverApiGet(`/api/v1/symbols/${encoded}/disclosures?limit=20`),
+      serverApiGet(`/api/v1/symbols/${encoded}/metrics`),
+      serverApiGet(`/api/v1/symbols/${encoded}/brief`),
+      compareQs ? serverApiGet(compareQs) : Promise.resolve(null),
+      serverApiGet("/api/v1/watchlist"),
+    ]);
 
   if (symRes.status === 404) {
     notFound();
@@ -301,11 +476,76 @@ export default async function SymbolDetailPage({
 
   let snaps: SnapshotsPayload = { points: [] };
   let discs: DisclosuresPayload = { items: [] };
+  let filingMetrics: FilingMetricRow | null = null;
+  let filingComparison: FilingMetricComparison | null = null;
+  let latestBrief: LatestBrief | null = null;
+  const metricsFailed = !metricsRes.ok;
+  let isWatching = false;
+  if (watchRes.ok) {
+    try {
+      const body: unknown = await watchRes.json();
+      const items =
+        body && typeof body === "object" && !Array.isArray(body)
+          ? (body as { items?: unknown }).items
+          : null;
+      if (Array.isArray(items)) {
+        for (const row of items) {
+          if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+          const rowSym = normalizeSymbol(
+            (row as { symbol?: unknown }).symbol,
+          );
+          if (rowSym === symbol) {
+            isWatching = true;
+            break;
+          }
+        }
+      }
+    } catch {
+      isWatching = false;
+    }
+  }
+  let comparePeerSeries: {
+    symbol: string;
+    points: { ts: string | null; price: number }[];
+  }[] = [];
   if (snapRes.ok) {
     try {
       snaps = parseSnapshotsPayload(await snapRes.json());
     } catch {
       snaps = { points: [] };
+    }
+  }
+  if (compareRes?.ok) {
+    try {
+      const body: unknown = await compareRes.json();
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        const raw = (body as { series?: unknown }).series;
+        if (Array.isArray(raw)) {
+          for (const row of raw) {
+            if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+            const r = row as Record<string, unknown>;
+            const peer = normalizeSymbol(r.symbol);
+            if (!peer || peer === symbol) continue;
+            const pointsRaw = Array.isArray(r.points) ? r.points : [];
+            const points = pointsRaw.flatMap((p) => {
+              if (!p || typeof p !== "object" || Array.isArray(p)) return [];
+              const point = p as Record<string, unknown>;
+              const price = toFiniteNumber(point.price);
+              if (price == null) return [];
+              return [
+                {
+                  ts: typeof point.ts === "string" ? point.ts : null,
+                  price,
+                },
+              ];
+            });
+            comparePeerSeries.push({ symbol: peer, points });
+            if (comparePeerSeries.length >= 3) break;
+          }
+        }
+      }
+    } catch {
+      comparePeerSeries = [];
     }
   }
   if (discRes.ok) {
@@ -315,66 +555,148 @@ export default async function SymbolDetailPage({
       discs = { items: [] };
     }
   }
+  if (metricsRes.ok) {
+    try {
+      const metricsBody: unknown = await metricsRes.json();
+      const parsed = parseMetricsPayload(metricsBody);
+      filingMetrics = parsed.metrics;
+      filingComparison = parsed.comparison;
+      latestBrief = parseLatestBriefPayload(metricsBody);
+    } catch {
+      filingMetrics = null;
+      filingComparison = null;
+      latestBrief = null;
+    }
+  }
+  if (!latestBrief && briefRes.ok) {
+    try {
+      latestBrief = parseLatestBriefPayload(await briefRes.json());
+    } catch {
+      latestBrief = null;
+    }
+  }
+  latestBrief ??= latestBriefFromDisclosures(discs);
 
   const snapsFailed = !snapRes.ok;
   const discsFailed = !discRes.ok;
 
-  const changePct = data.last?.change_pct ?? null;
-  const changeTone =
-    changePct == null
-      ? "text-muted-foreground"
-      : changePct > 0
-        ? "text-[oklch(0.42_0.09_165)]"
-        : changePct < 0
-          ? "text-destructive"
-          : "text-muted-foreground";
+  const sparkPoints = finiteSparklinePoints(snaps.points);
+  const snapshotStale = Boolean(data.last?.ts && isStaleTs(data.last.ts));
+  const disclosureCategories = Array.from(
+    new Set(
+      discs.items
+        .map((item) => item.category)
+        .filter((category): category is string => Boolean(category)),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+  const visibleDisclosures = categoryFilter
+    ? discs.items.filter((item) => item.category === categoryFilter)
+    : discs.items;
 
   return (
     <Shell>
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">
-            Symbol
-          </p>
-          <h1 className="font-display truncate text-3xl font-semibold tracking-tight sm:text-4xl">
-            {data.symbol}
-          </h1>
-          {data.name ? (
-            <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-              {data.name}
-              {data.sector ? (
-                <span className="text-muted-foreground/80"> · {data.sector}</span>
-              ) : null}
-            </p>
-          ) : null}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <PageHeader
+          className="min-w-0 flex-1"
+          eyebrow="Symbol"
+          title={data.symbol}
+          description={
+            data.name
+              ? `${data.name}${data.sector ? ` · ${data.sector}` : ""}`
+              : undefined
+          }
+        />
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <PriceRefresh lastSnapshotAt={data.last?.ts ?? null} />
+          <WatchButton symbol={data.symbol} watching={isWatching} />
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/watchlist">← Watchlist</Link>
+          </Button>
         </div>
-        <Link
-          href="/watchlist"
-          className="mt-3 rounded-sm text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none sm:mt-0"
-        >
-          ← Watchlist
-        </Link>
       </div>
+
+      <section
+        className={`mt-6 rounded-lg border p-4 ${
+          snapshotStale
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-border/70"
+        }`}
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Last price
+              {snapshotStale ? " · stale" : ""}
+            </p>
+            {data.last ? (
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <span
+                  className={`font-mono text-3xl font-semibold tracking-tight tabular-nums ${
+                    snapshotStale ? "text-muted-foreground" : ""
+                  }`}
+                >
+                  {formatNumber(data.last.price)}
+                </span>
+                <ChangeBadge changePct={data.last.change_pct} />
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                No stored price yet.
+              </p>
+            )}
+            {data.last?.ts ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                As of {formatTs(data.last.ts)} (SLT)
+                {snapshotStale
+                  ? " — more than a day old; poller may be paused."
+                  : ""}
+              </p>
+            ) : null}
+          </div>
+          <div className="min-h-20 min-w-0 flex-1 md:max-w-sm">
+            {snapsFailed ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                Couldn’t load recent ticks right now.
+              </p>
+            ) : sparkPoints.length < 2 ? (
+              <p className="text-sm text-muted-foreground">
+                Need two stored ticks for a sparkline.
+              </p>
+            ) : (
+              <Sparkline points={snaps.points} />
+            )}
+            <OptionalLwcNote
+              enabled={process.env.NEXT_PUBLIC_CHIME_LWC === "1"}
+            />
+          </div>
+        </div>
+      </section>
 
       <section className="mt-8 border-t border-border/60 pt-6">
         <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
           Last snapshot
         </h2>
         {data.last ? (
-          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div
+            className={`mt-3 grid grid-cols-2 gap-4 ${
+              data.market_cap != null ? "sm:grid-cols-5" : "sm:grid-cols-4"
+            }`}
+          >
             <Stat label="Price" value={formatNumber(data.last.price)} mono />
             <Stat
               label="Change"
               value={formatNumber(data.last.change)}
-              className={changeTone}
               mono
             />
-            <Stat
-              label="Change %"
-              value={formatPct(data.last.change_pct)}
-              className={changeTone}
-              mono
-            />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Change %</p>
+              <div className="mt-1">
+                <ChangeBadge changePct={data.last.change_pct} />
+              </div>
+            </div>
             <Stat
               label="Volume"
               value={
@@ -384,6 +706,13 @@ export default async function SymbolDetailPage({
               }
               mono
             />
+            {data.market_cap != null ? (
+              <Stat
+                label="Market cap"
+                value={formatNumber(data.market_cap)}
+                mono
+              />
+            ) : null}
           </div>
         ) : (
           <EmptyState
@@ -431,31 +760,18 @@ export default async function SymbolDetailPage({
         <NfaInline className="mt-2" />
       </section>
 
-      <section className="mt-8 border-t border-border/60 pt-6">
-        <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
-          Recent ticks
-        </h2>
-        <div className="mt-3">
-          {snapsFailed ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              Couldn’t load recent ticks right now.
-            </p>
-          ) : finiteSparklinePoints(snaps.points).length < 2 ? (
-            <EmptyState
-              className="mt-1"
-              title="Not enough ticks"
-              description={
-                <>
-                  Need at least two stored snapshots for a sparkline. Chime
-                  keeps polling during market hours (09:30–14:30 SLT).
-                </>
-              }
-            />
-          ) : (
-            <Sparkline points={snaps.points} />
-          )}
-        </div>
-      </section>
+      <SymbolCompareChart
+        baseSymbol={data.symbol}
+        initialPoints={snaps.points}
+        initialPeerSeries={comparePeerSeries}
+      />
+
+      <FilingMetricsPanel
+        metrics={filingMetrics}
+        comparison={filingComparison}
+        latestBrief={latestBrief}
+        loadFailed={metricsFailed}
+      />
 
       <section
         className="mt-8 border-t border-border/60 pt-6"
@@ -467,6 +783,23 @@ export default async function SymbolDetailPage({
         >
           Disclosures
         </h2>
+        {!discsFailed && disclosureCategories.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <DisclosureCategoryHint
+              href={`/symbols/${encoded}`}
+              label="All"
+              selected={!categoryFilter}
+            />
+            {disclosureCategories.map((category) => (
+              <DisclosureCategoryHint
+                key={category}
+                href={`/symbols/${encoded}?category=${encodeURIComponent(category)}`}
+                label={category}
+                selected={categoryFilter === category}
+              />
+            ))}
+          </div>
+        ) : null}
         {discsFailed ? (
           <EmptyState
             className="mt-4"
@@ -485,10 +818,10 @@ export default async function SymbolDetailPage({
               </Button>
             }
           />
-        ) : discs.items.length === 0 ? (
+        ) : visibleDisclosures.length === 0 ? (
           <EmptyState
             className="mt-4"
-            title="No disclosures yet"
+            title={categoryFilter ? `No ${categoryFilter} disclosures` : "No disclosures yet"}
             description={
               <>
                 Nothing stored for{" "}
@@ -504,7 +837,7 @@ export default async function SymbolDetailPage({
             action={
               <Button asChild variant="outline" size="sm">
                 <Link
-                  href={`/alerts?symbol=${encodeURIComponent(data.symbol)}`}
+                  href={`/alerts?symbol=${encodeURIComponent(data.symbol)}&type=disclosure`}
                 >
                   Alert on disclosures
                 </Link>
@@ -513,71 +846,30 @@ export default async function SymbolDetailPage({
           />
         ) : (
           <>
-            <ul
-              className="mt-4 divide-y divide-border/60"
-              aria-labelledby="disclosures-heading"
-            >
-              {discs.items.map((item) => {
-                const href = safeFilingHref(item.pdf_url, item.url);
-                const pdfOk = Boolean(safePdfUrl(item.pdf_url));
-                const briefText = sanitizeBriefText(
-                  item.brief,
-                  item.brief_status,
-                );
-                const briefHeadingId = `disclosure-brief-${item.id}`;
-                const titleClass =
-                  "block rounded-sm text-sm font-medium text-foreground underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none";
-                return (
-                  <li key={item.id} className="py-3 first:pt-0">
-                    {href ? (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`${titleClass} hover:underline`}
-                      >
-                        {item.title}
-                        {pdfOk ? (
-                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                            (PDF)
-                          </span>
-                        ) : null}
-                        <span className="sr-only"> (opens in new tab)</span>
-                      </a>
-                    ) : (
-                      <span className={titleClass}>
-                        {item.title}
-                      </span>
-                    )}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatTs(item.published_at)}
-                      {item.category ? ` · ${item.category}` : ""}
-                    </p>
-                    {briefText ? (
-                      <div
-                        className="mt-2"
-                        role="group"
-                        aria-labelledby={briefHeadingId}
-                      >
-                        <p
-                          id={briefHeadingId}
-                          className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
-                        >
-                          Filing brief
-                        </p>
-                        <p className="mt-1 text-sm leading-relaxed text-foreground/90">
-                          {briefText}
-                        </p>
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
+            <DisclosureTimeline
+              items={visibleDisclosures.map((item) => ({
+                id: item.id,
+                title: item.title,
+                published_at: item.published_at,
+                url: safeFilingHref(item.pdf_url, item.url),
+                category: item.category,
+                brief: item.brief,
+                brief_status: item.brief_status,
+              }))}
+              className="mt-5"
+            />
             <NfaInline className="mt-3" />
           </>
         )}
       </section>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:hidden">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <WatchButton symbol={data.symbol} watching={isWatching} />
+          <Button asChild className="flex-1" size="sm">
+            <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>
+          </Button>
+        </div>
+      </div>
     </Shell>
   );
 }
@@ -589,7 +881,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10"
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-8 pb-24 sm:px-6 sm:pt-10 md:pb-10"
       >
         {children}
       </main>

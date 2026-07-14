@@ -57,5 +57,9 @@ Apply migrations with `python3 -m chime.migrate` (idempotent).
   `DASH_DEMO_TELEGRAM_IDS=<id>` matching a `users.telegram_id`, and a non-empty
   `DASH_SESSION_SECRET` (empty → session/mutate routes return 503). Mutations require the
   `X-CSRF-Token` header returned at login.
+- Cloud Agent port previews use a `*.agent.cvm.dev` Host (not localhost). Next 16
+  blocks `/_next/*` for unknown dev origins — `web/next.config.ts` sets
+  `allowedDevOrigins` for those hosts so login JS can hydrate. Restart `npm run
+  dev` after changing that list.
 - Market-hours gating (09:30–14:30 `Asia/Colombo`, weekdays): the poller idles outside those
   hours — use `tick --force` to poll on demand.

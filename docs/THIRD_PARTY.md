@@ -31,7 +31,7 @@ A shorter copy also lives at repo-root [`THIRD_PARTY.md`](../THIRD_PARTY.md)
 | [@tailwindcss/postcss](https://github.com/tailwindlabs/tailwindcss) | MIT | PostCSS integration (dev) |
 | [tw-animate-css](https://github.com/Wombosvideo/tw-animate-css) | MIT | Animation utilities used by shadcn |
 | [pg](https://github.com/brianc/node-postgres) | MIT | Postgres client (no cse.lk from `web/`) |
-| [shadcn/ui](https://ui.shadcn.com/) (copied components + CLI) | MIT | Button / Input / Label primitives |
+| [shadcn/ui](https://ui.shadcn.com/) (copied components + CLI) | MIT | Button / Input / Label / Badge / Select primitives |
 | [radix-ui](https://www.radix-ui.com/) | MIT | Accessible primitives (via shadcn) |
 | [class-variance-authority](https://github.com/joe-bell/cva) | Apache-2.0 | Variant helpers |
 | [clsx](https://github.com/lukeed/clsx) / [tailwind-merge](https://github.com/dcastil/tailwind-merge) | MIT | className utilities |

@@ -19,6 +19,14 @@ const SECRET = "web-health-route-unit-secret-not-for-prod";
 type HealthBody = {
   status?: string;
   db_ok?: boolean;
+  delivery?: {
+    delivered_24h?: number;
+    retrying?: number;
+    dead_lettered?: number;
+  };
+  retention?: {
+    snapshot_retention_days?: number;
+  };
   poller?: {
     last_tick_ok?: boolean;
     price_poll_ok?: boolean;
@@ -61,6 +69,11 @@ function installDbPool(): string[] {
       queries.push(sql);
       if (sql.includes("SELECT 1")) return { rows: [] };
       if (sql.includes("MAX(ts)")) return { rows: [{ max_ts: null }] };
+      if (sql.includes("FROM alert_log")) {
+        return {
+          rows: [{ delivered_24h: 2, retrying: 1, dead_lettered: 3 }],
+        };
+      }
       throw new Error(`unexpected query: ${sql}`);
     },
   };
@@ -108,8 +121,15 @@ async function testWatchedMissingDegradesRoute(): Promise<void> {
       body.poller?.watched_missing?.[0] === "COMB.N0000",
       "watched_missing forwarded",
     );
+    assert(body.delivery?.delivered_24h === 2, "delivery delivered_24h forwarded");
+    assert(body.delivery?.retrying === 1, "delivery retrying forwarded");
+    assert(body.delivery?.dead_lettered === 3, "delivery dead_lettered forwarded");
+    assert(
+      body.retention?.snapshot_retention_days === 0,
+      "retention default forwarded",
+    );
     assert(seenUrls.length === 1, `expected one health fetch, got ${seenUrls.length}`);
-    assert(queries.length === 2, `expected two DB queries, got ${queries.length}`);
+    assert(queries.length === 3, `expected three DB queries, got ${queries.length}`);
   } finally {
     globalThis.fetch = originalFetch;
   }

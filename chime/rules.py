@@ -137,6 +137,23 @@ def _gap_pct(snapshot: PriceSnapshot) -> float | None:
     return abs((snapshot.open - snapshot.previous_close) / snapshot.previous_close) * 100.0
 
 
+def _rule_inactive_or_muted(rule: AlertRule, *, as_of: datetime) -> bool:
+    """Skip inactive rules and temporary mutes; malformed mute timestamps skip.
+
+    ``as_of`` is the snapshot / event timestamp (not host wall clock) so mute
+    windows stay skew-safe with the rest of the rule engine.
+    """
+    if not rule.active:
+        return True
+    muted = rule.muted_until
+    if muted is None:
+        return False
+    muted_utc = _safe_utc_aware(muted)
+    if muted_utc is None:
+        return True
+    return muted_utc > _as_utc_aware(as_of)
+
+
 def evaluate_price_rules(
     *,
     snapshot: PriceSnapshot,
@@ -155,7 +172,7 @@ def evaluate_price_rules(
         return events
 
     for rule in rules:
-        if not rule.active or rule.symbol != snapshot.symbol:
+        if _rule_inactive_or_muted(rule, as_of=snapshot.ts) or rule.symbol != snapshot.symbol:
             continue
 
         if rule.type == AlertType.PRICE_ABOVE:
@@ -420,7 +437,12 @@ def evaluate_big_print_rules(
     if not _finite(print_.quantity) or print_.quantity <= 0:
         return events
     for rule in rules:
-        if not rule.active or rule.type != AlertType.BIG_PRINT:
+        if _rule_inactive_or_muted(
+            rule,
+            as_of=print_.traded_at
+            or print_.seen_at
+            or datetime(1970, 1, 1, tzinfo=UTC),
+        ) or rule.type != AlertType.BIG_PRINT:
             continue
         if rule.symbol != print_.symbol:
             continue
@@ -485,7 +507,7 @@ def evaluate_notice_rules(
     if published is None or published <= datetime(1970, 1, 1, tzinfo=UTC):
         return events
     for rule in rules:
-        if not rule.active or rule.type != alert_type:
+        if _rule_inactive_or_muted(rule, as_of=published) or rule.type != alert_type:
             continue
         # Halt notices are market-wide; buy-in / non-compliance need symbol match.
         if alert_type == AlertType.HALT:
@@ -573,7 +595,7 @@ def evaluate_disclosure_rules(
     if published <= datetime(1970, 1, 1, tzinfo=UTC):
         return events
     for rule in rules:
-        if not rule.active:
+        if _rule_inactive_or_muted(rule, as_of=published):
             continue
         if rule.type != AlertType.DISCLOSURE:
             continue
@@ -634,7 +656,7 @@ def evaluate_order_book_rules(
         return events
 
     for rule in rules:
-        if not rule.active or rule.symbol != book.symbol:
+        if _rule_inactive_or_muted(rule, as_of=book.ts) or rule.symbol != book.symbol:
             continue
         if rule.type not in (AlertType.BID_HEAVY, AlertType.ASK_HEAVY):
             continue
@@ -708,7 +730,7 @@ def evaluate_filing_metrics_rules(
     )
 
     for rule in rules:
-        if not rule.active:
+        if _rule_inactive_or_muted(rule, as_of=disclosure.published_at):
             continue
         if rule.type not in FILING_METRICS_ALERT_TYPES:
             continue

@@ -35,6 +35,7 @@ export function normalizeSymbolParam(raw: unknown): string | null {
   return normalizeSymbol(decoded);
 }
 
+/** Full bot parity — every AlertType in chime.domain. */
 export const ALERT_TYPES = [
   "price_above",
   "price_below",
@@ -51,9 +52,17 @@ export const ALERT_TYPES = [
   "halt",
   "bid_heavy",
   "ask_heavy",
+  "eps_above",
+  "eps_below",
+  "eps_yoy_above",
+  "eps_yoy_below",
+  "rev_yoy_above",
+  "rev_yoy_below",
+  "profit_yoy_above",
+  "profit_yoy_below",
 ] as const;
 
-/** Alert types that require a positive numeric threshold. */
+/** Alert types that require a positive numeric threshold (parity Python). */
 export const THRESHOLD_ALERT_TYPES = [
   "price_above",
   "price_below",
@@ -66,16 +75,34 @@ export const THRESHOLD_ALERT_TYPES = [
   "gap",
   "bid_heavy",
   "ask_heavy",
+  "eps_above",
+  "eps_below",
+  "eps_yoy_above",
+  "eps_yoy_below",
+  "rev_yoy_above",
+  "rev_yoy_below",
+  "profit_yoy_above",
+  "profit_yoy_below",
 ] as const;
 
-/** Notice-style alerts with no threshold. */
+/** Notice-style alerts with no threshold (bid/ask need thresholds — not here). */
 export const NOTICE_ALERT_TYPES = [
   "disclosure",
   "buy_in",
   "non_compliance",
   "halt",
-  "bid_heavy",
-  "ask_heavy",
+] as const;
+
+/** Filing-metrics / YoY types — feature-flagged at fire time. */
+export const FILING_METRICS_ALERT_TYPES = [
+  "eps_above",
+  "eps_below",
+  "eps_yoy_above",
+  "eps_yoy_below",
+  "rev_yoy_above",
+  "rev_yoy_below",
+  "profit_yoy_above",
+  "profit_yoy_below",
 ] as const;
 
 export type AlertType = (typeof ALERT_TYPES)[number];
@@ -84,5 +111,19 @@ export function isAlertType(value: unknown): value is AlertType {
   return (
     typeof value === "string" &&
     (ALERT_TYPES as readonly string[]).includes(value)
+  );
+}
+
+export function isThresholdAlertType(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    (THRESHOLD_ALERT_TYPES as readonly string[]).includes(value)
+  );
+}
+
+export function isFilingMetricsAlertType(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    (FILING_METRICS_ALERT_TYPES as readonly string[]).includes(value)
   );
 }
