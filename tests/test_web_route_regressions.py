@@ -1099,3 +1099,29 @@ def test_bot_dash_parity_filing_metrics_and_settings() -> None:
     ).read_text(encoding="utf-8")
     parity = Path("docs/factory/BOT_DASH_PARITY.md").read_text(encoding="utf-8")
     assert "EPS above / below" in parity and "| Yes | Yes |" in parity
+
+
+def test_symbol_compare_chart_max_four() -> None:
+    """Price compare: shadcn/recharts overlay capped at 4 symbols."""
+    compare_route = WEB / "src" / "app" / "api" / "v1" / "compare" / "route.ts"
+    compare_lib = WEB / "src" / "lib" / "compare-chart.ts"
+    compare_ui = WEB / "src" / "components" / "kit" / "symbol-compare-chart.tsx"
+    page = (WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert compare_route.is_file()
+    assert compare_lib.is_file()
+    assert compare_ui.is_file()
+    route_src = compare_route.read_text(encoding="utf-8")
+    lib_src = compare_lib.read_text(encoding="utf-8")
+    ui_src = compare_ui.read_text(encoding="utf-8")
+    assert "MAX_COMPARE_SYMBOLS = 4" in route_src
+    assert "MAX_COMPARE_SYMBOLS = 4" in lib_src
+    assert "price_snapshots" in route_src
+    assert "cse.lk" not in route_src.lower() or "no cse" in route_src.lower()
+    assert "buildCompareChartRows" in lib_src
+    assert 'mode === "indexed"' in lib_src or 'mode === "indexed"' in ui_src
+    assert "SymbolCompareChart" in page
+    assert "SCALE_OPTIONS" in ui_src
+    assert "recharts" in (WEB / "package.json").read_text(encoding="utf-8")
+    assert (WEB / "src" / "components" / "ui" / "chart.tsx").is_file()

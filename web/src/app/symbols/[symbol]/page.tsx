@@ -14,6 +14,7 @@ import {
   type FilingMetricRow,
   type LatestBrief,
 } from "@/components/kit/filing-metrics-panel";
+import { SymbolCompareChart } from "@/components/kit/symbol-compare-chart";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { OptionalLwcNote } from "@/components/optional-lwc-note";
@@ -653,6 +654,8 @@ export default async function SymbolDetailPage({
         ) : null}
         <NfaInline className="mt-2" />
       </section>
+
+      <SymbolCompareChart baseSymbol={data.symbol} />
 
       <FilingMetricsPanel
         metrics={filingMetrics}
