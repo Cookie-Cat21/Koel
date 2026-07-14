@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-label="Chime wordmark">
-  <title>Chime wordmark</title>
-  <rect width="360" height="100" fill="#EDE6D9"/>
-  <text x="24" y="70"
-        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="64"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" role="img" aria-label="CHIME wordmark">
+  <title>CHIME wordmark</title>
+  <rect width="420" height="110" fill="#F4F6F8"/>
+  <text x="28" y="78"
+        font-family="Arial Narrow, Helvetica Condensed, Impact, sans-serif"
+        font-size="72"
         font-weight="700"
-        letter-spacing="-1.5"
-        fill="#12110F">Chime</text>
+        letter-spacing="4"
+        fill="#0A0B0D">CHIME</text>
 </svg>

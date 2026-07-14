@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-label="Signal Ice landing">
-  <title>Chime Signal Ice landing</title>
-  <rect width="1440" height="900" fill="#F4F6F8"/>
-  <line x1="0" y1="64" x2="1440" y2="64" stroke="#D1D5DB" stroke-width="1"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-label="Wire Strike dark landing alt">
+  <title>Chime Wire Strike landing alt</title>
+  <rect width="1440" height="900" fill="#0A0B0D"/>
+  <line x1="0" y1="64" x2="1440" y2="64" stroke="#1F2937" stroke-width="1"/>
 
   <text x="72" y="42"
         font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
@@ -10,32 +10,32 @@
   <path fill="#E10600" transform="translate(72 130) scale(2.6)" d="M12 4 H18 V12 L26 16 L18 20 V28 H12 Z"/>
   <text x="160" y="220"
         font-family="Arial Narrow, Helvetica Condensed, Impact, sans-serif"
-        font-size="110" font-weight="700" letter-spacing="6" fill="#0A0B0D">CHIME</text>
+        font-size="110" font-weight="700" letter-spacing="6" fill="#F4F6F8">CHIME</text>
 
   <text x="72" y="320"
         font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="34" font-weight="600" fill="#0A0B0D">CSE moves. You hear it.</text>
+        font-size="34" font-weight="600" fill="#F4F6F8">CSE moves. You hear it.</text>
   <text x="72" y="364"
         font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="18" fill="#6B7280">Price, move, disclosure, filing. Telegram the second it fires.</text>
+        font-size="18" fill="#9CA3AF">Price, move, disclosure, filing. Telegram the second it fires.</text>
 
   <rect x="72" y="420" width="260" height="54" fill="#E10600"/>
   <text x="202" y="454" text-anchor="middle"
         font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
         font-size="16" font-weight="700" fill="#FFFFFF">Open Telegram bot</text>
 
-  <rect x="350" y="420" width="220" height="54" fill="none" stroke="#0A0B0D" stroke-width="2"/>
+  <rect x="350" y="420" width="220" height="54" fill="none" stroke="#F4F6F8" stroke-width="2"/>
   <text x="460" y="454" text-anchor="middle"
         font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="16" font-weight="600" fill="#0A0B0D">Manage in browser</text>
+        font-size="16" font-weight="600" fill="#F4F6F8">Manage in browser</text>
 
   <g transform="translate(820 280)">
-    <rect width="520" height="240" fill="#FFFFFF" stroke="#D1D5DB"/>
+    <rect width="520" height="240" fill="#111827" stroke="#1F2937"/>
     <rect x="0" y="0" width="8" height="240" fill="#E10600"/>
     <text x="28" y="40" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="1" fill="#6B7280">TELEGRAM</text>
-    <text x="28" y="96" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0A0B0D">JKH.N0000 crossed above</text>
-    <text x="28" y="140" font-family="Menlo, Consolas, monospace" font-size="36" font-weight="700" fill="#0A0B0D">22.50</text>
-    <text x="28" y="186" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#6B7280">Last 22.75   |   rule #184</text>
+    <text x="28" y="96" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#F4F6F8">JKH.N0000 crossed above</text>
+    <text x="28" y="140" font-family="Menlo, Consolas, monospace" font-size="36" font-weight="700" fill="#F4F6F8">22.50</text>
+    <text x="28" y="186" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#9CA3AF">Last 22.75   |   rule #184</text>
     <text x="28" y="220" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Not financial advice.</text>
   </g>
 

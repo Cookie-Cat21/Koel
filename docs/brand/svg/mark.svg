@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Chime CSE mark threshold cross">
-  <title>Chime CSE mark</title>
-  <rect width="24" height="24" fill="#EDE6D9"/>
-  <g fill="none" stroke="#0B6E4F" stroke-width="2.25" stroke-linecap="square">
-    <path d="M3.5 14 H20.5"/>
-    <path d="M12 4.5 V19.5"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Chime strike notch mark">
+  <title>Chime mark - strike notch</title>
+  <rect width="32" height="32" fill="#F4F6F8"/>
+  <!-- Vertical strike bar with triangular notch bitten from the right -->
+  <path fill="#0A0B0D" d="M12 4 H18 V12 L26 16 L18 20 V28 H12 Z"/>
 </svg>

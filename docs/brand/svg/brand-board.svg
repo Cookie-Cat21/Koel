@@ -1,65 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-label="Chime CSE brand board Ticker Strike">
-  <title>Chime CSE brand board</title>
-  <rect width="1200" height="400" fill="#EDE6D9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-label="Signal Ice brand board">
+  <title>Signal Ice brand board</title>
+  <rect width="1200" height="400" fill="#F4F6F8"/>
 
-  <g fill="none" stroke="#0B6E4F" stroke-width="3.5" stroke-linecap="square" transform="translate(48 36) scale(2.3)">
-    <path d="M3.5 14 H20.5"/>
-    <path d="M12 4.5 V19.5"/>
-  </g>
-  <text x="120" y="90"
+  <path fill="#E10600" transform="translate(48 40) scale(2.4)" d="M12 4 H18 V12 L26 16 L18 20 V28 H12 Z"/>
+  <text x="140" y="100"
+        font-family="Arial Narrow, Helvetica Condensed, Impact, sans-serif"
+        font-size="64" font-weight="700" letter-spacing="3" fill="#0A0B0D">CHIME</text>
+  <text x="48" y="150"
         font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="56" font-weight="700" letter-spacing="-1.4" fill="#12110F">Chime</text>
-  <text x="310" y="90"
-        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="56" font-weight="700" letter-spacing="-1.4" fill="#0B6E4F">CSE</text>
+        font-size="16" font-weight="600" fill="#6B7280">SIGNAL ICE  |  CSE moves. You hear it.</text>
 
-  <text x="48" y="140"
-        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="14" font-weight="600" fill="#5C574E">TICKER STRIKE  |  CSE moves. You hear it.</text>
+  <g transform="translate(48 200)">
+    <rect width="100" height="100" fill="#F4F6F8" stroke="#D1D5DB"/>
+    <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">paper</text>
+    <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#F4F6F8</text>
 
-  <g transform="translate(48 180)">
-    <rect width="88" height="88" fill="#EDE6D9" stroke="#C8C0B4"/>
-    <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">paper</text>
-    <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#EDE6D9</text>
-
-    <g transform="translate(108 0)">
-      <rect width="88" height="88" fill="#12110F"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">ink</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#12110F</text>
+    <g transform="translate(120 0)">
+      <rect width="100" height="100" fill="#0A0B0D"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">ink</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#0A0B0D</text>
     </g>
-    <g transform="translate(216 0)">
-      <rect width="88" height="88" fill="#0B6E4F"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">signal</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#0B6E4F</text>
+    <g transform="translate(240 0)">
+      <rect width="100" height="100" fill="#E10600"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">accent / fired</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#E10600</text>
     </g>
-    <g transform="translate(324 0)">
-      <rect width="88" height="88" fill="#0F6B3C"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">up</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#0F6B3C</text>
+    <g transform="translate(360 0)">
+      <rect width="100" height="100" fill="#6B7280"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">mute</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#6B7280</text>
     </g>
-    <g transform="translate(432 0)">
-      <rect width="88" height="88" fill="#B91C1C"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">down</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#B91C1C</text>
-    </g>
-    <g transform="translate(540 0)">
-      <rect width="88" height="88" fill="#D97706"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">fired only</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#D97706</text>
-    </g>
-    <g transform="translate(648 0)">
-      <rect width="88" height="88" fill="#5C574E"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">mute</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#5C574E</text>
-    </g>
-    <g transform="translate(756 0)">
-      <rect width="88" height="88" fill="#C8C0B4"/>
-      <text x="0" y="108" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5C574E">line</text>
-      <text x="0" y="124" font-family="Menlo, Consolas, monospace" font-size="11" fill="#12110F">#C8C0B4</text>
+    <g transform="translate(480 0)">
+      <rect width="100" height="100" fill="#FFFFFF" stroke="#D1D5DB"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">white</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#FFFFFF</text>
     </g>
   </g>
 
-  <text x="900" y="72" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#5C574E">Mark = threshold cross</text>
-  <text x="900" y="94" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#5C574E">Not a bell. Not mist.</text>
-  <text x="900" y="116" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#5C574E">Product UI: IBM Plex Sans / Mono</text>
+  <text x="780" y="80" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#6B7280">Bans: mist, beige, forest green, plus</text>
+  <text x="780" y="104" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#6B7280">Mark: strike notch (favicon only)</text>
+  <text x="780" y="128" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#6B7280">Red = the product, not decoration</text>
 </svg>
