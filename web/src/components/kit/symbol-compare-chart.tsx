@@ -29,6 +29,7 @@ import {
   type CompareSeries,
 } from "@/lib/compare-chart";
 import { formatNumber } from "@/lib/format";
+import { finiteSparklinePoints } from "@/lib/sparkline";
 import { cn } from "@/lib/utils";
 
 const CHART_COLORS = [
@@ -42,6 +43,8 @@ const SCALE_OPTIONS = [1, 2, 3, 4] as const;
 
 type Props = {
   baseSymbol: string;
+  /** SSR ticks for the base symbol — chart works even if peer fetch is slow. */
+  initialPoints?: { ts: string | null; price: number | null | undefined }[];
   className?: string;
 };
 
@@ -78,32 +81,55 @@ function parseComparePayload(body: unknown): CompareSeries[] {
   return out;
 }
 
-export function SymbolCompareChart({ baseSymbol, className }: Props) {
+export function SymbolCompareChart({
+  baseSymbol,
+  initialPoints = [],
+  className,
+}: Props) {
   const base = normalizeSymbol(baseSymbol) ?? baseSymbol.toUpperCase();
   const scaleGroupId = useId();
   const modeGroupId = useId();
   const peerId = useId();
 
+  const baseSeries = useMemo<CompareSeries>(() => {
+    return {
+      symbol: base,
+      points: finiteSparklinePoints(initialPoints),
+    };
+  }, [base, initialPoints]);
+
   const [scale, setScale] = useState<(typeof SCALE_OPTIONS)[number]>(1);
   const [mode, setMode] = useState<CompareScaleMode>("indexed");
   const [peers, setPeers] = useState<string[]>(["", "", ""]);
   const [draft, setDraft] = useState("");
-  const [series, setSeries] = useState<CompareSeries[]>([]);
+  const [peerSeries, setPeerSeries] = useState<CompareSeries[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedSymbols = useMemo(() => {
-    const list = [base];
+  const selectedPeers = useMemo(() => {
+    const list: string[] = [];
     for (let i = 0; i < scale - 1; i++) {
       const peer = normalizeSymbol(peers[i] ?? "");
       if (peer && peer !== base && !list.includes(peer)) list.push(peer);
     }
-    return list.slice(0, MAX_COMPARE_SYMBOLS);
+    return list.slice(0, MAX_COMPARE_SYMBOLS - 1);
   }, [base, peers, scale]);
 
-  const selectedKey = selectedSymbols.join(",");
+  const selectedSymbols = useMemo(
+    () => [base, ...selectedPeers].slice(0, MAX_COMPARE_SYMBOLS),
+    [base, selectedPeers],
+  );
+
+  const peerKey = selectedPeers.join(",");
 
   useEffect(() => {
+    if (!peerKey) {
+      setPeerSeries([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), CLIENT_API_TIMEOUT_MS);
@@ -113,7 +139,7 @@ export function SymbolCompareChart({ baseSymbol, className }: Props) {
       setError(null);
       try {
         const qs = new URLSearchParams({
-          symbols: selectedKey,
+          symbols: [base, ...peerKey.split(",")].join(","),
           limit: "60",
         });
         const res = await fetch(`/api/v1/compare?${qs.toString()}`, {
@@ -126,7 +152,7 @@ export function SymbolCompareChart({ baseSymbol, className }: Props) {
         );
         if (!bounded.ok) {
           if (!cancelled) {
-            setSeries([]);
+            setPeerSeries([]);
             setError("Couldn’t load compare series.");
           }
           return;
@@ -139,15 +165,20 @@ export function SymbolCompareChart({ baseSymbol, className }: Props) {
         }
         if (!res.ok) {
           if (!cancelled) {
-            setSeries([]);
+            setPeerSeries([]);
             setError(apiErrorMessage(body, "Couldn’t load compare series."));
           }
           return;
         }
-        if (!cancelled) setSeries(parseComparePayload(body));
+        if (!cancelled) {
+          const parsed = parseComparePayload(body).filter(
+            (s) => s.symbol !== base,
+          );
+          setPeerSeries(parsed);
+        }
       } catch {
         if (!cancelled) {
-          setSeries([]);
+          setPeerSeries([]);
           setError("Couldn’t load compare series.");
         }
       } finally {
@@ -162,7 +193,16 @@ export function SymbolCompareChart({ baseSymbol, className }: Props) {
       ctrl.abort();
       clearTimeout(timer);
     };
-  }, [selectedKey]);
+  }, [base, peerKey]);
+
+  const series = useMemo(() => {
+    if (selectedPeers.length === 0) return [baseSeries];
+    const bySymbol = new Map(peerSeries.map((s) => [s.symbol, s]));
+    const peersResolved = selectedPeers.map(
+      (symbol) => bySymbol.get(symbol) ?? { symbol, points: [] },
+    );
+    return [baseSeries, ...peersResolved];
+  }, [baseSeries, peerSeries, selectedPeers]);
 
   const chartConfig = useMemo(() => {
     const cfg: ChartConfig = {};
@@ -181,8 +221,8 @@ export function SymbolCompareChart({ baseSymbol, className }: Props) {
   );
 
   const needsPeers = scale > 1;
-  const peersFilled = selectedSymbols.length >= 2;
-  const showChart = rows.length >= 2 && (!needsPeers || peersFilled);
+  const showChart =
+    rows.length >= 2 && (!needsPeers || selectedPeers.length >= 1);
 
   function addPeerFromDraft() {
     const next = normalizeSymbol(draft);
@@ -357,11 +397,11 @@ export function SymbolCompareChart({ baseSymbol, className }: Props) {
 
         {loading ? (
           <p className="text-sm text-muted-foreground" role="status">
-            Loading ticks…
+            Loading peer ticks…
           </p>
         ) : null}
 
-        {!loading && needsPeers && !peersFilled ? (
+        {!loading && needsPeers && selectedPeers.length === 0 ? (
           <p className="text-sm text-muted-foreground" role="status">
             Add {scale - 1} more compan{scale - 1 === 1 ? "y" : "ies"} to fill
             this scale (max {MAX_COMPARE_SYMBOLS}).

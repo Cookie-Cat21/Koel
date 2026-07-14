@@ -655,7 +655,10 @@ export default async function SymbolDetailPage({
         <NfaInline className="mt-2" />
       </section>
 
-      <SymbolCompareChart baseSymbol={data.symbol} />
+      <SymbolCompareChart
+        baseSymbol={data.symbol}
+        initialPoints={snaps.points}
+      />
 
       <FilingMetricsPanel
         metrics={filingMetrics}
