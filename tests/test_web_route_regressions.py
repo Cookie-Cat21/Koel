@@ -626,6 +626,30 @@ def test_overview_page_is_signed_in_home() -> None:
     assert "max-w-6xl" in page_src
 
 
+def test_price_refresh_soft_reloads_from_postgres() -> None:
+    """Near-realtime: client refresh from Postgres — never cse.lk from web/."""
+    comp = WEB / "src" / "components" / "price-refresh.tsx"
+    assert comp.is_file()
+    src = comp.read_text(encoding="utf-8")
+    assert "router.refresh()" in src
+    assert "DEFAULT_PRICE_REFRESH_MS" in src
+    assert "MIN_PRICE_REFRESH_MS" in src
+    assert "cse.lk" not in src.lower()
+    for page in (
+        WEB / "src" / "app" / "overview" / "page.tsx",
+        WEB / "src" / "app" / "market" / "page.tsx",
+        WEB / "src" / "app" / "watchlist" / "page.tsx",
+        WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx",
+    ):
+        page_src = page.read_text(encoding="utf-8")
+        assert "PriceRefresh" in page_src, f"{page} missing PriceRefresh"
+        assert "cse.lk" not in page_src.lower() or all(
+            line.strip().startswith("//") or "cse.lk" not in line.lower()
+            for line in page_src.splitlines()
+            if "cse.lk" in line.lower()
+        )
+
+
 def test_sectors_route_static() -> None:
     """Wave6: GET /api/v1/sectors reads Postgres sectors; session GET; no cse.lk."""
     route = WEB / "src" / "app" / "api" / "v1" / "sectors" / "route.ts"

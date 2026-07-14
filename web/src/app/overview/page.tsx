@@ -7,6 +7,7 @@ import { StatCard } from "@/components/kit/stat-card";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
+import { PriceRefresh } from "@/components/price-refresh";
 import { Button } from "@/components/ui/button";
 import {
   MAX_STOCK_NAME_LENGTH,
@@ -221,7 +222,12 @@ export default async function OverviewPage() {
           title="Overview"
           description="CSE snapshots from Chime’s poller. Set rules here — Telegram is the cherry that pings you when they fire."
           action={
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <PriceRefresh
+                lastSnapshotAt={
+                  watch.map((w) => w.ts).filter(Boolean).sort().at(-1) ?? null
+                }
+              />
               <Button asChild size="sm">
                 <Link href="/alerts">New alert</Link>
               </Button>

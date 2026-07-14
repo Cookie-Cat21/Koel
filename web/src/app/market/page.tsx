@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
+import { PriceRefresh } from "@/components/price-refresh";
 import { Button } from "@/components/ui/button";
 import {
   MAX_SECTOR_NAME_LENGTH,
@@ -245,6 +246,17 @@ export default async function MarketPage({
           eyebrow="Market"
           title="Browse"
           description="CSE symbols from Chime’s latest poller snapshots. Find names to watch — Telegram still delivers the push when your rules fire."
+          action={
+            <PriceRefresh
+              lastSnapshotAt={
+                (marketItems ?? [])
+                  .map((i) => i.ts)
+                  .filter((t): t is string => typeof t === "string" && !!t)
+                  .sort()
+                  .at(-1) ?? null
+              }
+            />
+          }
         />
 
         <form

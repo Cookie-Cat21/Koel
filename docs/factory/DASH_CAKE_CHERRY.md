@@ -23,11 +23,11 @@ leaves open (browser-open-only alerts).
 - Payments / native apps
 - Screener with 20 filters (keep Browse denser but not a quant terminal)
 
-## Immediate build
+## Near-realtime prices
 
-1. Signed-in **Overview** home (movers + watch peek + armed alerts + recent fires)
-2. Wider dash shell (`max-w-6xl`)
-3. Denser Browse + Symbol chrome
-4. Landing copy: dash first, Telegram as the push cherry
+CSE publishes no public WebSocket tape. Chime’s path is:
 
-Postgres-only for `web/` remains — no cse.lk from the dashboard.
+`cse.lk tradeSummary` → poller (`POLL_INTERVAL_SECONDS`, min 5) → Postgres →
+dash `PriceRefresh` soft-reload (~15s).
+
+That is **near-realtime during market hours**, not a broker streaming feed.

@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
+import { PriceRefresh } from "@/components/price-refresh";
 import { Sparkline } from "@/components/sparkline";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
@@ -347,6 +348,7 @@ export default async function SymbolDetailPage({
           }
         />
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <PriceRefresh lastSnapshotAt={data.last?.ts ?? null} />
           <WatchButton symbol={data.symbol} />
           <Button asChild variant="outline" size="sm">
             <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>

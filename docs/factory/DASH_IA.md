@@ -46,7 +46,7 @@ App shell: sticky top nav — Overview · Browse · Watchlist · Alerts · Histo
 - Sorted by `change_pct` desc by default (thin movers view — not a screener)
 - Empty state: no snapshots yet — run `make tick` (or leave poller/both running), then refresh; search miss is a separate empty
 - NFA under price-adjacent copy + site footer
-- Fence: no OHLC board, no multi-column sort UI, no live ticks, no cse.lk from `web/`
+- Fence: no OHLC board, no multi-column sort UI, no cse.lk from `web/` (near-realtime = poller → Postgres → `PriceRefresh`)
 
 ### `/watchlist`
 - Header: “Watchlist” + add-symbol control (input + Add)
@@ -140,7 +140,9 @@ Proxy or re-expose existing poller `/health` — do not invent a second source o
 ### Conventions
 - Symbol normalize: uppercase, same regex as bot (`SYMBOL_RE`).
 - NFA is **UI-only** (`disclaimer()` chrome) — not required on JSON bodies.
-- No WebSocket in v1; pages refresh on navigation only (no short-poll quote loop).
+- No WebSocket quote stream in v1 (CSE has no public tape). **Near-realtime:**
+  dash pages soft-refresh from Postgres via `PriceRefresh` (~15s); freshness
+  tracks poller `POLL_INTERVAL_SECONDS` (floor 5s). Never call cse.lk from `web/`.
 
 ---
 
@@ -163,7 +165,7 @@ Do not introduce email/password, OAuth providers, or multi-tenant orgs in v1. Da
 | Page | Out of scope |
 |---|---|
 | `/login` | Marketing site, waitlist, payments, multi-provider SSO |
-| `/market` | Screener, OHLC board, multi-sort UI, live ticks, portfolio actions |
+| `/market` | Screener, OHLC board, multi-sort UI, broker-style live tape, portfolio actions |
 | `/watchlist` | Portfolio quantities, cost basis, P&L, sector allocation |
 | `/alerts` | Complex boolean rules, trailing stops, backtests, quiet hours UI |
 | `/alerts/history` | Analytics funnels, export-to-tax, “would have made” sims |

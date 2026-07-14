@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
+import { PriceRefresh } from "@/components/price-refresh";
 import { Button } from "@/components/ui/button";
 import {
   UnwatchButton,
@@ -101,6 +102,19 @@ export default async function WatchlistPage() {
           eyebrow="Watch"
           title="Watchlist"
           description="Symbols you watch for price and disclosure alerts. Pushes still go to Telegram."
+          action={
+            <PriceRefresh
+              lastSnapshotAt={
+                payload
+                  ? payload.items
+                      .map((i) => i.ts)
+                      .filter((t): t is string => typeof t === "string" && !!t)
+                      .sort()
+                      .at(-1) ?? null
+                  : null
+              }
+            />
+          }
         />
 
         <div className="mt-6">
