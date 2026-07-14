@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-label="Signal Ice brand board">
+  <title>Signal Ice brand board</title>
+  <rect width="1200" height="400" fill="#F4F6F8"/>
+
+  <path fill="#E10600" transform="translate(48 40) scale(2.4)" d="M12 4 H18 V12 L26 16 L18 20 V28 H12 Z"/>
+  <text x="140" y="100"
+        font-family="Arial Narrow, Helvetica Condensed, Impact, sans-serif"
+        font-size="64" font-weight="700" letter-spacing="3" fill="#0A0B0D">CHIME</text>
+  <text x="48" y="150"
+        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="16" font-weight="600" fill="#6B7280">SIGNAL ICE  |  CSE moves. You hear it.</text>
+
+  <g transform="translate(48 200)">
+    <rect width="100" height="100" fill="#F4F6F8" stroke="#D1D5DB"/>
+    <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">paper</text>
+    <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#F4F6F8</text>
+
+    <g transform="translate(120 0)">
+      <rect width="100" height="100" fill="#0A0B0D"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">ink</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#0A0B0D</text>
+    </g>
+    <g transform="translate(240 0)">
+      <rect width="100" height="100" fill="#E10600"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">accent / fired</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#E10600</text>
+    </g>
+    <g transform="translate(360 0)">
+      <rect width="100" height="100" fill="#6B7280"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">mute</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#6B7280</text>
+    </g>
+    <g transform="translate(480 0)">
+      <rect width="100" height="100" fill="#FFFFFF" stroke="#D1D5DB"/>
+      <text x="8" y="120" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">white</text>
+      <text x="8" y="138" font-family="Menlo, Consolas, monospace" font-size="12" fill="#0A0B0D">#FFFFFF</text>
+    </g>
+  </g>
+
+  <text x="780" y="80" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#6B7280">Bans: mist, beige, forest green, plus</text>
+  <text x="780" y="104" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#6B7280">Mark: strike notch (favicon only)</text>
+  <text x="780" y="128" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#6B7280">Red = the product, not decoration</text>
+</svg>
