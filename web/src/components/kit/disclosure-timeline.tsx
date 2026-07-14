@@ -99,18 +99,25 @@ export function DisclosureTimeline({
   );
 }
 
-/** Optional filter chip row — client wrapper lives in symbol page. */
+/** Optional filter chip — selected state via visual + aria-current. */
 export function DisclosureCategoryHint({
   href,
   label,
+  selected = false,
 }: {
   href: string;
   label: string;
+  selected?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+      aria-current={selected ? "true" : undefined}
+      className={
+        selected
+          ? "inline-flex min-h-9 items-center rounded-md bg-foreground px-3 text-xs font-medium text-background"
+          : "inline-flex min-h-9 items-center rounded-md border border-border/70 px-3 text-xs text-muted-foreground hover:bg-muted/40"
+      }
     >
       {label}
     </Link>

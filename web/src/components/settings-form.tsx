@@ -148,7 +148,7 @@ export function SettingsForm({ initial }: { initial: SettingsPreferences }) {
 
         <section className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="quiet_hours_start">Quiet hours start</Label>
+            <Label htmlFor="quiet_hours_start">Quiet hours start (SLT)</Label>
             <select
               id="quiet_hours_start"
               name="quiet_hours_start"
@@ -165,7 +165,7 @@ export function SettingsForm({ initial }: { initial: SettingsPreferences }) {
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="quiet_hours_end">Quiet hours end</Label>
+            <Label htmlFor="quiet_hours_end">Quiet hours end (SLT)</Label>
             <select
               id="quiet_hours_end"
               name="quiet_hours_end"
@@ -182,8 +182,10 @@ export function SettingsForm({ initial }: { initial: SettingsPreferences }) {
             </select>
           </div>
           <p className="text-xs text-muted-foreground sm:col-span-2">
-            Leave both as Off to disable quiet hours. Times are stored as hour
-            numbers in Postgres and interpreted by Chime delivery workers.
+            Hours are Asia/Colombo (SLT). Set both ends, or leave both Off.
+            Overnight windows work (e.g. 22:00→06:00). During quiet hours
+            Telegram pushes are held and delivered after the window ends — not
+            dropped. Same start and end turns quiet hours off.
           </p>
         </section>
 

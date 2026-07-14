@@ -581,6 +581,7 @@ export default async function SymbolDetailPage({
   const discsFailed = !discRes.ok;
 
   const sparkPoints = finiteSparklinePoints(snaps.points);
+  const snapshotStale = Boolean(data.last?.ts && isStaleTs(data.last.ts));
   const disclosureCategories = Array.from(
     new Set(
       discs.items
@@ -617,15 +618,26 @@ export default async function SymbolDetailPage({
         </div>
       </div>
 
-      <section className="mt-6 rounded-lg border border-border/70 p-4">
+      <section
+        className={`mt-6 rounded-lg border p-4 ${
+          snapshotStale
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-border/70"
+        }`}
+      >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Last price
+              {snapshotStale ? " · stale" : ""}
             </p>
             {data.last ? (
               <div className="mt-1 flex flex-wrap items-center gap-3">
-                <span className="font-mono text-3xl font-semibold tracking-tight tabular-nums">
+                <span
+                  className={`font-mono text-3xl font-semibold tracking-tight tabular-nums ${
+                    snapshotStale ? "text-muted-foreground" : ""
+                  }`}
+                >
                   {formatNumber(data.last.price)}
                 </span>
                 <ChangeBadge changePct={data.last.change_pct} />
@@ -638,6 +650,9 @@ export default async function SymbolDetailPage({
             {data.last?.ts ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 As of {formatTs(data.last.ts)} (SLT)
+                {snapshotStale
+                  ? " — more than a day old; poller may be paused."
+                  : ""}
               </p>
             ) : null}
           </div>
@@ -769,16 +784,18 @@ export default async function SymbolDetailPage({
           Disclosures
         </h2>
         {!discsFailed && disclosureCategories.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-3 flex flex-wrap gap-2">
             <DisclosureCategoryHint
               href={`/symbols/${encoded}`}
-              label={categoryFilter ? "All disclosures" : "All"}
+              label="All"
+              selected={!categoryFilter}
             />
             {disclosureCategories.map((category) => (
               <DisclosureCategoryHint
                 key={category}
                 href={`/symbols/${encoded}?category=${encodeURIComponent(category)}`}
-                label={categoryFilter === category ? `${category} (selected)` : category}
+                label={category}
+                selected={categoryFilter === category}
               />
             ))}
           </div>
