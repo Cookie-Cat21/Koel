@@ -408,7 +408,7 @@ export default async function SymbolDetailPage({
           [symbol, ...comparePeers].join(","),
         )}&limit=60`
       : null;
-  const [symRes, snapRes, discRes, metricsRes, briefRes, compareRes] =
+  const [symRes, snapRes, discRes, metricsRes, briefRes, compareRes, watchRes] =
     await Promise.all([
       serverApiGet(`/api/v1/symbols/${encoded}`),
       serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=60`),
@@ -416,6 +416,7 @@ export default async function SymbolDetailPage({
       serverApiGet(`/api/v1/symbols/${encoded}/metrics`),
       serverApiGet(`/api/v1/symbols/${encoded}/brief`),
       compareQs ? serverApiGet(compareQs) : Promise.resolve(null),
+      serverApiGet("/api/v1/watchlist"),
     ]);
 
   if (symRes.status === 404) {
@@ -478,6 +479,31 @@ export default async function SymbolDetailPage({
   let filingMetrics: FilingMetricRow | null = null;
   let filingComparison: FilingMetricComparison | null = null;
   let latestBrief: LatestBrief | null = null;
+  const metricsFailed = !metricsRes.ok;
+  let isWatching = false;
+  if (watchRes.ok) {
+    try {
+      const body: unknown = await watchRes.json();
+      const items =
+        body && typeof body === "object" && !Array.isArray(body)
+          ? (body as { items?: unknown }).items
+          : null;
+      if (Array.isArray(items)) {
+        for (const row of items) {
+          if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+          const rowSym = normalizeSymbol(
+            (row as { symbol?: unknown }).symbol,
+          );
+          if (rowSym === symbol) {
+            isWatching = true;
+            break;
+          }
+        }
+      }
+    } catch {
+      isWatching = false;
+    }
+  }
   let comparePeerSeries: {
     symbol: string;
     points: { ts: string | null; price: number }[];
@@ -581,7 +607,7 @@ export default async function SymbolDetailPage({
         />
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <PriceRefresh lastSnapshotAt={data.last?.ts ?? null} />
-          <WatchButton symbol={data.symbol} />
+          <WatchButton symbol={data.symbol} watching={isWatching} />
           <Button asChild variant="outline" size="sm">
             <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>
           </Button>
@@ -729,6 +755,7 @@ export default async function SymbolDetailPage({
         metrics={filingMetrics}
         comparison={filingComparison}
         latestBrief={latestBrief}
+        loadFailed={metricsFailed}
       />
 
       <section
@@ -793,7 +820,7 @@ export default async function SymbolDetailPage({
             action={
               <Button asChild variant="outline" size="sm">
                 <Link
-                  href={`/alerts?symbol=${encodeURIComponent(data.symbol)}`}
+                  href={`/alerts?symbol=${encodeURIComponent(data.symbol)}&type=disclosure`}
                 >
                   Alert on disclosures
                 </Link>
@@ -820,7 +847,7 @@ export default async function SymbolDetailPage({
       </section>
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 p-3 shadow-lg backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <WatchButton symbol={data.symbol} />
+          <WatchButton symbol={data.symbol} watching={isWatching} />
           <Button asChild className="flex-1" size="sm">
             <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>
           </Button>

@@ -63,12 +63,13 @@ type AlertsPayload = {
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ symbol?: string }>;
+  searchParams: Promise<{ symbol?: string; type?: string }>;
 }) {
   await requirePageSession();
   const sp = await searchParams;
   // Drop invalid / hostile filter params — same SYMBOL_RE as the API.
   const symbolFilter = normalizeSymbol(sp.symbol ?? "") ?? "";
+  const typeFilter = isAlertType(sp.type) ? sp.type : null;
 
   const qs = new URLSearchParams();
   if (symbolFilter) qs.set("symbol", symbolFilter);
@@ -159,7 +160,10 @@ export default async function AlertsPage({
           ) : null}
         </form>
 
-        <AlertCreateForm initialSymbol={symbolFilter} />
+        <AlertCreateForm
+          initialSymbol={symbolFilter}
+          initialType={typeFilter}
+        />
         <p className="mt-3 text-xs text-muted-foreground">
           Quiet hours / digest:{" "}
           <Link href="/settings" className="underline underline-offset-4">

@@ -32,15 +32,24 @@ export type LatestBrief = {
   text: string;
 };
 
+function yoyMatchLabel(quality: "exact_yoy" | "approx_yoy"): string {
+  return quality === "exact_yoy"
+    ? "Exact prior-year period"
+    : "Approximate prior-year match";
+}
+
 export function FilingMetricsPanel({
   metrics,
   comparison,
   latestBrief,
+  loadFailed = false,
   className,
 }: {
   metrics: FilingMetricRow | null;
   comparison: FilingMetricComparison | null;
   latestBrief: LatestBrief | null;
+  /** True when metrics API failed — distinct from empty extract. */
+  loadFailed?: boolean;
   className?: string;
 }) {
   const comparable =
@@ -60,7 +69,17 @@ export function FilingMetricsPanel({
           >
             Filing metrics
           </h2>
-          {metrics ? (
+          {loadFailed ? (
+            <div
+              className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+              role="alert"
+            >
+              <p className="text-sm text-destructive">
+                Couldn’t load filing metrics right now. Retry in a moment — this
+                is not an empty extract.
+              </p>
+            </div>
+          ) : metrics ? (
             <div className="mt-3 rounded-lg border border-border/70 p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 {metrics.kind ? <span>{metrics.kind}</span> : null}
@@ -92,10 +111,10 @@ export function FilingMetricsPanel({
                   deltaPct={comparable ? comparison?.profit_delta_pct : null}
                 />
               </div>
-              {comparable ? (
+              {comparable && comparison?.match_quality ? (
                 <p className="mt-3 text-xs text-muted-foreground">
-                  YoY comparison: {comparison?.match_quality}. Extracted
-                  numbers need filing verification.
+                  YoY comparison: {yoyMatchLabel(comparison.match_quality)}.
+                  Extracted numbers need filing verification.
                 </p>
               ) : (
                 <p className="mt-3 text-xs text-muted-foreground">

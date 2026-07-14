@@ -110,7 +110,19 @@ export function WatchlistAddForm() {
   );
 }
 
-export function WatchButton({ symbol }: { symbol: string }) {
+/** Watch or Unwatch CTA — pass ``watching`` from SSR watchlist membership. */
+export function WatchButton({
+  symbol,
+  watching = false,
+}: {
+  symbol: string;
+  watching?: boolean;
+}) {
+  if (watching) return <UnwatchButton symbol={symbol} />;
+  return <WatchAddButton symbol={symbol} />;
+}
+
+function WatchAddButton({ symbol }: { symbol: string }) {
   const router = useRouter();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);

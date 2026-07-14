@@ -84,13 +84,18 @@ type FieldErrors = {
 
 export function AlertCreateForm({
   initialSymbol = "",
+  initialType,
 }: {
   initialSymbol?: string;
+  /** Prefill from ``/alerts?type=disclosure`` (and friends). */
+  initialType?: AlertType | null;
 } = {}) {
   const router = useRouter();
   const toast = useToast();
   const [symbol, setSymbol] = useState(() => normalizeSymbol(initialSymbol) ?? "");
-  const [type, setType] = useState<AlertType>("price_above");
+  const [type, setType] = useState<AlertType>(() =>
+    initialType && ALERT_TYPES.includes(initialType) ? initialType : "price_above",
+  );
   const [threshold, setThreshold] = useState("");
   const [category, setCategory] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});

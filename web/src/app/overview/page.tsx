@@ -427,20 +427,28 @@ export default async function OverviewPage() {
                 Manage
               </Link>
             </div>
-            {rules.length === 0 ? (
+            {armedCount === 0 ? (
               <EmptyState
                 className="mt-4"
-                title="No rules yet"
-                description="Create a price, move, or disclosure rule. When it matches, Telegram gets the ping."
+                title={rules.length === 0 ? "No rules yet" : "No armed alerts"}
+                description={
+                  rules.length === 0
+                    ? "Create a price, move, or disclosure rule. When it matches, Telegram gets the ping."
+                    : "You have rules, but none are armed right now. Open Alerts to re-enable or unmute."
+                }
                 action={
                   <Button asChild size="sm">
-                    <Link href="/alerts">Create alert</Link>
+                    <Link href="/alerts">
+                      {rules.length === 0 ? "Create alert" : "Manage alerts"}
+                    </Link>
                   </Button>
                 }
               />
             ) : (
               <ul className="mt-4 divide-y divide-border/60">
-                {rules.map((rule) => (
+                {rules
+                  .filter((rule) => rule.armed)
+                  .map((rule) => (
                   <li
                     key={rule.id}
                     className="flex flex-wrap items-center justify-between gap-2 py-3"
