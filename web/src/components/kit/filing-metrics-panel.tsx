@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 
+import { ExpandableBrief } from "@/components/kit/expandable-brief";
 import { Badge } from "@/components/ui/badge";
 import {
   formatCompactNumber,
@@ -136,12 +137,11 @@ export function FilingMetricsPanel({
             Latest brief
           </h3>
           {latestBrief ? (
-            <article className="mt-3 rounded-lg border border-border/70 bg-muted/25 p-4">
-              <p className="text-sm font-medium">{latestBrief.title}</p>
-              <p className="mt-2 line-clamp-6 text-sm leading-relaxed text-muted-foreground">
-                {latestBrief.text}
-              </p>
-            </article>
+            <ExpandableBrief
+              className="mt-3"
+              title={latestBrief.title}
+              text={latestBrief.text}
+            />
           ) : (
             <div className="mt-3 rounded-lg border border-dashed border-border/70 p-4">
               <p className="text-sm text-muted-foreground">

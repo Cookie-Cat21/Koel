@@ -24,3 +24,18 @@ Thin-dash fence intact — no portfolio / TA / screener.
 12. Sparkline aria summary (first→last)
 
 Each loop: implement → typecheck/lint → targeted pytest → commit/push.
+
+## Results
+
+| Loop | Commit theme | Status |
+|---|---|---|
+| 1 | Watch/Unwatch, `?type=`, metrics fail vs empty, armed-only overview | Done |
+| 2 | Category chips, stale hero, overview/settings skeletons, quiet-hours SLT | Done |
+| 3 | ChangeBadge SR, sparkline summary, expandable brief, safe-area, root 404 | Done |
+
+### Deferred (next pass)
+- Overview stat cards vs API totals (needs count fields)
+- Command palette Go-to actions + Dialog focus trap
+- Market browse inline Watch
+- Toast vs InlineError dedup convention
+- Nav trim (Scenarios out of primary)

@@ -40,7 +40,10 @@ export function PageHeader({
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p
+            className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
+            title={description}
+          >
             {description}
           </p>
         ) : null}

@@ -4,6 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { formatPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+function changeDirectionSr(pct: number | null | undefined): string {
+  if (pct == null || !Number.isFinite(pct)) return "change unknown";
+  if (pct > 0) return "up ";
+  if (pct < 0) return "down ";
+  return "unchanged ";
+}
+
 /**
  * Daily % change chip — Tremor badge-03 / HyperUI pattern, Chime tokens.
  * Soft fill; not a solid KPI wall.
@@ -24,6 +31,7 @@ export function ChangeBadge({
           className,
         )}
       >
+        <span className="sr-only">change unknown</span>
         <Minus className="size-3" aria-hidden />
         —
       </Badge>
@@ -49,6 +57,7 @@ export function ChangeBadge({
         className,
       )}
     >
+      <span className="sr-only">{changeDirectionSr(changePct)}</span>
       <Icon className="size-3" aria-hidden />
       {formatPct(changePct)}
     </Badge>

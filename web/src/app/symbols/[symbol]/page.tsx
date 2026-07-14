@@ -862,7 +862,7 @@ export default async function SymbolDetailPage({
           </>
         )}
       </section>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 p-3 shadow-lg backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <WatchButton symbol={data.symbol} watching={isWatching} />
           <Button asChild className="flex-1" size="sm">

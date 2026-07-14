@@ -253,7 +253,10 @@ export default async function WatchlistPage() {
                         {item.symbol}
                       </p>
                       {item.name ? (
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p
+                          className="truncate text-xs text-muted-foreground"
+                          title={item.name}
+                        >
                           {item.name}
                         </p>
                       ) : null}

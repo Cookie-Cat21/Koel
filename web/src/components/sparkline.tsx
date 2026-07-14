@@ -1,3 +1,4 @@
+import { formatNumber } from "@/lib/format";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 
 export { finiteSparklinePoints } from "@/lib/sparkline";
@@ -45,23 +46,32 @@ export function Sparkline({
     );
   }
 
-  const up = prices[prices.length - 1]! >= prices[0]!;
+  const first = prices[0]!;
+  const last = prices[prices.length - 1]!;
+  const up = last >= first;
+  const dir = up ? "up" : "down";
+  const aria = `Recent price ${dir} from ${formatNumber(first)} to ${formatNumber(last)} across ${series.length} ticks`;
 
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className={className ?? "h-16 w-full max-w-md"}
-      role="img"
-      aria-label="Recent price sparkline"
-    >
-      <polyline
-        fill="none"
-        stroke={up ? "oklch(0.45 0.08 185)" : "oklch(0.5 0.1 25)"}
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        points={coords.join(" ")}
-      />
-    </svg>
+    <div className={className ?? "max-w-md"}>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="h-16 w-full"
+        role="img"
+        aria-label={aria}
+      >
+        <polyline
+          fill="none"
+          stroke={up ? "oklch(0.45 0.08 185)" : "oklch(0.5 0.1 25)"}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          points={coords.join(" ")}
+        />
+      </svg>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {series.length} stored ticks · {formatNumber(first)} → {formatNumber(last)}
+      </p>
+    </div>
   );
 }
