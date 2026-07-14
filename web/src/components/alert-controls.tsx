@@ -8,6 +8,13 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiErrorMessage, apiMutate } from "@/lib/api/client-fetch";
 import {
   DISCLOSURE_CATEGORY_MAX,
@@ -219,14 +226,12 @@ export function AlertCreateForm() {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="alert_type">Type</Label>
-        <select
-          id="alert_type"
-          className="border-input bg-background h-10 rounded-lg border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+        <Select
           value={type}
-          onChange={(e) => {
-            // Fail closed — tampered <option> values must not cast into state.
-            if (!isAlertType(e.target.value)) return;
-            const nextType = e.target.value;
+          onValueChange={(value) => {
+            // Fail closed — tampered Select values must not cast into state.
+            if (!isAlertType(value)) return;
+            const nextType = value;
             setType(nextType);
             if (nextType === "disclosure") {
               setThreshold("");
@@ -237,14 +242,22 @@ export function AlertCreateForm() {
             clearField("threshold");
             clearField("category");
           }}
-          aria-invalid={errors.type ? true : undefined}
         >
-          {TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            id="alert_type"
+            className="h-10 w-full"
+            aria-invalid={errors.type ? true : undefined}
+          >
+            <SelectValue placeholder="Alert type" />
+          </SelectTrigger>
+          <SelectContent>
+            {TYPE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {needsThreshold ? (
         <div className="flex flex-col gap-1.5">

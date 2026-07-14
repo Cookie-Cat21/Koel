@@ -86,7 +86,8 @@ def test_alert_type_select_uses_is_alert_type() -> None:
     source = (WEB / "src" / "components" / "alert-controls.tsx").read_text(
         encoding="utf-8"
     )
-    assert "isAlertType(e.target.value)" in source
+    # Fail-closed on Select onValueChange (or legacy native change events).
+    assert "isAlertType(value)" in source or "isAlertType(e.target.value)" in source
     assert "as AlertType" not in source
 
 

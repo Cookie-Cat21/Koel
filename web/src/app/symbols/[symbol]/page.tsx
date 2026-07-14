@@ -5,9 +5,13 @@ import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
+import { PageHeader } from "@/components/page-header";
 import { Sparkline } from "@/components/sparkline";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
+import {
+  WatchButton,
+} from "@/components/watchlist-controls";
 import {
   MAX_DISCLOSURE_CATEGORY_LENGTH,
   MAX_DISCLOSURE_COMPANY_LENGTH,
@@ -331,29 +335,26 @@ export default async function SymbolDetailPage({
 
   return (
     <Shell>
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">
-            Symbol
-          </p>
-          <h1 className="font-display truncate text-3xl font-semibold tracking-tight sm:text-4xl">
-            {data.symbol}
-          </h1>
-          {data.name ? (
-            <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-              {data.name}
-              {data.sector ? (
-                <span className="text-muted-foreground/80"> · {data.sector}</span>
-              ) : null}
-            </p>
-          ) : null}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <PageHeader
+          className="min-w-0 flex-1"
+          eyebrow="Symbol"
+          title={data.symbol}
+          description={
+            data.name
+              ? `${data.name}${data.sector ? ` · ${data.sector}` : ""}`
+              : undefined
+          }
+        />
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <WatchButton symbol={data.symbol} />
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/watchlist">← Watchlist</Link>
+          </Button>
         </div>
-        <Link
-          href="/watchlist"
-          className="mt-3 rounded-sm text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none sm:mt-0"
-        >
-          ← Watchlist
-        </Link>
       </div>
 
       <section className="mt-8 border-t border-border/60 pt-6">

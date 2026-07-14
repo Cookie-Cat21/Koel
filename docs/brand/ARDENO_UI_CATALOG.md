@@ -28,5 +28,12 @@ Catalog of the bookmark folder vs what Chime will actually ship.
 - `components/kit/stat-card.tsx` — health KPIs
 - `components/kit/alert-banner.tsx` — ops notices
 - `components/kit/faq-section.tsx` — landing FAQ
+- `components/kit/status-badge.tsx` — armed + delivery chips (alerts / history)
+- `components/ui/badge.tsx` + `select.tsx` — shadcn P0 gaps from DASH_COMPONENT_FILTER
 
 Ceyfi already adapted HyperUI / DaisyUI-style / Aceternity under `frontend/components/{hyperui,daisyui-style,aceternity,blocks}` — we reuse that approach, not scrape marketplaces.
+
+## Dash polish (agentic loop 2)
+- Alerts / History: `PageHeader`, `ArmedBadge` / `DeliveryBadge`, history **limit** control
+- Alert create: Radix `Select` with fail-closed `isAlertType`
+- Symbol detail: Watch + New alert shortcuts (DASH_IA gap)

@@ -99,6 +99,75 @@ export function WatchlistAddForm() {
   );
 }
 
+export function WatchButton({ symbol }: { symbol: string }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function onClick() {
+    setError(null);
+    // Fail closed — hostile / non-SYMBOL_RE props must not hit POST.
+    const normalized = normalizeSymbol(symbol);
+    if (!normalized) {
+      const msg = "Invalid CSE symbol.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    setPending(true);
+    try {
+      const { ok, status, data } = await apiMutate("/api/v1/watchlist", {
+        method: "POST",
+        body: { symbol: normalized },
+      });
+      if (!ok) {
+        const msg = apiErrorMessage(data, `Could not watch (${status}).`);
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      const created =
+        data &&
+        typeof data === "object" &&
+        "created" in data &&
+        typeof (data as { created: unknown }).created === "boolean"
+          ? (data as { created: boolean }).created
+          : status === 201;
+      toast.success(
+        created
+          ? `Watching ${normalized}. Pushes still go to Telegram.`
+          : `Already watching ${normalized}. Pushes still go to Telegram.`,
+      );
+      router.refresh();
+    } catch {
+      const msg = "Network error.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        type="button"
+        size="sm"
+        disabled={pending}
+        onClick={onClick}
+        aria-busy={pending || undefined}
+      >
+        {pending ? "…" : "Watch"}
+      </Button>
+      <InlineError
+        message={error}
+        className="max-w-[12rem] px-2 py-1 text-right text-xs"
+      />
+    </div>
+  );
+}
+
 export function UnwatchButton({ symbol }: { symbol: string }) {
   const router = useRouter();
   const toast = useToast();
