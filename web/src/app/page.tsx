@@ -132,7 +132,7 @@ export default async function HomePage() {
                 the cross without keeping a browser tab open.
               </p>
             </div>
-            <div className="chime-rise lg:col-span-7">
+            <div className="chime-rise flex items-start justify-center lg:col-span-7 lg:justify-end">
               <TelegramProof />
             </div>
           </div>
