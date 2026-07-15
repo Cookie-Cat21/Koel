@@ -80,10 +80,10 @@ export default async function HomePage() {
           <div className="chime-rise">
             <ChimeWordmark size="hero" priority />
           </div>
-          <h1 className="chime-rise chime-rise-delay-1 mt-6 max-w-xl text-2xl font-medium leading-snug text-foreground sm:text-3xl">
+          <h1 className="chime-rise chime-rise-delay-1 mt-8 max-w-xl font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-[1.15]">
             CSE alerts on Telegram. Dash when you need to manage.
           </h1>
-          <p className="chime-rise chime-rise-delay-2 mt-4 max-w-md text-base text-muted-foreground sm:text-lg">
+          <p className="chime-rise chime-rise-delay-2 mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
             Watch symbols, set price / move / disclosure rules, and get pinged
             the moment something fires — even with the tab closed.
           </p>
@@ -136,7 +136,7 @@ export default async function HomePage() {
               />
               How it works
             </p>
-            <h2 className="font-display text-2xl font-semibold tracking-tight">
+            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
               Set it once. Get pinged when it matters.
             </h2>
             <div className="mt-8">
@@ -161,7 +161,7 @@ export default async function HomePage() {
             </p>
             <h2
               id="alerts-heading"
-              className="font-display text-2xl font-semibold tracking-tight"
+              className="font-display text-2xl font-semibold tracking-tight sm:text-3xl"
             >
               What you can watch for
             </h2>

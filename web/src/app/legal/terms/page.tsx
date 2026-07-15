@@ -19,10 +19,10 @@ export default function TermsPage() {
         className="mx-auto w-full max-w-3xl flex-1 px-6 py-14"
       >
         <ChimeWordmark size="lg" priority />
-        <h1 className="mt-6 font-display text-3xl font-semibold tracking-tight">
+        <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Terms
         </h1>
-        <div className="mt-6 space-y-4 text-sm leading-relaxed text-muted-foreground">
+        <div className="mt-8 max-w-2xl space-y-5 text-base leading-relaxed text-muted-foreground">
           <p>
             Chime is an information tool for Colombo Stock Exchange alerts. It
             is not investment advice, not a broker, and not a solicitation to
@@ -35,7 +35,7 @@ export default function TermsPage() {
             can be delayed or missed — do not rely on Chime as your only risk
             control.
           </p>
-          <p className="text-xs">
+          <p className="text-sm">
             This is a v1 stub, not formal legal counsel. Replace before a public
             launch with counsel-reviewed copy.
           </p>

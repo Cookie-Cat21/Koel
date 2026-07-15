@@ -25,10 +25,10 @@ export default function PricingPage() {
         className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-14"
       >
         <ChimeWordmark size="lg" priority />
-        <h1 className="mt-6 font-display text-3xl font-semibold tracking-tight">
+        <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Pricing
         </h1>
-        <p className="mt-3 max-w-lg text-muted-foreground">
+        <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground">
           v1 is free while we prove Telegram-first CSE alerts. Payments are not
           wired — and not in scope until the product earns it.
         </p>

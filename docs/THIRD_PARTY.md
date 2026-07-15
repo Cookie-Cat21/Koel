@@ -37,13 +37,15 @@ A shorter copy also lives at repo-root [`THIRD_PARTY.md`](../THIRD_PARTY.md)
 | [clsx](https://github.com/lukeed/clsx) / [tailwind-merge](https://github.com/dcastil/tailwind-merge) | MIT | className utilities |
 | [lucide-react](https://github.com/lucide-icons/lucide) | ISC | Icons |
 
-### Fonts (served via `next/font/google`, not npm packages)
+### Fonts
 
-| Face | License | Role |
-|---|---|---|
-| [Fraunces](https://fonts.google.com/specimen/Fraunces) | OFL-1.1 | Display / brand wordmark |
-| [Sora](https://fonts.google.com/specimen/Sora) | OFL-1.1 | UI body |
-| [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | OFL-1.1 | Code / IDs |
+| Face | License | Role | How loaded |
+|---|---|---|---|
+| [Cal Sans](https://github.com/calcom/sans) | OFL-1.1 | Display / headings (`font-display`) | `next/font/local` — `web/src/fonts/CalSans-*.woff2` |
+| [Inter](https://fonts.google.com/specimen/Inter) | OFL-1.1 | UI body / small type (`font-sans`) | `next/font/google` |
+| [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | OFL-1.1 | Code / IDs (`font-mono`) | `next/font/google` |
+
+Cal Sans OFL copy: `web/src/fonts/OFL.txt`.
 
 Exact versions: see `web/package-lock.json`. ESLint / TypeScript tooling is
 dev-only.

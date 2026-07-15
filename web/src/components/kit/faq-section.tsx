@@ -27,11 +27,13 @@ export function FaqSection({
         />
         {eyebrow}
       </p>
-      <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+      <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
         {heading}
       </h2>
       {description ? (
-        <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
+        <p className="mt-3 max-w-xl text-base text-muted-foreground">
+          {description}
+        </p>
       ) : null}
       <div className="mt-6 divide-y divide-border/80 border-y border-border/80">
         {items.map((item) => (

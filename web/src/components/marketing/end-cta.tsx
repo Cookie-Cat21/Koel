@@ -24,11 +24,11 @@ export function EndCta({
     >
       <h2
         id="end-cta-heading"
-        className="chime-rise font-display text-2xl font-semibold tracking-tight text-foreground"
+        className="chime-rise font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
       >
         Ready when the market moves.
       </h2>
-      <p className="chime-rise chime-rise-delay-1 mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+      <p className="chime-rise chime-rise-delay-1 mx-auto mt-4 max-w-md text-base text-muted-foreground">
         Open the dash to manage symbols and rules. Keep Telegram for the push
         when something fires — even if the tab is closed.
       </p>
