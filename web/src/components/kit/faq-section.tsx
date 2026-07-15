@@ -1,8 +1,10 @@
+import { ChevronDown } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 export type FaqItem = { question: string; answer: string };
 
-/** HyperUI FAQ pattern — native details (no extra accordion dep). */
+/** HyperUI FAQ pattern — native details + lucide chevron. */
 export function FaqSection({
   items,
   eyebrow = "FAQ",
@@ -31,18 +33,16 @@ export function FaqSection({
       {description ? (
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
       ) : null}
-      <div className="mt-6 divide-y divide-border rounded-xl border border-border bg-card">
+      <div className="mt-6 divide-y divide-border/80 border-y border-border/80">
         {items.map((item) => (
-          <details key={item.question} className="group px-4 sm:px-5">
-            <summary className="cursor-pointer list-none py-4 text-sm font-semibold text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+          <details key={item.question} className="group">
+            <summary className="cursor-pointer list-none py-4 text-sm font-semibold text-foreground marker:content-none focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-3">
                 {item.question}
-                <span
+                <ChevronDown
                   aria-hidden
-                  className="text-muted-foreground transition-transform group-open:rotate-180"
-                >
-                  ▾
-                </span>
+                  className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                />
               </span>
             </summary>
             <p className="pb-4 text-sm leading-relaxed text-muted-foreground">
