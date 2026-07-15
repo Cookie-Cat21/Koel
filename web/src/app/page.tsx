@@ -75,8 +75,8 @@ export default async function HomePage() {
     <div className="chime-atmosphere flex min-h-full flex-1 flex-col">
       <MarketingNav />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
-        {/* Hero — wide shell, left-rail copy only (channel-first clarity) */}
-        <section className="mx-auto flex w-full max-w-5xl flex-col px-6 pt-16 pb-20 sm:pt-20 sm:pb-28 lg:pt-24">
+        {/* Hero — fills first viewport; proof stays below the fold */}
+        <section className="mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-5xl flex-col justify-center px-6 py-16 sm:py-20">
           <div className="max-w-xl lg:max-w-2xl">
             <div className="chime-rise">
               <ChimeWordmark size="hero" priority />
