@@ -48,4 +48,15 @@ A shorter copy also lives at repo-root [`THIRD_PARTY.md`](../THIRD_PARTY.md)
 Exact versions: see `web/package-lock.json`. ESLint / TypeScript tooling is
 dev-only.
 
+### Marketing UI patterns (adapted in-tree — no new npm deps)
+
+| Pattern | Source | License | Date | Notes |
+|---|---|---|---|---|
+| FAQ divided + chevrons | [HyperUI FAQs](https://www.hyperui.dev/components/marketing/faqs) | MIT | 2026-07-15 | `FaqSection` — native `<details>`, lucide chevron |
+| Feature list rows | [HyperUI Feature Grids](https://www.hyperui.dev/components/marketing/feature-grids) | MIT | 2026-07-15 | `FeatureList` — rows, not card wall |
+| Simple footer | [HyperUI Footers](https://www.hyperui.dev/components/marketing/footers) | MIT | 2026-07-15 | `SiteFooter` — NFA + thin links |
+| Announcement bar | Banner pattern (21st / Shadcnblocks-inspired) | MIT pattern only | 2026-07-15 | `AnnouncementBar` — no upstream copy-paste |
+| End CTA band | Shadcnblocks `cta34` rhythm | Pattern only | 2026-07-15 | `EndCta` — dual CTA, no tinted hero card |
+| 2-tier pricing stub | [HyperUI Pricing](https://www.hyperui.dev/components/marketing/pricing) | MIT | 2026-07-15 | `/pricing` — Free / Later, **no checkout** |
+
 For usage notes and related bookmarks, see [RESOURCES.md](RESOURCES.md).

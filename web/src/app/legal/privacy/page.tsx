@@ -1,3 +1,4 @@
+import { ChimeWordmark } from "@/components/brand/chime-brand";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { telegramBotUrl } from "@/lib/marketing";
@@ -10,14 +11,15 @@ export const metadata = {
 export default function PrivacyPage() {
   const botUrl = telegramBotUrl();
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
+    <div className="chime-atmosphere flex min-h-full flex-1 flex-col">
       <MarketingNav />
       <main
         id="main-content"
         tabIndex={-1}
         className="mx-auto w-full max-w-3xl flex-1 px-6 py-14"
       >
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <ChimeWordmark size="md" className="opacity-90" />
+        <h1 className="mt-6 font-display text-3xl font-semibold tracking-tight">
           Privacy
         </h1>
         <div className="mt-6 space-y-4 text-sm leading-relaxed text-muted-foreground">

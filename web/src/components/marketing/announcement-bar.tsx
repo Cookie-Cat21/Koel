@@ -1,37 +1,11 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "chime_announce_dismissed_v1";
-
-const listeners = new Set<() => void>();
-
-function subscribe(onStoreChange: () => void) {
-  listeners.add(onStoreChange);
-  return () => {
-    listeners.delete(onStoreChange);
-  };
-}
-
-function getSnapshot() {
-  try {
-    if (sessionStorage.getItem(STORAGE_KEY) === "1") return false;
-  } catch {
-    /* private mode — show bar */
-  }
-  return true;
-}
-
-function getServerSnapshot() {
-  return false;
-}
-
-function notify() {
-  for (const listener of listeners) listener();
-}
 
 /** Dismissible top bar — HyperUI / shadcnblocks banner pattern. */
 export function AnnouncementBar({
@@ -39,20 +13,27 @@ export function AnnouncementBar({
 }: {
   message?: string;
 }) {
-  const visible = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
+  const [visible, setVisible] = useState(false);
 
-  const dismiss = useCallback(() => {
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(STORAGE_KEY) === "1") return;
+    } catch {
+      /* private mode — still show */
+    }
+    // Defer so we don't sync-setState in the effect body (lint + hydration).
+    const t = window.setTimeout(() => setVisible(true), 0);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  function dismiss() {
     try {
       sessionStorage.setItem(STORAGE_KEY, "1");
     } catch {
       /* ignore */
     }
-    notify();
-  }, []);
+    setVisible(false);
+  }
 
   if (!visible) return null;
 

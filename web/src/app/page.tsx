@@ -17,6 +17,12 @@ import { getDashAuthConfig, SESSION_COOKIE } from "@/lib/auth/config";
 import { verifySessionToken } from "@/lib/auth/session";
 import { telegramBotUrl } from "@/lib/marketing";
 
+export const metadata = {
+  title: "Chime — CSE alerts on Telegram",
+  description:
+    "Telegram-first Colombo Stock Exchange alerts. Watch symbols, set rules in a thin dash, get pinged when something fires.",
+};
+
 const FAQ = [
   {
     question: "Is Chime a CSE Tracker Pro clone?",
