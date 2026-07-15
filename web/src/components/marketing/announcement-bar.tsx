@@ -67,14 +67,17 @@ export function AnnouncementBar({
       id="chime-announce"
       role="region"
       aria-label="Announcement"
-      className="border-b border-border/70 bg-foreground text-background"
+      className="border-b border-border/70 border-t-2 border-t-[var(--fired)] bg-[var(--ink)] text-white"
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <p className="text-xs leading-snug sm:text-sm">
+          <span className="mr-2 font-semibold tracking-wide text-[var(--fired)] uppercase">
+            Alert
+          </span>
           {message}{" "}
           <Link
             href="/#how-it-works"
-            className="underline underline-offset-2 hover:text-background/90"
+            className="underline underline-offset-2 hover:text-white/90"
           >
             How it works
           </Link>

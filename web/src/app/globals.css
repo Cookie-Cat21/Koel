@@ -28,6 +28,10 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-fired: var(--fired);
+  --color-fired-hover: var(--fired-hover);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -66,6 +70,11 @@
   --accent: oklch(0.94 0.01 240);
   --accent-foreground: oklch(0.28 0.015 260);
   --destructive: oklch(0.55 0.18 25);
+  /* Signal Ice — alert identity (marketing / fired states) */
+  --fired: #e10600;
+  --fired-hover: #c10500;
+  --ink: #0a0b0d;
+  --paper: #f4f6f8;
   --border: oklch(0.88 0.01 250);
   --input: oklch(0.92 0.008 250);
   --ring: oklch(0.45 0.02 260);
@@ -137,29 +146,35 @@
   transform: translateY(0.75rem);
 }
 
-/* Full-bleed atmospheric plane for brand surfaces — restrained, not mist spa */
+/* Signal Ice paper plane — cool steel, not mist spa */
 .chime-atmosphere {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   background:
     radial-gradient(
-      100% 70% at 10% 0%,
-      oklch(0.94 0.01 250 / 0.7) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      80% 60% at 100% 20%,
-      oklch(0.93 0.008 240 / 0.5) 0%,
+      90% 60% at 0% 0%,
+      color-mix(in oklab, var(--fired) 6%, transparent) 0%,
       transparent 50%
     ),
-    linear-gradient(
-      180deg,
-      oklch(0.99 0.003 240) 0%,
-      oklch(0.97 0.005 250) 100%
-    );
+    radial-gradient(
+      80% 50% at 100% 10%,
+      oklch(0.93 0.008 240 / 0.55) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, var(--paper) 0%, oklch(0.97 0.004 250) 100%);
   background-size: 140% 140%, 120% 120%, 100% 100%;
   animation: chime-drift 28s ease-in-out infinite alternate;
+}
+
+/* Marketing primary — blood red interruption */
+.chime-cta-fired {
+  background: var(--fired) !important;
+  color: #fff !important;
+}
+.chime-cta-fired:hover {
+  background: var(--fired-hover) !important;
+  color: #fff !important;
 }
 
 .chime-atmosphere::before {

@@ -1,9 +1,10 @@
 import Link from "next/link";
 
+import { FiredCtaLink } from "@/components/marketing/fired-cta";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Quiet dual-CTA band — shadcnblocks cta34 rhythm, Chime tokens. */
+/** Quiet dual-CTA band — shadcnblocks cta34 rhythm + Signal Ice fired primary. */
 export function EndCta({
   telegramHref,
   className,
@@ -24,29 +25,24 @@ export function EndCta({
     >
       <h2
         id="end-cta-heading"
-        className="chime-rise font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
+        className="font-display text-3xl font-semibold tracking-tight text-[var(--ink)] sm:text-4xl"
       >
         Ready when the market moves.
       </h2>
-      <p className="chime-rise chime-rise-delay-1 mx-auto mt-4 max-w-md text-base text-muted-foreground">
+      <p className="mx-auto mt-4 max-w-md text-base text-muted-foreground">
         Open the dash to manage symbols and rules. Keep Telegram for the push
         when something fires — even if the tab is closed.
       </p>
-      <div className="chime-rise chime-rise-delay-2 mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <FiredCtaLink href={botHref} external={botExternal}>
+          {botExternal ? "Open Telegram bot" : "Get started"}
+        </FiredCtaLink>
         <Button
           asChild
+          variant="outline"
           size="lg"
-          className="motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
+          className="border-2 border-[var(--ink)] bg-transparent text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white"
         >
-          {botExternal ? (
-            <a href={botHref} target="_blank" rel="noopener noreferrer">
-              Open Telegram bot
-            </a>
-          ) : (
-            <Link href={botHref}>Get started</Link>
-          )}
-        </Button>
-        <Button asChild variant="outline" size="lg">
           <Link href="/login">Open the dash</Link>
         </Button>
       </div>

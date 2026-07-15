@@ -63,5 +63,6 @@ dev-only.
 | Split hero structure | Cult Hero Color Panels (structure only) | Pattern only | 2026-07-15 | Copy left / proof right — **no shaders** |
 | Mid CTA left/right | [HyperUI CTAs](https://www.hyperui.dev/components/marketing/ctas) | MIT | 2026-07-15 | `MidCta` — ink band, dual actions |
 | Telegram proof panel | Daisy chat pattern (in-tree) | Pattern | 2026-07-15 | `TelegramProof` — not a device-frame hero |
+| Signal Ice tokens | Chime brand (`CHIME_BRAND.md`) | Own | 2026-07-15 | `--fired #E10600` marketing CTAs + proof rail |
 
 For usage notes and related bookmarks, see [RESOURCES.md](RESOURCES.md).
