@@ -543,6 +543,16 @@ _DATE_OF_ANNOUNCEMENT_FORMATS = (
     "%Y-%m-%d",
 )
 
+# Buy-in / non-compliance boards often ship createdDate as a local clock string.
+_NOTICE_CREATED_DATE_FORMATS = (
+    "%d %b %Y %I:%M:%S %p",  # "14 Jul 2026 05:10:30 PM"
+    "%d %B %Y %I:%M:%S %p",
+    "%d %b %Y %H:%M:%S",
+    "%d %b %Y",
+    "%d %B %Y",
+    "%Y-%m-%d",
+)
+
 
 def _parse_date_of_announcement(value: str | None) -> datetime | None:
     """Parse CSE dateOfAnnouncement as Asia/Colombo midnight, converted to UTC.
@@ -556,6 +566,34 @@ def _parse_date_of_announcement(value: str | None) -> datetime | None:
     if not text:
         return None
     for fmt in _DATE_OF_ANNOUNCEMENT_FORMATS:
+        try:
+            naive = datetime.strptime(text, fmt)
+            return naive.replace(tzinfo=_COLOMBO).astimezone(UTC)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_notice_created_date(value: Any) -> datetime | None:
+    """Parse notice ``createdDate`` as epoch-ms int or Colombo clock string."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return _try_ms_to_dt(value)
+    if isinstance(value, float) and math.isfinite(value):
+        return _try_ms_to_dt(int(value))
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    # Digits-only → treat as epoch ms.
+    if text.isdigit():
+        try:
+            return _try_ms_to_dt(int(text))
+        except ValueError:
+            return None
+    for fmt in _NOTICE_CREATED_DATE_FORMATS:
         try:
             naive = datetime.strptime(text, fmt)
             return naive.replace(tzinfo=_COLOMBO).astimezone(UTC)
@@ -954,11 +992,12 @@ class FlexibleNoticeRow(BaseModel):
     body: str | None = None
     remarks: str | None = None
     announcementCategory: str | None = None
-    createdDate: int | None = None
+    # CSE may send epoch-ms int OR local clock strings — keep raw, parse later.
+    createdDate: Any = None
     dateOfAnnouncement: str | None = None
     status: str | None = None
 
-    @field_validator("announcementId", "createdDate", mode="before")
+    @field_validator("announcementId", mode="before")
     @classmethod
     def _reject_bool_numeric(cls, value: Any) -> Any:
         return _reject_bool_numeric_value(value)
@@ -1018,6 +1057,7 @@ def flexible_row_to_notice(
         return None
     title = (
         (row.title if isinstance(row.title, str) else None)
+        or (row.company if isinstance(row.company, str) else None)
         or (row.announcementCategory if isinstance(row.announcementCategory, str) else None)
         or (row.name if isinstance(row.name, str) else None)
         or notice_type.replace("_", " ")
@@ -1029,7 +1069,7 @@ def flexible_row_to_notice(
             body_parts.append(part.strip())
     body = " — ".join(body_parts) if body_parts else None
     published = (
-        _try_ms_to_dt(row.createdDate)
+        _parse_notice_created_date(row.createdDate)
         or _parse_date_of_announcement(row.dateOfAnnouncement)
         or (now or datetime.now(UTC))
     )
