@@ -54,13 +54,11 @@ DEFAULT_SYMBOLS = [
     "CARS.N0000",
 ]
 
-QUARTERLY_PER_SYMBOL = 6
-# Annual reports are large, image-heavy, and often carry a USD investor-summary
-# page the extractor can mistake for the LKR statement (extract_ok=False) —
-# quarterlies extract reliably, so skip annuals in this backfill.
-ANNUAL_PER_SYMBOL = 0
-SLEEP_BETWEEN_HTTP_S = 0.4
-SLEEP_BETWEEN_SYMBOLS_S = 0.6
+QUARTERLY_PER_SYMBOL = 12  # deeper history for accurate YoY / disclosure timeline
+# Annuals are large/image-heavy; allow a small number for completeness.
+ANNUAL_PER_SYMBOL = 2
+SLEEP_BETWEEN_HTTP_S = 0.35
+SLEEP_BETWEEN_SYMBOLS_S = 0.45
 PDF_MAX_BYTES = 32_000_000  # annual reports run large (image-heavy); quarterlies are small
 
 UA = "Mozilla/5.0 (compatible; ChimeBot/0.1; filing-metrics-backfill)"
@@ -97,14 +95,19 @@ async def fetch_financials(client: httpx.AsyncClient, symbol: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def pick_targets(financials: dict) -> list[dict]:
+def pick_targets(
+    financials: dict,
+    *,
+    quarterly_per: int = QUARTERLY_PER_SYMBOL,
+    annual_per: int = ANNUAL_PER_SYMBOL,
+) -> list[dict]:
     out: list[dict] = []
     for kind, key, cap in (
-        ("quarterly", "infoQuarterlyData", QUARTERLY_PER_SYMBOL),
-        ("annual", "infoAnnualData", ANNUAL_PER_SYMBOL),
+        ("quarterly", "infoQuarterlyData", max(0, int(quarterly_per))),
+        ("annual", "infoAnnualData", max(0, int(annual_per))),
     ):
         items = financials.get(key) or []
-        if not isinstance(items, list):
+        if not isinstance(items, list) or cap <= 0:
             continue
         rows = [i for i in items if isinstance(i, dict) and i.get("path")]
         rows.sort(key=lambda i: i.get("manualDate") or 0, reverse=True)
@@ -175,7 +178,13 @@ async def process_one(
     return "extract_failed"
 
 
-async def run(symbols: list[str], database_url: str) -> None:
+async def run(
+    symbols: list[str],
+    database_url: str,
+    *,
+    quarterly_per: int = QUARTERLY_PER_SYMBOL,
+    annual_per: int = ANNUAL_PER_SYMBOL,
+) -> None:
     settings = MetricsSettings(
         financial_metrics_enabled=True,
         filing_compare_enabled=True,
@@ -194,7 +203,9 @@ async def run(symbols: list[str], database_url: str) -> None:
                 except Exception as exc:  # noqa: BLE001
                     print(f"  /financials fetch failed: {exc!r}")
                     continue
-                targets = pick_targets(financials)
+                targets = pick_targets(
+                    financials, quarterly_per=quarterly_per, annual_per=annual_per
+                )
                 if not targets:
                     print("  no quarterly/annual statement PDFs listed")
                     continue
@@ -233,24 +244,57 @@ def main() -> None:
         default=None,
         help="Comma-separated symbol list (default: curated blue-chip set)",
     )
-    args = ap.parse_args()
-
-    symbols = (
-        [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
-        if args.symbols
-        else DEFAULT_SYMBOLS
+    ap.add_argument(
+        "--quarterly-per",
+        type=int,
+        default=QUARTERLY_PER_SYMBOL,
+        help=f"Max quarterly PDFs per symbol (default {QUARTERLY_PER_SYMBOL})",
     )
+    ap.add_argument(
+        "--annual-per",
+        type=int,
+        default=ANNUAL_PER_SYMBOL,
+        help=f"Max annual PDFs per symbol (default {ANNUAL_PER_SYMBOL})",
+    )
+    ap.add_argument(
+        "--all-stocks",
+        action="store_true",
+        help="Load every symbol from stocks table (Neon/local DATABASE_URL)",
+    )
+    args = ap.parse_args()
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print("DATABASE_URL not set", file=sys.stderr)
         raise SystemExit(1)
 
+    if args.all_stocks:
+        import psycopg
+
+        with psycopg.connect(database_url) as conn:
+            symbols = [
+                str(r[0])
+                for r in conn.execute("SELECT symbol FROM stocks ORDER BY 1")
+            ]
+    else:
+        symbols = (
+            [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+            if args.symbols
+            else DEFAULT_SYMBOLS
+        )
+
     if sys.platform == "win32":
         # psycopg async requires a selector-based loop; Windows defaults to Proactor.
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    asyncio.run(run(symbols, database_url))
+    asyncio.run(
+        run(
+            symbols,
+            database_url,
+            quarterly_per=args.quarterly_per,
+            annual_per=args.annual_per,
+        )
+    )
 
 
 if __name__ == "__main__":
