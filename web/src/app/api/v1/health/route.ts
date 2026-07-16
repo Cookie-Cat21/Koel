@@ -7,7 +7,8 @@ import {
   toSafePositiveInt,
 } from "@/lib/api/safe-int";
 import { normalizeSymbol } from "@/lib/api/symbol";
-import { jsonOk } from "@/lib/auth/errors";
+import { getDashAuthConfig, isOpsTelegramId } from "@/lib/auth/config";
+import { jsonError, jsonOk } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/guard";
 import { getPool } from "@/lib/db";
 
@@ -264,12 +265,28 @@ export function sanitizePollerHealth(raw: unknown): PollerHealth | null {
 }
 
 /**
- * GET /api/v1/health — ops-gated (valid session). DB ping + optional poller proxy.
+ * GET /api/v1/health — session required. Full ops detail only for
+ * ``DASH_OPS_TELEGRAM_IDS`` (S-05). Everyone else gets a summary.
  * Postgres only from this handler; optional HEALTH_URL for poller detail.
  */
 export async function GET(request: NextRequest) {
   const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
+
+  const cfg = getDashAuthConfig();
+  let opsDetail = false;
+  try {
+    const pool = getPool();
+    const userRow = await pool.query<{ telegram_id: string | number }>(
+      `SELECT telegram_id FROM users WHERE id = $1`,
+      [gated.session.user_id],
+    );
+    const telegramId = toSafePositiveInt(userRow.rows[0]?.telegram_id);
+    opsDetail = telegramId != null && isOpsTelegramId(cfg, telegramId);
+  } catch (err) {
+    console.error("GET /health ops gate lookup failed", err);
+    return jsonError(503, "degraded", "Database unavailable.");
+  }
 
   let dbOk = false;
   let lastSnapshotAt: string | null = null;
@@ -285,44 +302,62 @@ export async function GET(request: NextRequest) {
     const pool = getPool();
     await pool.query("SELECT 1");
     dbOk = true;
-    const snap = await pool.query<{ max_ts: Date | string | null }>(
-      `SELECT MAX(ts) AS max_ts FROM price_snapshots`,
-    );
-    lastSnapshotAt = toIso(snap.rows[0]?.max_ts ?? null);
-    try {
-      const deliveryResult = await pool.query<{
-        delivered_24h: string | number;
-        retrying: string | number;
-        dead_lettered: string | number;
-      }>(
-        `SELECT
-           COUNT(*) FILTER (
-             WHERE fired_at >= now() - interval '24 hours'
-               AND (message_sent = TRUE OR delivery_attempted_ok = TRUE)
-           )::int AS delivered_24h,
-           COUNT(*) FILTER (
-             WHERE attempt_count > 0
-               AND dead_lettered = FALSE
-               AND delivery_attempted_ok = FALSE
-               AND message_sent = FALSE
-           )::int AS retrying,
-           COUNT(*) FILTER (WHERE dead_lettered = TRUE)::int AS dead_lettered
-         FROM alert_log`,
+    if (opsDetail) {
+      const snap = await pool.query<{ max_ts: Date | string | null }>(
+        `SELECT MAX(ts) AS max_ts FROM price_snapshots`,
       );
-      const deliveryRow = deliveryResult.rows[0];
-      if (deliveryRow) {
-        delivery = {
-          delivered_24h: toNonNegativeSafeInt(deliveryRow.delivered_24h, 0),
-          retrying: toNonNegativeSafeInt(deliveryRow.retrying, 0),
-          dead_lettered: toNonNegativeSafeInt(deliveryRow.dead_lettered, 0),
-        };
+      lastSnapshotAt = toIso(snap.rows[0]?.max_ts ?? null);
+      try {
+        const deliveryResult = await pool.query<{
+          delivered_24h: string | number;
+          retrying: string | number;
+          dead_lettered: string | number;
+        }>(
+          `SELECT
+             COUNT(*) FILTER (
+               WHERE fired_at >= now() - interval '24 hours'
+                 AND (message_sent = TRUE OR delivery_attempted_ok = TRUE)
+             )::int AS delivered_24h,
+             COUNT(*) FILTER (
+               WHERE attempt_count > 0
+                 AND dead_lettered = FALSE
+                 AND delivery_attempted_ok = FALSE
+                 AND message_sent = FALSE
+             )::int AS retrying,
+             COUNT(*) FILTER (WHERE dead_lettered = TRUE)::int AS dead_lettered
+           FROM alert_log`,
+        );
+        const deliveryRow = deliveryResult.rows[0];
+        if (deliveryRow) {
+          delivery = {
+            delivered_24h: toNonNegativeSafeInt(deliveryRow.delivered_24h, 0),
+            retrying: toNonNegativeSafeInt(deliveryRow.retrying, 0),
+            dead_lettered: toNonNegativeSafeInt(deliveryRow.dead_lettered, 0),
+          };
+        }
+      } catch (err) {
+        console.error("GET /health delivery stats failed", err);
       }
-    } catch (err) {
-      console.error("GET /health delivery stats failed", err);
     }
   } catch (err) {
     console.error("GET /health db ping failed", err);
     dbOk = false;
+  }
+
+  // Non-ops: summary only — no delivery / retention / poller proxy (S-05).
+  if (!opsDetail) {
+    const status = dbOk ? "ok" : "degraded";
+    return jsonOk(
+      {
+        status,
+        db_ok: dbOk,
+        started_at: null,
+        last_snapshot_at: null,
+        poller: null,
+        detail: false,
+      },
+      dbOk ? 200 : 503,
+    );
   }
 
   // Fail closed — non-string HEALTH_URL mocks used to throw on .trim before
@@ -429,6 +464,7 @@ export async function GET(request: NextRequest) {
     retention: {
       snapshot_retention_days: snapshotRetentionDays(),
     },
+    detail: true,
   };
   if (poller != null) {
     payload.poller = poller;

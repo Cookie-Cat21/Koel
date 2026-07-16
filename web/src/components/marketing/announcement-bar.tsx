@@ -89,11 +89,6 @@ export function AnnouncementBar({
           <X className="size-3.5" aria-hidden />
         </Button>
       </div>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `(function(){try{var k=${JSON.stringify(STORAGE_KEY)};var el=document.getElementById("chime-announce");if(!el)return;if(sessionStorage.getItem(k)==="1"){el.remove();return;}var b=el.querySelector("[data-announce-dismiss]");if(!b||b.dataset.bound)return;b.dataset.bound="1";b.addEventListener("click",function(){try{sessionStorage.setItem(k,"1");}catch(e){}el.remove();});}catch(e){}})();`,
-        }}
-      />
     </div>
   );
 }

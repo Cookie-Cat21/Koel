@@ -7,6 +7,24 @@
 
 ---
 
+## Remediation status (updated)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| **S-01** | **Fixed (code)** | `requireSession` / `requireSessionAndCsrf` async + `isDashSessionRevoked` |
+| **S-02** | **Ops pending** | Set `DASH_DEMO_AUTH=0` on Vercel Production — see `docs/runbooks/SECURITY_ROTATION.md` |
+| **S-03** | **Ops pending** | Rotate bot / Neon / Groq / `DASH_SESSION_SECRET` — human only |
+| **S-04** | **Fixed (partial)** | In-memory rate limit on `/auth/demo` + `/auth/telegram` (best-effort) |
+| **S-05** | **Fixed (code)** | Full health detail only for `DASH_OPS_TELEGRAM_IDS` |
+| **S-06** | Ongoing | CSRF design unchanged; CSP hygiene |
+| **S-07** | **Fixed (code)** | Announce bar: removed `dangerouslySetInnerHTML`; useEffect dismiss |
+| **S-08–10, S-12–15** | Deferred | Process / longer-term |
+| **S-09** | Deferred | Brief product gating |
+| **S-11** | **Fixed (code)** | Uniform `demo_auth_denied`; allowlist select gated by `DASH_DEMO_SHOW_ALLOWLIST` |
+| **S-14** | **Ops pending** | Rotate bot token with S-03 |
+
+---
+
 ## Findings
 
 ### S-01 — Session revocation not enforced on API routes

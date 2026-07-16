@@ -5,6 +5,10 @@ import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { CSRF_COOKIE, getDashAuthConfig, SESSION_COOKIE } from "@/lib/auth/config";
 import { jsonError } from "@/lib/auth/errors";
 import {
+  clientIpFromRequest,
+  hitRateLimit,
+} from "@/lib/auth/rate-limit";
+import {
   csrfCookieOptions,
   mintCsrfToken,
   mintSessionToken,
@@ -13,6 +17,10 @@ import {
 import { ensureUser, recordDashSession } from "@/lib/db";
 
 export const runtime = "nodejs";
+
+/** S-04: demo auth — 20 attempts / minute / IP (best-effort in-memory). */
+const DEMO_AUTH_RATE_LIMIT = 20;
+const DEMO_AUTH_RATE_WINDOW_MS = 60_000;
 
 type DemoBody = {
   telegram_id?: unknown;
@@ -79,6 +87,21 @@ function overviewRedirect(): NextResponse {
 }
 
 export async function POST(request: Request) {
+  const ip = clientIpFromRequest(request);
+  const limited = hitRateLimit(`auth:demo:${ip}`, {
+    limit: DEMO_AUTH_RATE_LIMIT,
+    windowMs: DEMO_AUTH_RATE_WINDOW_MS,
+  });
+  if (!limited.ok) {
+    const res = jsonError(
+      429,
+      "rate_limited",
+      "Too many sign-in attempts. Try again shortly.",
+    );
+    res.headers.set("Retry-After", String(limited.retryAfterSec));
+    return res;
+  }
+
   const cfg = getDashAuthConfig();
 
   if (!cfg.demoAuthEnabled) {
@@ -94,14 +117,6 @@ export async function POST(request: Request) {
       503,
       "degraded",
       "DASH_SESSION_SECRET is not configured.",
-    );
-  }
-
-  if (cfg.allowlist.size === 0) {
-    return jsonError(
-      403,
-      "telegram_id_not_allowlisted",
-      "Demo allowlist is empty.",
     );
   }
 
@@ -121,11 +136,12 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!cfg.allowlist.has(telegramId)) {
+  // S-11: empty allowlist and unknown ID share one denial (no enumeration).
+  if (cfg.allowlist.size === 0 || !cfg.allowlist.has(telegramId)) {
     return jsonError(
       403,
-      "telegram_id_not_allowlisted",
-      "telegram_id is not on the demo allowlist.",
+      "demo_auth_denied",
+      "Demo sign-in is not available for this Telegram ID.",
     );
   }
 

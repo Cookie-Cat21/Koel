@@ -40,6 +40,14 @@ export type DashAuthConfig = {
   allowlist: ReadonlySet<number>;
   defaultTelegramId: number | null;
   sessionSecret: string;
+  /**
+   * When true, /login may render the demo allowlist as a ``<select>``.
+   * Default off — listing IDs helps attackers (S-11). Enable only for local
+   * Cloud Agent demos via ``DASH_DEMO_SHOW_ALLOWLIST=1``.
+   */
+  showDemoAllowlist: boolean;
+  /** Ops telegram IDs allowed to see full /health detail (S-05). */
+  opsAllowlist: ReadonlySet<number>;
 };
 
 function parseAllowlist(raw: string | undefined): Set<number> {
@@ -67,6 +75,8 @@ export function getDashAuthConfig(): DashAuthConfig {
   );
   const demoRaw = process.env.DASH_DEMO_AUTH;
   const allowRaw = process.env.DASH_DEMO_TELEGRAM_IDS;
+  const showAllowRaw = process.env.DASH_DEMO_SHOW_ALLOWLIST;
+  const opsRaw = process.env.DASH_OPS_TELEGRAM_IDS;
 
   return {
     demoAuthEnabled: typeof demoRaw === "string" && demoRaw === "1",
@@ -75,10 +85,27 @@ export function getDashAuthConfig(): DashAuthConfig {
     ),
     defaultTelegramId,
     sessionSecret: secret,
+    showDemoAllowlist:
+      typeof showAllowRaw === "string" && showAllowRaw === "1",
+    opsAllowlist: parseAllowlist(
+      typeof opsRaw === "string" ? opsRaw : undefined,
+    ),
   };
 }
 
-/** Public allowlist for /login UI only — never trust client for authz. */
+/**
+ * Public allowlist for /login UI only — never trust client for authz.
+ * Returns [] unless ``showDemoAllowlist`` is on (S-11).
+ */
 export function publicDemoAllowlist(cfg: DashAuthConfig): number[] {
+  if (!cfg.showDemoAllowlist) return [];
   return Array.from(cfg.allowlist).sort((a, b) => a - b);
+}
+
+/** True when telegram_id may see full health / ops telemetry (S-05). */
+export function isOpsTelegramId(
+  cfg: DashAuthConfig,
+  telegramId: number,
+): boolean {
+  return cfg.opsAllowlist.has(telegramId);
 }
