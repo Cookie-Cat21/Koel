@@ -324,14 +324,17 @@ def main(argv: list[str] | None = None) -> None:
             "ml-iterate",
             "ml-precision90",
             "ml-hpe",
+            "ml-always-on",
+            "disclosures-backfill",
         ],
         help=(
             "bot | poller | both | migrate | tick | "
             "drain-pdfs | drain-briefs | drain-metrics | "
             "path-backfill | score-signals | eval-signals | "
-            "sector-backfill | notices-backfill | ml-experiment | "
-            "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
-            "ml-iterate | ml-precision90 | ml-hpe"
+            "sector-backfill | notices-backfill | disclosures-backfill | "
+            "ml-experiment | ml-forecast | ml-transfer | ml-harden | "
+            "ml-diagnose | ml-iterate | ml-precision90 | ml-hpe | "
+            "ml-always-on"
         ),
     )
     parser.add_argument(
@@ -384,10 +387,12 @@ def main(argv: list[str] | None = None) -> None:
         "notices-backfill",
         "ml-forecast",
         "ml-hpe",
+        "disclosures-backfill",
     ):
         parser.error(
             "--force is only valid for tick, path-backfill, "
-            "sector-backfill, notices-backfill, ml-forecast, or ml-hpe"
+            "sector-backfill, notices-backfill, disclosures-backfill, "
+            "ml-forecast, or ml-hpe"
         )
     if args.period is not None and args.command != "path-backfill":
         parser.error("--period is only valid for path-backfill")
@@ -994,6 +999,105 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_hpe())
+        return
+
+    if args.command == "disclosures-backfill":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else None
+
+        async def _disc_bf() -> None:
+            from chime.disclosures_backfill import run_disclosures_backfill
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            cse = CSEClient(
+                base_url=settings.cse_base_url,
+                timeout=settings.http_timeout_seconds,
+                fail_max=settings.circuit_fail_max,
+                reset_timeout=settings.circuit_reset_seconds,
+                min_interval_seconds=settings.cse_min_interval_seconds,
+            )
+            try:
+                result = await run_disclosures_backfill(
+                    settings=settings,
+                    storage=storage,
+                    cse=cse,
+                    limit=limit,
+                    force=args.force,
+                )
+                print(
+                    "disclosures-backfill: "
+                    f"targeted={result.symbols_targeted} "
+                    f"ok={result.symbols_ok} "
+                    f"failed={result.symbols_failed} "
+                    f"upserted={result.disclosures_upserted}"
+                )
+            finally:
+                await cse.aclose()
+                await storage.close()
+
+        asyncio.run(_disc_bf())
+        return
+
+    if args.command == "ml-always-on":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = (
+            None
+            if not isinstance(args.limit, int)
+            or isinstance(args.limit, bool)
+            or args.limit == 20
+            else args.limit
+        )
+        use_events = bool(args.events)
+
+        async def _ao() -> None:
+            from pathlib import Path
+
+            from chime.ml.always_on import run_always_on
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                # First run baseline if events requested, for delta
+                baseline_mean = None
+                if use_events:
+                    base = await run_always_on(
+                        storage=storage,
+                        lever="baseline_cs_lmt_bag",
+                        use_events=False,
+                        limit_symbols=limit if limit and limit > 0 else None,
+                        out_dir=Path("docs/experiments"),
+                    )
+                    baseline_mean = base.mean_symbol_hit
+                    print(
+                        "ml-always-on baseline: "
+                        f"mean_symbol_hit={base.mean_symbol_hit}"
+                    )
+                result = await run_always_on(
+                    storage=storage,
+                    lever=(
+                        "events_cs_lmt_bag" if use_events else "baseline_cs_lmt_bag"
+                    ),
+                    use_events=use_events,
+                    baseline_mean=baseline_mean,
+                    limit_symbols=limit if limit and limit > 0 else None,
+                    out_dir=Path("docs/experiments"),
+                )
+                print(
+                    "ml-always-on: "
+                    f"lever={result.lever} "
+                    f"mean_symbol_hit={result.mean_symbol_hit} "
+                    f"pooled={result.pooled_hit} "
+                    f"ge70={result.symbols_ge_070}/{result.n_symbols} "
+                    f"delta={result.delta_vs_baseline} "
+                    f"keep={result.keep}"
+                )
+            finally:
+                await storage.close()
+
+        asyncio.run(_ao())
         return
 
     settings = Settings.from_env(require_token=True)
