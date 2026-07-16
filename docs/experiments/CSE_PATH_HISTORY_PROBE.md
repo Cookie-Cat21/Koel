@@ -41,7 +41,9 @@ One `period=5` call per symbol. At ~300–400 listed names and ≥0.35s polite g
 | Question | Answer |
 |---|---|
 | Can we backfill path for all companies? | **Yes** — ~1y daily via `period=5` |
-| Multi-year from CSE today? | **No** |
-| Longer history? | Forward `price_snapshots` + future daily rollups as Chime polls |
+| Multi-year from CSE today (no login)? | **No** |
+| Longer history? | Forward poller accumulation; see deep dive for login-gated `historicalTrades` |
+
+**Deep dive (2026-07-16):** Official UI period enum stops at one year. Discovered `POST /historicalTrades` (D/W/M/Q/Y, `DD-MM-YYYY`) that looks like multi-year OHLC but returns **404 without CSE session**. Details: [CSE_HISTORY_DEEP_DIVE.md](CSE_HISTORY_DEEP_DIVE.md).
 
 See also: `docs/endpoint_probe_report.md`, `docs/sample_responses/companyChartDataByStock.json`.
