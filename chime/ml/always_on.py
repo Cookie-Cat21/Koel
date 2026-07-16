@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -134,7 +135,7 @@ def enrich_samples_with_events(
     disclosures: list[tuple[str, date, str | None]],
     notices: list[tuple[str, date]],
 ) -> list[Sample]:
-    """Append disc_7d, disc_30d, disc_fin_30d, notice_30d (leakage-safe)."""
+    """Append disc/notice intensity features (leakage-safe, as_of ≤ published)."""
     by_sym_disc: dict[str, list[tuple[date, str | None]]] = {}
     for sym, d, cat in disclosures:
         by_sym_disc.setdefault(sym, []).append((d, cat))
@@ -146,18 +147,26 @@ def enrich_samples_with_events(
     for s in samples:
         disc = by_sym_disc.get(s.symbol, [])
         notes = by_sym_notice.get(s.symbol, [])
-        d7 = d30 = fin30 = 0.0
+        d1 = d7 = d30 = fin30 = 0.0
+        days_since = 120.0  # cap
+        start1 = s.as_of - timedelta(days=1)
         start7 = s.as_of - timedelta(days=7)
         start30 = s.as_of - timedelta(days=30)
+        last_before: date | None = None
         for d, cat in disc:
             if d > s.as_of:
                 break
+            last_before = d
             if d >= start30:
                 d30 += 1.0
                 if _is_financial_category(cat):
                     fin30 += 1.0
             if d >= start7:
                 d7 += 1.0
+            if d >= start1:
+                d1 += 1.0
+        if last_before is not None:
+            days_since = float(min(120, (s.as_of - last_before).days))
         n30 = 0.0
         for d in notes:
             if d > s.as_of:
@@ -168,12 +177,65 @@ def enrich_samples_with_events(
             Sample(
                 symbol=s.symbol,
                 as_of=s.as_of,
-                x=tuple(s.x) + (d7, d30, fin30, n30),
+                x=tuple(s.x) + (d1, d7, d30, fin30, n30, days_since),
                 y_ret=s.y_ret,
                 y_dir=s.y_dir,
                 horizon=s.horizon,
             )
         )
+    return out
+
+
+def enrich_samples_with_sector_rs(
+    samples: list[Sample],
+    sector_by_symbol: dict[str, str],
+) -> list[Sample]:
+    """Append sector_rs_5d / sector_rs_20d from within-day peer means."""
+    from chime.ml.features import FEATURE_NAMES
+
+    i5 = FEATURE_NAMES.index("ret_5d")
+    i20 = FEATURE_NAMES.index("ret_20d")
+
+    by_day: dict[date, list[Sample]] = {}
+    for s in samples:
+        by_day.setdefault(s.as_of, []).append(s)
+
+    out: list[Sample] = []
+    for day_samples in by_day.values():
+        sec_rets: dict[str, list[tuple[float, float]]] = {}
+        for s in day_samples:
+            sec = sector_by_symbol.get(s.symbol)
+            if not sec:
+                continue
+            r5, r20 = s.x[i5], s.x[i20]
+            if math.isfinite(r5) and math.isfinite(r20):
+                sec_rets.setdefault(sec, []).append((r5, r20))
+        sec_mean: dict[str, tuple[float, float]] = {}
+        for sec, pairs in sec_rets.items():
+            if len(pairs) < 2:
+                continue
+            m5 = sum(p[0] for p in pairs) / len(pairs)
+            m20 = sum(p[1] for p in pairs) / len(pairs)
+            sec_mean[sec] = (m5, m20)
+        for s in day_samples:
+            rs5 = rs20 = float("nan")
+            sec = sector_by_symbol.get(s.symbol)
+            if sec and sec in sec_mean:
+                m5, m20 = sec_mean[sec]
+                r5, r20 = s.x[i5], s.x[i20]
+                if math.isfinite(r5) and math.isfinite(r20):
+                    rs5 = r5 - m5
+                    rs20 = r20 - m20
+            out.append(
+                Sample(
+                    symbol=s.symbol,
+                    as_of=s.as_of,
+                    x=tuple(s.x) + (rs5, rs20),
+                    y_ret=s.y_ret,
+                    y_dir=s.y_dir,
+                    horizon=s.horizon,
+                )
+            )
     return out
 
 
@@ -207,6 +269,7 @@ async def run_always_on(
     storage: Storage,
     lever: str = "baseline_cs_lmt_bag",
     use_events: bool = False,
+    use_sector_rs: bool = False,
     baseline_mean: float | None = None,
     limit_symbols: int | None = None,
     out_dir: Path = Path("docs/experiments"),
@@ -230,7 +293,14 @@ async def run_always_on(
         "symbols": len(series),
         "disclosures": 0,
         "notices": 0,
+        "sector_rs": use_sector_rs,
     }
+    if use_sector_rs:
+        from chime.ml.diagnose import load_sector_map
+
+        sectors = await load_sector_map(storage)
+        extras["sectors_mapped"] = len(sectors)
+        samples = enrich_samples_with_sector_rs(samples, sectors)
     if use_events:
         discs = await load_disclosure_events(storage)
         notices = await load_notice_events(storage)
@@ -257,7 +327,15 @@ async def run_always_on(
         delta_vs_baseline=delta,
         keep=keep,
         notes=(
-            "events+" if use_events else "path+CS only"
+            "+".join(
+                p
+                for p, on in (
+                    ("path+CS", True),
+                    ("sector_rs", use_sector_rs),
+                    ("events", use_events),
+                )
+                if on
+            )
         ),
         extras=extras,
     )

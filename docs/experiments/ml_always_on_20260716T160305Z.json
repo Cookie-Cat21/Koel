@@ -1,0 +1,19 @@
+{
+  "lever": "sector_rs_cs_lmt_bag",
+  "mean_symbol_hit": 0.5938207364757968,
+  "pooled_hit": 0.5886779545065846,
+  "symbols_ge_070": 17,
+  "n_symbols": 264,
+  "n_rows": 17541,
+  "high_bucket_hit": 0.6858851163783899,
+  "delta_vs_baseline": null,
+  "keep": null,
+  "notes": "path+CS+sector_rs",
+  "extras": {
+    "symbols": 273,
+    "disclosures": 0,
+    "notices": 0,
+    "sector_rs": true,
+    "sectors_mapped": 273
+  }
+}

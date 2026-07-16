@@ -1,0 +1,18 @@
+{
+  "lever": "baseline_cs_lmt_bag",
+  "mean_symbol_hit": null,
+  "pooled_hit": null,
+  "symbols_ge_070": 0,
+  "n_symbols": 0,
+  "n_rows": 0,
+  "high_bucket_hit": null,
+  "delta_vs_baseline": null,
+  "keep": null,
+  "notes": "path+CS",
+  "extras": {
+    "symbols": 273,
+    "disclosures": 0,
+    "notices": 0,
+    "sector_rs": false
+  }
+}

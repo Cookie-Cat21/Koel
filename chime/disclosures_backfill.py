@@ -7,7 +7,7 @@ Uses ``POST /getAnnouncementByCompany`` with both ``fromDate`` and ``toDate``
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 
 from chime.adapters.cse import CSEClient
@@ -93,5 +93,5 @@ async def run_disclosures_backfill(
         symbols_failed=failed,
         disclosures_upserted=upserted,
     )
-    log.info("disclosures_backfill_done", **result.__dict__)
+    log.info("disclosures_backfill_done", **asdict(result))
     return result

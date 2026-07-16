@@ -1,0 +1,19 @@
+{
+  "lever": "sector_rs_events_cs_lmt_bag",
+  "mean_symbol_hit": 0.5935227156363729,
+  "pooled_hit": 0.5883929080440111,
+  "symbols_ge_070": 23,
+  "n_symbols": 264,
+  "n_rows": 17541,
+  "high_bucket_hit": 0.6884260253382005,
+  "delta_vs_baseline": null,
+  "keep": null,
+  "notes": "path+CS+sector_rs+events",
+  "extras": {
+    "symbols": 273,
+    "disclosures": 4921,
+    "notices": 53,
+    "sector_rs": true,
+    "sectors_mapped": 273
+  }
+}

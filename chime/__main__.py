@@ -384,6 +384,11 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="For ml-always-on: append disclosure/notice features and compare to baseline",
     )
+    parser.add_argument(
+        "--sector-rs",
+        action="store_true",
+        help="For ml-always-on: fill sector relative-strength features",
+    )
     args = parser.parse_args(argv)
     if args.force and args.command not in (
         "tick",
@@ -1056,6 +1061,7 @@ def main(argv: list[str] | None = None) -> None:
             else args.limit
         )
         use_events = bool(args.events)
+        use_sector_rs = bool(getattr(args, "sector_rs", False))
 
         async def _ao() -> None:
             from pathlib import Path
@@ -1065,13 +1071,13 @@ def main(argv: list[str] | None = None) -> None:
             storage = Storage(settings.database_url)
             await storage.open()
             try:
-                # First run baseline if events requested, for delta
                 baseline_mean = None
-                if use_events:
+                if use_events or use_sector_rs:
                     base = await run_always_on(
                         storage=storage,
                         lever="baseline_cs_lmt_bag",
                         use_events=False,
+                        use_sector_rs=False,
                         limit_symbols=limit if limit and limit > 0 else None,
                         out_dir=Path("docs/experiments"),
                     )
@@ -1080,12 +1086,18 @@ def main(argv: list[str] | None = None) -> None:
                         "ml-always-on baseline: "
                         f"mean_symbol_hit={base.mean_symbol_hit}"
                     )
+                lever = "baseline_cs_lmt_bag"
+                if use_sector_rs and use_events:
+                    lever = "sector_rs_events_cs_lmt_bag"
+                elif use_sector_rs:
+                    lever = "sector_rs_cs_lmt_bag"
+                elif use_events:
+                    lever = "events_cs_lmt_bag"
                 result = await run_always_on(
                     storage=storage,
-                    lever=(
-                        "events_cs_lmt_bag" if use_events else "baseline_cs_lmt_bag"
-                    ),
+                    lever=lever,
                     use_events=use_events,
+                    use_sector_rs=use_sector_rs,
                     baseline_mean=baseline_mean,
                     limit_symbols=limit if limit and limit > 0 else None,
                     out_dir=Path("docs/experiments"),
