@@ -29,9 +29,13 @@ Default **off**. Stub in `chime/briefs/`; no LLM until explicitly enabled.
 AI_BRIEFS_ENABLED=0          # leave off in prod until Phase 2
 # Phase 2 live:
 # AI_BRIEFS_ENABLED=1
-# AI_API_KEY=…               # required; briefs_enabled() needs both
+# AI_API_KEY=…               # primary; backups alone also satisfy briefs_enabled()
 # AI_PROVIDER=gemini         # or: groq | openrouter (OpenAI-compatible chat)
 # AI_MODEL=gemini-2.0-flash  # groq: llama-3.3-70b-versatile; openrouter: openai/gpt-4o-mini
+# Optional failover (429 / 5xx / timeout only — not permanent 4xx / empty text):
+# AI_BACKUP_PROVIDERS=groq,openrouter
+# AI_BACKUP_API_KEYS=…,…
+# AI_BACKUP_MODELS=llama-3.3-70b-versatile,openai/gpt-4o-mini
 ```
 
 ### Telegram `/brief SYMBOL`

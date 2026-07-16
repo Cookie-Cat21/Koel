@@ -418,20 +418,133 @@ def _extract_openai_chat_text(data: Any) -> str:
     return ""
 
 
+def _is_transient_provider_error(exc: BaseException) -> bool:
+    """True for timeout / transport / 429 / 5xx — safe to try the next backup key."""
+    if isinstance(exc, (BriefsDisabledError, ValueError, TypeError)):
+        return False
+    msg = str(exc)
+    if "timed out" in msg or "transport error" in msg:
+        return True
+    if "HTTP 429" in msg:
+        return True
+    for code in (500, 502, 503, 504):
+        if f"HTTP {code}" in msg:
+            return True
+    return False
+
+
+def _build_single_provider(
+    settings: BriefSettings,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> BriefProvider:
+    """Build one provider from a single-slot ``BriefSettings`` (no nested backups)."""
+    # Fail closed — non-string BriefSettings.provider used to throw on .strip mid factory.
+    provider_raw = settings.provider if isinstance(settings.provider, str) else ""
+    provider = (provider_raw or "gemini").strip().lower()
+    if provider == "gemini":
+        return GeminiBriefProvider(settings, client=client)
+    if provider == "groq":
+        return GroqBriefProvider(settings, client=client)
+    if provider == "openrouter":
+        return OpenRouterBriefProvider(settings, client=client)
+    raise RuntimeError(
+        f"Unsupported AI_PROVIDER={settings.provider!r} (gemini|groq|openrouter)"
+    )
+
+
+class FailoverBriefProvider:
+    """Try primary then backup providers on transient HTTP failures only.
+
+    Permanent errors (disabled, empty text, 4xx other than 429, empty candidates)
+    do not rotate — they fail the brief immediately so we don't burn the daily
+    cap hopping providers on a bad prompt.
+    """
+
+    def __init__(
+        self,
+        providers: list[BriefProvider],
+        *,
+        labels: list[str] | None = None,
+    ) -> None:
+        if not providers:
+            raise ValueError("FailoverBriefProvider requires at least one provider")
+        self._providers = list(providers)
+        if labels is not None and len(labels) == len(self._providers):
+            self._labels = list(labels)
+        else:
+            self._labels = [f"provider[{i}]" for i in range(len(self._providers))]
+
+    async def aclose(self) -> None:
+        for prov in self._providers:
+            aclose = getattr(prov, "aclose", None)
+            if callable(aclose):
+                await aclose()
+
+    async def summarize(self, text: str) -> str:
+        last_exc: BaseException | None = None
+        for index, prov in enumerate(self._providers):
+            label = self._labels[index]
+            try:
+                brief = await prov.summarize(text)
+                if index > 0:
+                    log.info(
+                        "brief_provider_failover_success",
+                        provider=label,
+                        attempt=index + 1,
+                        providers=len(self._providers),
+                    )
+                return brief
+            except BriefsDisabledError:
+                raise
+            except ValueError:
+                raise
+            except Exception as exc:
+                last_exc = exc
+                transient = _is_transient_provider_error(exc)
+                has_next = index + 1 < len(self._providers)
+                if transient and has_next:
+                    log.warning(
+                        "brief_provider_failover",
+                        provider=label,
+                        attempt=index + 1,
+                        providers=len(self._providers),
+                        failover_reason=str(exc)[:200],
+                    )
+                    continue
+                raise
+        assert last_exc is not None
+        raise last_exc
+
+
 def make_brief_provider(
     settings: BriefSettings | None = None,
     *,
     client: httpx.AsyncClient | None = None,
 ) -> BriefProvider:
-    """Build a provider from ``AI_PROVIDER`` (``gemini``, ``groq``, or ``openrouter``)."""
+    """Build a provider from ``AI_PROVIDER`` (+ optional ``AI_BACKUP_*`` chain).
+
+    When backup providers/keys are configured, wraps them in
+    ``FailoverBriefProvider`` (transient 429/5xx/timeout only). Each slot
+    owns its own httpx client unless the caller passes a shared ``client``.
+    """
     cfg = settings or BriefSettings.from_env()
-    # Fail closed — non-string BriefSettings.provider used to throw on .strip mid factory.
-    provider_raw = cfg.provider if isinstance(cfg.provider, str) else ""
-    provider = (provider_raw or "gemini").strip().lower()
-    if provider == "gemini":
-        return GeminiBriefProvider(cfg, client=client)
-    if provider == "groq":
-        return GroqBriefProvider(cfg, client=client)
-    if provider == "openrouter":
-        return OpenRouterBriefProvider(cfg, client=client)
-    raise RuntimeError(f"Unsupported AI_PROVIDER={cfg.provider!r} (gemini|groq|openrouter)")
+    slots = cfg.provider_slots()
+    if not slots:
+        # Unkeyed primary — summarize raises BriefsDisabledError via _require_enabled.
+        return _build_single_provider(cfg, client=client)
+
+    providers: list[BriefProvider] = []
+    labels: list[str] = []
+    for slot in slots:
+        providers.append(_build_single_provider(slot, client=client))
+        prov_name = (
+            slot.provider.strip().lower()
+            if isinstance(slot.provider, str)
+            else "unknown"
+        )
+        labels.append(prov_name)
+
+    if len(providers) == 1:
+        return providers[0]
+    return FailoverBriefProvider(providers, labels=labels)

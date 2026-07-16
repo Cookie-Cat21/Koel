@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from chime.domain import resolve_positive_int_cap
@@ -20,6 +20,7 @@ __all__ = [
     "BriefStatus",
     "briefs_enabled",
     "build_brief_prompt",
+    "default_model_for_provider",
     "nfa_suffix",
 ]
 
@@ -71,15 +72,41 @@ def _env_float(name: str, default: float) -> float:
     return value
 
 
+def _csv_env(name: str) -> tuple[str, ...]:
+    """Comma-separated env list; empty / non-string → (). Strips blanks."""
+    raw = os.getenv(name, "")
+    if not isinstance(raw, str) or not raw.strip():
+        return ()
+    parts: list[str] = []
+    for piece in raw.split(","):
+        item = piece.strip()
+        if item:
+            parts.append(item)
+    return tuple(parts)
+
+
+def default_model_for_provider(provider: str) -> str:
+    """Soft-default chat model so a bare ``AI_PROVIDER`` cannot burn the daily cap."""
+    provider_l = provider.strip().lower() if isinstance(provider, str) else ""
+    if provider_l == "groq":
+        return "llama-3.3-70b-versatile"
+    if provider_l == "openrouter":
+        return "openai/gpt-4o-mini"
+    return "gemini-2.0-flash"
+
+
 @dataclass(frozen=True, slots=True)
 class BriefSettings:
     """Env knobs (see root ``.env.example``):
 
     - ``AI_BRIEFS_ENABLED`` — ``1`` to opt in (default ``0``)
     - ``AI_PROVIDER`` — ``gemini``, ``groq``, or ``openrouter`` (default ``gemini``)
-    - ``AI_API_KEY`` — required with enabled for ``briefs_enabled()``
+    - ``AI_API_KEY`` — primary key; backups alone also satisfy ``briefs_enabled()``
     - ``AI_MODEL`` — provider soft-default when unset (``gemini-2.0-flash``;
       ``llama-3.3-70b-versatile`` for groq; ``openai/gpt-4o-mini`` for openrouter)
+    - ``AI_BACKUP_PROVIDERS`` / ``AI_BACKUP_API_KEYS`` / ``AI_BACKUP_MODELS`` —
+      optional comma-separated failover chain (same length preferred; missing
+      model falls back to ``default_model_for_provider``; empty key skips slot)
     - ``AI_MAX_BRIEFS_PER_DAY`` — default ``50``
     - ``AI_MAX_INPUT_CHARS`` — default ``12000``
     - ``AI_HTTP_TIMEOUT_SECONDS`` — provider HTTP timeout (default ``30``)
@@ -108,6 +135,9 @@ class BriefSettings:
     pdf_grace_seconds: int = 120
     cdn_backoff_seconds: int = 300
     skipped_promote_hours: int = 24
+    backup_providers: tuple[str, ...] = ()
+    backup_api_keys: tuple[str, ...] = ()
+    backup_models: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls) -> BriefSettings:
@@ -119,13 +149,7 @@ class BriefSettings:
         # Soft-default model to the provider's common chat model so
         # AI_PROVIDER=groq without AI_MODEL does not burn the daily cap on
         # Gemini model ids that Groq rejects.
-        provider_l = provider.lower()
-        if provider_l == "groq":
-            default_model = "llama-3.3-70b-versatile"
-        elif provider_l == "openrouter":
-            default_model = "openai/gpt-4o-mini"
-        else:
-            default_model = "gemini-2.0-flash"
+        default_model = default_model_for_provider(provider)
         model_raw = os.getenv("AI_MODEL")
         if model_raw is None or not isinstance(model_raw, str) or not model_raw.strip():
             model = default_model
@@ -146,13 +170,68 @@ class BriefSettings:
             pdf_grace_seconds=max(0, _env_int("BRIEF_PDF_GRACE_SECONDS", 120)),
             cdn_backoff_seconds=max(0, _env_int("BRIEF_CDN_BACKOFF_SECONDS", 300)),
             skipped_promote_hours=max(0, _env_int("BRIEF_SKIPPED_PROMOTE_HOURS", 24)),
+            backup_providers=_csv_env("AI_BACKUP_PROVIDERS"),
+            backup_api_keys=_csv_env("AI_BACKUP_API_KEYS"),
+            backup_models=_csv_env("AI_BACKUP_MODELS"),
         )
+
+    def provider_slots(self) -> tuple[BriefSettings, ...]:
+        """Primary + keyed backup slots as single-provider settings (no nested backups)."""
+        slots: list[BriefSettings] = []
+        if isinstance(self.api_key, str) and self.api_key.strip():
+            slots.append(
+                replace(
+                    self,
+                    api_key=self.api_key.strip(),
+                    backup_providers=(),
+                    backup_api_keys=(),
+                    backup_models=(),
+                )
+            )
+        providers = self.backup_providers if isinstance(self.backup_providers, tuple) else ()
+        keys = self.backup_api_keys if isinstance(self.backup_api_keys, tuple) else ()
+        models = self.backup_models if isinstance(self.backup_models, tuple) else ()
+        for index, provider_raw in enumerate(providers):
+            if not isinstance(provider_raw, str) or not provider_raw.strip():
+                continue
+            if index >= len(keys):
+                break
+            key_raw = keys[index]
+            if not isinstance(key_raw, str) or not key_raw.strip():
+                continue
+            provider = provider_raw.strip()
+            if index < len(models) and isinstance(models[index], str) and models[index].strip():
+                model = models[index].strip()
+            else:
+                model = default_model_for_provider(provider)
+            slots.append(
+                BriefSettings(
+                    enabled=self.enabled,
+                    provider=provider,
+                    api_key=key_raw.strip(),
+                    model=model,
+                    max_briefs_per_day=self.max_briefs_per_day,
+                    max_input_chars=self.max_input_chars,
+                    pdf_max_bytes=self.pdf_max_bytes,
+                    http_timeout_seconds=self.http_timeout_seconds,
+                    sleep_seconds=self.sleep_seconds,
+                    pdf_grace_seconds=self.pdf_grace_seconds,
+                    cdn_backoff_seconds=self.cdn_backoff_seconds,
+                    skipped_promote_hours=self.skipped_promote_hours,
+                )
+            )
+        return tuple(slots)
 
 
 def briefs_enabled(settings: BriefSettings | None = None) -> bool:
-    """True only when explicitly opted in and a key is present."""
+    """True only when explicitly opted in and a primary or backup key is present."""
     cfg = settings or BriefSettings.from_env()
-    return cfg.enabled and bool(cfg.api_key)
+    if not cfg.enabled:
+        return False
+    if isinstance(cfg.api_key, str) and cfg.api_key.strip():
+        return True
+    keys = cfg.backup_api_keys if isinstance(cfg.backup_api_keys, tuple) else ()
+    return any(isinstance(k, str) and k.strip() for k in keys)
 
 
 def nfa_suffix() -> str:
