@@ -322,6 +322,7 @@ def main(argv: list[str] | None = None) -> None:
             "ml-harden",
             "ml-diagnose",
             "ml-iterate",
+            "ml-precision90",
         ],
         help=(
             "bot | poller | both | migrate | tick | "
@@ -329,7 +330,7 @@ def main(argv: list[str] | None = None) -> None:
             "path-backfill | score-signals | eval-signals | "
             "sector-backfill | notices-backfill | ml-experiment | "
             "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
-            "ml-iterate"
+            "ml-iterate | ml-precision90"
         ),
     )
     parser.add_argument(
@@ -920,6 +921,45 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_iterate())
+        return
+
+    if args.command == "ml-precision90":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = (
+            None
+            if not isinstance(args.limit, int)
+            or isinstance(args.limit, bool)
+            or args.limit == 20
+            else args.limit
+        )
+
+        async def _p90() -> None:
+            from pathlib import Path
+
+            from chime.ml.precision90 import run_precision90
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                result = await run_precision90(
+                    storage=storage,
+                    limit_symbols=limit if limit and limit > 0 else None,
+                    out_dir=Path("docs/experiments"),
+                )
+                print(
+                    "ml-precision90: "
+                    f"target_met={result.target_met} "
+                    f"best={result.best_gate} "
+                    f"prec={result.best_precision} "
+                    f"emits={result.best_n_emits}"
+                )
+                for r in result.recommendations:
+                    print(" ", r)
+            finally:
+                await storage.close()
+
+        asyncio.run(_p90())
         return
 
     settings = Settings.from_env(require_token=True)
