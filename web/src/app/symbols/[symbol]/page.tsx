@@ -55,12 +55,12 @@ import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { Suspense } from "react";
 
+import { SparklineTicksControl } from "@/components/kit/sparkline-ticks-control";
+import { formatNumber, formatTs } from "@/lib/format";
 import {
   DEFAULT_SPARKLINE_TICKS,
   parseSparklineTicks,
-  SparklineTicksControl,
-} from "@/components/kit/sparkline-ticks-control";
-import { formatNumber, formatTs } from "@/lib/format";
+} from "@/lib/sparkline-ticks";
 
 export const dynamic = "force-dynamic";
 
