@@ -40,7 +40,13 @@ def test_server_api_get_uses_loopback_origin() -> None:
     assert 'h.get("host")' not in source
     assert 'const hostRaw = (h.get("host")' not in source
     assert "isLoopbackHost(u.host)" in source
-    assert "VERCEL_URL" not in source
+    # Platform-trusted Vercel origin (system env) — not client Host.
+    assert "resolveVercelTrustedOrigin" in source
+    assert "VERCEL_PROJECT_PRODUCTION_URL" in source
+    assert "VERCEL_URL" in source
+    assert "isSafeInternalHost(bare)" in source
+    assert "https://${bare}" in source
+    assert "resolveInternalOrigin()" in source
 
 
 def test_health_url_loopback_allowlisted() -> None:

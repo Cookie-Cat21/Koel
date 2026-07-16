@@ -116,14 +116,14 @@ def test_web_runtime_sources_do_not_import_or_call_cse_lk() -> None:
 def test_dashboard_pages_render_nfa_footer() -> None:
     """Every dash page keeps sitewide NFA footer chrome (WS-028).
 
-    Marketing landing uses SiteFooter (embeds NFA_FOOTER) instead of NfaFooter.
+    Marketing landing uses ChimeFooter (embeds NFA_FOOTER) instead of NfaFooter.
     """
     landing = WEB / "src" / "app" / "page.tsx"
     landing_src = landing.read_text(encoding="utf-8")
-    assert 'import { SiteFooter } from "@/components/marketing/site-footer";' in landing_src
-    assert "<SiteFooter" in landing_src
+    assert 'import { ChimeFooter } from "@/components/marketing/chime-footer";' in landing_src
+    assert "<ChimeFooter" in landing_src
     assert "NFA_FOOTER" in (
-        WEB / "src" / "components" / "marketing" / "site-footer.tsx"
+        WEB / "src" / "components" / "marketing" / "chime-footer.tsx"
     ).read_text(encoding="utf-8")
 
     page_paths = [
@@ -946,7 +946,7 @@ def test_ardeno_kit_components_exist_and_are_wired() -> None:
     assert "HowItWorks" in landing
     assert "FaqSection" in landing
     assert "ChimeWordmark" in landing
-    assert "SiteFooter" in landing
+    assert "ChimeFooter" in landing
     assert (WEB / "src" / "components" / "kit" / "chat-bubble.tsx").is_file()
     assert (WEB / "src" / "components" / "kit" / "steps.tsx").is_file()
     assert (WEB / "src" / "components" / "marketing" / "how-it-works.tsx").is_file()
