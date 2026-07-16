@@ -1,0 +1,71 @@
+{
+  "id": 297,
+  "chartData": [
+    {
+      "h": 25.7,
+      "l": 24.9,
+      "o": null,
+      "s": 94574374819,
+      "q": 13118102,
+      "p": 25.3,
+      "c": null,
+      "pc": null,
+      "t": 1752690600000,
+      "n": null,
+      "id": 297
+    },
+    {
+      "h": 25.7,
+      "l": 25.0,
+      "o": null,
+      "s": 94607144049,
+      "q": 46859393,
+      "p": 25.5,
+      "c": null,
+      "pc": null,
+      "t": 1752811207000,
+      "n": null,
+      "id": 297
+    },
+    {
+      "h": 25.6,
+      "l": 25.2,
+      "o": null,
+      "s": 94643940341,
+      "q": 3882114,
+      "p": 25.2,
+      "c": null,
+      "pc": null,
+      "t": 1753036200000,
+      "n": null,
+      "id": 297
+    },
+    {
+      "h": 20.0,
+      "l": 19.8,
+      "o": null,
+      "s": 105823380301,
+      "q": 3858312,
+      "p": 19.9,
+      "c": null,
+      "pc": null,
+      "t": 1784053800000,
+      "n": null,
+      "id": 297
+    },
+    {
+      "h": 20.2,
+      "l": 19.9,
+      "o": null,
+      "s": 105867362135,
+      "q": 3319037,
+      "p": 20.0,
+      "c": null,
+      "pc": null,
+      "t": 1784140200000,
+      "n": null,
+      "id": 297
+    }
+  ],
+  "_note": "Truncated sample of period=5 daily path; full chartData has 242 points. stockId=companyInfoSummery.reqSymbolInfo.id or tradeSummary.id. o/c/pc often null; use p as close. Probe: docs/experiments/CSE_PATH_HISTORY_PROBE.md"
+}
