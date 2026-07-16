@@ -28,9 +28,10 @@ export function SparklineWithForecast({
   confidence?: number | null;
 }) {
   const toggleId = useId();
-  const [showForecast, setShowForecast] = useState(false);
   const series = finiteSparklinePoints(points);
   const forecast = finiteSparklinePoints(forecastPoints ?? []);
+  // One forecast point is enough for a short overlay; previously required
+  // forecastCoords.length >= 2 which hid single-horizon emits.
   const canToggle = forecast.length >= 1 && series.length >= 2;
   const bandLabel =
     confidenceBand === "high"
@@ -40,6 +41,10 @@ export function SparklineWithForecast({
         : confidenceBand === "low"
           ? "Low"
           : null;
+  // Auto-show high-confidence HPE overlays; user can still toggle off.
+  const [showForecast, setShowForecast] = useState(
+    () => confidenceBand === "high" || gate === "hpe_p90",
+  );
 
   if (series.length < 2) {
     return <Sparkline points={points} className={className} />;
