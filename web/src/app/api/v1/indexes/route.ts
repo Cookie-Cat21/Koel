@@ -29,7 +29,7 @@ type IndexRow = {
  * Session required; CSRF not required. No CSE HTTP from the dashboard.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   try {

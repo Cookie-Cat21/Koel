@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * Clears session and CSRF cookies.
  */
 export async function POST(request: NextRequest) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const res = jsonOk({ ok: true });

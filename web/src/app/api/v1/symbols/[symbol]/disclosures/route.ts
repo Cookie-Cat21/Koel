@@ -29,7 +29,7 @@ type RouteContext = { params: Promise<{ symbol: string }> };
  * Egress: allowlist pdf_url/url; expose brief only when brief_status=ready.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;

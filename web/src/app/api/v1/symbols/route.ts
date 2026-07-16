@@ -24,7 +24,7 @@ const MAX_LIMIT = 200;
  */
 export async function GET(request: NextRequest) {
   // Session only — GET must not require CSRF (double-submit is for mutations).
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;

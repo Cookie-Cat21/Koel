@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import type { NextResponse } from "next/server";
 
+import { isDashSessionRevoked } from "@/lib/db";
+
 import { getDashAuthConfig, SESSION_COOKIE } from "./config";
 import { csrfTokensMatch, CSRF_HEADER, readCsrfCookie } from "./csrf";
 import { jsonError } from "./errors";
@@ -10,8 +12,18 @@ export type SessionOk = { ok: true; session: SessionPayload };
 export type GuardFail = { ok: false; response: NextResponse };
 export type SessionResult = SessionOk | GuardFail;
 
-/** Resolve signed session from HttpOnly cookie. user_id is the sole trust anchor. */
-export function requireSession(request: NextRequest): SessionResult {
+/**
+ * Resolve signed session from HttpOnly cookie. user_id is the sole trust anchor.
+ *
+ * Also enforces ``dash_sessions.revoked_at`` (S-01). Pages already check revoke
+ * in ``requirePageSession``; API must match so logout-all kills cookie use.
+ *
+ * Fail closed: DB errors → 503 (prefer brief unavailability over silent bypass).
+ * Revoked / missing / invalid → same 401 message (no revoke oracle).
+ */
+export async function requireSession(
+  request: NextRequest,
+): Promise<SessionResult> {
   const cfg = getDashAuthConfig();
   if (!cfg.sessionSecret) {
     return {
@@ -40,6 +52,21 @@ export function requireSession(request: NextRequest): SessionResult {
     };
   }
 
+  try {
+    if (await isDashSessionRevoked(session.sid)) {
+      return {
+        ok: false,
+        response: jsonError(401, "unauthorized", "Authentication required."),
+      };
+    }
+  } catch (err) {
+    console.error("requireSession revoke check failed", err);
+    return {
+      ok: false,
+      response: jsonError(503, "degraded", "Database unavailable."),
+    };
+  }
+
   return { ok: true, session };
 }
 
@@ -47,12 +74,14 @@ export function requireSession(request: NextRequest): SessionResult {
  * Session + CSRF for POST/PATCH/PUT/DELETE under /api/v1 (including logout).
  * Login (`POST /auth/demo`) is the only CSRF-exempt mutation.
  *
- * Order: session first, then CSRF. Missing/invalid session → 401
- * `unauthorized` even when CSRF would also fail (never `csrf_failed`
+ * Order: session (+ revoke) first, then CSRF. Missing/invalid/revoked session →
+ * 401 `unauthorized` even when CSRF would also fail (never `csrf_failed`
  * without a valid session). Header≠cookie CSRF → 400 `csrf_failed`.
  */
-export function requireSessionAndCsrf(request: NextRequest): SessionResult {
-  const session = requireSession(request);
+export async function requireSessionAndCsrf(
+  request: NextRequest,
+): Promise<SessionResult> {
+  const session = await requireSession(request);
   if (!session.ok) return session;
 
   const header = request.headers.get(CSRF_HEADER);

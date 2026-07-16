@@ -268,7 +268,7 @@ export function sanitizePollerHealth(raw: unknown): PollerHealth | null {
  * Postgres only from this handler; optional HEALTH_URL for poller detail.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   let dbOk = false;

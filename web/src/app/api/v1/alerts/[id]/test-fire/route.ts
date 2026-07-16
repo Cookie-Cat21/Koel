@@ -38,7 +38,7 @@ function dryRunMessage(row: {
  * POST /api/v1/alerts/{id}/test-fire — audit-only dry run, no Telegram send.
  */
 export async function POST(request: NextRequest, context: RouteContext) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const { id: rawId } = await context.params;

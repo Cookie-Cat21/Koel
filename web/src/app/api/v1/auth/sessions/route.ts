@@ -13,7 +13,7 @@ const MAX_SESSIONS = 50;
  * GET /api/v1/auth/sessions — list dash sessions for the signed-in user (A2).
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   try {

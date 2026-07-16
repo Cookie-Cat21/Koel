@@ -28,7 +28,7 @@ export const MAX_ALERT_RULES = 500;
  * Optional `?symbol=` filters to one CSE symbol (case-insensitive normalize).
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const url = request.nextUrl;
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
  * POST /api/v1/alerts — create rule (CSRF). Auto-watch; idempotent return-existing.
  */
 export async function POST(request: NextRequest) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const parsed = await readJsonBody(request);

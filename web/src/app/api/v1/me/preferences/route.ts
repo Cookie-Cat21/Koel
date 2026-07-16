@@ -62,7 +62,7 @@ async function fetchPreferences(userId: number): Promise<PreferencesPayload | nu
 }
 
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   try {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const parsed = await readJsonBody(request);

@@ -64,7 +64,7 @@ function dateOnly(raw: unknown): string | null {
  * Postgres only; no upstream CSE calls from web.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;

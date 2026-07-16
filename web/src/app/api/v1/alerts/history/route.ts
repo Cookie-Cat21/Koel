@@ -56,7 +56,7 @@ export function deriveDeliveryStatus(row: {
  * Contract path (not /alerts/fires).
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const url = request.nextUrl;

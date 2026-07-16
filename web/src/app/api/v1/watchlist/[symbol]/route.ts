@@ -14,7 +14,7 @@ type RouteContext = { params: Promise<{ symbol: string }> };
  * Soft messaging: 200 with removed:false when not on watchlist.
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;

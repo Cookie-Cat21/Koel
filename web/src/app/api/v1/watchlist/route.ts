@@ -23,7 +23,7 @@ export const MAX_WATCHLIST_ITEMS = 500;
  * Postgres only; no cse.lk.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   try {
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
  * Soft messaging: 200 with created:false when already watched (parity DELETE removed).
  */
 export async function POST(request: NextRequest) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const parsed = await readJsonBody(request);

@@ -21,7 +21,7 @@ type RouteContext = { params: Promise<{ symbol: string }> };
  * Postgres only; no cse.lk.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;
