@@ -173,7 +173,7 @@ export function buildDataQualityNotices(
         id: "extract-failed",
         tone: "warning",
         title: "Filing metrics could not be extracted",
-        description: `Chime tried ${q.metrics_failed} filing PDF${q.metrics_failed === 1 ? "" : "s"} for ${symbol}, but could not pull reliable numbers (scanned pages, unusual layouts, or non-LKR summary tables). Empty metrics here means extract failed — not that the company has no results.`,
+        description: `Chime tried ${q.metrics_failed} filing PDF${q.metrics_failed === 1 ? "" : "s"} for ${symbol}, but could not mark a clean extract (scanned pages, unusual layouts, or non-LKR summary tables). Any numbers shown still need verification against the source PDF — this is not proof the issuer has no results.`,
       });
     } else if (
       q.metrics_ok === 0 &&
