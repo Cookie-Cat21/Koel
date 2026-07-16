@@ -1,0 +1,51 @@
+{
+  "model_version": "ml_hpe_p90_v1",
+  "report": "docs/experiments/ml_precision90_20260716T154908Z.md",
+  "oos_precision": 0.903448275862069,
+  "oos_emits": 435,
+  "oos_symbols": 82,
+  "stress_pass": true,
+  "notes": "Selective multi-stream emitter. Not always-on. NFA.",
+  "streams": {
+    "h1": {
+      "horizon": 1,
+      "panel": true,
+      "score_thr": 0.37,
+      "range_cut": 0.05118049325934172,
+      "vol_cut": 0.03407448424433807,
+      "mode": "range"
+    },
+    "h2": {
+      "horizon": 2,
+      "panel": true,
+      "score_thr": 0.39,
+      "range_cut": 0.04798359764818709,
+      "vol_cut": 0.03176449918811121,
+      "mode": "range_vol"
+    },
+    "h3": {
+      "horizon": 3,
+      "panel": true,
+      "score_thr": 0.36,
+      "range_cut": 0.05032422451069625,
+      "vol_cut": 0.03348371481703044,
+      "mode": "range_vol"
+    },
+    "h5": {
+      "horizon": 5,
+      "panel": true,
+      "score_thr": 0.38,
+      "range_cut": 0.052387570474122416,
+      "vol_cut": 0.03489234831243509,
+      "mode": "range_vol"
+    },
+    "abs": {
+      "horizon": 1,
+      "panel": false,
+      "score_thr": 0.35,
+      "range_cut": 0.04923196625144898,
+      "vol_cut": 0.03261666236050982,
+      "mode": "range"
+    }
+  }
+}

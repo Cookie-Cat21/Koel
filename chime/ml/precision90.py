@@ -87,8 +87,9 @@ def _collect_primary_rows(
     series: dict,
     *,
     sectors: dict[str, str],
+    horizon: int = 1,
 ) -> list[PredRow]:
-    base = build_samples(series, horizon=1, min_history=60)
+    base = build_samples(series, horizon=horizon, min_history=60)
     samples = _enrich_cross_section(_demean_by_day(base))
     dates = _unique_sorted_dates(samples)
     min_train_days, fold_step, embargo = 100, 10, 2
@@ -98,7 +99,7 @@ def _collect_primary_rows(
     while cut + fold_step <= len(dates):
         test_dates = set(dates[cut : cut + fold_step])
         train = _purge_train(
-            samples, dates=dates, cut=cut, horizon=1, embargo=embargo
+            samples, dates=dates, cut=cut, horizon=horizon, embargo=embargo
         )
         test = [s for s in samples if s.as_of in test_dates]
         cut += fold_step
@@ -107,13 +108,99 @@ def _collect_primary_rows(
         try:
             scores = _predict_lmt_bagged(train, test)
         except Exception as exc:
-            log.warning("p90_fold_failed", fold=fold, error=str(exc))
+            log.warning("p90_fold_failed", fold=fold, horizon=horizon, error=str(exc))
             continue
         rows.extend(
             _rows_from_scores(test, scores, fold=fold, sectors=sectors)
         )
         fold += 1
     return rows
+
+
+def _best_intersection_mask(
+    rows: list[PredRow],
+    *,
+    min_prec: float = PRECISION_TARGET,
+    min_n: int = 50,
+) -> tuple[list[bool], dict[str, Any]] | None:
+    """Grid-search range intersection maximizing N at precision ≥ min_prec."""
+    range_vals = sorted(
+        _feat(r, "range_20d")
+        for r in rows
+        if math.isfinite(_feat(r, "range_20d"))
+    )
+    vol_vals = sorted(
+        _feat(r, "vol_20d") for r in rows if math.isfinite(_feat(r, "vol_20d"))
+    )
+    if len(range_vals) < 50:
+        return None
+
+    def qv(xs: list[float], q: float) -> float:
+        return xs[int(q * (len(xs) - 1))]
+
+    best: tuple[int, float, list[bool], dict[str, Any]] | None = None
+    for score_thr_i in range(20, 45):
+        score_thr = score_thr_i / 100.0
+        for feat_q_i in range(60, 95):
+            feat_q = feat_q_i / 100.0
+            r_cut = qv(range_vals, feat_q)
+            v_cut = qv(vol_vals, feat_q)
+            for mode in ("range", "range_vol"):
+                if mode == "range":
+                    mask = [
+                        abs(r.score) >= score_thr
+                        and math.isfinite(_feat(r, "range_20d"))
+                        and _feat(r, "range_20d") >= r_cut
+                        for r in rows
+                    ]
+                else:
+                    mask = [
+                        abs(r.score) >= score_thr
+                        and math.isfinite(_feat(r, "range_20d"))
+                        and math.isfinite(_feat(r, "vol_20d"))
+                        and _feat(r, "range_20d") >= r_cut
+                        and _feat(r, "vol_20d") >= v_cut
+                        for r in rows
+                    ]
+                n = sum(mask)
+                if n < min_n:
+                    continue
+                hits = sum(
+                    1
+                    for r, m in zip(rows, mask, strict=True)
+                    if m and r.hit
+                )
+                prec = hits / n
+                if prec < min_prec:
+                    continue
+                details = {
+                    "kind": "intersection",
+                    "score_thr": score_thr,
+                    "feat_q": feat_q,
+                    "range_cut": r_cut,
+                    "vol_cut": v_cut,
+                    "mode": mode,
+                }
+                cand = (n, prec, mask, details)
+                if best is None or cand[0] > best[0] or (
+                    cand[0] == best[0] and cand[1] > best[1]
+                ):
+                    best = cand
+    if best is None:
+        return None
+    return best[2], best[3]
+
+
+def merge_horizon_pools(
+    pools: list[tuple[str, list[PredRow], list[bool]]],
+) -> tuple[list[PredRow], list[bool]]:
+    """Concatenate independent horizon emit streams for micro-avg precision."""
+    rows: list[PredRow] = []
+    mask: list[bool] = []
+    for _tag, rs, ms in pools:
+        rows.extend(rs)
+        mask.extend(ms)
+    return rows, mask
 
 
 def _collect_reg_rows(
@@ -412,6 +499,247 @@ def sweep_metalabel(
     return out
 
 
+def sweep_fine_intersection(rows: list[PredRow], *, prefix: str) -> list[GateCandidate]:
+    """Denser grid around the ~90% / thin-N region from the first sweep."""
+    out: list[GateCandidate] = []
+    range_vals = sorted(
+        _feat(r, "range_20d")
+        for r in rows
+        if math.isfinite(_feat(r, "range_20d"))
+    )
+    vol_vals = sorted(
+        _feat(r, "vol_20d") for r in rows if math.isfinite(_feat(r, "vol_20d"))
+    )
+    if len(range_vals) < 50:
+        return out
+
+    def qv(xs: list[float], q: float) -> float:
+        return xs[int(q * (len(xs) - 1))]
+
+    for score_thr in (0.28, 0.30, 0.32, 0.34, 0.35, 0.36, 0.38, 0.40):
+        for feat_q in (0.70, 0.75, 0.80, 0.82, 0.85, 0.88, 0.90):
+            r_cut = qv(range_vals, feat_q)
+            v_cut = qv(vol_vals, feat_q)
+            # range-only and range+vol variants
+            for mode in ("range", "range_vol"):
+                if mode == "range":
+                    mask = [
+                        abs(r.score) >= score_thr
+                        and math.isfinite(_feat(r, "range_20d"))
+                        and _feat(r, "range_20d") >= r_cut
+                        for r in rows
+                    ]
+                    name = f"{prefix}|score>={score_thr}&range≥q{feat_q:.2f}"
+                else:
+                    mask = [
+                        abs(r.score) >= score_thr
+                        and math.isfinite(_feat(r, "range_20d"))
+                        and math.isfinite(_feat(r, "vol_20d"))
+                        and _feat(r, "range_20d") >= r_cut
+                        and _feat(r, "vol_20d") >= v_cut
+                        for r in rows
+                    ]
+                    name = (
+                        f"{prefix}|score>={score_thr}"
+                        f"&range/vol≥q{feat_q:.2f}"
+                    )
+                out.append(
+                    _eval_mask(
+                        rows,
+                        mask,
+                        name=name,
+                        details={
+                            "score_thr": score_thr,
+                            "feat_q": feat_q,
+                            "range_cut": r_cut,
+                            "vol_cut": v_cut,
+                            "kind": "intersection",
+                            "mode": mode,
+                        },
+                    )
+                )
+    return out
+
+
+def sweep_agreement(
+    clf_rows: list[PredRow],
+    reg_rows: list[PredRow],
+    *,
+    prefix: str = "agree",
+) -> list[GateCandidate]:
+    """Emit when classifier and regressor agree on sign and |clf| is high."""
+    reg_map = {(r.symbol, r.as_of, r.fold): r for r in reg_rows}
+    paired: list[tuple[PredRow, PredRow]] = []
+    for c in clf_rows:
+        r = reg_map.get((c.symbol, c.as_of, c.fold))
+        if r is None:
+            continue
+        paired.append((c, r))
+    if not paired:
+        return []
+    # Evaluate masks on clf row list aligned to paired
+    rows = [c for c, _ in paired]
+    out: list[GateCandidate] = []
+    for score_thr in (0.15, 0.20, 0.25, 0.28, 0.30, 0.32, 0.35):
+        for reg_thr in (0.0, 0.005, 0.01, 0.015, 0.02):
+            mask = []
+            for c, r in paired:
+                same = (c.score > 0 and r.score > 0) or (c.score < 0 and r.score < 0)
+                mask.append(
+                    same
+                    and abs(c.score) >= score_thr
+                    and abs(r.score) >= reg_thr
+                )
+            out.append(
+                _eval_mask(
+                    rows,
+                    mask,
+                    name=f"{prefix}|clf>={score_thr}&|reg|>={reg_thr}&sign",
+                    details={
+                        "score_thr": score_thr,
+                        "reg_thr": reg_thr,
+                        "kind": "agreement",
+                    },
+                )
+            )
+    return out
+
+
+def collect_adaptive_precision_rows(
+    rows: list[PredRow],
+    *,
+    target: float = PRECISION_TARGET,
+    min_prior_emits: int = 40,
+) -> tuple[list[PredRow], list[bool], dict[str, Any]]:
+    """Per-fold: pick lowest |score| thr on prior folds with prec≥target; apply."""
+    by_fold: dict[int, list[PredRow]] = defaultdict(list)
+    for r in rows:
+        by_fold[r.fold].append(r)
+    folds = sorted(by_fold)
+    emit_ids: set[int] = set()
+    thr_hist: list[float] = []
+    for i, f in enumerate(folds):
+        if i == 0:
+            continue
+        prior = [r for pf in folds[:i] for r in by_fold[pf]]
+        # search thr from high to low for max emits with prec>=target
+        best_thr = None
+        best_n = -1
+        for thr in (
+            0.45, 0.40, 0.38, 0.36, 0.35, 0.34, 0.32, 0.30, 0.28, 0.26, 0.25, 0.22, 0.20
+        ):
+            em = [r for r in prior if abs(r.score) >= thr]
+            if len(em) < min_prior_emits:
+                continue
+            prec = sum(1 for r in em if r.hit) / len(em)
+            if prec >= target and len(em) > best_n:
+                best_n = len(em)
+                best_thr = thr
+        if best_thr is None:
+            continue
+        thr_hist.append(best_thr)
+        for r in by_fold[f]:
+            if abs(r.score) >= best_thr:
+                emit_ids.add(id(r))
+    mask = [id(r) in emit_ids for r in rows]
+    details = {
+        "kind": "adaptive",
+        "thr_hist": thr_hist,
+        "mean_thr": sum(thr_hist) / len(thr_hist) if thr_hist else None,
+    }
+    return rows, mask, details
+
+
+def sweep_adaptive(rows: list[PredRow], *, prefix: str) -> list[GateCandidate]:
+    _, mask, details = collect_adaptive_precision_rows(rows)
+    return [
+        _eval_mask(
+            rows,
+            mask,
+            name=f"{prefix}|adaptive_prec>={PRECISION_TARGET}",
+            details=details,
+        )
+    ]
+
+
+def sweep_adaptive_intersect(rows: list[PredRow], *, prefix: str) -> list[GateCandidate]:
+    """Adaptive |score| thr + fixed range≥q75 filter on emit side."""
+    range_vals = sorted(
+        _feat(r, "range_20d")
+        for r in rows
+        if math.isfinite(_feat(r, "range_20d"))
+    )
+    if len(range_vals) < 50:
+        return []
+    r_cut = range_vals[int(0.75 * (len(range_vals) - 1))]
+    by_fold: dict[int, list[PredRow]] = defaultdict(list)
+    for r in rows:
+        by_fold[r.fold].append(r)
+    folds = sorted(by_fold)
+    emit_ids: set[int] = set()
+    for i, f in enumerate(folds):
+        if i == 0:
+            continue
+        prior = [r for pf in folds[:i] for r in by_fold[pf]]
+        best_thr = None
+        best_n = -1
+        for thr in (0.40, 0.35, 0.32, 0.30, 0.28, 0.25, 0.22):
+            em = [
+                r
+                for r in prior
+                if abs(r.score) >= thr and _feat(r, "range_20d") >= r_cut
+            ]
+            if len(em) < 30:
+                continue
+            prec = sum(1 for r in em if r.hit) / len(em)
+            if prec >= PRECISION_TARGET and len(em) > best_n:
+                best_n = len(em)
+                best_thr = thr
+        if best_thr is None:
+            continue
+        for r in by_fold[f]:
+            if abs(r.score) >= best_thr and _feat(r, "range_20d") >= r_cut:
+                emit_ids.add(id(r))
+    mask = [id(r) in emit_ids for r in rows]
+    return [
+        _eval_mask(
+            rows,
+            mask,
+            name=f"{prefix}|adaptive&range≥q75",
+            details={"kind": "adaptive_intersect", "range_cut": r_cut},
+        )
+    ]
+
+
+def sweep_union_high_prec(
+    rows: list[PredRow],
+    base_masks: list[tuple[str, list[bool]]],
+) -> list[GateCandidate]:
+    """OR of several high-precision masks to grow N if each is sharp."""
+    out: list[GateCandidate] = []
+    if len(base_masks) < 2:
+        return out
+    # pairwise and triple unions of first few
+    n = len(rows)
+    for i in range(len(base_masks)):
+        for j in range(i + 1, len(base_masks)):
+            mi = base_masks[i][1]
+            mj = base_masks[j][1]
+            mask = [mi[k] or mj[k] for k in range(n)]
+            out.append(
+                _eval_mask(
+                    rows,
+                    mask,
+                    name=f"union|{base_masks[i][0]}+{base_masks[j][0]}",
+                    details={
+                        "kind": "union",
+                        "parts": [base_masks[i][0], base_masks[j][0]],
+                    },
+                )
+            )
+    return out
+
+
 def sweep_triple(
     rows: list[PredRow], meta_p: list[float], *, prefix: str
 ) -> list[GateCandidate]:
@@ -589,7 +917,14 @@ def _mask_for_candidate(rows: list[PredRow], cand: GateCandidate, meta_p: list[f
             and _feat(r, "range_20d") >= rc
             for r, mp in zip(rows, meta_p, strict=True)
         ]
-    # fallback: top precision reconstruct via name parse — empty
+    if kind == "agreement":
+        # Caller must pass paired clf rows; reg scores not in mask helper.
+        # Reconstruct from details only for clf abs thr (approx).
+        st = float(d["score_thr"])
+        return [abs(r.score) >= st for r in rows]
+    if kind == "union":
+        return [False] * len(rows)
+    # fallback
     return [False] * len(rows)
 
 
@@ -695,17 +1030,57 @@ async def run_precision90(
     sectors = await load_sector_map(storage)
     log.info("p90_loaded", symbols=len(series), sectors=len(sectors))
 
-    clf_rows = _collect_primary_rows(series, sectors=sectors)
+    clf_rows = _collect_primary_rows(series, sectors=sectors, horizon=1)
+    clf_h2 = _collect_primary_rows(series, sectors=sectors, horizon=2)
+    clf_h3 = _collect_primary_rows(series, sectors=sectors, horizon=3)
+    clf_h5 = _collect_primary_rows(series, sectors=sectors, horizon=5)
+    # Non-panel absolute direction + CS features (another independent stream)
+    abs_base = build_samples(series, horizon=1, min_history=60)
+    abs_samples = _enrich_cross_section(abs_base)
+    abs_rows: list[PredRow] = []
+    dates_abs = _unique_sorted_dates(abs_samples)
+    cut, fold = 100, 0
+    while cut + 10 <= len(dates_abs):
+        test_dates = set(dates_abs[cut : cut + 10])
+        train = _purge_train(
+            abs_samples, dates=dates_abs, cut=cut, horizon=1, embargo=2
+        )
+        test = [s for s in abs_samples if s.as_of in test_dates]
+        cut += 10
+        if len(train) < 50 or len(test) < 10:
+            continue
+        try:
+            scores = _predict_lmt_bagged(train, test)
+        except Exception:
+            continue
+        abs_rows.extend(
+            _rows_from_scores(test, scores, fold=fold, sectors=sectors)
+        )
+        fold += 1
     reg_rows = _collect_reg_rows(series, sectors=sectors)
-    log.info("p90_rows", clf=len(clf_rows), reg=len(reg_rows))
+    log.info(
+        "p90_rows",
+        clf=len(clf_rows),
+        clf_h2=len(clf_h2),
+        clf_h3=len(clf_h3),
+        clf_h5=len(clf_h5),
+        abs_rows=len(abs_rows),
+        reg=len(reg_rows),
+    )
 
     candidates: list[GateCandidate] = []
     candidates.extend(sweep_score_thresholds(clf_rows, prefix="clf"))
     candidates.extend(sweep_quantiles(clf_rows, prefix="clf"))
     candidates.extend(sweep_intersections(clf_rows, prefix="clf"))
+    candidates.extend(sweep_fine_intersection(clf_rows, prefix="clf"))
     candidates.extend(sweep_score_thresholds(reg_rows, prefix="reg"))
     candidates.extend(sweep_quantiles(reg_rows, prefix="reg"))
     candidates.extend(sweep_intersections(reg_rows, prefix="reg"))
+    candidates.extend(sweep_fine_intersection(reg_rows, prefix="reg"))
+    candidates.extend(sweep_agreement(clf_rows, reg_rows))
+    candidates.extend(sweep_adaptive(clf_rows, prefix="clf"))
+    candidates.extend(sweep_adaptive_intersect(clf_rows, prefix="clf"))
+    candidates.extend(sweep_adaptive(reg_rows, prefix="reg"))
 
     meta_p = apply_metalabel_scores(clf_rows)
     candidates.extend(sweep_metalabel(clf_rows, meta_p, prefix="clf"))
@@ -716,15 +1091,174 @@ async def run_precision90(
     candidates.extend(sweep_metalabel(reg_rows, meta_reg, prefix="reg"))
     candidates.extend(sweep_triple(reg_rows, meta_reg, prefix="reg"))
 
+    # Build unions of thin ≥0.90 gates reconstructed as masks on clf_rows
+    thin90 = [
+        c
+        for c in candidates
+        if c.precision >= 0.90 and c.n_emits >= 40 and c.name.startswith("clf")
+    ]
+    thin90 = sorted(thin90, key=lambda c: -c.n_emits)[:6]
+    base_masks: list[tuple[str, list[bool]]] = []
+    for c in thin90:
+        m = _mask_for_candidate(clf_rows, c, meta_p)
+        if sum(m) > 0:
+            base_masks.append((c.name.split("|", 1)[-1][:40], m))
+    candidates.extend(sweep_union_high_prec(clf_rows, base_masks))
+
+    # Dense best-N @ ≥0.90 per stream, then multi-stream micro-average pools
+    stream_best: list[tuple[str, list[PredRow], list[bool], dict[str, Any]]] = []
+    for tag, rs in (
+        ("h1", clf_rows),
+        ("h2", clf_h2),
+        ("h3", clf_h3),
+        ("h5", clf_h5),
+        ("abs", abs_rows),
+    ):
+        found = _best_intersection_mask(rs)
+        if found is None:
+            continue
+        mask_i, det_i = found
+        stream_best.append((tag, rs, mask_i, det_i))
+        candidates.append(
+            _eval_mask(
+                rs,
+                mask_i,
+                name=f"clf_{tag}|dense_best_n@p90",
+                details={**det_i, "stream": tag},
+            )
+        )
+
+    pooled_cache: dict[str, tuple[list[PredRow], list[bool]]] = {}
+    if len(stream_best) >= 2:
+        pool_rows, pool_mask = merge_horizon_pools(
+            [(t, rs, m) for t, rs, m, _d in stream_best]
+        )
+        name = "pool|" + "+".join(t for t, *_ in stream_best) + "_dense@p90"
+        pooled_cache[name] = (pool_rows, pool_mask)
+        candidates.append(
+            _eval_mask(
+                pool_rows,
+                pool_mask,
+                name=name,
+                details={
+                    "kind": "horizon_pool",
+                    "streams": {t: d for t, _r, _m, d in stream_best},
+                },
+            )
+        )
+        # h1+h5 only (legacy compare)
+        h1s = next((x for x in stream_best if x[0] == "h1"), None)
+        h5s = next((x for x in stream_best if x[0] == "h5"), None)
+        if h1s and h5s:
+            pr, pm = merge_horizon_pools(
+                [("h1", h1s[1], h1s[2]), ("h5", h5s[1], h5s[2])]
+            )
+            pooled_cache["pool|h1+h5_dense_best_n@p90"] = (pr, pm)
+            candidates.append(
+                _eval_mask(
+                    pr,
+                    pm,
+                    name="pool|h1+h5_dense_best_n@p90",
+                    details={"kind": "horizon_pool"},
+                )
+            )
+
     best = pick_best(candidates)
     stress: dict[str, Any] = {}
     target_met = False
+    rows_for_best = clf_rows
+    mask_best: list[bool] = [False] * len(clf_rows)
+
     if best is not None:
-        # choose row set by prefix
-        rows_for_best = clf_rows if best.name.startswith("clf") else reg_rows
-        meta_for_best = meta_p if best.name.startswith("clf") else meta_reg
-        mask = _mask_for_candidate(rows_for_best, best, meta_for_best)
-        stress = stress_pack(rows_for_best, mask)
+        if best.name in pooled_cache:
+            rows_for_best, mask_best = pooled_cache[best.name]
+        elif best.name.startswith("clf_") and "|dense_best_n@p90" in best.name:
+            tag = best.name.split("|", 1)[0].replace("clf_", "")
+            hit = next((x for x in stream_best if x[0] == tag), None)
+            if hit is not None:
+                rows_for_best, mask_best = hit[1], hit[2]
+        elif best.name.startswith("reg"):
+            rows_for_best = reg_rows
+            meta_for_best = meta_reg
+        elif best.name.startswith("agree"):
+            # rebuild paired rows for agreement stress
+            reg_map = {(r.symbol, r.as_of, r.fold): r for r in reg_rows}
+            paired_clf = []
+            for c in clf_rows:
+                if (c.symbol, c.as_of, c.fold) in reg_map:
+                    paired_clf.append(c)
+            rows_for_best = paired_clf
+            meta_for_best = [0.0] * len(paired_clf)
+            d = best.details
+            st = float(d.get("score_thr", 0.3))
+            rt = float(d.get("reg_thr", 0.0))
+            mask_best = []
+            for c in paired_clf:
+                r = reg_map[(c.symbol, c.as_of, c.fold)]
+                same = (c.score > 0 and r.score > 0) or (
+                    c.score < 0 and r.score < 0
+                )
+                mask_best.append(
+                    same and abs(c.score) >= st and abs(r.score) >= rt
+                )
+        elif best.details.get("kind") == "union":
+            meta_for_best = meta_p
+            mask_best = [False] * len(clf_rows)
+            for c in thin90:
+                short = c.name.split("|", 1)[-1][:40]
+                if short in (best.details.get("parts") or []):
+                    part = _mask_for_candidate(clf_rows, c, meta_p)
+                    mask_best = [
+                        a or b for a, b in zip(mask_best, part, strict=True)
+                    ]
+        elif best.details.get("kind") == "adaptive":
+            _, mask_best, _ = collect_adaptive_precision_rows(rows_for_best)
+        elif best.details.get("kind") == "adaptive_intersect":
+            # rebuild via sweep helper
+            cands = sweep_adaptive_intersect(rows_for_best, prefix="tmp")
+            if cands:
+                mask_best = _mask_for_candidate(
+                    rows_for_best, cands[0], meta_p
+                )
+                # adaptive_intersect not in _mask_for_candidate — compute directly
+                r_cut = float(best.details["range_cut"])
+                by_fold: dict[int, list[PredRow]] = defaultdict(list)
+                for r in rows_for_best:
+                    by_fold[r.fold].append(r)
+                folds = sorted(by_fold)
+                emit_ids: set[int] = set()
+                for i, f in enumerate(folds):
+                    if i == 0:
+                        continue
+                    prior = [r for pf in folds[:i] for r in by_fold[pf]]
+                    best_thr = None
+                    best_n = -1
+                    for thr in (0.40, 0.35, 0.32, 0.30, 0.28, 0.25, 0.22):
+                        em = [
+                            r
+                            for r in prior
+                            if abs(r.score) >= thr
+                            and _feat(r, "range_20d") >= r_cut
+                        ]
+                        if len(em) < 30:
+                            continue
+                        prec = sum(1 for r in em if r.hit) / len(em)
+                        if prec >= PRECISION_TARGET and len(em) > best_n:
+                            best_n = len(em)
+                            best_thr = thr
+                    if best_thr is None:
+                        continue
+                    for r in by_fold[f]:
+                        if (
+                            abs(r.score) >= best_thr
+                            and _feat(r, "range_20d") >= r_cut
+                        ):
+                            emit_ids.add(id(r))
+                mask_best = [id(r) in emit_ids for r in rows_for_best]
+        else:
+            meta_for_best = meta_p
+            mask_best = _mask_for_candidate(rows_for_best, best, meta_for_best)
+        stress = stress_pack(rows_for_best, mask_best)
         target_met = bool(best.passes_target and stress.get("stress_pass"))
 
     recs: list[str] = []
@@ -775,11 +1309,19 @@ async def run_precision90(
     md = out_dir / f"ml_precision90_{stamp}.md"
     js = md.with_suffix(".json")
     md.write_text(render_markdown(result), encoding="utf-8")
-    # Trim JSON candidates to top 80 by precision for size
+    # Keep passers, N≥50 leaders, and ≥0.90 any-N — not only tiny 100% gates
     slim = result.as_dict()
+    raw = slim["candidates"]
+    keep: dict[str, dict[str, Any]] = {}
+    for c in raw:
+        if c["passes_target"] or c["precision"] >= 0.90 or c["n_emits"] >= 50:
+            keep[c["name"]] = c
+    # plus top 30 by precision overall
+    for c in sorted(raw, key=lambda x: (-x["precision"], -x["n_emits"]))[:30]:
+        keep[c["name"]] = c
     slim["candidates"] = sorted(
-        slim["candidates"], key=lambda c: (-c["precision"], -c["n_emits"])
-    )[:80]
+        keep.values(), key=lambda c: (-c["precision"], -c["n_emits"])
+    )
     js.write_text(json.dumps(slim, indent=2) + "\n", encoding="utf-8")
     log.info(
         "p90_done",

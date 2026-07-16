@@ -323,6 +323,7 @@ def main(argv: list[str] | None = None) -> None:
             "ml-diagnose",
             "ml-iterate",
             "ml-precision90",
+            "ml-hpe",
         ],
         help=(
             "bot | poller | both | migrate | tick | "
@@ -330,7 +331,7 @@ def main(argv: list[str] | None = None) -> None:
             "path-backfill | score-signals | eval-signals | "
             "sector-backfill | notices-backfill | ml-experiment | "
             "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
-            "ml-iterate | ml-precision90"
+            "ml-iterate | ml-precision90 | ml-hpe"
         ),
     )
     parser.add_argument(
@@ -382,10 +383,11 @@ def main(argv: list[str] | None = None) -> None:
         "sector-backfill",
         "notices-backfill",
         "ml-forecast",
+        "ml-hpe",
     ):
         parser.error(
             "--force is only valid for tick, path-backfill, "
-            "sector-backfill, notices-backfill, or ml-forecast"
+            "sector-backfill, notices-backfill, ml-forecast, or ml-hpe"
         )
     if args.period is not None and args.command != "path-backfill":
         parser.error("--period is only valid for path-backfill")
@@ -960,6 +962,38 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_p90())
+        return
+
+    if args.command == "ml-hpe":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        if not settings.ml_hpe_enabled and not args.force:
+            print(
+                "ml-hpe: disabled "
+                "(set ML_HPE_ENABLED=1 or pass --force)"
+            )
+            return
+
+        async def _hpe() -> None:
+            from chime.ml.hpe import run_hpe_forecast
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                result = await run_hpe_forecast(
+                    storage=storage, force=args.force
+                )
+                print(
+                    "ml-hpe: "
+                    f"scanned={result.symbols_scanned} "
+                    f"emits={result.emits} "
+                    f"points={result.points_written} "
+                    f"model={result.model_version}"
+                )
+            finally:
+                await storage.close()
+
+        asyncio.run(_hpe())
         return
 
     settings = Settings.from_env(require_token=True)
