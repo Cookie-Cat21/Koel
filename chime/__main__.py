@@ -379,6 +379,11 @@ def main(argv: list[str] | None = None) -> None:
         default="data/transfer_ohlcv/panel_daily.csv",
         help="For ml-transfer: path to foreign OHLCV CSV panel",
     )
+    parser.add_argument(
+        "--events",
+        action="store_true",
+        help="For ml-always-on: append disclosure/notice features and compare to baseline",
+    )
     args = parser.parse_args(argv)
     if args.force and args.command not in (
         "tick",
