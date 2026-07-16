@@ -87,6 +87,7 @@ async def run_signal_score_job(
     forecasts = 0
     peer_cache: dict[str, float | None] = {}
     since = datetime.now(UTC) - timedelta(days=30)
+    aspi_pct = await storage.latest_index_change_pct("ASPI")
 
     for symbol in symbols:
         bars = await storage.list_daily_bars(symbol)
@@ -95,12 +96,33 @@ async def run_signal_score_job(
             storage, symbol=symbol, cache=peer_cache
         )
         disc_n = await storage.count_disclosures_since(symbol, since=since)
+        cats = await storage.count_disclosure_categories_since(symbol, since=since)
+        fin_share: float | None = None
+        if cats and disc_n > 0:
+            fin_n = 0
+            for cat, n in cats.items():
+                low = cat.lower()
+                if any(
+                    key in low
+                    for key in (
+                        "financial",
+                        "interim",
+                        "annual",
+                        "quarter",
+                        "accounts",
+                        "earnings",
+                    )
+                ):
+                    fin_n += n
+            fin_share = fin_n / float(disc_n)
         extra = ExtraFactors(
             eps_yoy_pct=yoy.get("eps_yoy_pct"),
             rev_yoy_pct=yoy.get("rev_yoy_pct"),
             profit_yoy_pct=yoy.get("profit_yoy_pct"),
             sector_peer_ret_20d=peer_ret,
             disclosure_count_30d=disc_n if disc_n > 0 else None,
+            financial_disclosure_share=fin_share,
+            aspi_change_pct=aspi_pct,
         )
         result = score_symbol_path(
             bars, extra=extra, model_version=model_version

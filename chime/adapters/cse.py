@@ -73,6 +73,8 @@ DAYS_TRADE_ENDPOINT = "daysTrade"
 DAYS_TRADE_PATH = "/daysTrade"
 COMPANY_CHART_ENDPOINT = "companyChartDataByStock"
 COMPANY_CHART_PATH = "/companyChartDataByStock"
+COMPANY_PROFILE_ENDPOINT = "companyProfile"
+COMPANY_PROFILE_PATH = "/companyProfile"
 # Observed period map — docs/experiments/CSE_PATH_HISTORY_PROBE.md
 CHART_PERIOD_INTRADAY = 1
 CHART_PERIOD_1W = 2
@@ -1675,6 +1677,47 @@ class CSEClient:
             return sorted(by_date.values(), key=lambda b: b.trade_date)
 
         return cast(list[DailyBar], await self._guarded(COMPANY_CHART_ENDPOINT, _call))
+
+    async def fetch_company_sector(self, symbol: str) -> str | None:
+        """Return sector label from ``POST /companyProfile`` ``reqComSumInfo``.
+
+        Observed values: ``Banks``, ``Capital Goods``, ``Telecommunication Services``.
+        """
+        if not isinstance(symbol, str) or not symbol.strip():
+            return None
+        sym = symbol.strip().upper()
+
+        async def _call() -> str | None:
+            raw = await self._request(
+                "POST",
+                COMPANY_PROFILE_PATH,
+                data={"symbol": sym},
+                log_context={"symbol": sym},
+            )
+            if not isinstance(raw, dict):
+                log.error(
+                    "cse_schema_error",
+                    endpoint=COMPANY_PROFILE_ENDPOINT,
+                    symbol=sym,
+                    error="expected object",
+                )
+                raise ValueError(f"{COMPANY_PROFILE_ENDPOINT}: expected JSON object")
+            rows = raw.get("reqComSumInfo")
+            if not isinstance(rows, list) or not rows:
+                return None
+            first = rows[0]
+            if not isinstance(first, dict):
+                return None
+            sector = first.get("sector")
+            if not isinstance(sector, str) or not sector.strip():
+                return None
+            # Cap hostile long strings from CSE.
+            cleaned = sector.strip()
+            if len(cleaned) > 128:
+                cleaned = cleaned[:128].rstrip()
+            return cleaned
+
+        return cast(str | None, await self._guarded(COMPANY_PROFILE_ENDPOINT, _call))
 
     async def fetch_buy_in_announcements(self) -> list[MarketNotice]:
         return await self._fetch_notice_list(

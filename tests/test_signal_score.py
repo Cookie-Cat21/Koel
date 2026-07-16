@@ -100,6 +100,26 @@ def test_volume_spike_component() -> None:
     assert any("volume" in r.lower() and "×" in r for r in result.reasons)
 
 
+def test_range_and_aspi_components() -> None:
+    prices = [10.0 + i * 0.05 for i in range(25)]
+    bars = _bars(prices)
+    # Widen ranges.
+    bars = [
+        b.model_copy(update={"high": b.price * 1.05, "low": b.price * 0.95})
+        for b in bars
+    ]
+    result = score_symbol_path(
+        bars,
+        extra=ExtraFactors(aspi_change_pct=-1.0, financial_disclosure_share=0.8),
+    )
+    assert result is not None
+    assert result.components["range_20d"] is not None
+    assert result.components["range_20d"] > 0.03
+    assert result.components["aspi_gap_1d"] is not None
+    assert any("ASPI" in r for r in result.reasons)
+    assert any("Financial-category" in r for r in result.reasons)
+
+
 def test_forecast_path_projects_forward() -> None:
     prices = [10.0 + i * 0.1 for i in range(20)]
     points = forecast_path(_bars(prices), horizon=5)

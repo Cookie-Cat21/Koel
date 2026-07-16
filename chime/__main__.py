@@ -20,6 +20,7 @@ from chime.migrate import apply_migrations
 from chime.notify import SendResult, send_message
 from chime.path_backfill import run_path_backfill
 from chime.poller import Poller, run_poller_forever
+from chime.sector_backfill import run_sector_backfill
 from chime.signals import run_signal_score_job
 from chime.storage import Storage
 
@@ -312,17 +313,21 @@ def main(argv: list[str] | None = None) -> None:
             "path-backfill",
             "score-signals",
             "eval-signals",
+            "sector-backfill",
         ],
         help=(
             "bot | poller | both | migrate | tick | "
             "drain-pdfs | drain-briefs | drain-metrics | "
-            "path-backfill | score-signals | eval-signals"
+            "path-backfill | score-signals | eval-signals | sector-backfill"
         ),
     )
     parser.add_argument(
         "--force",
         action="store_true",
-        help="tick: ignore market hours; path-backfill: run even if flag off",
+        help=(
+            "tick: ignore market hours; "
+            "path-backfill/sector-backfill: run even if flag off"
+        ),
     )
     parser.add_argument(
         "--limit",
@@ -347,8 +352,8 @@ def main(argv: list[str] | None = None) -> None:
         help="For path-backfill: skip tradeSummary id seed",
     )
     args = parser.parse_args(argv)
-    if args.force and args.command not in ("tick", "path-backfill"):
-        parser.error("--force is only valid for tick or path-backfill")
+    if args.force and args.command not in ("tick", "path-backfill", "sector-backfill"):
+        parser.error("--force is only valid for tick, path-backfill, or sector-backfill")
     if args.period is not None and args.command != "path-backfill":
         parser.error("--period is only valid for path-backfill")
     if args.no_seed and args.command != "path-backfill":
@@ -446,6 +451,43 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_path_bf())
+        return
+
+    if args.command == "sector-backfill":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else None
+
+        async def _sector_bf() -> None:
+            storage = Storage(settings.database_url)
+            await storage.open()
+            cse = CSEClient(
+                base_url=settings.cse_base_url,
+                timeout=settings.http_timeout_seconds,
+                fail_max=settings.circuit_fail_max,
+                reset_timeout=settings.circuit_reset_seconds,
+                min_interval_seconds=settings.cse_min_interval_seconds,
+            )
+            try:
+                result = await run_sector_backfill(
+                    settings=settings,
+                    storage=storage,
+                    cse=cse,
+                    limit=limit,
+                    force=args.force,
+                )
+                print(
+                    "sector-backfill: "
+                    f"targeted={result.symbols_targeted} "
+                    f"updated={result.symbols_updated} "
+                    f"skipped={result.symbols_skipped} "
+                    f"failed={result.symbols_failed}"
+                )
+            finally:
+                await cse.aclose()
+                await storage.close()
+
+        asyncio.run(_sector_bf())
         return
 
     if args.command == "score-signals":

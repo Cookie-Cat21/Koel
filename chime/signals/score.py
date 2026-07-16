@@ -18,19 +18,24 @@ from chime.scenarios.guardrails import (
     assert_safe_scenario_output,
 )
 
-MODEL_VERSION = "path_v1"
+MODEL_VERSION = "path_v2"
+MODEL_VERSION_V1 = "path_v1"
 MODEL_VERSION_V0 = "path_v0"
 
 
 @dataclass(frozen=True, slots=True)
 class ExtraFactors:
-    """Optional non-path inputs for ``path_v1`` (all fail-closed / optional)."""
+    """Optional non-path inputs for ``path_v2`` (all fail-closed / optional)."""
 
     eps_yoy_pct: float | None = None
     rev_yoy_pct: float | None = None
     profit_yoy_pct: float | None = None
     sector_peer_ret_20d: float | None = None
     disclosure_count_30d: int | None = None
+    # Share of recent disclosures in financial-ish categories (0–1).
+    financial_disclosure_share: float | None = None
+    # Latest ASPI change in percent points (e.g. 0.14 = +0.14%).
+    aspi_change_pct: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +124,48 @@ def score_symbol_path(
     ):
         vol_spike = last_vol / liq
 
+    # F-004: average intraday range (high-low)/price over last 20 bars.
+    ranges: list[float] = []
+    for b in ordered[-20:]:
+        if (
+            b.high is not None
+            and b.low is not None
+            and math.isfinite(b.high)
+            and math.isfinite(b.low)
+            and math.isfinite(b.price)
+            and b.price > 0
+            and b.high >= b.low
+        ):
+            ranges.append((b.high - b.low) / b.price)
+    range_20 = statistics.fmean(ranges) if ranges else None
+
+    # F-012: volume regime — recent 5d avg / prior 15d avg.
+    vol_series = [
+        b.volume
+        for b in ordered
+        if b.volume is not None and math.isfinite(b.volume) and b.volume > 0
+    ]
+    vol_regime: float | None = None
+    if len(vol_series) >= 20:
+        recent = statistics.fmean(vol_series[-5:])
+        prior = statistics.fmean(vol_series[-20:-5])
+        if prior > 0:
+            vol_regime = recent / prior
+
+    # Proxy turnover (volume * price) log tilt — F-012 companion.
+    turnovers = [
+        b.volume * b.price
+        for b in ordered[-20:]
+        if b.volume is not None
+        and math.isfinite(b.volume)
+        and b.volume > 0
+        and math.isfinite(b.price)
+        and b.price > 0
+    ]
+    turnover_20 = statistics.fmean(turnovers) if turnovers else None
+
+    ret_1 = _window_return(prices, 1)
+
     mom = 0.0
     mom_w = 0.0
     if ret_5 is not None:
@@ -145,11 +192,26 @@ def score_symbol_path(
         # Mild activity tilt — capped; not a tip.
         vol_spike_term = min(8.0, (vol_spike - 1.5) * 2.0)
 
+    # Wide range = riskier — small penalty (F-004).
+    range_penalty = 0.0
+    if range_20 is not None:
+        range_penalty = min(10.0, range_20 * 80.0)
+
+    vol_regime_term = 0.0
+    if vol_regime is not None and vol_regime > 1.2:
+        vol_regime_term = min(6.0, (vol_regime - 1.2) * 4.0)
+
+    turnover_term = 0.0
+    if turnover_20 is not None and turnover_20 > 0:
+        turnover_term = min(8.0, math.log10(turnover_20 + 1.0) * 1.2)
+
     extras = extra or ExtraFactors()
     eps_yoy = _finite_opt(extras.eps_yoy_pct)
     rev_yoy = _finite_opt(extras.rev_yoy_pct)
     profit_yoy = _finite_opt(extras.profit_yoy_pct)
     peer_ret = _finite_opt(extras.sector_peer_ret_20d)
+    fin_share = _finite_opt(extras.financial_disclosure_share)
+    aspi_pct = _finite_opt(extras.aspi_change_pct)
     disc_30 = extras.disclosure_count_30d
     if isinstance(disc_30, bool) or not isinstance(disc_30, int) or disc_30 < 0:
         disc_30 = None
@@ -173,6 +235,19 @@ def score_symbol_path(
     if disc_30 is not None and disc_30 > 0:
         disc_term = min(5.0, float(disc_30) * 0.5)
 
+    # F-042: financial filing intensity (more financial disclosures → mild tilt).
+    fin_disc_term = 0.0
+    if fin_share is not None and fin_share > 0:
+        fin_disc_term = min(6.0, fin_share * 8.0)
+
+    # F-022: same-session path vs latest ASPI change (percent points).
+    aspi_rs_term = 0.0
+    aspi_gap: float | None = None
+    if ret_1 is not None and aspi_pct is not None:
+        # ret_1 is fraction; aspi_pct is percent points (0.14 ≈ 0.14%).
+        aspi_gap = (ret_1 * 100.0) - aspi_pct
+        aspi_rs_term = max(-8.0, min(8.0, aspi_gap * 2.0))
+
     raw = (
         mom_term
         - vol_penalty
@@ -181,20 +256,32 @@ def score_symbol_path(
         + filing_term
         + rs_term
         + disc_term
+        - range_penalty
+        + vol_regime_term
+        + turnover_term
+        + fin_disc_term
+        + aspi_rs_term
     )
     score = max(-100.0, min(100.0, raw))
 
     components: dict[str, float | None] = {
+        "ret_1d": ret_1,
         "ret_5d": ret_5,
         "ret_20d": ret_20,
         "ret_60d": ret_60,
         "vol_20d": vol_20,
         "liquidity_20d": liq,
         "vol_spike": vol_spike,
+        "range_20d": range_20,
+        "vol_regime": vol_regime,
+        "turnover_20d": turnover_20,
         "mom_term": mom_term,
         "vol_penalty": vol_penalty,
         "liq_term": liq_term,
         "vol_spike_term": vol_spike_term,
+        "range_penalty": range_penalty,
+        "vol_regime_term": vol_regime_term,
+        "turnover_term": turnover_term,
         "eps_yoy_pct": eps_yoy,
         "rev_yoy_pct": rev_yoy,
         "profit_yoy_pct": profit_yoy,
@@ -204,6 +291,11 @@ def score_symbol_path(
         "rs_term": rs_term,
         "disclosure_count_30d": float(disc_30) if disc_30 is not None else None,
         "disc_term": disc_term,
+        "financial_disclosure_share": fin_share,
+        "fin_disc_term": fin_disc_term,
+        "aspi_change_pct": aspi_pct,
+        "aspi_gap_1d": aspi_gap,
+        "aspi_rs_term": aspi_rs_term,
     }
 
     reasons: list[str] = []
@@ -250,6 +342,27 @@ def score_symbol_path(
             reasons.append(r)
     if disc_30 is not None and disc_30 > 0:
         r = _safe_reason(f"{disc_30} disclosure(s) in last 30 days")
+        if r:
+            reasons.append(r)
+    if range_20 is not None and range_20 > 0.03:
+        r = _safe_reason(f"Avg 20-session range {range_20 * 100.0:.1f}% of price")
+        if r:
+            reasons.append(r)
+    if vol_regime is not None and vol_regime > 1.2:
+        r = _safe_reason(f"Recent volume {vol_regime:.1f}× prior 15-session avg")
+        if r:
+            reasons.append(r)
+    if fin_share is not None and fin_share >= 0.4:
+        r = _safe_reason(
+            f"Financial-category disclosures {fin_share * 100.0:.0f}% of last 30d"
+        )
+        if r:
+            reasons.append(r)
+    if aspi_gap is not None and abs(aspi_gap) >= 0.5:
+        direction = "ahead of" if aspi_gap >= 0 else "behind"
+        r = _safe_reason(
+            f"Latest session {direction} ASPI by {abs(aspi_gap):.2f} pts"
+        )
         if r:
             reasons.append(r)
     if len(prices) < 60:

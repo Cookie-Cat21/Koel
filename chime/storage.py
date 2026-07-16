@@ -603,6 +603,29 @@ class Storage:
                 out.append(symbol)
         return out
 
+    async def list_symbols_missing_sector(self) -> list[str]:
+        """Symbols with daily bars (or any stock) missing a sector label."""
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT s.symbol
+                    FROM stocks s
+                    WHERE (s.sector IS NULL OR btrim(s.sector) = '')
+                      AND EXISTS (
+                          SELECT 1 FROM daily_bars d WHERE d.symbol = s.symbol
+                      )
+                    ORDER BY s.symbol ASC
+                    """
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            raw = row.get("symbol")
+            if isinstance(raw, str) and raw.strip():
+                out.append(raw.strip().upper())
+        return out
+
     async def get_stock_sector(self, symbol: str) -> str | None:
         if not isinstance(symbol, str) or not symbol.strip():
             return None
@@ -689,6 +712,66 @@ class Storage:
             "rev_yoy_pct": _pct("revenue_delta_pct"),
             "profit_yoy_pct": _pct("profit_delta_pct"),
         }
+
+    async def count_disclosure_categories_since(
+        self, symbol: str, *, since: datetime
+    ) -> dict[str, int]:
+        """Category → count for disclosures since ``since`` (fail soft)."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return {}
+        if not isinstance(since, datetime):
+            return {}
+        sym = symbol.strip().upper()
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT COALESCE(NULLIF(btrim(category), ''), 'uncategorized') AS cat,
+                           COUNT(*)::int AS n
+                    FROM disclosures
+                    WHERE symbol = %s AND published_at >= %s
+                    GROUP BY 1
+                    """,
+                    (sym, since),
+                )
+            ).fetchall()
+        out: dict[str, int] = {}
+        for row in _as_rows(rows):
+            cat = row.get("cat")
+            n = _pg_count(row.get("n"))
+            if isinstance(cat, str) and cat.strip() and n is not None and n > 0:
+                out[cat.strip()[:64]] = n
+        return out
+
+    async def latest_index_change_pct(self, code: str = "ASPI") -> float | None:
+        """Latest persisted index change_pct (intraday board; not multi-week)."""
+        if not isinstance(code, str) or not code.strip():
+            return None
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT change_pct
+                    FROM index_snapshots
+                    WHERE code = %s AND change_pct IS NOT NULL
+                    ORDER BY ts DESC
+                    LIMIT 1
+                    """,
+                    (code.strip().upper(),),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        val = _as_row(row).get("change_pct")
+        if isinstance(val, bool) or not isinstance(val, int | float):
+            return None
+        if not math.isfinite(float(val)):
+            return None
+        # CSE stores percent points (e.g. 0.14) or fraction — normalize if huge.
+        pct = float(val)
+        # If already fraction-like tiny, keep; if looks like percent points keep as-is
+        # for comparison against symbol ret * 100 below in score job.
+        return pct
 
     async def count_disclosures_since(self, symbol: str, *, since: datetime) -> int:
         if not isinstance(symbol, str) or not symbol.strip():
