@@ -78,7 +78,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
        FROM disclosures d
        LEFT JOIN disclosure_briefs b ON b.disclosure_id = d.id
        WHERE d.symbol = $1
-       ORDER BY d.published_at DESC, d.id DESC
+       ORDER BY
+         CASE
+           WHEN d.external_id LIKE 'fin-%' THEN 0
+           WHEN d.title ILIKE '%financial%' OR d.title ILIKE '%interim%'
+             OR d.category ILIKE '%financial%' THEN 1
+           ELSE 2
+         END,
+         d.published_at DESC NULLS LAST,
+         d.id DESC
        LIMIT $2`,
       [symbol, limit],
     );

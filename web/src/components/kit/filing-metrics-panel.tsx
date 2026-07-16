@@ -126,7 +126,9 @@ export function FilingMetricsPanel({
           ) : (
             <div className="mt-3 rounded-lg border border-dashed border-border/70 p-4">
               <p className="text-sm text-muted-foreground">
-                No filing metrics extracted yet.
+                No filing metrics extracted yet. Numbers appear after CSE
+                financial-statement PDFs are ingested and parsed for this
+                symbol. Extracted figures need filing verification.
               </p>
             </div>
           )}
@@ -145,7 +147,9 @@ export function FilingMetricsPanel({
           ) : (
             <div className="mt-3 rounded-lg border border-dashed border-border/70 p-4">
               <p className="text-sm text-muted-foreground">
-                No ready brief yet — AI briefs when enabled.
+                No ready AI brief for this symbol yet. Briefs appear after a
+                financial filing PDF is summarized (queue may lag on free-tier
+                AI limits). Not financial advice.
               </p>
             </div>
           )}

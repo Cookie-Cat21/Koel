@@ -23,7 +23,7 @@ log = structlog.get_logger("chime.briefs.extract")
 _MAX_PDF_PAGES = 40
 _MAX_EXTRACT_CHARS = 50_000
 # Absolute ceiling for PDF fetch byte caps (env / caller misconfig).
-_PDF_MAX_BYTES_ABS = 20_971_520  # 20 MiB
+_PDF_MAX_BYTES_ABS = 33_554_432  # 32 MiB — annual CSE reports often exceed 20 MiB
 
 
 # Client errors that will not heal on retry — fail the brief permanently.

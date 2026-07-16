@@ -43,27 +43,62 @@ jobs:
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
           python -m chime drain-pdfs --limit "$LIMIT"
+      - name: Backfill financial statement PDFs (CSE /financials)
+        # Prefer POST /financials over AGM announcements for accurate history.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FINANCIAL_METRICS_ENABLED: ${{ vars.FINANCIAL_METRICS_ENABLED || '1' }}
+          FILING_COMPARE_ENABLED: ${{ vars.FILING_COMPARE_ENABLED || '1' }}
+          METRICS_SHADOW_MODE: "1"
+        run: |
+          # Batch symbols still missing extract_ok metrics (cap runtime).
+          SYMS=$(python - <<'PY'
+          import os, psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+              rows = conn.execute(
+                  """
+                  SELECT s.symbol FROM stocks s
+                  WHERE NOT EXISTS (
+                    SELECT 1 FROM filing_metrics fm
+                    WHERE fm.symbol = s.symbol AND fm.extract_ok
+                  )
+                  ORDER BY 1 LIMIT 25
+                  """
+              ).fetchall()
+          print(",".join(r[0] for r in rows))
+          PY
+          )
+          if [ -n "$SYMS" ]; then
+            python scripts/experiments/load_real_filing_metrics.py \
+              --symbols "$SYMS" --quarterly-per 12 --annual-per 2
+          else
+            echo "No symbols missing metrics"
+          fi
+          python scripts/coverage_filings_neon.py || true
       - name: Drain metrics
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          FINANCIAL_METRICS_ENABLED: ${{ vars.FINANCIAL_METRICS_ENABLED || '0' }}
-          FILING_COMPARE_ENABLED: ${{ vars.FILING_COMPARE_ENABLED || '0' }}
+          FINANCIAL_METRICS_ENABLED: ${{ vars.FINANCIAL_METRICS_ENABLED || '1' }}
+          FILING_COMPARE_ENABLED: ${{ vars.FILING_COMPARE_ENABLED || '1' }}
           METRICS_SHADOW_MODE: "1"
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
-          python -m chime drain-metrics --limit "$LIMIT"
+          python -m chime drain-metrics --limit "$LIMIT" --all-symbols
       - name: Drain briefs (optional)
         if: ${{ github.event.inputs.run_briefs == 'true' || vars.DRAIN_BRIEFS == '1' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          AI_BRIEFS_ENABLED: ${{ secrets.AI_BRIEFS_ENABLED || '0' }}
-          AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'gemini' }}
+          AI_BRIEFS_ENABLED: ${{ secrets.AI_BRIEFS_ENABLED || '1' }}
+          AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'groq' }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_MODEL: ${{ secrets.AI_MODEL || 'gemini-2.0-flash' }}
+          AI_MODEL: ${{ secrets.AI_MODEL || 'llama-3.1-8b-instant' }}
           AI_BACKUP_PROVIDERS: ${{ secrets.AI_BACKUP_PROVIDERS }}
           AI_BACKUP_API_KEYS: ${{ secrets.AI_BACKUP_API_KEYS }}
           AI_BACKUP_MODELS: ${{ secrets.AI_BACKUP_MODELS }}
           AI_MAX_BRIEFS_PER_DAY: "50"
+          AI_BRIEF_SLEEP_SECONDS: "2"
+          PDF_MAX_BYTES: "25000000"
+          BRIEF_SKIPPED_PROMOTE_HOURS: "168"
         run: |
           LIMIT="${{ github.event.inputs.limit || '10' }}"
           python -m chime drain-briefs --limit "$LIMIT"
