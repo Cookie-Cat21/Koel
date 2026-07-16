@@ -54,9 +54,15 @@ Apply migrations with `python3 -m chime.migrate` (idempotent).
   ("Unknown symbol"). The poller populates `stocks`; when running the dash alone, seed the
   row first (`INSERT INTO stocks (symbol) VALUES ('X.N0000') ON CONFLICT DO NOTHING;`).
 - Dashboard demo auth (`web/.env.local`): needs `DASH_DEMO_AUTH=1`,
-  `DASH_DEMO_TELEGRAM_IDS=<id>` matching a `users.telegram_id`, and a non-empty
-  `DASH_SESSION_SECRET` (empty → session/mutate routes return 503). Mutations require the
-  `X-CSRF-Token` header returned at login.
+ `DASH_DEMO_TELEGRAM_IDS=<id>` matching a `users.telegram_id`, and a non-empty
+ `DASH_SESSION_SECRET` (empty → session/mutate routes return 503). Mutations require the
+ `X-CSRF-Token` header returned at login.
+- This VM injects `DASH_DEMO_AUTH=0` and an empty `DASH_SESSION_SECRET` as real shell
+ env vars into every process. Next.js gives real `process.env` precedence over `.env.local`,
+ so those injected values **shadow** `web/.env.local` and demo login fails with
+ `demo_auth_disabled` (403). Start the dash with the values inline instead, e.g.
+ `DASH_DEMO_AUTH=1 DASH_SESSION_SECRET=$(openssl rand -hex 32) DASH_DEMO_TELEGRAM_IDS=123456789 npm run dev`.
+ A `users` row with that `telegram_id` must exist (`INSERT INTO users (telegram_id) VALUES (123456789) ON CONFLICT DO NOTHING;`).
 - Cloud Agent port previews use a `*.agent.cvm.dev` Host (not localhost). Next 16
   blocks `/_next/*` for unknown dev origins — `web/next.config.ts` sets
   `allowedDevOrigins` for those hosts so login JS can hydrate. Restart `npm run
