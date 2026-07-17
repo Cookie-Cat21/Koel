@@ -140,8 +140,11 @@ export function CandlestickChart({
           fill ? "min-h-0 flex-1" : "",
         )}
         ref={(el) => {
-          // Pin scroll to most recent candles on mount / data change.
-          if (el) el.scrollLeft = el.scrollWidth;
+          // Pin scroll to most recent candles after layout.
+          if (!el) return;
+          requestAnimationFrame(() => {
+            el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+          });
         }}
       >
         <svg
