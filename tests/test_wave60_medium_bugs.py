@@ -45,9 +45,13 @@ def test_symbol_page_uses_to_finite_number() -> None:
     source = (
         WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
     ).read_text(encoding="utf-8")
+    data = (WEB / "src" / "lib" / "db" / "symbol-page-data.ts").read_text(
+        encoding="utf-8"
+    )
     assert "toFiniteNumber" in source
     assert "finiteOrNull" not in source
-    assert "toFiniteNumber(L.price)" in source
+    assert "toFiniteNumber(snap.rows[0].price)" in data
+    assert "toFiniteNumber(r.price)" in source
 
 
 def test_api_path_guards_typeof() -> None:

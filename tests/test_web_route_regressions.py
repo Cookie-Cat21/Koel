@@ -835,9 +835,12 @@ def test_symbol_page_prefers_pdf_and_shows_ready_brief() -> None:
     page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
     assert page.is_file()
     source = page.read_text(encoding="utf-8")
+    data = (WEB / "src" / "lib" / "db" / "symbol-page-data.ts").read_text(
+        encoding="utf-8"
+    )
     assert "safeFilingHref" in source
-    assert "sanitizeBriefText" in source
-    assert "safePdfUrl" in source
+    assert "sanitizeBriefText" in data
+    assert "safePdfUrl" in data
     assert "item.pdf_url?.trim() || item.url" not in source
     assert "dangerouslySetInnerHTML" not in source
     assert "NfaInline" in source
