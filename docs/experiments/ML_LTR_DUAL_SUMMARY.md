@@ -36,4 +36,7 @@ Promote gate used: LTR RankIC ≥ 0.03 and Δ vs HGB reg ≥ +0.01 → `GO_LTR`;
 
 CLI: `python3 -m chime ml-ltr-dual` (optional `--limit N`).
 
+**Shipped:** see `ML_LTR_SHIP.md` — `ml-ltr-ship` promoted LTR+vol champion;
+serve via `--mode gated_ltr` / `hpe_with_ltr_fallback` (`ML_LTR_SERVE=1`).
+
 Research only — not financial advice.

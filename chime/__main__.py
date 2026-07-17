@@ -328,6 +328,7 @@ def main(argv: list[str] | None = None) -> None:
             "ml-forecast-unified",
             "ml-always-on",
             "ml-ltr-dual",
+            "ml-ltr-ship",
             "disclosures-backfill",
             "financials-backfill",
             "aspi-backfill",
@@ -347,7 +348,8 @@ def main(argv: list[str] | None = None) -> None:
             "ml-experiment | "
             "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
             "ml-iterate | ml-precision90 | ml-hpe | ml-forecast-unified | "
-            "ml-always-on | ml-ltr-dual | ml-score-outcomes | ml-backfill-outcomes | "
+            "ml-always-on | ml-ltr-dual | ml-ltr-ship | ml-score-outcomes | "
+            "ml-backfill-outcomes | "
             "ml-loop-nightly | ml-loop-retrain | ml-loop-research"
         ),
     )
@@ -424,7 +426,7 @@ def main(argv: list[str] | None = None) -> None:
         default="hpe_with_fallback",
         help=(
             "For ml-forecast-unified: hpe_only | hpe_with_fallback | "
-            "always_on | gated | gated_p90"
+            "hpe_with_ltr_fallback | always_on | gated | gated_p90 | gated_ltr"
         ),
     )
     args = parser.parse_args(argv)
@@ -442,13 +444,14 @@ def main(argv: list[str] | None = None) -> None:
         "ml-loop-nightly",
         "ml-loop-retrain",
         "ml-loop-research",
+        "ml-ltr-ship",
     ):
         parser.error(
             "--force is only valid for tick, path-backfill, "
             "sector-backfill, notices-backfill, disclosures-backfill, "
             "financials-backfill, aspi-backfill, ml-forecast, ml-hpe, "
             "ml-forecast-unified, ml-loop-nightly, ml-loop-retrain, "
-            "or ml-loop-research"
+            "ml-loop-research, or ml-ltr-ship"
         )
     if args.period is not None and args.command != "path-backfill":
         parser.error("--period is only valid for path-backfill")
@@ -970,6 +973,52 @@ def main(argv: list[str] | None = None) -> None:
         asyncio.run(_ltr_dual())
         return
 
+    if args.command == "ml-ltr-ship":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+
+        async def _ltr_ship() -> None:
+            from chime.ml.ltr_serve import ship_ltr_serve
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            cse = CSEClient(
+                base_url=settings.cse_base_url,
+                timeout=settings.http_timeout_seconds,
+                fail_max=settings.circuit_fail_max,
+                reset_timeout=settings.circuit_reset_seconds,
+                min_interval_seconds=settings.cse_min_interval_seconds,
+            )
+            try:
+                result = await ship_ltr_serve(
+                    storage,
+                    cse=cse,
+                    force_promote=bool(args.force),
+                    write_forecasts=True,
+                )
+                print(
+                    "ml-ltr-ship: "
+                    f"promoted={int(result.promoted)} "
+                    f"challenger={result.challenger_id} "
+                    f"emits={result.emits} points={result.points_written}"
+                )
+                if result.metrics:
+                    print(
+                        "  "
+                        f"rank_ic={result.metrics.mean_rank_ic} "
+                        f"gated_hit={result.metrics.gated_hit} "
+                        f"vol_ic={result.metrics.vol_rank_ic} "
+                        f"ranker={result.metrics.ranker}"
+                    )
+                for r in result.reasons:
+                    print(" ", r)
+            finally:
+                await cse.aclose()
+                await storage.close()
+
+        asyncio.run(_ltr_ship())
+        return
+
     if args.command == "ml-diagnose":
         configure_logging()
         settings = Settings.from_env(require_token=False)
@@ -1125,18 +1174,24 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "ml-forecast-unified":
         configure_logging()
         settings = Settings.from_env(require_token=False)
+        allowed_modes = {
+            "hpe_only",
+            "hpe_with_fallback",
+            "hpe_with_ltr_fallback",
+            "always_on",
+            "gated",
+            "gated_p90",
+            "gated_ltr",
+        }
+        default_mode = (
+            "hpe_with_ltr_fallback"
+            if settings.ml_ltr_serve
+            else "hpe_with_fallback"
+        )
         mode = (
             args.mode
-            if isinstance(args.mode, str)
-            and args.mode
-            in {
-                "hpe_only",
-                "hpe_with_fallback",
-                "always_on",
-                "gated",
-                "gated_p90",
-            }
-            else "hpe_with_fallback"
+            if isinstance(args.mode, str) and args.mode in allowed_modes
+            else default_mode
         )
 
         async def _uni() -> None:

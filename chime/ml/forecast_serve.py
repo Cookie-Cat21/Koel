@@ -34,6 +34,11 @@ DEFAULT_GATE_THR = 0.55
 # Fallback if allowlist missing: thr=0.84 → hit≈0.905 @ n=42 (cov≈0.24%).
 P90_GATE_THR = 0.84
 
+LTR_MODES = frozenset({"gated_ltr", "hpe_with_ltr_fallback"})
+FALLBACK_MODES = frozenset(
+    {"hpe_with_fallback", "always_on", "gated", "gated_p90"}
+) | LTR_MODES
+
 
 def _load_gate_threshold(*, p90: bool = False) -> float:
     if p90:
@@ -43,8 +48,8 @@ def _load_gate_threshold(*, p90: bool = False) -> float:
         if gate is not None:
             return gate.conf_thr
         return P90_GATE_THR
-    from pathlib import Path
     import json
+    from pathlib import Path
 
     path = Path("data/ml_artifacts/gate_calibration.json")
     if not path.is_file():
@@ -78,11 +83,13 @@ async def run_unified_forecast(
     Modes:
     - ``hpe_only``: only High-Precision Emitter
     - ``hpe_with_fallback``: HPE then always-on for symbols without HPE emit
+    - ``hpe_with_ltr_fallback``: HPE then LTR+vol gated emits (ship path)
     - ``always_on``: always-on stack only
     - ``gated``: always-on but only emit when confidence ≥ calibrated threshold
       (B-005 KEEP — ~72% hit @ ~11% coverage at thr=0.55 on WF ledger)
     - ``gated_p90``: symbol-reliability allowlist × conf gate targeting ≥90%
       precision (B-013; fallback thr=0.84 if allowlist missing)
+    - ``gated_ltr``: XGB pairwise (or LGB/HGB fallback) + vol sizing, conf gate
     """
     if not sklearn_available():
         return UnifiedForecastResult(0, 0, 0, mode)
@@ -99,7 +106,7 @@ async def run_unified_forecast(
         if sg is not None and sg.symbols:
             reliable = set(sg.symbols)
 
-    if mode in {"hpe_only", "hpe_with_fallback"}:
+    if mode in {"hpe_only", "hpe_with_fallback", "hpe_with_ltr_fallback"}:
         hpe = await run_hpe_forecast(storage=storage, force=True)
         hpe_emits = hpe.emits
         points += hpe.points_written
@@ -121,10 +128,33 @@ async def run_unified_forecast(
                 hpe_symbols.add(sym.strip().upper())
 
     fallback_emits = 0
-    if mode in {"hpe_with_fallback", "always_on", "gated", "gated_p90"}:
+    if mode in LTR_MODES:
+        from chime.ml.ltr_serve import build_ltr_panels, write_ltr_gated_forecasts
+
+        series, train, latest, ranker = await build_ltr_panels(storage, cse=cse)
+        skip = hpe_symbols if mode == "hpe_with_ltr_fallback" else set()
+        emits, n_pts = await write_ltr_gated_forecasts(
+            storage=storage,
+            series=series,
+            train=train,
+            latest=latest,
+            ranker=ranker,
+            gate_thr=DEFAULT_GATE_THR,
+            skip_symbols=skip,
+        )
+        fallback_emits += emits
+        points += n_pts
+        log.info(
+            "ltr_fallback_done",
+            mode=mode,
+            ranker=ranker,
+            emits=emits,
+            points=n_pts,
+        )
+    elif mode in FALLBACK_MODES - LTR_MODES:
+        import json
         from datetime import date
         from pathlib import Path
-        import json
 
         series = await load_symbol_bars(storage)
         train = _enrich_cross_section(

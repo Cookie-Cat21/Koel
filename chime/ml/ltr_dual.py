@@ -106,6 +106,26 @@ def _fill_nan(x_train: Any, x_test: Any) -> tuple[Any, Any]:
     return x_train, x_test
 
 
+def _drop_constant_cols(x_train: Any, x_test: Any) -> tuple[Any, Any]:
+    """Drop columns with <2 distinct finite values (breaks HGB binning)."""
+    import numpy as np
+
+    keep: list[int] = []
+    for j in range(x_train.shape[1]):
+        col = x_train[:, j]
+        finite = col[np.isfinite(col)]
+        if finite.size == 0:
+            continue
+        if np.unique(finite).size >= 2:
+            keep.append(j)
+    if not keep:
+        # Degenerate — keep first column as zeros so estimators can run.
+        z_tr = np.zeros((x_train.shape[0], 1), dtype=float)
+        z_te = np.zeros((x_test.shape[0], 1), dtype=float)
+        return z_tr, z_te
+    return x_train[:, keep], x_test[:, keep]
+
+
 def _group_sizes(samples: list[Sample]) -> list[int]:
     """Contiguous group sizes assuming samples sorted by as_of then symbol."""
     if not samples:
@@ -216,6 +236,8 @@ def _predict_hgb_reg(train: list[Sample], test: list[Sample], *, y_fn: Callable)
 
     x_train = np.asarray([s.x for s in train], dtype=float).copy()
     x_test = np.asarray([s.x for s in test], dtype=float).copy()
+    x_train, x_test = _fill_nan(x_train, x_test)
+    x_train, x_test = _drop_constant_cols(x_train, x_test)
     y = np.asarray([y_fn(s) for s in train], dtype=float)
     reg = HistGradientBoostingRegressor(max_depth=4, max_iter=120, learning_rate=0.08)
     reg.fit(x_train, y)
@@ -228,6 +250,8 @@ def _predict_hgb_clf(train: list[Sample], test: list[Sample]) -> list[float]:
 
     x_train = np.asarray([s.x for s in train], dtype=float).copy()
     x_test = np.asarray([s.x for s in test], dtype=float).copy()
+    x_train, x_test = _fill_nan(x_train, x_test)
+    x_train, x_test = _drop_constant_cols(x_train, x_test)
     y = np.asarray([1 if s.y_dir > 0 else 0 for s in train])
     clf = HistGradientBoostingClassifier(max_depth=4, max_iter=100, learning_rate=0.08)
     clf.fit(x_train, y)

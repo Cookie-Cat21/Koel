@@ -85,7 +85,7 @@ export async function queryLatestSignals(
         fp.as_of DESC,
         CASE
           WHEN fp.gate IN ('gated_p90', 'hpe_p90') THEN 0
-          WHEN fp.gate IN ('gated_c55', 'gated') THEN 1
+          WHEN fp.gate IN ('gated_ltr', 'gated_c55', 'gated') THEN 1
           WHEN fp.confidence_band = 'high' THEN 2
           WHEN fp.confidence_band = 'medium' THEN 3
           ELSE 4

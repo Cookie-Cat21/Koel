@@ -255,7 +255,7 @@ function championShortId(modelId: string | null | undefined): string {
   const trimmed = modelId.trim();
   // challenger_gated_c55_20260717 → gated_c55
   const m = trimmed.match(
-    /(?:challenger_|champion_)?(gated_p90|gated_c55|gated|hpe_p90|fin_sector)(?:_|$)/i,
+    /(?:challenger_|champion_)?(gated_p90|gated_ltr|gated_c55|gated|hpe_p90|fin_sector|ltr)(?:_|$)/i,
   );
   if (m?.[1]) return m[1];
   if (trimmed.length <= 28) return trimmed;

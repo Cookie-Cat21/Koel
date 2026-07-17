@@ -176,6 +176,9 @@ class Settings:
     ml_hpe_enabled: bool = False
     # ML_LOOP_ENABLED=1 — allow ml-loop-nightly / ml-loop-retrain self-learning jobs.
     ml_loop_enabled: bool = False
+    # ML_LTR_SERVE=1 — prefer LTR+vol unified modes (gated_ltr /
+    # hpe_with_ltr_fallback) for ops serve after ship.
+    ml_ltr_serve: bool = False
 
     @classmethod
     def from_env(cls, *, require_token: bool = True) -> Settings:
@@ -203,6 +206,7 @@ class Settings:
         ml_fc_raw = _env_str("ML_FORECAST_ENABLED", "0")
         ml_hpe_raw = _env_str("ML_HPE_ENABLED", "0")
         ml_loop_raw = _env_str("ML_LOOP_ENABLED", "0")
+        ml_ltr_raw = _env_str("ML_LTR_SERVE", "0")
         path_period = _int("PATH_BACKFILL_PERIOD", 5)
         if path_period not in {2, 3, 4, 5}:
             path_period = 5
@@ -252,6 +256,7 @@ class Settings:
             ml_forecast_enabled=ml_fc_raw.strip() == "1",
             ml_hpe_enabled=ml_hpe_raw.strip() == "1",
             ml_loop_enabled=ml_loop_raw.strip() == "1",
+            ml_ltr_serve=ml_ltr_raw.strip() == "1",
         )
 
 

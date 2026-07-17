@@ -45,7 +45,7 @@ export async function GET(
         as_of DESC,
         CASE
           WHEN gate IN ('gated_p90', 'hpe_p90') THEN 0
-          WHEN gate IN ('gated_c55', 'gated') THEN 1
+          WHEN gate IN ('gated_ltr', 'gated_c55', 'gated') THEN 1
           WHEN confidence_band = 'high' THEN 2
           WHEN confidence_band = 'medium' THEN 3
           WHEN confidence_band = 'low' THEN 4
