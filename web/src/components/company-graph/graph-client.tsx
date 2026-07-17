@@ -411,22 +411,27 @@ export function CompanyGraphClient({
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   Links ({selectedEdges.length})
                 </p>
-                <ul className="relative max-h-48 space-y-1.5 overflow-y-auto text-sm after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-6 after:bg-gradient-to-t after:from-card after:to-transparent">
+                {/* No bottom gradient fade — it sat on the last visible row and
+                    double-composited badge/ticker text (looked “sliced”). */}
+                <ul className="max-h-48 space-y-1 overflow-y-auto overscroll-contain pr-0.5 text-sm">
                   {selectedEdges.slice(0, 24).map((e) => {
                     const outbound = e.src_node_id === selected.id;
                     const other = outbound ? e.dst_name : e.src_name;
                     const otherSym = outbound ? e.dst_symbol : e.src_symbol;
                     return (
                       <li
-                        key={e.id}
-                        className="flex flex-wrap items-center gap-1.5"
+                        key={`${e.id}-${outbound ? "out" : "in"}`}
+                        className="flex min-h-8 flex-nowrap items-center gap-1.5"
                       >
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 px-1.5 py-0 text-[10px]"
+                        >
                           {outbound ? "→" : "←"} {RELATION_LABEL[e.relation]}
                         </Badge>
                         <button
                           type="button"
-                          className="truncate text-left text-foreground underline-offset-2 hover:underline"
+                          className="min-w-0 truncate text-left text-foreground underline-offset-2 hover:underline"
                           onClick={() => {
                             const id = outbound
                               ? e.dst_node_id
@@ -438,7 +443,7 @@ export function CompanyGraphClient({
                           {otherSym ?? other}
                         </button>
                         {e.ownership_pct != null ? (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="shrink-0 text-xs text-muted-foreground">
                             {e.ownership_pct}%
                           </span>
                         ) : null}
