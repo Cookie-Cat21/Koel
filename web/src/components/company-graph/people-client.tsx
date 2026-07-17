@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Background,
@@ -14,6 +14,7 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -39,161 +40,344 @@ const ROLE_LABEL: Record<string, string> = {
   key_management: "Key mgmt",
 };
 
-type PData = { label: string; sub: string; size: number; selected: boolean };
-type CData = { label: string; sub: string; size: number; selected: boolean };
+/** Initial canvas budget — denser graphs stay readable. */
+const CANVAS_PEOPLE = 18;
+const CANVAS_COMPANIES = 22;
 
-function PersonBubble({ data }: NodeProps<Node<PData>>) {
+type PData = {
+  label: string;
+  sub: string;
+  selected: boolean;
+  dimmed: boolean;
+};
+type CData = {
+  label: string;
+  sub: string;
+  selected: boolean;
+  dimmed: boolean;
+};
+
+function PersonPill({ data }: NodeProps<Node<PData>>) {
   return (
     <div
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center rounded-full border border-border bg-card px-2 text-center shadow-sm transition-transform hover:scale-105",
+        "flex h-11 w-[148px] cursor-pointer flex-col justify-center rounded-md border border-border bg-card px-2.5 shadow-sm transition-opacity",
         data.selected && "ring-2 ring-ring",
+        data.dimmed && "opacity-25",
       )}
-      style={{ width: data.size, height: data.size }}
     >
-      <Handle type="source" position={Position.Right} className="!size-1.5 !bg-border" />
-      <span className="max-w-[5rem] truncate text-[10px] font-semibold leading-tight">
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!size-1.5 !bg-border"
+      />
+      <span className="truncate text-[11px] font-semibold leading-tight">
         {data.label}
       </span>
-      <span className="max-w-[5rem] truncate text-[9px] text-muted-foreground">
+      <span className="truncate font-mono text-[10px] text-muted-foreground">
         {data.sub}
       </span>
     </div>
   );
 }
 
-function CompanyBubble({ data }: NodeProps<Node<CData>>) {
+function CompanyPill({ data }: NodeProps<Node<CData>>) {
   return (
     <div
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center rounded-lg border border-border bg-muted/40 px-2 text-center transition-transform hover:scale-105",
+        "flex h-11 w-[108px] cursor-pointer flex-col justify-center rounded-md border border-border bg-muted/35 px-2.5 transition-opacity",
         data.selected && "ring-2 ring-ring",
+        data.dimmed && "opacity-25",
       )}
-      style={{ width: data.size, height: data.size * 0.72 }}
     >
-      <Handle type="target" position={Position.Left} className="!size-1.5 !bg-border" />
-      <span className="font-mono text-[10px] font-semibold">{data.label}</span>
-      <span className="text-[9px] text-muted-foreground">{data.sub}</span>
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!size-1.5 !bg-border"
+      />
+      <span className="font-mono text-[11px] font-semibold">{data.label}</span>
+      <span className="font-mono text-[10px] text-muted-foreground">
+        {data.sub}
+      </span>
     </div>
   );
 }
 
-const nodeTypes = { person: PersonBubble, company: CompanyBubble };
+const nodeTypes = { person: PersonPill, company: CompanyPill };
 
 function shortName(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length <= 2) return name;
-  return `${parts[0]} ${parts[parts.length - 1]}`;
+  // Prefer "K. A. D. D. Perera" → keep first initials + surname
+  const last = parts[parts.length - 1];
+  const head = parts.slice(0, -1);
+  if (head.every((p) => p.length <= 2)) {
+    return `${head.slice(0, 3).join(" ")}${head.length > 3 ? "…" : ""} ${last}`;
+  }
+  return `${parts[0]} ${last}`;
+}
+
+function ticker(symbol: string): string {
+  return symbol.replace(/\.(N|X)0000$/i, "");
+}
+
+/** Barycenter ordering to cut bipartite edge crossings. */
+function orderBipartite(
+  peopleIds: number[],
+  companyIds: string[],
+  links: Array<{ personId: number; symbol: string }>,
+): { people: number[]; companies: string[] } {
+  let people = [...peopleIds];
+  let companies = [...companyIds];
+  for (let iter = 0; iter < 4; iter++) {
+    const pIndex = new Map(people.map((id, i) => [id, i]));
+    companies = [...companies].sort((a, b) => {
+      const aLinks = links.filter((l) => l.symbol === a);
+      const bLinks = links.filter((l) => l.symbol === b);
+      const aBar =
+        aLinks.reduce((s, l) => s + (pIndex.get(l.personId) ?? 0), 0) /
+        Math.max(aLinks.length, 1);
+      const bBar =
+        bLinks.reduce((s, l) => s + (pIndex.get(l.personId) ?? 0), 0) /
+        Math.max(bLinks.length, 1);
+      return aBar - bBar;
+    });
+    const cIndex = new Map(companies.map((id, i) => [id, i]));
+    people = [...people].sort((a, b) => {
+      const aLinks = links.filter((l) => l.personId === a);
+      const bLinks = links.filter((l) => l.personId === b);
+      const aBar =
+        aLinks.reduce((s, l) => s + (cIndex.get(l.symbol) ?? 0), 0) /
+        Math.max(aLinks.length, 1);
+      const bBar =
+        bLinks.reduce((s, l) => s + (cIndex.get(l.symbol) ?? 0), 0) /
+        Math.max(bLinks.length, 1);
+      return aBar - bBar;
+    });
+  }
+  return { people, companies };
+}
+
+function FitViewOnChange({ nonce }: { nonce: string }) {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void fitView({ padding: 0.18, duration: 220 });
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [fitView, nonce]);
+  return null;
 }
 
 function PeopleFlow({
   people,
   selectedId,
   onSelect,
+  searching,
 }: {
   people: PersonNode[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+  searching: boolean;
 }) {
-  const top = people.slice(0, 80);
-  const companies = new Map<string, { mcap: number | null; name: string | null }>();
-  for (const p of top) {
-    for (const r of p.roles) {
-      const prev = companies.get(r.symbol);
-      if (!prev || (r.market_cap ?? 0) > (prev.mcap ?? 0)) {
-        companies.set(r.symbol, {
-          mcap: r.market_cap,
-          name: r.company_name,
+  const { nodes, edges, layoutKey } = useMemo(() => {
+    // When searching, show matches; otherwise top influencers only.
+    const ranked = [...people].sort(
+      (a, b) => b.influence_score - a.influence_score,
+    );
+    const budget = searching
+      ? Math.min(ranked.length, 24)
+      : Math.min(ranked.length, CANVAS_PEOPLE);
+    const visiblePeople = ranked.slice(0, budget);
+
+    const companyMeta = new Map<
+      string,
+      { mcap: number | null; name: string | null; degree: number }
+    >();
+    const links: Array<{
+      personId: number;
+      symbol: string;
+      role: string;
+    }> = [];
+    for (const p of visiblePeople) {
+      const seen = new Set<string>();
+      for (const r of p.roles) {
+        if (seen.has(r.symbol)) continue;
+        seen.add(r.symbol);
+        links.push({ personId: p.id, symbol: r.symbol, role: r.role });
+        const prev = companyMeta.get(r.symbol);
+        companyMeta.set(r.symbol, {
+          mcap: Math.max(prev?.mcap ?? 0, r.market_cap ?? 0) || r.market_cap,
+          name: r.company_name ?? prev?.name ?? null,
+          degree: (prev?.degree ?? 0) + 1,
         });
       }
     }
-  }
 
-  const maxInf = Math.max(...top.map((p) => p.influence_score), 1);
-  const companyList = Array.from(companies.entries()).slice(0, 60);
+    // Prefer companies that connect multiple visible people, then by mcap
+    const companyIds = Array.from(companyMeta.entries())
+      .sort((a, b) => {
+        if (b[1].degree !== a[1].degree) return b[1].degree - a[1].degree;
+        return (b[1].mcap ?? 0) - (a[1].mcap ?? 0);
+      })
+      .slice(0, CANVAS_COMPANIES)
+      .map(([sym]) => sym);
+    const companySet = new Set(companyIds);
+    const visibleLinks = links.filter((l) => companySet.has(l.symbol));
 
-  const nodes: Node[] = [];
-  const personCols = 3;
-  top.forEach((p, i) => {
-    const size = 36 + (p.influence_score / maxInf) * 32;
-    const col = i % personCols;
-    const row = Math.floor(i / personCols);
-    nodes.push({
-      id: `p-${p.id}`,
-      type: "person",
-      position: { x: 24 + col * 120, y: 20 + row * 62 },
-      data: {
-        label: shortName(p.name),
-        sub: formatCompactNumber(p.influence_score, 1),
-        size,
-        selected: selectedId === p.id,
-      },
-    });
-  });
-  const companyX = 24 + personCols * 120 + 48;
-  companyList.forEach(([sym, meta], i) => {
-    const size = 48 + Math.min(24, Math.log10(Math.max(meta.mcap ?? 1e9, 1e9)) * 3);
-    nodes.push({
-      id: `c-${sym}`,
-      type: "company",
-      position: {
-        x: companyX,
-        y: 16 + i * Math.max(40, Math.min(52, 520 / Math.max(companyList.length, 1))),
-      },
-      data: {
-        label: sym.replace(/\.(N|X)0000$/i, ""),
-        sub: formatCompactNumber(meta.mcap, 1),
-        size,
-        selected: false,
-      },
-    });
-  });
+    const ordered = orderBipartite(
+      visiblePeople.map((p) => p.id),
+      companyIds,
+      visibleLinks,
+    );
+    const byId = new Map(visiblePeople.map((p) => [p.id, p]));
 
-  const edges: Edge[] = [];
-  for (const p of top) {
-    const seen = new Set<string>();
-    for (const r of p.roles) {
-      if (seen.has(r.symbol) || !companies.has(r.symbol)) continue;
-      seen.add(r.symbol);
-      edges.push({
-        id: `e-${p.id}-${r.symbol}-${r.role}`,
-        source: `p-${p.id}`,
-        target: `c-${r.symbol}`,
-        label: ROLE_LABEL[r.role] ?? r.role,
-        style: { stroke: "var(--chart-1)", strokeWidth: 1.2, opacity: 0.7 },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 12,
-          height: 12,
-          color: "var(--chart-1)",
+    const selectedCompanies = new Set<string>();
+    if (selectedId != null) {
+      for (const l of visibleLinks) {
+        if (l.personId === selectedId) selectedCompanies.add(l.symbol);
+      }
+    }
+    const focusActive = selectedId != null;
+
+    const personYGap = 56;
+    const companyYGap = 52;
+    const leftX = 24;
+    const rightX = 360;
+
+    const flowNodes: Node[] = [];
+    ordered.people.forEach((id, i) => {
+      const p = byId.get(id);
+      if (!p) return;
+      const dimmed = focusActive && id !== selectedId;
+      flowNodes.push({
+        id: `p-${id}`,
+        type: "person",
+        position: { x: leftX, y: 16 + i * personYGap },
+        data: {
+          label: shortName(p.name),
+          sub: formatCompactNumber(p.influence_score, 1),
+          selected: id === selectedId,
+          dimmed,
         },
-        labelStyle: { fontSize: 8, fill: "var(--muted-foreground)" },
-        labelBgStyle: { fill: "var(--background)", fillOpacity: 0.8 },
+        zIndex: id === selectedId ? 4 : 1,
+      });
+    });
+    ordered.companies.forEach((sym, i) => {
+      const meta = companyMeta.get(sym);
+      const dimmed = focusActive && !selectedCompanies.has(sym);
+      flowNodes.push({
+        id: `c-${sym}`,
+        type: "company",
+        position: { x: rightX, y: 16 + i * companyYGap },
+        data: {
+          label: ticker(sym),
+          sub: formatCompactNumber(meta?.mcap ?? null, 1),
+          selected: selectedCompanies.has(sym),
+          dimmed,
+        },
+        zIndex: selectedCompanies.has(sym) ? 3 : 1,
+      });
+    });
+
+    // One edge per person→company; label only when that person is selected
+    const flowEdges: Edge[] = [];
+    const edgeSeen = new Set<string>();
+    for (const l of visibleLinks) {
+      const key = `${l.personId}:${l.symbol}`;
+      if (edgeSeen.has(key)) continue;
+      edgeSeen.add(key);
+      const focused = selectedId != null && l.personId === selectedId;
+      const faded = focusActive && !focused;
+      // Best role label for this seat (highest weight already in person.roles order)
+      const person = byId.get(l.personId);
+      const role =
+        person?.roles.find((r) => r.symbol === l.symbol)?.role ?? l.role;
+      flowEdges.push({
+        id: `e-${key}`,
+        source: `p-${l.personId}`,
+        target: `c-${l.symbol}`,
+        type: "smoothstep",
+        label: focused ? (ROLE_LABEL[role] ?? role) : undefined,
+        animated: focused,
+        style: {
+          stroke: focused ? "var(--chart-1)" : "var(--border)",
+          strokeWidth: focused ? 2.2 : 1,
+          opacity: faded ? 0.08 : focused ? 0.95 : 0.35,
+        },
+        markerEnd: focused
+          ? {
+              type: MarkerType.ArrowClosed,
+              width: 14,
+              height: 14,
+              color: "var(--chart-1)",
+            }
+          : undefined,
+        labelStyle: {
+          fontSize: 10,
+          fill: "var(--foreground)",
+          fontWeight: 600,
+        },
+        labelBgStyle: {
+          fill: "var(--background)",
+          fillOpacity: 0.92,
+        },
+        labelBgPadding: [4, 6] as [number, number],
+        zIndex: focused ? 5 : 0,
       });
     }
+
+    return {
+      nodes: flowNodes,
+      edges: flowEdges,
+      layoutKey: `${ordered.people.join(",")}|${ordered.companies.join(",")}|${selectedId ?? "x"}|${searching}`,
+    };
+  }, [people, selectedId, searching]);
+
+  if (people.length === 0) {
+    return (
+      <div className="flex h-[min(70vh,560px)] items-center justify-center rounded-xl border border-border text-sm text-muted-foreground">
+        No people match this filter.
+      </div>
+    );
   }
 
   return (
-    <div className="h-[min(70vh,560px)] w-full overflow-hidden rounded-xl border border-border bg-background/60">
+    <div className="relative h-[min(72vh,640px)] w-full overflow-hidden rounded-xl border border-border bg-background/60">
+      <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-border/80 bg-background/90 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur">
+        People → companies · click a person to highlight seats
+        {!searching ? ` · showing top ${Math.min(people.length, CANVAS_PEOPLE)}` : null}
+      </div>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
-        minZoom={0.3}
-        maxZoom={1.5}
+        fitViewOptions={{ padding: 0.18 }}
+        minZoom={0.35}
+        maxZoom={1.6}
         proOptions={{ hideAttribution: true }}
+        nodesDraggable
+        nodesConnectable={false}
+        elementsSelectable
         onNodeClick={(_, node) => {
           if (node.id.startsWith("p-")) {
             const id = Number(node.id.slice(2));
             onSelect(Number.isFinite(id) ? id : null);
+          } else if (node.id.startsWith("c-")) {
+            // Selecting a company: pick its strongest linked person if any
+            const sym = node.id.slice(2);
+            const linked = people
+              .filter((p) => p.roles.some((r) => r.symbol === sym))
+              .sort((a, b) => b.influence_score - a.influence_score);
+            if (linked[0]) onSelect(linked[0].id);
           }
         }}
         onPaneClick={() => onSelect(null)}
-        nodesDraggable
       >
-        <Background gap={22} size={1} color="var(--border)" />
+        <Background gap={20} size={1} color="var(--border)" />
         <Controls showInteractive={false} />
+        <FitViewOnChange nonce={layoutKey} />
       </ReactFlow>
     </div>
   );
@@ -203,7 +387,8 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
   const [selectedId, setSelectedId] = useState<number | null>(
     people[0]?.id ?? null,
   );
-  const [leadershipOnly, setLeadershipOnly] = useState(false);
+  // Default leadership-only so the first paint is chairs/CEOs/MDs, not every NED
+  const [leadershipOnly, setLeadershipOnly] = useState(true);
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -228,7 +413,14 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
     });
   }, [people, leadershipOnly, query]);
 
-  const selected = filtered.find((p) => p.id === selectedId) ?? filtered[0] ?? null;
+  // Keep selection valid when filters change
+  useEffect(() => {
+    if (selectedId != null && filtered.some((p) => p.id === selectedId)) return;
+    setSelectedId(filtered[0]?.id ?? null);
+  }, [filtered, selectedId]);
+
+  const selected = filtered.find((p) => p.id === selectedId) ?? null;
+  const searching = query.trim().length > 0;
 
   if (people.length === 0) {
     return (
@@ -263,8 +455,9 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
           {filtered.length} people
         </Badge>
         <p className="text-xs text-muted-foreground">
-          Bubble size = linked company market value × role weight — not personal
-          net worth.
+          Canvas shows top influencers; full list is in the ranking. Bubble
+          values are linked company market value × role — not personal net
+          worth.
         </p>
       </div>
 
@@ -274,6 +467,7 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
             people={filtered}
             selectedId={selected?.id ?? null}
             onSelect={setSelectedId}
+            searching={searching}
           />
         </ReactFlowProvider>
 
@@ -343,7 +537,7 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
                       href={`/symbols/${encodeURIComponent(r.symbol)}`}
                       className="font-mono text-foreground underline-offset-2 hover:underline"
                     >
-                      {r.symbol.replace(/\.(N|X)0000$/i, "")}
+                      {ticker(r.symbol)}
                     </Link>
                     <span className="text-xs text-muted-foreground">
                       mcap {formatCompactNumber(r.market_cap, 1)}

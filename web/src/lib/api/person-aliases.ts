@@ -48,8 +48,10 @@ export function pickInitialsDisplay(a: string, b: string): string {
   const score = (n: string) => {
     const parts = compactPersonName(n).split(/\s+/).filter(Boolean);
     if (parts.length < 2) return 0;
-    const initials = parts.slice(0, -1).filter((p) => p.length <= 2).length;
-    return initials * 10 + n.length;
+    // Heavily prefer names whose "given" tokens are single-letter initials
+    const initials = parts.slice(0, -1).filter((p) => p.length === 1).length;
+    const longGiven = parts.slice(0, -1).filter((p) => p.length > 2).length;
+    return initials * 20 - longGiven * 15 + Math.min(n.length, 24);
   };
   return score(a) >= score(b) ? a : b;
 }
