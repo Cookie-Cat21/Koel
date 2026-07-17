@@ -296,6 +296,17 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
   const baseId = useId();
   const sector = topSector(dossier);
   const topPeers = dossier.network.slice(0, 14);
+  const seatSectors = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          dossier.seats
+            .map((s) => s.sector)
+            .filter((s): s is string => Boolean(s)),
+        ),
+      ).slice(0, 6),
+    [dossier.seats],
+  );
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: "seats", label: "Seats", count: dossier.seats.length },
     { id: "network", label: "Network", count: dossier.network.length },
@@ -390,6 +401,19 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
               title={sector ?? undefined}
             />
           </dl>
+
+          {seatSectors.length > 0 ? (
+            <ul className="mt-3 flex flex-wrap gap-1.5">
+              {seatSectors.map((s) => (
+                <li
+                  key={s}
+                  className="rounded border border-border/70 bg-muted/20 px-2 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {s}
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {/* Loop 10: soft-merge callout */}
           {dossier.merged_ids.length > 1 ? (
