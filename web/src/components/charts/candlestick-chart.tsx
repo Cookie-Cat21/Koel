@@ -146,10 +146,14 @@ export function CandlestickChart({
       >
         <svg
           viewBox={`0 0 ${w} ${h}`}
-          width={w}
-          height={Math.min(480, h)}
           preserveAspectRatio="xMinYMid meet"
-          className="block max-w-none"
+          style={{
+            width: w,
+            height: 460,
+            maxWidth: "none",
+            display: "block",
+          }}
+          className="max-w-none"
           role="img"
           aria-label={aria}
         >
