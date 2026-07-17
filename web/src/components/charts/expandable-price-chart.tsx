@@ -249,9 +249,11 @@ export function ExpandablePriceChart({
           if (!cancelled) setError("Could not refresh realtime ticks.");
         }
         // Keep daily bars warm for the sparse-tick fallback.
-        if (!cancelled && (bars == null || bars.length < 2)) {
+        if (!cancelled) {
           if (initialBars && initialBars.length > 0) {
-            setBars(initialBars.slice(-40));
+            setBars((prev) =>
+              prev && prev.length >= 2 ? prev : initialBars.slice(-40),
+            );
           } else {
             try {
               await loadDaily("1M");
