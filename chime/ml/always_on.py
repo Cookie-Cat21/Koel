@@ -76,29 +76,28 @@ async def load_disclosure_events(
 ) -> list[tuple[str, date, str | None]]:
     """Return (symbol, published_date, category) ascending by date."""
     out: list[tuple[str, date, str | None]] = []
-    async with storage._pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
+    async with storage._pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            """
                 SELECT symbol, published_at, category
                 FROM disclosures
                 WHERE symbol IS NOT NULL AND published_at IS NOT NULL
                 ORDER BY symbol, published_at
                 """
-            )
-            for row in await cur.fetchall():
-                d = dict(row)
-                sym = str(d["symbol"]).strip().upper()
-                pub = d["published_at"]
-                if hasattr(pub, "date"):
-                    pub_d = pub.date()
-                elif isinstance(pub, date):
-                    pub_d = pub
-                else:
-                    continue
-                cat = d.get("category")
-                cat_s = str(cat) if cat is not None else None
-                out.append((sym, pub_d, cat_s))
+        )
+        for row in await cur.fetchall():
+            d = dict(row)
+            sym = str(d["symbol"]).strip().upper()
+            pub = d["published_at"]
+            if hasattr(pub, "date"):
+                pub_d = pub.date()
+            elif isinstance(pub, date):
+                pub_d = pub
+            else:
+                continue
+            cat = d.get("category")
+            cat_s = str(cat) if cat is not None else None
+            out.append((sym, pub_d, cat_s))
     return out
 
 
@@ -106,27 +105,26 @@ async def load_notice_events(
     storage: Storage,
 ) -> list[tuple[str, date]]:
     out: list[tuple[str, date]] = []
-    async with storage._pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
+    async with storage._pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            """
                 SELECT symbol, published_at
                 FROM market_notices
                 WHERE symbol IS NOT NULL AND published_at IS NOT NULL
                 ORDER BY symbol, published_at
                 """
-            )
-            for row in await cur.fetchall():
-                d = dict(row)
-                sym = str(d["symbol"]).strip().upper()
-                pub = d["published_at"]
-                if hasattr(pub, "date"):
-                    pub_d = pub.date()
-                elif isinstance(pub, date):
-                    pub_d = pub
-                else:
-                    continue
-                out.append((sym, pub_d))
+        )
+        for row in await cur.fetchall():
+            d = dict(row)
+            sym = str(d["symbol"]).strip().upper()
+            pub = d["published_at"]
+            if hasattr(pub, "date"):
+                pub_d = pub.date()
+            elif isinstance(pub, date):
+                pub_d = pub
+            else:
+                continue
+            out.append((sym, pub_d))
     return out
 
 
@@ -306,8 +304,16 @@ def enrich_samples_with_market_summary(
         fn = r.get("foreign_net")
         fp = r.get("equity_foreign_purchase")
         fs = r.get("equity_foreign_sales")
-        to_f = float(to) if isinstance(to, int | float) and math.isfinite(float(to)) else float("nan")
-        fn_f = float(fn) if isinstance(fn, int | float) and math.isfinite(float(fn)) else float("nan")
+        to_f = (
+            float(to)
+            if isinstance(to, int | float) and math.isfinite(float(to))
+            else float("nan")
+        )
+        fn_f = (
+            float(fn)
+            if isinstance(fn, int | float) and math.isfinite(float(fn))
+            else float("nan")
+        )
         turnovers.append(to_f if math.isfinite(to_f) else float("nan"))
         nets.append(fn_f if math.isfinite(fn_f) else float("nan"))
 
@@ -546,10 +552,9 @@ async def load_yoy_events(
 ) -> list[tuple[str, date, float | None, float | None, float | None]]:
     """(symbol, fiscal_period_end, eps_yoy, rev_yoy, profit_yoy) ascending."""
     out: list[tuple[str, date, float | None, float | None, float | None]] = []
-    async with storage._pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
+    async with storage._pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            """
                 SELECT
                     fm.symbol,
                     fm.fiscal_period_end,
@@ -564,34 +569,36 @@ async def load_yoy_events(
                   AND fc.match_quality IN ('exact_yoy', 'approx_yoy')
                 ORDER BY fm.symbol, fm.fiscal_period_end
                 """
-            )
-            for row in await cur.fetchall():
-                d = dict(row)
-                sym = str(d["symbol"]).strip().upper()
-                period = d["fiscal_period_end"]
-                if hasattr(period, "isoformat") and not isinstance(period, date):
-                    # date already
-                    pass
-                if not isinstance(period, date):
-                    continue
+        )
+        for row in await cur.fetchall():
+            d = dict(row)
+            sym = str(d["symbol"]).strip().upper()
+            period = d["fiscal_period_end"]
+            if hasattr(period, "isoformat") and not isinstance(period, date):
+                # date already
+                pass
+            if not isinstance(period, date):
+                continue
 
-                def _f(key: str) -> float | None:
-                    val = d.get(key)
-                    if isinstance(val, bool) or not isinstance(val, int | float):
-                        return None
-                    if not math.isfinite(float(val)):
-                        return None
-                    return float(val)
+            row = d
 
-                out.append(
-                    (
-                        sym,
-                        period,
-                        _f("eps_delta_pct"),
-                        _f("revenue_delta_pct"),
-                        _f("profit_delta_pct"),
-                    )
+            def _f(key: str, src: dict[str, Any] = row) -> float | None:
+                val = src.get(key)
+                if isinstance(val, bool) or not isinstance(val, int | float):
+                    return None
+                if not math.isfinite(float(val)):
+                    return None
+                return float(val)
+
+            out.append(
+                (
+                    sym,
+                    period,
+                    _f("eps_delta_pct"),
+                    _f("revenue_delta_pct"),
+                    _f("profit_delta_pct"),
                 )
+            )
     return out
 
 

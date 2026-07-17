@@ -13,7 +13,8 @@ function isSelectiveGate(gate: string | null | undefined): boolean {
     gate === "gated_p90" ||
     gate === "hpe_p90" ||
     gate === "gated_c55" ||
-    gate === "gated"
+    gate === "gated" ||
+    gate === "gated_ltr"
   );
 }
 
@@ -26,6 +27,13 @@ function gateBadgeMeta(gate: string | null | undefined): {
       label: "Selective ~90%",
       title:
         "Selective research emit — historical OOS ~90% when speaking (sparse). Not a guarantee. Not financial advice.",
+    };
+  }
+  if (gate === "gated_ltr") {
+    return {
+      label: "LTR rank + vol",
+      title:
+        "Learn-to-rank cross-section estimate with vol sizing — research only. Not a guarantee. Not financial advice.",
     };
   }
   if (gate === "gated_c55" || gate === "gated") {

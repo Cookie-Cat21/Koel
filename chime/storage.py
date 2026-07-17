@@ -603,6 +603,162 @@ class Storage:
                 out.append(symbol)
         return out
 
+    async def persist_hybrid_daily_bars(self, rows: list[dict[str, Any]]) -> int:
+        """Upsert spliced Yahoo+CSE bars into ``hybrid_daily_bars``.
+
+        Last-wins per ``(symbol, trade_date)``. Returns rows written.
+        """
+        if not rows:
+            return 0
+        by_key: dict[tuple[str, date], dict[str, Any]] = {}
+        for row in rows:
+            sym = row.get("symbol")
+            td = row.get("trade_date")
+            price = row.get("price")
+            source = row.get("source")
+            bar_ts = row.get("bar_ts")
+            if not isinstance(sym, str) or not sym.strip():
+                continue
+            if not isinstance(td, date):
+                continue
+            if not isinstance(price, int | float) or isinstance(price, bool):
+                continue
+            if not math.isfinite(float(price)):
+                continue
+            if source not in {"cse", "yahoo"}:
+                continue
+            if not isinstance(bar_ts, datetime):
+                continue
+            symbol = sym.strip().upper()
+            by_key[(symbol, td)] = {
+                **row,
+                "symbol": symbol,
+                "price": float(price),
+            }
+        if not by_key:
+            return 0
+        payload = list(by_key.values())
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                """
+                INSERT INTO stocks (symbol)
+                SELECT DISTINCT symbol
+                FROM UNNEST(%s::text[]) AS t(symbol)
+                ON CONFLICT (symbol) DO NOTHING
+                """,
+                ([r["symbol"] for r in payload],),
+            )
+            result = await conn.execute(
+                """
+                INSERT INTO hybrid_daily_bars (
+                    symbol, trade_date, price, high, low, open, volume,
+                    source, yahoo_ticker, bar_ts
+                )
+                SELECT
+                    symbol, trade_date, price, high, low, open, volume,
+                    source, yahoo_ticker, bar_ts
+                FROM UNNEST(
+                    %s::text[],
+                    %s::date[],
+                    %s::double precision[],
+                    %s::double precision[],
+                    %s::double precision[],
+                    %s::double precision[],
+                    %s::double precision[],
+                    %s::text[],
+                    %s::text[],
+                    %s::timestamptz[]
+                ) AS t(
+                    symbol, trade_date, price, high, low, open, volume,
+                    source, yahoo_ticker, bar_ts
+                )
+                ON CONFLICT (symbol, trade_date) DO UPDATE SET
+                    price = EXCLUDED.price,
+                    high = EXCLUDED.high,
+                    low = EXCLUDED.low,
+                    open = EXCLUDED.open,
+                    volume = EXCLUDED.volume,
+                    source = EXCLUDED.source,
+                    yahoo_ticker = EXCLUDED.yahoo_ticker,
+                    bar_ts = EXCLUDED.bar_ts,
+                    ingested_at = now()
+                """,
+                (
+                    [r["symbol"] for r in payload],
+                    [r["trade_date"] for r in payload],
+                    [r["price"] for r in payload],
+                    [r.get("high") for r in payload],
+                    [r.get("low") for r in payload],
+                    [r.get("open") for r in payload],
+                    [r.get("volume") for r in payload],
+                    [r["source"] for r in payload],
+                    [r.get("yahoo_ticker") for r in payload],
+                    [r["bar_ts"] for r in payload],
+                ),
+            )
+        rowcount = getattr(result, "rowcount", None)
+        if isinstance(rowcount, int) and not isinstance(rowcount, bool) and rowcount >= 0:
+            return rowcount
+        return len(payload)
+
+    async def list_hybrid_daily_bars(self, symbol: str) -> list[DailyBar]:
+        """Load hybrid panel as ``DailyBar`` (source_period: 5=cse, 0=yahoo)."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return []
+        sym = symbol.strip().upper()
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT symbol, trade_date, price, high, low, open, volume,
+                           source, bar_ts
+                    FROM hybrid_daily_bars
+                    WHERE symbol = %s
+                    ORDER BY trade_date ASC
+                    """,
+                    (sym,),
+                )
+            ).fetchall()
+        out: list[DailyBar] = []
+        for row in _as_rows(rows):
+            src = row.get("source")
+            period = 5 if src == "cse" else 0
+            try:
+                out.append(
+                    DailyBar(
+                        symbol=str(row["symbol"]),
+                        trade_date=row["trade_date"],
+                        price=float(row["price"]),
+                        high=row.get("high"),
+                        low=row.get("low"),
+                        open=row.get("open"),
+                        volume=row.get("volume"),
+                        source_period=period,
+                        bar_ts=row["bar_ts"],
+                    )
+                )
+            except Exception:
+                continue
+        return out
+
+    async def list_symbols_with_hybrid_daily_bars(self) -> list[str]:
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT DISTINCT symbol
+                    FROM hybrid_daily_bars
+                    ORDER BY symbol ASC
+                    """
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            raw = row.get("symbol")
+            if isinstance(raw, str) and raw.strip():
+                out.append(raw.strip().upper())
+        return out
+
     async def upsert_market_daily_summary(self, rows: list[dict[str, Any]]) -> int:
         """Upsert CSE dailyMarketSummery rows (keyed by trade_date)."""
         if not rows:
@@ -616,10 +772,9 @@ class Storage:
         if not by_date:
             return 0
         payload = list(by_date.values())
-        async with self._pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.executemany(
-                    """
+        async with self._pool.connection() as conn, conn.cursor() as cur:
+            await cur.executemany(
+                """
                     INSERT INTO market_daily_summary (
                         trade_date, market_turnover, market_trades,
                         equity_foreign_purchase, equity_foreign_sales,
@@ -642,14 +797,14 @@ class Storage:
                         raw = EXCLUDED.raw,
                         ingested_at = now()
                     """,
-                    [
-                        {
-                            **r,
-                            "raw": Json(r.get("raw") or {}),
-                        }
-                        for r in payload
-                    ],
-                )
+                [
+                    {
+                        **r,
+                        "raw": Json(r.get("raw") or {}),
+                    }
+                    for r in payload
+                ],
+            )
         return len(payload)
 
     async def list_market_daily_summary(self) -> list[dict[str, Any]]:

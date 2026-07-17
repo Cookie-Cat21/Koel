@@ -75,7 +75,8 @@ export function ExpandablePriceChart({
       gate === "gated_p90" ||
       gate === "hpe_p90" ||
       gate === "gated_c55" ||
-      gate === "gated",
+      gate === "gated" ||
+      gate === "gated_ltr",
   );
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
 

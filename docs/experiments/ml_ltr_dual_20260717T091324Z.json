@@ -1,0 +1,278 @@
+{
+  "decision": "GO_LTR+VOL",
+  "reasons": [
+    "LTR best xgb_pairwise RankIC=0.2687 spread=0.02078694462586444; HGB baseline RankIC=0.2307 (\u0394=+0.0379)",
+    "Vol target best RankIC=0.3782 big_move_P=0.4588000995767986 model=hgb_vol",
+    "Best label horizon h=1 RankIC=0.2345 LMT RankIC=0.3044014676838973",
+    "Accrual: market_summary=2 order_book_n=0 (BLOCKED_ACCRUING)",
+    "Notices: buy_in resolved 0/208; YoY comparisons=0 (UNDERPOWERED)",
+    "Macros: DEFERRED"
+  ],
+  "cse_symbols": 200,
+  "bars": 46892,
+  "metrics": [
+    {
+      "model_id": "hgb_reg",
+      "target": "ret",
+      "horizon": 1,
+      "origins": 16210,
+      "folds": 10,
+      "mean_rank_ic": 0.23074666188074375,
+      "rank_ic_days": 100,
+      "pooled_ic": 0.22462653614822753,
+      "top_bottom_spread": 0.020568208134577767,
+      "hit_rate": 0.5736582356570018,
+      "big_move_precision": null,
+      "notes": ""
+    },
+    {
+      "model_id": "hgb_clf",
+      "target": "ret",
+      "horizon": 1,
+      "origins": 16210,
+      "folds": 10,
+      "mean_rank_ic": 0.2656704055520444,
+      "rank_ic_days": 100,
+      "pooled_ic": 0.2546941004389464,
+      "top_bottom_spread": 0.021393952435134547,
+      "hit_rate": 0.5804441702652684,
+      "big_move_precision": null,
+      "notes": ""
+    },
+    {
+      "model_id": "hgb_vol",
+      "target": "abs_ret",
+      "horizon": 1,
+      "origins": 16210,
+      "folds": 10,
+      "mean_rank_ic": 0.3781725300312773,
+      "rank_ic_days": 100,
+      "pooled_ic": 0.37718496146549196,
+      "top_bottom_spread": 0.02381162538336518,
+      "hit_rate": null,
+      "big_move_precision": 0.4588000995767986,
+      "notes": ""
+    },
+    {
+      "model_id": "xgb_pairwise",
+      "target": "ret",
+      "horizon": 1,
+      "origins": 16210,
+      "folds": 10,
+      "mean_rank_ic": 0.26866520333432414,
+      "rank_ic_days": 100,
+      "pooled_ic": 0.2610971251962033,
+      "top_bottom_spread": 0.02078694462586444,
+      "hit_rate": 0.5826650215916102,
+      "big_move_precision": null,
+      "notes": ""
+    },
+    {
+      "model_id": "xgb_ndcg",
+      "target": "ret",
+      "horizon": 1,
+      "origins": 16210,
+      "folds": 10,
+      "mean_rank_ic": 0.19869892913002293,
+      "rank_ic_days": 100,
+      "pooled_ic": 0.19048447855269024,
+      "top_bottom_spread": 0.01784686757162998,
+      "hit_rate": 0.5647131400370142,
+      "big_move_precision": null,
+      "notes": ""
+    },
+    {
+      "model_id": "lgb_lambdarank",
+      "target": "ret",
+      "horizon": 1,
+      "origins": 16210,
+      "folds": 10,
+      "mean_rank_ic": 0.26541044684591386,
+      "rank_ic_days": 100,
+      "pooled_ic": 0.2536306590097029,
+      "top_bottom_spread": 0.020825657728445114,
+      "hit_rate": 0.5694632942628007,
+      "big_move_precision": null,
+      "notes": ""
+    },
+    {
+      "model_id": "hgb_vol",
+      "target": "abs_ret",
+      "horizon": 5,
+      "origins": 16541,
+      "folds": 9,
+      "mean_rank_ic": 0.2778359282250463,
+      "rank_ic_days": 90,
+      "pooled_ic": 0.2668934404278914,
+      "top_bottom_spread": 0.03273513799237458,
+      "hit_rate": null,
+      "big_move_precision": 0.419921875,
+      "notes": ""
+    },
+    {
+      "model_id": "hgb_reg",
+      "target": "ret",
+      "horizon": 5,
+      "origins": 16541,
+      "folds": 9,
+      "mean_rank_ic": 0.10718859017290319,
+      "rank_ic_days": 90,
+      "pooled_ic": 0.09580175255068564,
+      "top_bottom_spread": 0.01597636975979442,
+      "hit_rate": 0.5322531890454023,
+      "big_move_precision": null,
+      "notes": ""
+    },
+    {
+      "model_id": "lgb_lambdarank",
+      "target": "ret",
+      "horizon": 5,
+      "origins": 16541,
+      "folds": 9,
+      "mean_rank_ic": 0.1841115399107216,
+      "rank_ic_days": 90,
+      "pooled_ic": 0.17314046286263027,
+      "top_bottom_spread": 0.02488877464744774,
+      "hit_rate": 0.5528081736291639,
+      "big_move_precision": null,
+      "notes": ""
+    }
+  ],
+  "label_probe": [
+    {
+      "horizon": 1,
+      "full_rank_ic": 0.23448091234934318,
+      "full_spread": 0.02011034929666853,
+      "full_hit": 0.57347316471314,
+      "lmt_rank_ic": 0.3044014676838973,
+      "lmt_spread": 0.03578812594820721,
+      "lmt_hit": 0.6192700012289541,
+      "lmt_origins": 8137,
+      "full_origins": 16210
+    },
+    {
+      "horizon": 2,
+      "full_rank_ic": 0.19539171204928377,
+      "full_spread": 0.020522150256994748,
+      "full_hit": 0.5622255604344811,
+      "lmt_rank_ic": 0.25034377774535777,
+      "lmt_spread": 0.03500909804144607,
+      "lmt_hit": 0.6082901554404145,
+      "lmt_origins": 8685,
+      "full_origins": 17308
+    },
+    {
+      "horizon": 5,
+      "full_rank_ic": 0.11285489509673104,
+      "full_spread": 0.018895445072772857,
+      "full_hit": 0.5343086875037785,
+      "lmt_rank_ic": 0.14631758865080227,
+      "lmt_spread": 0.03460232892761323,
+      "lmt_hit": 0.5629745691213691,
+      "lmt_origins": 8297,
+      "full_origins": 16541
+    },
+    {
+      "horizon": 10,
+      "full_rank_ic": 0.04570422812919465,
+      "full_spread": 0.01319344617333801,
+      "full_hit": 0.5110544721711813,
+      "lmt_rank_ic": 0.03711720683909375,
+      "lmt_spread": 0.023760178362995838,
+      "lmt_hit": 0.512708357961934,
+      "lmt_origins": 8459,
+      "full_origins": 16871
+    }
+  ],
+  "liq_regime": [
+    {
+      "model_id": "hgb_reg",
+      "regime": "high_turnover",
+      "n": 5439,
+      "rank_ic": 0.12337369488367483,
+      "rank_ic_days": 100,
+      "top_bottom_spread": 0.011889755038782972
+    },
+    {
+      "model_id": "hgb_reg",
+      "regime": "low_turnover",
+      "n": 5398,
+      "rank_ic": 0.29774298766942187,
+      "rank_ic_days": 100,
+      "top_bottom_spread": 0.027391792804377188
+    },
+    {
+      "model_id": "hgb_reg",
+      "regime": "mid_turnover",
+      "n": 5373,
+      "rank_ic": 0.234336784950009,
+      "rank_ic_days": 100,
+      "top_bottom_spread": 0.020992239625891137
+    },
+    {
+      "model_id": "lgb_lambdarank",
+      "regime": "high_turnover",
+      "n": 5439,
+      "rank_ic": 0.1801438838006996,
+      "rank_ic_days": 100,
+      "top_bottom_spread": 0.011893678475909407
+    },
+    {
+      "model_id": "lgb_lambdarank",
+      "regime": "low_turnover",
+      "n": 5398,
+      "rank_ic": 0.3162206847869684,
+      "rank_ic_days": 100,
+      "top_bottom_spread": 0.027001711851315387
+    },
+    {
+      "model_id": "lgb_lambdarank",
+      "regime": "mid_turnover",
+      "n": 5373,
+      "rank_ic": 0.27196570723163643,
+      "rank_ic_days": 100,
+      "top_bottom_spread": 0.020857594919162233
+    }
+  ],
+  "accrual": {
+    "market_daily_summary_rows": 2,
+    "market_daily_summary_ready_for_b002": false,
+    "order_book_snapshots": 0,
+    "order_book_symbols": 0,
+    "order_book_first_ts": null,
+    "order_book_last_ts": null,
+    "b001_status": "OPEN_EMPTY",
+    "b002_status": "BLOCKED_ACCRUING",
+    "b011_note": "poller/ml-loop-nightly upserts dailyMarketSummery; API still ~2 live sessions"
+  },
+  "notice_yoy": {
+    "notices_by_type": [
+      {
+        "notice_type": "buy_in",
+        "n": 208,
+        "with_sym": 0
+      },
+      {
+        "notice_type": "halt",
+        "n": 50,
+        "with_sym": 50
+      },
+      {
+        "notice_type": "non_compliance",
+        "n": 4,
+        "with_sym": 4
+      }
+    ],
+    "buy_in_resolved": 0,
+    "buy_in_total": 208,
+    "buy_in_blocker": "CSE buy-in board rows expose company='TRADING AND MARKET SURVEILLANCE' with no symbol/issuer field \u2014 PDF/detail scrape needed; exact name match cannot resolve",
+    "filing_comparisons": 0,
+    "filing_metrics": 0,
+    "yoy_status": "UNDERPOWERED"
+  },
+  "macros": {
+    "status": "DEFERRED",
+    "ref": "docs/THIRD_PARTY_DATA.md",
+    "note": "ASPI/index-level macros + news sentiment (ICARC-style) not wired; weak for per-name next-day; candidate regime gate only after ToS checklist"
+  }
+}

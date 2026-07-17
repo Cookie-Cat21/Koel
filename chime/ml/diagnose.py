@@ -13,7 +13,7 @@ from typing import Any
 
 from chime.logging_setup import get_logger
 from chime.ml import sklearn_available
-from chime.ml.dataset import Sample, build_samples, load_symbol_bars
+from chime.ml.dataset import build_samples, load_symbol_bars
 from chime.ml.features import FEATURE_NAMES
 from chime.ml.harden import (
     _demean_by_day,
@@ -438,7 +438,9 @@ def render_diagnose_markdown(result: DiagnoseResult) -> str:
             f"{'≥0.20' if name == 'HIGH' else '0.10–0.20' if name == 'MID' else '<0.10'}) | "
             f"{hr if hr is not None else '—'} |"
         )
-    lines.extend(["", "### Counts", "", "```", json.dumps(result.bucket_counts, indent=2), "```", ""])
+    lines.extend(
+        ["", "### Counts", "", "```", json.dumps(result.bucket_counts, indent=2), "```", ""]
+    )
 
     lines.extend(
         [
@@ -535,20 +537,19 @@ def render_diagnose_markdown(result: DiagnoseResult) -> str:
 
 async def load_sector_map(storage: Storage) -> dict[str, str]:
     out: dict[str, str] = {}
-    async with storage._pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
+    async with storage._pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            """
                 SELECT symbol, sector FROM stocks
                 WHERE sector IS NOT NULL AND btrim(sector) <> ''
                 """
-            )
-            for row in await cur.fetchall():
-                d = dict(row)
-                sym = str(d["symbol"]).strip().upper()
-                sec = str(d["sector"]).strip()
-                if sym and sec:
-                    out[sym] = sec
+        )
+        for row in await cur.fetchall():
+            d = dict(row)
+            sym = str(d["symbol"]).strip().upper()
+            sec = str(d["sector"]).strip()
+            if sym and sec:
+                out[sym] = sec
     return out
 
 

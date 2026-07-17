@@ -865,7 +865,9 @@ def stress_pack(rows: list[PredRow], mask: list[bool]) -> dict[str, Any]:
     return out
 
 
-def _mask_for_candidate(rows: list[PredRow], cand: GateCandidate, meta_p: list[float]) -> list[bool]:
+def _mask_for_candidate(
+    rows: list[PredRow], cand: GateCandidate, meta_p: list[float]
+) -> list[bool]:
     d = cand.details
     kind = d.get("kind")
     if kind == "abs_score":
@@ -1003,7 +1005,9 @@ def render_markdown(result: Precision90Result) -> str:
                 f"(emits={best_floor.n_emits}, cov={best_floor.coverage:.3f})",
             ]
         )
-    lines.extend(["", "## Stress pack", "", "```json", json.dumps(result.stress, indent=2), "```", ""])
+    lines.extend(
+        ["", "## Stress pack", "", "```json", json.dumps(result.stress, indent=2), "```", ""]
+    )
     lines.extend(["## Recommendations", ""])
     for r in result.recommendations:
         lines.append(f"- {r}")

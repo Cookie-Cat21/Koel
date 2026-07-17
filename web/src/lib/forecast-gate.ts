@@ -8,12 +8,14 @@ export function isSelectiveGate(gate: string | null | undefined): boolean {
     gate === "gated_p90" ||
     gate === "hpe_p90" ||
     gate === "gated_c55" ||
-    gate === "gated"
+    gate === "gated" ||
+    gate === "gated_ltr"
   );
 }
 
 export function gateShortLabel(gate: string | null | undefined): string | null {
   if (gate === "gated_p90" || gate === "hpe_p90") return "Selective ~90%";
+  if (gate === "gated_ltr") return "LTR rank + vol";
   if (gate === "gated_c55" || gate === "gated") return "Selective ~73%";
   if (gate === "always_on") return "Always-on ~60%";
   return null;

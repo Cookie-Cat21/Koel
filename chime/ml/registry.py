@@ -150,7 +150,8 @@ async def rollback_champion(storage: Storage) -> str | None:
     async with storage._pool.connection() as conn, conn.transaction():
         champ = await (
             await conn.execute(
-                "SELECT model_id, parent_model_id FROM model_registry WHERE status='champion' LIMIT 1"
+                "SELECT model_id, parent_model_id FROM model_registry "
+                "WHERE status='champion' LIMIT 1"
             )
         ).fetchone()
         if champ is None:

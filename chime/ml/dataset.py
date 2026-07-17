@@ -24,8 +24,19 @@ async def load_symbol_bars(
     storage: Storage,
     *,
     limit_symbols: int | None = None,
+    hybrid: bool = False,
 ) -> dict[str, list[DailyBar]]:
-    symbols = await storage.list_symbols_with_daily_bars()
+    """Load CSE ``daily_bars``, or spliced ``hybrid_daily_bars`` when ``hybrid``.
+
+    Hybrid = Yahoo (pre-CSE coverage) + CSE recent truth. Research/ML only —
+    dash product spine stays CSE ``daily_bars``.
+    """
+    if hybrid:
+        symbols = await storage.list_symbols_with_hybrid_daily_bars()
+        loader = storage.list_hybrid_daily_bars
+    else:
+        symbols = await storage.list_symbols_with_daily_bars()
+        loader = storage.list_daily_bars
     if (
         limit_symbols is not None
         and isinstance(limit_symbols, int)
@@ -38,7 +49,7 @@ async def load_symbol_bars(
         # Index synthetic row (aspi-backfill) is not an equity — skip in ML panels.
         if symbol.strip().upper() == "ASPI":
             continue
-        bars = await storage.list_daily_bars(symbol)
+        bars = await loader(symbol)
         if bars:
             out[symbol] = sorted(bars, key=lambda b: b.trade_date)
     return out
