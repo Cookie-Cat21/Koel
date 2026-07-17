@@ -19,7 +19,7 @@ const MAX_LIMIT = 50;
  * Not a screener — no sector/volume/q filters, no multi-sort UI.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;

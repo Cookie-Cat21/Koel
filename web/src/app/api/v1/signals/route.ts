@@ -16,7 +16,7 @@ const MAX_LIMIT = 100;
  * Sorted high→low score. Higher ≠ buy. Session required.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;

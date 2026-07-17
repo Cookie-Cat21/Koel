@@ -6,6 +6,10 @@ import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { CSRF_COOKIE, getDashAuthConfig, SESSION_COOKIE } from "@/lib/auth/config";
 import { jsonError } from "@/lib/auth/errors";
 import {
+  clientIpFromRequest,
+  hitRateLimit,
+} from "@/lib/auth/rate-limit";
+import {
   csrfCookieOptions,
   mintCsrfToken,
   mintSessionToken,
@@ -14,6 +18,10 @@ import {
 import { ensureUser, recordDashSession } from "@/lib/db";
 
 export const runtime = "nodejs";
+
+/** S-04: telegram login — 20 attempts / minute / IP (best-effort in-memory). */
+const TELEGRAM_AUTH_RATE_LIMIT = 20;
+const TELEGRAM_AUTH_RATE_WINDOW_MS = 60_000;
 
 const TELEGRAM_LOGIN_MAX_AGE_SECONDS = 24 * 60 * 60;
 const TELEGRAM_LOGIN_CLOCK_SKEW_SECONDS = 5 * 60;
@@ -98,6 +106,21 @@ function verifyTelegramLogin(
 }
 
 export async function POST(request: Request) {
+  const ip = clientIpFromRequest(request);
+  const limited = hitRateLimit(`auth:telegram:${ip}`, {
+    limit: TELEGRAM_AUTH_RATE_LIMIT,
+    windowMs: TELEGRAM_AUTH_RATE_WINDOW_MS,
+  });
+  if (!limited.ok) {
+    const res = jsonError(
+      429,
+      "rate_limited",
+      "Too many sign-in attempts. Try again shortly.",
+    );
+    res.headers.set("Retry-After", String(limited.retryAfterSec));
+    return res;
+  }
+
   const loginFlag = process.env.DASH_TELEGRAM_LOGIN;
   if (typeof loginFlag !== "string" || loginFlag !== "1") {
     return jsonError(404, "not_found", "Telegram login is disabled.");

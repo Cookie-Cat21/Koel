@@ -28,7 +28,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  * Polls Postgres only; never calls CSE from the dashboard.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const encoder = new TextEncoder();

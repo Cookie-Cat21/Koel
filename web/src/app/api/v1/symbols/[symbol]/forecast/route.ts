@@ -19,7 +19,7 @@ export async function GET(
   request: NextRequest,
   ctx: { params: Promise<{ symbol: string }> },
 ) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await ctx.params;

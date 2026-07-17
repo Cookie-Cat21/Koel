@@ -17,6 +17,7 @@ import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { NFA_INLINE } from "@/lib/nfa";
 
 type Props = {
+  /** Only populated when DASH_DEMO_SHOW_ALLOWLIST=1 (S-11). */
   allowlist: number[];
   defaultTelegramId: number | null;
   demoEnabled: boolean;
@@ -32,8 +33,9 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
   const fieldId = `telegram_id-${reactId}`;
   const helpId = `telegram_id_help-${reactId}`;
   const errorId = `telegram_id_error-${reactId}`;
+  // Prefer explicit default; allowlist select only when SHOW_ALLOWLIST=1 (S-11).
   const preset =
-    defaultTelegramId && allowlist.includes(defaultTelegramId)
+    defaultTelegramId != null
       ? String(defaultTelegramId)
       : allowlist.length === 1
         ? String(allowlist[0])
@@ -97,11 +99,27 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
         data = null;
       }
       if (!res.ok) {
+        // Uniform denial copy — do not echo allowlist membership (S-11).
+        const code =
+          data && typeof data === "object" && !Array.isArray(data)
+            ? (data as { error?: { code?: unknown } }).error?.code
+            : null;
+        if (
+          code === "demo_auth_denied" ||
+          code === "telegram_id_not_allowlisted"
+        ) {
+          setError(
+            loginError(
+              "Chime couldn't sign you in. Check the Telegram ID and try again.",
+            ),
+          );
+          return;
+        }
         // Cap + strip controls — hostile error.message must not balloon UI.
         const apiMsg = apiErrorMessage(data, "");
         const detail = apiMsg
           ? `Chime couldn't sign you in: ${apiMsg}`
-          : `Chime couldn't sign you in (${res.status}). Check the allowlisted Telegram ID.`;
+          : `Chime couldn't sign you in (${res.status}). Try again.`;
         setError(loginError(detail));
         return;
       }
@@ -171,8 +189,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
           />
         )}
         <p id={helpId} className="text-xs text-muted-foreground">
-          Must be in <code className="font-mono">DASH_DEMO_TELEGRAM_IDS</code>. Not
-          financial advice.
+          Demo sign-in for allowlisted Telegram IDs only. Not financial advice.
         </p>
       </div>
       <InlineError id={errorId} message={error} />

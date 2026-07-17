@@ -20,7 +20,7 @@ const MAX_LIMIT = 200;
  * GET /api/v1/graph — company ownership / equity research graph (Postgres only).
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;

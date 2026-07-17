@@ -19,7 +19,7 @@ function toSafeId(raw: unknown): number | null {
  * GET /api/v1/me — current user from session; re-issues CSRF material.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   try {

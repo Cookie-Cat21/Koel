@@ -23,7 +23,7 @@ const MAX_SYMBOLS_PARAM_CHARS = 256;
  * 1–4 unique symbols; each series ascending by ts (chart-friendly).
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;

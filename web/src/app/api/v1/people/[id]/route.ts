@@ -12,7 +12,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** GET /api/v1/people/:id — person dossier (seats + co-director network). */
 export async function GET(_request: NextRequest, ctx: Ctx) {
-  const gated = requireSession(_request);
+  const gated = await requireSession(_request);
   if (!gated.ok) return gated.response;
 
   const { id: raw } = await ctx.params;

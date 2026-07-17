@@ -42,9 +42,10 @@ All non-2xx JSON errors:
 |---|---|
 | 400 | `invalid_symbol`, `validation_error`, `csrf_failed` |
 | 401 | `unauthorized` |
-| 403 | `forbidden`, `demo_auth_disabled`, `telegram_id_not_allowlisted` |
+| 403 | `forbidden`, `demo_auth_disabled`, `demo_auth_denied` |
 | 404 | `not_found` |
 | 409 | reserved; prefer idempotent return-existing over conflict for duplicate alerts |
+| 429 | `rate_limited` (auth endpoints) |
 | 503 | `degraded` (health when DB/poller unhealthy) |
 
 ### Authz matrix
@@ -55,7 +56,7 @@ All non-2xx JSON errors:
 | `POST /auth/logout` | Valid session + CSRF |
 | `GET /me`, watchlist, alerts, symbols (list + detail), disclosures, history, market movers, sectors | Valid session |
 | Mutating watchlist/alerts | Valid session + CSRF |
-| `GET /health` | **Ops-gated** (valid session in v1 demo; not anonymously public by default) |
+| `GET /health` | Valid session; **full detail** only for `DASH_OPS_TELEGRAM_IDS` (others get summary) |
 
 ---
 
@@ -84,7 +85,7 @@ Demo only (`DASH_DEMO_AUTH=1` + allowlist). See ADR 001.
 
 Sets `Set-Cookie: chime_session=…; HttpOnly; Secure; SameSite=Lax; Path=/` **and** CSRF material (non-HttpOnly CSRF cookie and/or `csrf_token` in the JSON body). See ADR 001 § CSRF.
 
-**Errors:** `403 demo_auth_disabled` · `403 telegram_id_not_allowlisted` · `400 validation_error`
+**Errors:** `403 demo_auth_disabled` · `403 demo_auth_denied` (unknown / empty allowlist — same shape) · `400 validation_error` · `429 rate_limited`
 
 ### `POST /api/v1/auth/telegram` *(future — stub only until enabled)*
 

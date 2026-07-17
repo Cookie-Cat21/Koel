@@ -16,7 +16,7 @@ const MAX_LIMIT = 500;
  * Sizes by linked company market cap × role weight — NOT personal net worth.
  */
 export async function GET(request: NextRequest) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const sp = request.nextUrl.searchParams;

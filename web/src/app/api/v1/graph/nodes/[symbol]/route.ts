@@ -14,7 +14,7 @@ type Ctx = { params: Promise<{ symbol: string }> };
  * GET /api/v1/graph/nodes/[symbol] — ego-network + equity evidence for one issuer.
  */
 export async function GET(request: NextRequest, ctx: Ctx) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await ctx.params;

@@ -1199,3 +1199,47 @@ def test_dash_ux_improve_loops() -> None:
     )
     assert "safe-area-inset-bottom" in symbol_page_src
 
+
+def test_symbol_data_quality_notices() -> None:
+    """Symbol pages surface honest coverage warnings (extract/filings/briefs)."""
+    quality_lib = (WEB / "src" / "lib" / "data-quality.ts").read_text(encoding="utf-8")
+    notices_ui = (
+        WEB / "src" / "components" / "kit" / "data-quality-notices.tsx"
+    ).read_text(encoding="utf-8")
+    metrics_route = (
+        WEB
+        / "src"
+        / "app"
+        / "api"
+        / "v1"
+        / "symbols"
+        / "[symbol]"
+        / "metrics"
+        / "route.ts"
+    ).read_text(encoding="utf-8")
+    symbol_page = (
+        WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    ).read_text(encoding="utf-8")
+    panel = (
+        WEB / "src" / "components" / "kit" / "filing-metrics-panel.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "buildDataQualityNotices" in quality_lib
+    assert "parseFilingQualitySummary" in quality_lib
+    assert "extract-failed" in quality_lib
+    assert "no-financial-filings" in quality_lib
+    assert "thin-ticks" in quality_lib
+    assert "brief-pending" in quality_lib
+    assert "DataQualityNotices" in notices_ui
+    assert "AlertBanner" in notices_ui
+    assert "data-testid=\"data-quality-notices\"" in notices_ui
+    assert "quality" in metrics_route
+    assert "metrics_failed" in metrics_route
+    assert "financial_filings" in metrics_route
+    assert "toNonNegativeSafeInt" in metrics_route
+    assert "DataQualityNotices" in symbol_page
+    assert "parseFilingQualitySummary" in symbol_page
+    assert "emptyMetricsHint" in symbol_page
+    assert "emptyMetricsHint" in panel
+    assert "emptyBriefHint" in panel
+

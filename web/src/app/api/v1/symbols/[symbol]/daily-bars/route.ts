@@ -20,7 +20,7 @@ type RouteContext = { params: Promise<{ symbol: string }> };
  * Postgres ``daily_bars`` only (~1y path history). Session required.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;

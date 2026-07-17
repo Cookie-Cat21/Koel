@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  * session check against dash_sessions when wired; until then TTL still bounds.
  */
 export async function POST(request: NextRequest) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   try {

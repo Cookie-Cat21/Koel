@@ -7,7 +7,7 @@ import {
   sanitizeDisclosureText,
 } from "@/lib/api/disclosure-safe";
 import { toFiniteNumber } from "@/lib/api/finite-number";
-import { toSafePositiveInt } from "@/lib/api/safe-int";
+import { toNonNegativeSafeInt, toSafePositiveInt } from "@/lib/api/safe-int";
 import { normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { jsonError, jsonOk } from "@/lib/auth/errors";
@@ -64,7 +64,7 @@ function dateOnly(raw: unknown): string | null {
  * Postgres only; no upstream CSE calls from web.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;
@@ -182,7 +182,63 @@ export async function GET(request: NextRequest, context: RouteContext) {
           }
         : null;
 
-    return jsonOk({ items, brief });
+    // Coverage counters for user-facing data-quality notices (Postgres only).
+    const [metricsQuality, disclosureQuality] = await Promise.all([
+      pool.query<{
+        metrics_attempted: number | string;
+        metrics_ok: number | string;
+        metrics_failed: number | string;
+      }>(
+        `SELECT COUNT(*)::int AS metrics_attempted,
+                COUNT(*) FILTER (WHERE extract_ok)::int AS metrics_ok,
+                COUNT(*) FILTER (WHERE NOT extract_ok)::int AS metrics_failed
+           FROM filing_metrics
+          WHERE symbol = $1`,
+        [symbol],
+      ),
+      pool.query<{
+        disclosures: number | string;
+        with_pdf: number | string;
+        financial_filings: number | string;
+        briefs_ready: number | string;
+        briefs_pending: number | string;
+        briefs_failed: number | string;
+      }>(
+        `SELECT COUNT(*)::int AS disclosures,
+                COUNT(*) FILTER (WHERE d.pdf_url IS NOT NULL)::int AS with_pdf,
+                COUNT(*) FILTER (
+                  WHERE d.external_id LIKE 'fin-%'
+                     OR d.title ILIKE '%financial%'
+                     OR d.title ILIKE '%interim%'
+                     OR d.category ILIKE '%financial%'
+                )::int AS financial_filings,
+                COUNT(*) FILTER (WHERE b.status = 'ready')::int AS briefs_ready,
+                COUNT(*) FILTER (
+                  WHERE b.status IN ('pending', 'processing')
+                )::int AS briefs_pending,
+                COUNT(*) FILTER (WHERE b.status = 'failed')::int AS briefs_failed
+           FROM disclosures d
+           LEFT JOIN disclosure_briefs b ON b.disclosure_id = d.id
+          WHERE d.symbol = $1`,
+        [symbol],
+      ),
+    ]);
+
+    const mq = metricsQuality.rows[0];
+    const dq = disclosureQuality.rows[0];
+    const quality = {
+      metrics_attempted: toNonNegativeSafeInt(mq?.metrics_attempted),
+      metrics_ok: toNonNegativeSafeInt(mq?.metrics_ok),
+      metrics_failed: toNonNegativeSafeInt(mq?.metrics_failed),
+      disclosures: toNonNegativeSafeInt(dq?.disclosures),
+      with_pdf: toNonNegativeSafeInt(dq?.with_pdf),
+      financial_filings: toNonNegativeSafeInt(dq?.financial_filings),
+      briefs_ready: toNonNegativeSafeInt(dq?.briefs_ready),
+      briefs_pending: toNonNegativeSafeInt(dq?.briefs_pending),
+      briefs_failed: toNonNegativeSafeInt(dq?.briefs_failed),
+    };
+
+    return jsonOk({ items, brief, quality });
   } catch (err) {
     console.error("GET /symbols/:symbol/metrics failed", err);
     return jsonError(503, "degraded", "Database unavailable.");

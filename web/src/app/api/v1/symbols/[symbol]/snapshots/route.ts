@@ -16,7 +16,7 @@ type RouteContext = { params: Promise<{ symbol: string }> };
  * GET /api/v1/symbols/{symbol}/snapshots — ascending ts for sparkline.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const gated = requireSession(request);
+  const gated = await requireSession(request);
   if (!gated.ok) return gated.response;
 
   const { symbol: raw } = await context.params;

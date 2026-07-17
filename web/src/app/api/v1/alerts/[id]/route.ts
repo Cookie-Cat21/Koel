@@ -28,7 +28,7 @@ function parseMutedUntil(raw: unknown): { ok: true; value: string | null } | { o
  * PATCH /api/v1/alerts/{id} — set or clear mute until timestamp. CSRF required.
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const { id: rawId } = await context.params;
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
  * 404 when id is missing or not owned by session user.
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const gated = requireSessionAndCsrf(request);
+  const gated = await requireSessionAndCsrf(request);
   if (!gated.ok) return gated.response;
 
   const { id: rawId } = await context.params;
