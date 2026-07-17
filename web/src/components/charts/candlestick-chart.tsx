@@ -8,6 +8,17 @@ import {
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+/** Native SVG hover tooltip text — date + OHLC (+ volume when stored). */
+function barTooltip(b: DailyBarPoint, bodyOpen: number): string {
+  const vol =
+    b.volume != null && Number.isFinite(b.volume)
+      ? ` · Vol ${formatNumber(Math.round(b.volume), 0)}`
+      : "";
+  return `${b.trade_date} · O ${formatNumber(b.open ?? bodyOpen)} H ${formatNumber(
+    b.high,
+  )} L ${formatNumber(b.low)} C ${formatNumber(b.close)}${vol}`;
+}
+
 /**
  * Readable SVG candlestick chart.
  * Uses a fixed slot width so dense series stay thick (not a barcode).
@@ -121,9 +132,19 @@ export function CandlestickChart({
   const aria = `Candles from ${first.trade_date} to ${last.trade_date}, close ${formatNumber(last.close)}`;
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => padT + t * plotH);
 
+  // Pre-pass direction counts — mutating during the JSX map breaks React
+  // render purity (react-hooks/immutability). Same epsilon per mode.
   let upN = 0;
   let downN = 0;
   let flatN = 0;
+  const dirEps = lineMode ? 0 : span * 1e-6;
+  for (let i = 0; i < n; i++) {
+    const bodyOpen = candleBodyOpen(bars, i);
+    const close = bars[i]!.close;
+    if (close > bodyOpen + dirEps) upN += 1;
+    else if (close < bodyOpen - dirEps) downN += 1;
+    else flatN += 1;
+  }
   const aggregated = rawBars.length > bars.length;
 
   return (
@@ -160,16 +181,29 @@ export function CandlestickChart({
           role="img"
           aria-label={aria}
         >
-          {gridYs.map((gy) => (
-            <line
-              key={gy}
-              x1={padL}
-              x2={w - padR}
-              y1={gy}
-              y2={gy}
-              className="stroke-border/55"
-              strokeWidth={1}
-            />
+          {gridYs.map((gy, gi) => (
+            <g key={gy}>
+              <line
+                x1={padL}
+                x2={w - padR}
+                y1={gy}
+                y2={gy}
+                className="stroke-border/55"
+                strokeWidth={1}
+              />
+              <text
+                x={w - 12}
+                y={gy}
+                textAnchor="end"
+                dominantBaseline={
+                  gi === 0 ? "hanging" : gi === gridYs.length - 1 ? "auto" : "middle"
+                }
+                className="fill-muted-foreground"
+                fontSize={13}
+              >
+                {formatNumber(max - (gi / (gridYs.length - 1)) * span)}
+              </text>
+            </g>
           ))}
           {lineMode ? (
             <>
@@ -193,22 +227,29 @@ export function CandlestickChart({
                 const yC = yFor(b.close);
                 const up = b.close > bodyOpen;
                 const down = b.close < bodyOpen;
-                if (up) upN += 1;
-                else if (down) downN += 1;
-                else flatN += 1;
-                if (!up && !down) return null;
                 return (
-                  <circle
-                    key={`${b.trade_date}-${i}`}
-                    cx={cx}
-                    cy={yC}
-                    r={3.5}
-                    className={
-                      up
-                        ? "fill-emerald-500 dark:fill-emerald-400"
-                        : "fill-rose-500 dark:fill-rose-400"
-                    }
-                  />
+                  <g key={`${b.trade_date}-${i}`}>
+                    <title>{barTooltip(b, bodyOpen)}</title>
+                    <rect
+                      x={cx - slot / 2}
+                      y={padT}
+                      width={slot}
+                      height={plotH}
+                      fill="transparent"
+                    />
+                    {up || down ? (
+                      <circle
+                        cx={cx}
+                        cy={yC}
+                        r={3.5}
+                        className={
+                          up
+                            ? "fill-emerald-500 dark:fill-emerald-400"
+                            : "fill-rose-500 dark:fill-rose-400"
+                        }
+                      />
+                    ) : null}
+                  </g>
                 );
               })}
             </>
@@ -223,9 +264,6 @@ export function CandlestickChart({
               const eps = span * 1e-6;
               const up = b.close > bodyOpen + eps;
               const down = b.close < bodyOpen - eps;
-              if (up) upN += 1;
-              else if (down) downN += 1;
-              else flatN += 1;
 
               const stroke = up
                 ? "stroke-emerald-700 dark:stroke-emerald-400"
@@ -243,6 +281,14 @@ export function CandlestickChart({
                 const wickPad = 7;
                 return (
                   <g key={`${b.trade_date}-${i}`}>
+                    <title>{barTooltip(b, bodyOpen)}</title>
+                    <rect
+                      x={cx - slot / 2}
+                      y={padT}
+                      width={slot}
+                      height={plotH}
+                      fill="transparent"
+                    />
                     <line
                       x1={cx}
                       x2={cx}
@@ -270,6 +316,14 @@ export function CandlestickChart({
 
               return (
                 <g key={`${b.trade_date}-${i}`}>
+                  <title>{barTooltip(b, bodyOpen)}</title>
+                  <rect
+                    x={cx - slot / 2}
+                    y={padT}
+                    width={slot}
+                    height={plotH}
+                    fill="transparent"
+                  />
                   <line
                     x1={cx}
                     x2={cx}
@@ -291,6 +345,55 @@ export function CandlestickChart({
               );
             })
           )}
+          {/* Last-close reference line + axis tag (TradingView convention) */}
+          <g aria-hidden>
+            <line
+              x1={padL}
+              x2={w - padR}
+              y1={yFor(last.close)}
+              y2={yFor(last.close)}
+              strokeDasharray="3 3"
+              strokeWidth={1}
+              className={
+                last.close > candleBodyOpen(bars, n - 1)
+                  ? "stroke-emerald-600/60 dark:stroke-emerald-400/60"
+                  : last.close < candleBodyOpen(bars, n - 1)
+                    ? "stroke-rose-600/60 dark:stroke-rose-400/60"
+                    : "stroke-muted-foreground/50"
+              }
+            />
+            <rect
+              x={w - padR + 2}
+              y={yFor(last.close) - 10}
+              width={padR - 6}
+              height={20}
+              rx={5}
+              className={
+                last.close > candleBodyOpen(bars, n - 1)
+                  ? "fill-emerald-500/15"
+                  : last.close < candleBodyOpen(bars, n - 1)
+                    ? "fill-rose-500/15"
+                    : "fill-muted"
+              }
+            />
+            <text
+              x={w - 12}
+              y={yFor(last.close)}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize={13}
+              fontWeight={600}
+              className={
+                last.close > candleBodyOpen(bars, n - 1)
+                  ? "fill-emerald-700 dark:fill-emerald-300"
+                  : last.close < candleBodyOpen(bars, n - 1)
+                    ? "fill-rose-700 dark:fill-rose-300"
+                    : "fill-muted-foreground"
+              }
+            >
+              {formatNumber(last.close)}
+            </text>
+          </g>
           {fc.length > 0 ? (
             <polyline
               fill="none"
@@ -324,25 +427,6 @@ export function CandlestickChart({
             fontSize={13}
           >
             {last.trade_date}
-          </text>
-          <text
-            x={w - 12}
-            y={padT + 2}
-            textAnchor="end"
-            dominantBaseline="hanging"
-            className="fill-muted-foreground"
-            fontSize={13}
-          >
-            {formatNumber(max)}
-          </text>
-          <text
-            x={w - 12}
-            y={h - padB}
-            textAnchor="end"
-            className="fill-muted-foreground"
-            fontSize={13}
-          >
-            {formatNumber(min)}
           </text>
         </svg>
       </div>

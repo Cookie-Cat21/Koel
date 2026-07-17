@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
-import { ChangeBadge } from "@/components/kit/change-badge";
 import {
   DisclosureCategoryHint,
   DisclosureTimeline,
@@ -52,7 +51,12 @@ import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol, normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
-import { formatNumber, formatTs } from "@/lib/format";
+import {
+  formatCompactNumber,
+  formatNumber,
+  formatPct,
+  formatTs,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -727,28 +731,32 @@ export default async function SymbolDetailPage({
       </div>
 
       <section
-        className={`mt-6 rounded-lg border p-4 ${
+        aria-label="Last price"
+        className={`mt-6 overflow-hidden rounded-xl border ${
           snapshotStale
             ? "border-amber-500/40 bg-amber-500/5"
             : "border-border/70"
         }`}
       >
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Last price
               {snapshotStale ? " · stale" : ""}
             </p>
             {data.last ? (
-              <div className="mt-1 flex flex-wrap items-center gap-3">
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span
-                  className={`font-mono text-3xl font-semibold tracking-tight tabular-nums ${
+                  className={`font-mono text-4xl font-semibold tracking-tight tabular-nums ${
                     snapshotStale ? "text-muted-foreground" : ""
                   }`}
                 >
                   {formatNumber(data.last.price)}
                 </span>
-                <ChangeBadge changePct={data.last.change_pct} />
+                <SignedChange
+                  change={data.last.change}
+                  changePct={data.last.change_pct}
+                />
               </div>
             ) : (
               <p className="mt-1 text-sm text-muted-foreground">
@@ -756,7 +764,7 @@ export default async function SymbolDetailPage({
               </p>
             )}
             {data.last?.ts ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1.5 text-xs text-muted-foreground">
                 As of {formatTs(data.last.ts)} (SLT)
                 {snapshotStale
                   ? " — more than a day old; poller may be paused."
@@ -791,30 +799,21 @@ export default async function SymbolDetailPage({
             />
           </div>
         </div>
-      </section>
-
-      <section className="mt-8 border-t border-border/60 pt-6">
-        <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
-          Last snapshot
-        </h2>
         {data.last ? (
-          <div
-            className={`mt-3 grid grid-cols-2 gap-4 ${
-              data.market_cap != null ? "sm:grid-cols-5" : "sm:grid-cols-4"
+          <dl
+            className={`grid grid-cols-2 gap-px border-t border-border/60 bg-border/40 ${
+              data.market_cap != null ? "sm:grid-cols-3" : ""
             }`}
           >
-            <Stat label="Price" value={formatNumber(data.last.price)} mono />
             <Stat
-              label="Change"
-              value={formatNumber(data.last.change)}
+              label="Prev close"
+              value={
+                data.last.change == null
+                  ? "—"
+                  : formatNumber(data.last.price - data.last.change)
+              }
               mono
             />
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Change %</p>
-              <div className="mt-1">
-                <ChangeBadge changePct={data.last.change_pct} />
-              </div>
-            </div>
             <Stat
               label="Volume"
               value={
@@ -827,56 +826,54 @@ export default async function SymbolDetailPage({
             {data.market_cap != null ? (
               <Stat
                 label="Market cap"
-                value={formatNumber(data.market_cap)}
+                value={formatCompactNumber(data.market_cap)}
                 mono
+                className="col-span-2 sm:col-span-1"
               />
             ) : null}
-          </div>
-        ) : (
-          <EmptyState
-            className="mt-4"
-            title="No snapshot yet"
-            description={
-              <>
-                Chime hasn’t stored a price tick for {data.symbol}. During
-                market hours (09:30–14:30 SLT, weekdays) the poller writes
-                snapshots here. Outside those hours this stays empty until the
-                next session. Not financial advice.
-              </>
-            }
-            action={
-              <Button asChild variant="outline" size="sm">
-                <Link href="/alerts">Set an alert</Link>
-              </Button>
-            }
-          />
-        )}
-        {data.last && isStaleTs(data.last.ts) ? (
-          <EmptyState
-            className="mt-4"
-            title="Snapshot looks stale"
-            description={
-              <>
-                Last tick was {formatTs(data.last.ts)} (SLT) — more than a day
-                ago. If market hours have passed without a refresh, the poller
-                may be paused or this symbol wasn’t watched. Not financial
-                advice.
-              </>
-            }
-            action={
-              <Button asChild variant="outline" size="sm">
-                <Link href="/watchlist">Back to watchlist</Link>
-              </Button>
-            }
-          />
+          </dl>
         ) : null}
-        {data.last?.ts && !isStaleTs(data.last.ts) ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            As of {formatTs(data.last.ts)} (SLT)
-          </p>
-        ) : null}
-        <NfaInline className="mt-2" />
       </section>
+
+      {!data.last ? (
+        <EmptyState
+          className="mt-4"
+          title="No snapshot yet"
+          description={
+            <>
+              Chime hasn’t stored a price tick for {data.symbol}. During
+              market hours (09:30–14:30 SLT, weekdays) the poller writes
+              snapshots here. Outside those hours this stays empty until the
+              next session. Not financial advice.
+            </>
+          }
+          action={
+            <Button asChild variant="outline" size="sm">
+              <Link href="/alerts">Set an alert</Link>
+            </Button>
+          }
+        />
+      ) : null}
+      {data.last && isStaleTs(data.last.ts) ? (
+        <EmptyState
+          className="mt-4"
+          title="Snapshot looks stale"
+          description={
+            <>
+              Last tick was {formatTs(data.last.ts)} (SLT) — more than a day
+              ago. If market hours have passed without a refresh, the poller
+              may be paused or this symbol wasn’t watched. Not financial
+              advice.
+            </>
+          }
+          action={
+            <Button asChild variant="outline" size="sm">
+              <Link href="/watchlist">Back to watchlist</Link>
+            </Button>
+          }
+        />
+      ) : null}
+      <NfaInline className="mt-3" />
 
       <SymbolCompareChart
         baseSymbol={data.symbol}
@@ -1008,6 +1005,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Label/value cell inside the quote card's hairline-divided stat strip. */
 function Stat({
   label,
   value,
@@ -1020,13 +1018,57 @@ function Stat({
   mono?: boolean;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={`mt-0.5 truncate text-lg font-medium sm:text-xl ${mono ? "font-mono" : ""} ${className ?? ""}`}
+    <div className={`min-w-0 bg-background px-4 py-3 ${className ?? ""}`}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
+        className={`mt-0.5 truncate text-lg font-medium tabular-nums ${mono ? "font-mono" : ""}`}
       >
         {value}
-      </p>
+      </dd>
     </div>
+  );
+}
+
+/** Inline signed change next to the big price — `+0.50 (+2.35%)`, colored. */
+function SignedChange({
+  change,
+  changePct,
+}: {
+  change: number | null;
+  changePct: number | null;
+}) {
+  const direction =
+    changePct != null && changePct > 0
+      ? "up"
+      : changePct != null && changePct < 0
+        ? "down"
+        : change != null && change > 0
+          ? "up"
+          : change != null && change < 0
+            ? "down"
+            : "flat";
+  const tone =
+    direction === "up"
+      ? "text-emerald-700 dark:text-emerald-400"
+      : direction === "down"
+        ? "text-rose-700 dark:text-rose-400"
+        : "text-muted-foreground";
+  const changeLabel =
+    change == null
+      ? null
+      : `${change > 0 ? "+" : ""}${formatNumber(change)}`;
+  const pctLabel = changePct == null ? null : formatPct(changePct);
+  if (changeLabel == null && pctLabel == null) return null;
+  return (
+    <span className={`font-mono text-lg font-medium tabular-nums ${tone}`}>
+      <span className="sr-only">
+        {direction === "up" ? "up " : direction === "down" ? "down " : ""}
+      </span>
+      {changeLabel ?? ""}
+      {pctLabel ? `${changeLabel != null ? " " : ""}(${pctLabel})` : ""}
+      <span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
+        today
+      </span>
+    </span>
   );
 }

@@ -65,6 +65,7 @@ export function SparklineWithForecast({
   confidence?: number | null;
 }) {
   const toggleId = useId();
+  const gradientId = useId();
   const series = finiteSparklinePoints(points);
   const forecast = finiteSparklinePoints(forecastPoints ?? []);
   const canToggle = forecast.length >= 1 && series.length >= 2;
@@ -130,6 +131,27 @@ export function SparklineWithForecast({
         role="img"
         aria-label={aria}
       >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="0%"
+              stopColor={up ? "oklch(0.45 0.08 185)" : "oklch(0.5 0.1 25)"}
+              stopOpacity="0.2"
+            />
+            <stop
+              offset="100%"
+              stopColor={up ? "oklch(0.45 0.08 185)" : "oklch(0.5 0.1 25)"}
+              stopOpacity="0"
+            />
+          </linearGradient>
+        </defs>
+        {/* Soft area fill under the realtime series (Visx/Robinhood style). */}
+        <polygon
+          fill={`url(#${gradientId})`}
+          points={`${realCoords.join(" ")} ${realCoords[
+            realCoords.length - 1
+          ]!.split(",")[0]},${h - pad} ${realCoords[0]!.split(",")[0]},${h - pad}`}
+        />
         <polyline
           fill="none"
           stroke={up ? "oklch(0.45 0.08 185)" : "oklch(0.5 0.1 25)"}
@@ -156,41 +178,26 @@ export function SparklineWithForecast({
           {formatNumber(last)}
           {showForecast ? " · dashed = model estimate" : ""}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={
-              spoke
-                ? "rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-emerald-800 uppercase dark:text-emerald-200"
-                : "rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-            }
-            title={
-              spoke
-                ? "Model spoke for this symbol (selective research emit). Not financial advice."
-                : "Model stayed silent — no selective forecast stored for this symbol."
-            }
-          >
-            {spoke ? "Spoke" : "Silent"}
-          </span>
-          {gateMeta ? (
-            <span
-              className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-              title={gateMeta.title}
-            >
-              {gateMeta.label}
-            </span>
-          ) : null}
-          {bandLabel ? (
-            <span
-              className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-              title="Confidence band from historical OOS calibration — not a guarantee."
-            >
-              Confidence {bandLabel}
-              {typeof confidence === "number" && Number.isFinite(confidence)
-                ? ` · ${Math.round(confidence * 100)}%`
-                : ""}
-            </span>
-          ) : null}
-          {canToggle ? (
+        {canToggle ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {gateMeta ? (
+              <span
+                className={
+                  spoke
+                    ? "rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-emerald-800 uppercase dark:text-emerald-200"
+                    : "rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+                }
+                title={`${gateMeta.title}${
+                  bandLabel ? ` Confidence band: ${bandLabel.toLowerCase()}.` : ""
+                }`}
+              >
+                {gateMeta.label}
+                {bandLabel ? ` · ${bandLabel}` : ""}
+                {typeof confidence === "number" && Number.isFinite(confidence)
+                  ? ` ${Math.round(confidence * 100)}%`
+                  : ""}
+              </span>
+            ) : null}
             <label
               htmlFor={toggleId}
               className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"
@@ -204,12 +211,8 @@ export function SparklineWithForecast({
               />
               Show forecast
             </label>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              Silent — no forecast stored
-            </span>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
