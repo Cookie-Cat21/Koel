@@ -112,12 +112,16 @@ def test_mutating_routes_bound_json_body() -> None:
 
 def test_symbol_disclosures_parse_allowlists_hrefs() -> None:
     page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    data = (WEB / "src" / "lib" / "db" / "symbol-page-data.ts").read_text(
+        encoding="utf-8"
+    )
     source = page.read_text(encoding="utf-8")
-    assert "safeAnnouncementUrl" in source
-    assert "safePdfUrl(" in source
-    assert "sanitizeBriefText(briefRaw" in source
-    assert 'url: typeof r.url === "string" ? r.url : null' not in source
-    assert 'pdf_url: typeof r.pdf_url === "string" ? r.pdf_url : null' not in source
+    assert "safeFilingHref" in source
+    assert "safeAnnouncementUrl(row.url)" in data
+    assert "safePdfUrl(row.pdf_url)" in data
+    assert "sanitizeBriefText(row.brief, brief_status)" in data
+    assert 'url: typeof r.url === "string" ? r.url : null' not in data
+    assert 'pdf_url: typeof r.pdf_url === "string" ? r.pdf_url : null' not in data
 
 
 def test_alerts_active_param_strict() -> None:

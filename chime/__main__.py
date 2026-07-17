@@ -13,7 +13,14 @@ from telegram import Bot
 from chime.adapters.cse import CSEClient
 from chime.bot import build_application
 from chime.config import Settings
-from chime.drain import drain_briefs, drain_metrics, drain_pdfs
+from chime.drain import (
+    drain_briefs,
+    drain_graph,
+    drain_metrics,
+    drain_pdfs,
+    drain_people,
+)
+from chime.graph.directors_sync import run_directors_sync
 from chime.health import HealthState, brief_queue_health_hint, start_health_server
 from chime.logging_setup import configure_logging, get_logger
 from chime.migrate import apply_migrations
@@ -321,6 +328,9 @@ def main(argv: list[str] | None = None) -> None:
             "drain-briefs",
             "drain-briefs-local",
             "drain-metrics",
+            "drain-graph",
+            "drain-people",
+            "directors-backfill",
             "path-backfill",
             "intraday-backfill",
             "hybrid-backfill",
@@ -353,6 +363,7 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             "bot | poller | both | migrate | tick | "
             "drain-pdfs | drain-briefs | drain-briefs-local | drain-metrics | "
+            "drain-graph | drain-people | directors-backfill | "
             "path-backfill | intraday-backfill | hybrid-backfill | "
             "score-signals | eval-signals | "
             "sector-backfill | notices-backfill | disclosures-backfill | "
@@ -371,7 +382,8 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             "tick: ignore market hours; "
             "path-backfill/intraday-backfill/hybrid-backfill/"
-            "sector-backfill/notices-backfill: run even if flag off"
+            "sector-backfill/notices-backfill/directors-backfill: "
+            "run even if flag off"
         ),
     )
     parser.add_argument(
@@ -386,7 +398,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--all-symbols",
         action="store_true",
-        help="For drain-pdfs/drain-metrics: include non-watchlist symbols",
+        help=(
+            "For drain-pdfs/drain-metrics/drain-graph/drain-people: "
+            "include non-watchlist symbols. "
+            "For directors-backfill: sync all *.N0000 stocks (not only top mcap)."
+        ),
     )
     parser.add_argument(
         "--period",
@@ -454,6 +470,7 @@ def main(argv: list[str] | None = None) -> None:
         "hybrid-backfill",
         "sector-backfill",
         "notices-backfill",
+        "directors-backfill",
         "ml-forecast",
         "ml-hpe",
         "ml-forecast-unified",
@@ -468,9 +485,9 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(
             "--force is only valid for tick, path-backfill, intraday-backfill, "
             "hybrid-backfill, sector-backfill, notices-backfill, "
-            "disclosures-backfill, financials-backfill, aspi-backfill, "
-            "ml-forecast, ml-hpe, ml-forecast-unified, ml-loop-nightly, "
-            "ml-loop-retrain, ml-loop-research, or ml-ltr-ship"
+            "directors-backfill, disclosures-backfill, financials-backfill, "
+            "aspi-backfill, ml-forecast, ml-hpe, ml-forecast-unified, "
+            "ml-loop-nightly, ml-loop-retrain, ml-loop-research, or ml-ltr-ship"
         )
     if args.period is not None and args.command != "path-backfill":
         parser.error("--period is only valid for path-backfill")
@@ -484,7 +501,13 @@ def main(argv: list[str] | None = None) -> None:
         print("Applied:", ", ".join(applied) if applied else "(none)")
         return
 
-    if args.command in ("drain-pdfs", "drain-briefs", "drain-metrics"):
+    if args.command in (
+        "drain-pdfs",
+        "drain-briefs",
+        "drain-metrics",
+        "drain-graph",
+        "drain-people",
+    ):
         configure_logging()
         settings = Settings.from_env(require_token=False)
         drain_limit: int = _cli_limit(args.limit, default=20) or 20
@@ -514,6 +537,18 @@ def main(argv: list[str] | None = None) -> None:
                         )
                     finally:
                         await cse.aclose()
+                elif args.command == "drain-graph":
+                    result = await drain_graph(
+                        storage=storage,
+                        limit=drain_limit,
+                        watched_only=watched_only,
+                    )
+                elif args.command == "drain-people":
+                    result = await drain_people(
+                        storage=storage,
+                        limit=drain_limit,
+                        watched_only=watched_only,
+                    )
                 else:
                     result = await drain_metrics(
                         storage=storage,
@@ -716,6 +751,52 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_sector_bf())
+        return
+
+    if args.command == "directors-backfill":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else 80
+        if args.all_symbols:
+            limit = (
+                args.limit
+                if isinstance(args.limit, int) and args.limit > 0
+                else 500
+            )
+
+        async def _directors_bf() -> None:
+            storage = Storage(settings.database_url)
+            await storage.open()
+            cse = CSEClient(
+                base_url=settings.cse_base_url,
+                timeout=settings.http_timeout_seconds,
+                fail_max=settings.circuit_fail_max,
+                reset_timeout=settings.circuit_reset_seconds,
+                min_interval_seconds=settings.cse_min_interval_seconds,
+            )
+            try:
+                result = await run_directors_sync(
+                    settings=settings,
+                    storage=storage,
+                    cse=cse,
+                    limit=limit,
+                    force=args.force,
+                    top_by_mcap=not args.all_symbols,
+                )
+                print(
+                    "directors-backfill: "
+                    f"targeted={result.symbols_targeted} "
+                    f"updated={result.symbols_updated} "
+                    f"skipped={result.symbols_skipped} "
+                    f"failed={result.symbols_failed} "
+                    f"seats={result.seats_written} "
+                    f"roles={result.roles_written}"
+                )
+            finally:
+                await cse.aclose()
+                await storage.close()
+
+        asyncio.run(_directors_bf())
         return
 
     if args.command == "notices-backfill":

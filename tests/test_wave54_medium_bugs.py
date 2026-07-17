@@ -70,10 +70,14 @@ def test_page_parsers_cap_list_lengths() -> None:
     symbol = (WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx").read_text(
         encoding="utf-8"
     )
+    data = (WEB / "src" / "lib" / "db" / "symbol-page-data.ts").read_text(
+        encoding="utf-8"
+    )
     assert "MAX_PAGE_SNAPSHOT_POINTS" in symbol
-    assert "MAX_PAGE_DISCLOSURES" in symbol
     assert "points.length >= MAX_PAGE_SNAPSHOT_POINTS" in symbol
-    assert "items.length >= MAX_PAGE_DISCLOSURES" in symbol
+    # Disclosures load via Postgres with a hard LIMIT clamp (not client JSON parse).
+    assert "Math.min(Math.max(limit, 1), 100)" in data
+    assert "loadSymbolPageDisclosures(symbol, 20)" in symbol
 
     history = (WEB / "src" / "app" / "alerts" / "history" / "page.tsx").read_text(
         encoding="utf-8"

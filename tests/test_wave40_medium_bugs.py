@@ -107,13 +107,17 @@ def test_browser_csrf_length_capped_client_safe() -> None:
 
 def test_symbol_disclosure_parse_allowlists_hrefs() -> None:
     page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
+    data = (WEB / "src" / "lib" / "db" / "symbol-page-data.ts").read_text(
+        encoding="utf-8"
+    )
     source = page.read_text(encoding="utf-8")
-    assert "safeAnnouncementUrl(r.url)" in source
-    assert "safePdfUrl(r.pdf_url)" in source
-    assert "sanitizeBriefText(briefRaw, brief_status)" in source
-    assert 'url: typeof r.url === "string" ? r.url : null' not in source
-    assert 'pdf_url: typeof r.pdf_url === "string" ? r.pdf_url : null' not in source
-    assert 'brief: typeof r.brief === "string" ? r.brief : null' not in source
+    assert "safeFilingHref" in source
+    assert "safeAnnouncementUrl(row.url)" in data
+    assert "safePdfUrl(row.pdf_url)" in data
+    assert "sanitizeBriefText(row.brief, brief_status)" in data
+    assert 'url: typeof r.url === "string" ? r.url : null' not in data
+    assert 'pdf_url: typeof r.pdf_url === "string" ? r.pdf_url : null' not in data
+    assert 'brief: typeof r.brief === "string" ? r.brief : null' not in data
 
 
 def test_login_form_sanitizes_api_errors() -> None:

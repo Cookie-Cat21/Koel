@@ -20,6 +20,7 @@ export function AlertBanner({
   icon: Icon,
   action,
   className,
+  role = "status",
 }: {
   tone?: Tone;
   title: string;
@@ -27,10 +28,12 @@ export function AlertBanner({
   icon: LucideIcon;
   action?: ReactNode;
   className?: string;
+  /** Use `alert` for interruptive ops failures; default `status` for static chrome. */
+  role?: "status" | "alert";
 }) {
   return (
     <div
-      role="alert"
+      role={role}
       className={cn("rounded-xl border p-4 sm:p-5", tones[tone], className)}
     >
       <div className="flex items-start gap-3 sm:items-center sm:justify-between">

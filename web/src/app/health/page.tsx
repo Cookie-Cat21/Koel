@@ -456,6 +456,7 @@ export default async function HealthPage() {
             {pollerUnreachable ? (
               <div className="mt-6">
                 <AlertBanner
+                  role="alert"
                   tone="danger"
                   icon={Radio}
                   title="Poller health unreachable"
@@ -465,6 +466,7 @@ export default async function HealthPage() {
             ) : pollerDegraded ? (
               <div className="mt-6">
                 <AlertBanner
+                  role="alert"
                   tone="warning"
                   icon={Activity}
                   title="Poller reachable but degraded"

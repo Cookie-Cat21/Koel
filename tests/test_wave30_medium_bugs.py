@@ -20,15 +20,20 @@ WEB = ROOT / "web"
 def test_symbol_detail_fail_closed_parse() -> None:
     page = WEB / "src" / "app" / "symbols" / "[symbol]" / "page.tsx"
     source = page.read_text(encoding="utf-8")
-    assert "parseSymbolPayload" in source
+    data = (WEB / "src" / "lib" / "db" / "symbol-page-data.ts").read_text(
+        encoding="utf-8"
+    )
+    # Quotes / disclosures load via fail-closed Postgres helpers, not API casts.
+    assert "loadSymbolPageStock" in source
+    assert "loadSymbolPageDisclosures" in source
     assert "parseSnapshotsPayload" in source
-    assert "parseDisclosuresPayload" in source
-    assert "toSafePositiveInt" in source
-    assert "sanitizeDisclosureText" in source
-    assert "normalizeBriefStatus" in source
+    assert "toSafePositiveInt" in data
+    assert "sanitizeDisclosureText" in data
+    assert "normalizeBriefStatus" in data
     assert "as SymbolPayload)" not in source
     assert "as SnapshotsPayload)" not in source
     assert "as DisclosuresPayload)" not in source
+    assert "as SymbolPayload)" not in data
 
 
 def test_health_page_fail_closed_parse() -> None:
