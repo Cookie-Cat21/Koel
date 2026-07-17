@@ -12,26 +12,19 @@ ALTER TABLE price_snapshots
 
 -- Collapse duplicate (symbol, ts) before unique index (keep lowest id).
 -- Remount alert_log FKs onto the survivor row first (Neon had live refs).
-WITH survivors AS (
-    SELECT DISTINCT ON (symbol, ts)
-        id AS keep_id,
-        symbol,
-        ts
-    FROM price_snapshots
-    ORDER BY symbol, ts, id
-),
-dupes AS (
-    SELECT p.id AS drop_id, s.keep_id
-    FROM price_snapshots AS p
-    JOIN survivors AS s
-      ON s.symbol = p.symbol
-     AND s.ts = p.ts
-    WHERE p.id <> s.keep_id
-)
 UPDATE alert_log AS al
-SET snapshot_id = d.keep_id
-FROM dupes AS d
-WHERE al.snapshot_id = d.drop_id;
+SET snapshot_id = keep.id
+FROM price_snapshots AS drop_row
+JOIN LATERAL (
+    SELECT p.id
+    FROM price_snapshots AS p
+    WHERE p.symbol = drop_row.symbol
+      AND p.ts = drop_row.ts
+    ORDER BY p.id
+    LIMIT 1
+) AS keep ON TRUE
+WHERE al.snapshot_id = drop_row.id
+  AND drop_row.id <> keep.id;
 
 DELETE FROM price_snapshots AS a
     USING price_snapshots AS b
