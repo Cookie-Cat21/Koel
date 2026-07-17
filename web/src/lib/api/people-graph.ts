@@ -55,9 +55,17 @@ export type PersonNode = {
     confidence: string;
     market_cap: number | null;
     equity: number | null;
+    price: number | null;
+    change_pct: number | null;
+    volume: number | null;
+    turnover: number | null;
   }>;
   /** Sum of market_cap × role_weight across seats — research proxy, not net worth. */
   influence_score: number;
+  /** Sum of latest share volume across unique seated issuers. */
+  linked_volume: number;
+  /** Sum of latest turnover (LKR) across unique seated issuers. */
+  linked_turnover: number;
   company_count: number;
   top_role: PersonRole | null;
 };
@@ -119,6 +127,10 @@ export async function queryPeopleGraph(
       r.confidence,
       s.name AS company_name,
       ps.market_cap,
+      ps.price,
+      ps.change_pct,
+      ps.volume,
+      ps.turnover,
       n.equity,
       n.equity_scale
     FROM person_company_roles r
@@ -126,9 +138,9 @@ export async function queryPeopleGraph(
     LEFT JOIN stocks s ON s.symbol = r.symbol
     LEFT JOIN company_graph_nodes n ON n.symbol = r.symbol
     LEFT JOIN LATERAL (
-      SELECT market_cap
+      SELECT market_cap, price, change_pct, volume, turnover
       FROM price_snapshots x
-      WHERE x.symbol = r.symbol AND x.market_cap IS NOT NULL
+      WHERE x.symbol = r.symbol
       ORDER BY x.ts DESC
       LIMIT 1
     ) ps ON TRUE
@@ -179,10 +191,11 @@ export async function queryPeopleGraph(
       toFiniteNumber(row.equity),
       typeof row.equity_scale === "string" ? row.equity_scale : null,
     );
+    const price = toFiniteNumber(row.price);
+    const changePct = toFiniteNumber(row.change_pct);
+    const volume = toFiniteNumber(row.volume);
+    const turnover = toFiniteNumber(row.turnover);
     const weight = ROLE_WEIGHT[role] ?? 0.2;
-    // Prefer market cap; fall back to company equity proxy
-    const base = mcap ?? equity ?? 0;
-    const contrib = base * weight;
 
     let acc = byPerson.get(personId);
     if (!acc) {
@@ -213,10 +226,13 @@ export async function queryPeopleGraph(
         typeof row.confidence === "string" ? row.confidence : "medium",
       market_cap: mcap,
       equity,
+      price,
+      change_pct: changePct,
+      volume,
+      turnover,
     });
     acc.symbols.add(symbol);
     // One contribution per symbol: keep max weight seat for influence
-    // Recalculate simply: sum unique symbol max weighted base later
     if (weight >= acc.bestWeight) {
       acc.bestWeight = weight;
       acc.topRole = role;
@@ -228,7 +244,22 @@ export async function queryPeopleGraph(
       confidence:
         typeof row.confidence === "string" ? row.confidence : "medium",
     });
-    void contrib;
+  }
+
+  function linkedFlow(roles: PersonNode["roles"]): {
+    volume: number;
+    turnover: number;
+  } {
+    const seen = new Set<string>();
+    let volume = 0;
+    let turnover = 0;
+    for (const r of roles) {
+      if (seen.has(r.symbol)) continue;
+      seen.add(r.symbol);
+      volume += r.volume ?? 0;
+      turnover += r.turnover ?? 0;
+    }
+    return { volume, turnover };
   }
 
   // Influence: per symbol take the highest role weight × company value
@@ -244,11 +275,14 @@ export async function queryPeopleGraph(
     }
     let influence = 0;
     for (const v of perSym.values()) influence += v;
+    const flow = linkedFlow(acc.roles);
     people.push({
       id: acc.id,
       name: acc.name,
       roles: acc.roles,
       influence_score: influence,
+      linked_volume: flow.volume,
+      linked_turnover: flow.turnover,
       company_count: acc.symbols.size,
       top_role: acc.topRole,
     });
@@ -282,11 +316,14 @@ export async function queryPeopleGraph(
     let influence = 0;
     for (const v of perSym.values()) influence += v;
     const symbols = new Set(roles.map((r) => r.symbol));
+    const flow = linkedFlow(roles);
     merged.set(key, {
       id: prev.id,
       name,
       roles,
       influence_score: influence,
+      linked_volume: flow.volume,
+      linked_turnover: flow.turnover,
       company_count: symbols.size,
       top_role:
         (influence >= prev.influence_score ? p.top_role : prev.top_role) ??

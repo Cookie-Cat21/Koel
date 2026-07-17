@@ -22,6 +22,10 @@ export type DossierSeat = {
   sector: string | null;
   roles: PersonRole[];
   market_cap: number | null;
+  price: number | null;
+  change_pct: number | null;
+  volume: number | null;
+  turnover: number | null;
   influence_share: number;
 };
 
@@ -52,6 +56,10 @@ export type PersonDossier = {
   top_role: PersonRole | null;
   influence_score: number;
   company_count: number;
+  /** Sum of latest share volume across seated issuers (not personal volume). */
+  linked_volume: number;
+  /** Sum of latest turnover (LKR) across seated issuers. */
+  linked_turnover: number;
   seats: DossierSeat[];
   network: DossierCoDirector[];
   timeline: DossierTimelineEvent[];
@@ -125,13 +133,17 @@ export async function queryPersonDossier(
       r.confidence,
       s.name AS company_name,
       s.sector,
-      ps.market_cap
+      ps.market_cap,
+      ps.price,
+      ps.change_pct,
+      ps.volume,
+      ps.turnover
     FROM person_company_roles r
     LEFT JOIN stocks s ON s.symbol = r.symbol
     LEFT JOIN LATERAL (
-      SELECT market_cap
+      SELECT market_cap, price, change_pct, volume, turnover
       FROM price_snapshots x
-      WHERE x.symbol = r.symbol AND x.market_cap IS NOT NULL
+      WHERE x.symbol = r.symbol
       ORDER BY x.ts DESC
       LIMIT 1
     ) ps ON TRUE
@@ -148,6 +160,10 @@ export async function queryPersonDossier(
     sector: string | null;
     roles: PersonRole[];
     market_cap: number | null;
+    price: number | null;
+    change_pct: number | null;
+    volume: number | null;
+    turnover: number | null;
     bestWeight: number;
   };
   const bySym = new Map<string, SeatAcc>();
@@ -160,6 +176,10 @@ export async function queryPersonDossier(
     const role = asRole(row.role);
     if (!role) continue;
     const mcap = toFiniteNumber(row.market_cap);
+    const price = toFiniteNumber(row.price);
+    const changePct = toFiniteNumber(row.change_pct);
+    const volume = toFiniteNumber(row.volume);
+    const turnover = toFiniteNumber(row.turnover);
     const w = roleRank(role);
     if (w > topWeight) {
       topWeight = w;
@@ -179,6 +199,10 @@ export async function queryPersonDossier(
             : null,
         roles: [role],
         market_cap: mcap,
+        price,
+        change_pct: changePct,
+        volume,
+        turnover,
         bestWeight: w,
       });
       continue;
@@ -186,6 +210,10 @@ export async function queryPersonDossier(
     if (!prev.roles.includes(role)) prev.roles.push(role);
     if (w > prev.bestWeight) prev.bestWeight = w;
     if ((mcap ?? 0) > (prev.market_cap ?? 0)) prev.market_cap = mcap;
+    if (prev.price == null && price != null) prev.price = price;
+    if (prev.change_pct == null && changePct != null) prev.change_pct = changePct;
+    if (prev.volume == null && volume != null) prev.volume = volume;
+    if (prev.turnover == null && turnover != null) prev.turnover = turnover;
   }
 
   const seatsRaw = Array.from(bySym.values()).map((s) => ({
@@ -194,8 +222,12 @@ export async function queryPersonDossier(
   }));
 
   let influence = 0;
+  let linkedVolume = 0;
+  let linkedTurnover = 0;
   for (const s of seatsRaw) {
     influence += (s.market_cap ?? 0) * s.bestWeight;
+    linkedVolume += s.volume ?? 0;
+    linkedTurnover += s.turnover ?? 0;
   }
 
   const seats: DossierSeat[] = seatsRaw
@@ -205,12 +237,17 @@ export async function queryPersonDossier(
       sector: s.sector,
       roles: s.roles,
       market_cap: s.market_cap,
+      price: s.price,
+      change_pct: s.change_pct,
+      volume: s.volume,
+      turnover: s.turnover,
       influence_share:
         influence > 0 ? ((s.market_cap ?? 0) * s.bestWeight) / influence : 0,
     }))
     .sort(
       (a, b) =>
         b.influence_share - a.influence_share ||
+        (b.volume ?? 0) - (a.volume ?? 0) ||
         (b.market_cap ?? 0) - (a.market_cap ?? 0),
     );
 
@@ -392,10 +429,12 @@ export async function queryPersonDossier(
     top_role: topRole,
     influence_score: influence,
     company_count: seats.length,
+    linked_volume: linkedVolume,
+    linked_turnover: linkedTurnover,
     seats,
     network: network.slice(0, 40),
     timeline: timeline.slice(0, 20),
     disclaimer:
-      "Board seats from official CSE companyProfile. Influence = linked company market cap × role weight — not personal net worth. Not financial advice. Across-years lists issuer filings on seated companies; CSE has no historical board API.",
+      "Board seats from official CSE companyProfile. Influence / volume / turnover are linked company figures (latest snapshot) — not personal holdings. Not financial advice. Across-years lists issuer filings on seated companies; CSE has no historical board API.",
   };
 }

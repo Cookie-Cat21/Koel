@@ -87,6 +87,10 @@ function groupRolesByCompany(person: PersonNode) {
       symbol: string;
       company_name: string | null;
       market_cap: number | null;
+      volume: number | null;
+      turnover: number | null;
+      price: number | null;
+      change_pct: number | null;
       roles: string[];
     }
   >();
@@ -97,6 +101,10 @@ function groupRolesByCompany(person: PersonNode) {
         symbol: r.symbol,
         company_name: r.company_name,
         market_cap: r.market_cap,
+        volume: r.volume,
+        turnover: r.turnover,
+        price: r.price,
+        change_pct: r.change_pct,
         roles: [r.role],
       });
       continue;
@@ -105,10 +113,20 @@ function groupRolesByCompany(person: PersonNode) {
     if ((r.market_cap ?? 0) > (prev.market_cap ?? 0)) {
       prev.market_cap = r.market_cap;
     }
+    if (prev.volume == null && r.volume != null) prev.volume = r.volume;
+    if (prev.turnover == null && r.turnover != null) prev.turnover = r.turnover;
+    if (prev.price == null && r.price != null) prev.price = r.price;
+    if (prev.change_pct == null && r.change_pct != null) {
+      prev.change_pct = r.change_pct;
+    }
   }
   return Array.from(bySym.values())
     .map((row) => ({ ...row, roles: [...row.roles].sort(ROLE_SORT) }))
-    .sort((a, b) => (b.market_cap ?? 0) - (a.market_cap ?? 0));
+    .sort(
+      (a, b) =>
+        (b.volume ?? 0) - (a.volume ?? 0) ||
+        (b.market_cap ?? 0) - (a.market_cap ?? 0),
+    );
 }
 
 function initialsAvatar(name: string): string {
@@ -496,11 +514,17 @@ function RankRow({
             </span>
             <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
               {topLabel} · {person.company_count} co
-              {person.company_count === 1 ? "" : "s"}
+              {person.company_count === 1 ? "" : "s"} · vol{" "}
+              {formatCompactNumber(person.linked_volume, 1)}
             </span>
           </span>
-          <span className="shrink-0 font-mono text-xs tabular-nums">
-            {formatCompactNumber(person.influence_score, 1)}
+          <span className="shrink-0 text-right">
+            <span className="block font-mono text-xs tabular-nums">
+              {formatCompactNumber(person.influence_score, 1)}
+            </span>
+            <span className="mt-0.5 block font-mono text-[10px] tabular-nums text-muted-foreground">
+              to {formatCompactNumber(person.linked_turnover, 1)}
+            </span>
           </span>
         </button>
         <div className="mx-2 mb-1.5 ml-9 h-1 overflow-hidden rounded-sm bg-muted">
@@ -577,6 +601,24 @@ function PersonInspector({ person }: { person: PersonNode }) {
             </p>
           </div>
         </div>
+        <dl className="relative mt-2 grid grid-cols-2 gap-2">
+          <div className="rounded-md bg-background/70 px-2.5 py-1.5">
+            <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Linked vol
+            </dt>
+            <dd className="font-mono text-sm font-semibold tabular-nums">
+              {formatCompactNumber(person.linked_volume, 1)}
+            </dd>
+          </div>
+          <div className="rounded-md bg-background/70 px-2.5 py-1.5">
+            <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Turnover
+            </dt>
+            <dd className="font-mono text-sm font-semibold tabular-nums">
+              {formatCompactNumber(person.linked_turnover, 1)}
+            </dd>
+          </div>
+        </dl>
         <div className="relative mt-2">
           <Button asChild size="sm" className="w-full">
             <Link href={`/people/${person.id}`}>
@@ -587,9 +629,10 @@ function PersonInspector({ person }: { person: PersonNode }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-[1] grid grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] gap-x-2 border-b border-border bg-background/95 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur">
+        <div className="sticky top-0 z-[1] grid grid-cols-[3.5rem_minmax(0,1fr)_3.2rem_3.2rem] gap-x-2 border-b border-border bg-background/95 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur">
           <span>Ticker</span>
           <span>Roles</span>
+          <span className="text-right">Vol</span>
           <span className="text-right">Mcap</span>
         </div>
         {seats.length === 0 ? (
@@ -601,7 +644,7 @@ function PersonInspector({ person }: { person: PersonNode }) {
             {seats.map((row, i) => (
               <li
                 key={row.symbol}
-                className="grid grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] items-center gap-x-2 px-4 py-2 transition-opacity duration-200"
+                className="grid grid-cols-[3.5rem_minmax(0,1fr)_3.2rem_3.2rem] items-center gap-x-2 px-4 py-2 transition-opacity duration-200"
                 style={{
                   animationDelay: `${Math.min(i, 8) * 35}ms`,
                 }}
@@ -620,6 +663,14 @@ function PersonInspector({ person }: { person: PersonNode }) {
                     .join("; ")}
                 >
                   {rolesSummary(row.roles)}
+                  {row.price != null ? (
+                    <span className="ml-1 font-mono tabular-nums">
+                      · {formatCompactNumber(row.price, 2)}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-right font-mono text-[11px] tabular-nums text-foreground">
+                  {formatCompactNumber(row.volume, 1)}
                 </span>
                 <span className="text-right font-mono text-[11px] tabular-nums text-muted-foreground">
                   {formatCompactNumber(row.market_cap, 1)}

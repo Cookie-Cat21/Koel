@@ -26,6 +26,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import { ChangeBadge } from "@/components/kit/change-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PersonDossier } from "@/lib/api/person-dossier";
@@ -397,16 +398,21 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
             </div>
           </div>
 
-          <dl className="mt-5 grid grid-cols-3 gap-2.5 border-t border-border pt-5">
+          <dl className="mt-5 grid grid-cols-2 gap-2.5 border-t border-border pt-5 sm:grid-cols-4">
             <KpiCell label="Companies" value={String(dossier.company_count)} />
+            <KpiCell
+              label="Linked volume"
+              value={formatCompactNumber(dossier.linked_volume, 1)}
+              title="Sum of latest share volume on seated issuers"
+            />
+            <KpiCell
+              label="Linked turnover"
+              value={formatCompactNumber(dossier.linked_turnover, 1)}
+              title="Sum of latest turnover (LKR) on seated issuers"
+            />
             <KpiCell
               label="Co-directors"
               value={String(dossier.network.length)}
-            />
-            <KpiCell
-              label="Top sector"
-              value={sector ?? "—"}
-              title={sector ?? undefined}
             />
           </dl>
 
@@ -496,18 +502,20 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
           <div>
             <h2 className="font-display text-lg font-semibold">Board seats</h2>
             <p className="text-[12px] text-muted-foreground">
-              Official CSE companyProfile · sorted by influence share
+              Official CSE companyProfile · latest quote volume on each seat
+              (company figures, not personal)
             </p>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-border">
-            <div className="hidden grid-cols-[4.5rem_minmax(0,1.5fr)_minmax(0,1fr)_5rem_4.5rem_4rem] gap-x-3 border-b border-border bg-muted/30 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:grid">
+            <div className="hidden grid-cols-[4.5rem_minmax(0,1.3fr)_4.5rem_4rem_4.5rem_4.5rem_4rem] gap-x-2 border-b border-border bg-muted/30 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground xl:grid">
               <span>Ticker</span>
               <span>Roles</span>
-              <span>Sector</span>
+              <span className="text-right">Price</span>
+              <span className="text-right">Chg</span>
+              <span className="text-right">Vol</span>
               <span className="text-right">Mcap</span>
-              <span className="text-right">Share</span>
-              <span className="text-right">Graph</span>
+              <span className="text-right">Turn</span>
             </div>
             {dossier.seats.length === 0 ? (
               <div className="px-4 py-10 text-center">
@@ -522,7 +530,7 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
                 {dossier.seats.map((seat, i) => (
                   <li
                     key={seat.symbol}
-                    className="grid grid-cols-1 gap-2 px-4 py-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-both motion-safe:duration-300 hover:bg-muted/35 sm:grid-cols-[4.5rem_minmax(0,1.5fr)_auto] sm:items-center sm:gap-x-3 sm:py-2.5 lg:grid-cols-[4.5rem_minmax(0,1.5fr)_minmax(0,1fr)_5rem_4.5rem_4rem]"
+                    className="grid grid-cols-1 gap-2 px-4 py-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-both motion-safe:duration-300 hover:bg-muted/35 sm:grid-cols-[4.5rem_minmax(0,1fr)_auto] sm:items-center sm:gap-x-3 sm:py-2.5 xl:grid-cols-[4.5rem_minmax(0,1.3fr)_4.5rem_5rem_4.5rem_4.5rem_4rem]"
                     style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
                   >
                     <Link
@@ -556,8 +564,25 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
                       </div>
                       <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                         {seat.company_name ?? "—"}
+                        {seat.sector ? ` · ${seat.sector}` : ""}
                       </p>
-                      {/* Loop 5: bar-list share */}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] xl:hidden">
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          {seat.price != null
+                            ? formatCompactNumber(seat.price, 2)
+                            : "—"}
+                        </span>
+                        <ChangeBadge
+                          changePct={seat.change_pct}
+                          className="h-5 px-1.5"
+                        />
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          vol {formatCompactNumber(seat.volume, 1)}
+                        </span>
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          to {formatCompactNumber(seat.turnover, 1)}
+                        </span>
+                      </div>
                       <div className="mt-1 h-1 max-w-[14rem] overflow-hidden rounded-sm bg-muted">
                         <div
                           className="h-full rounded-sm bg-foreground/65 transition-[width] duration-500"
@@ -567,28 +592,26 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
                         />
                       </div>
                     </div>
-                    <p className="hidden truncate text-[12px] text-muted-foreground lg:block">
-                      {seat.sector ?? "—"}
-                    </p>
-                    <span className="hidden font-mono text-[12px] tabular-nums text-muted-foreground lg:block lg:text-right">
+                    <span className="hidden font-mono text-[12px] tabular-nums text-muted-foreground xl:block xl:text-right">
+                      {seat.price != null
+                        ? formatCompactNumber(seat.price, 2)
+                        : "—"}
+                    </span>
+                    <span className="hidden justify-end xl:flex">
+                      <ChangeBadge
+                        changePct={seat.change_pct}
+                        className="h-5 px-1.5"
+                      />
+                    </span>
+                    <span className="hidden font-mono text-[12px] tabular-nums text-foreground xl:block xl:text-right">
+                      {formatCompactNumber(seat.volume, 1)}
+                    </span>
+                    <span className="hidden font-mono text-[12px] tabular-nums text-muted-foreground xl:block xl:text-right">
                       {formatCompactNumber(seat.market_cap, 1)}
                     </span>
-                    <div className="flex items-center justify-between gap-2 sm:justify-end lg:block lg:text-right">
-                      <span className="font-mono text-[12px] tabular-nums">
-                        {(seat.influence_share * 100).toFixed(0)}%
-                      </span>
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground sm:hidden">
-                        {formatCompactNumber(seat.market_cap, 1)}
-                      </span>
-                    </div>
-                    <div className="hidden lg:block lg:text-right">
-                      <Link
-                        href={`/graph?symbol=${encodeURIComponent(seat.symbol)}`}
-                        className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                      >
-                        Open
-                      </Link>
-                    </div>
+                    <span className="hidden font-mono text-[12px] tabular-nums text-muted-foreground xl:block xl:text-right">
+                      {formatCompactNumber(seat.turnover, 1)}
+                    </span>
                   </li>
                 ))}
               </ul>
