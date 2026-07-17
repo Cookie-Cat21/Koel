@@ -30,8 +30,9 @@ const RANGES: ChartRangeKey[] = ["1D", "1M", "3M", "6M", "1Y"];
 const REALTIME_MS = 20_000;
 
 /**
- * Compact sparkline + corner expand → large chart dialog.
- * All ranges use candlesticks; 1D builds OHLC from realtime ticks.
+ * Compact candlesticks (daily path) + expand → full range dialog.
+ * 1D builds OHLC from realtime ticks when available; longer ranges use
+ * ``daily_bars``. Compact view prefers candles over the old sparkline.
  */
 export function ExpandablePriceChart({
   symbol,
@@ -43,7 +44,7 @@ export function ExpandablePriceChart({
   className,
   initialOpen = false,
   initialBars = null,
-  initialRange = "1D",
+  initialRange = "3M",
 }: {
   symbol: string;
   points: Point[];
@@ -63,6 +64,17 @@ export function ExpandablePriceChart({
   const [bars, setBars] = useState<DailyBarPoint[] | null>(
     initialBars && initialBars.length > 0 ? initialBars : null,
   );
+  const compactDaily = useMemo(() => {
+    const src = bars ?? initialBars;
+    if (!src || src.length < 2) return null;
+    // Hero strip ≈ 3M of sessions without stretching the layout.
+    return src.slice(-sessionsForRange("3M"));
+  }, [bars, initialBars]);
+  const compactIntraday = useMemo(() => {
+    const series = finiteSparklinePoints(points);
+    if (series.length < 2) return null;
+    return ticksToIntradayBars(series, 40);
+  }, [points]);
   // Realtime ticks fetched client-side; falls back to SSR `points` until the
   // first refresh lands (derived, so prop updates never need a reset effect).
   const [fetchedTicks, setFetchedTicks] = useState<Point[] | null>(null);
@@ -312,6 +324,8 @@ export function ExpandablePriceChart({
     };
   }, [chartBars]);
 
+  const compactBars = compactDaily ?? compactIntraday;
+
   return (
     <div className={className ?? "relative max-w-md"}>
       <div className="relative">
@@ -328,14 +342,27 @@ export function ExpandablePriceChart({
           <Maximize2 className="size-3.5" aria-hidden />
           <span className="hidden sm:inline">Expand</span>
         </button>
-        <SparklineWithForecast
-          points={points}
-          forecastPoints={forecastPoints}
-          confidenceBand={confidenceBand}
-          gate={gate}
-          confidence={confidence}
-          className="pr-16"
-        />
+        {compactBars && compactBars.length >= 2 ? (
+          <CandlestickChart
+            bars={compactBars}
+            maxCandles={48}
+            className="pr-16"
+            footnote={
+              compactDaily
+                ? "Daily candles · expand for ranges · research only"
+                : "Intraday from stored ticks · research only"
+            }
+          />
+        ) : (
+          <SparklineWithForecast
+            points={points}
+            forecastPoints={forecastPoints}
+            confidenceBand={confidenceBand}
+            gate={gate}
+            confidence={confidence}
+            className="pr-16"
+          />
+        )}
       </div>
 
       {open ? (

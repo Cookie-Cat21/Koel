@@ -118,9 +118,21 @@ async def fill_pending_briefs_local(
     storage: Storage,
     limit: int = 50,
     extract_ok_only: bool = True,
+    include_skipped: bool = True,
+    require_pdf: bool = False,
 ) -> LocalFillResult:
-    """Mark pending briefs ready using local metric-based text."""
-    lim = max(1, min(int(limit), 500))
+    """Mark pending/failed/skipped briefs ready using local metric-based text.
+
+    First-run / AI-off boards enqueue rows as ``skipped``; include those so a
+    local fill can populate the dash without Groq/Gemini. Title-only briefs
+    are allowed when ``require_pdf`` is false (default for board-wide soak).
+    """
+    # Cap per call; callers loop for full-board drains.
+    lim = max(1, min(int(limit), 2000))
+    statuses = ("pending", "failed", "skipped") if include_skipped else ("pending", "failed")
+    status_sql = ", ".join(f"'{s}'" for s in statuses)
+    pdf_sql = "AND d.pdf_url IS NOT NULL" if require_pdf else ""
+    extract_sql = "AND fm.extract_ok = TRUE" if extract_ok_only else ""
     async with storage._pool.connection() as conn:
         rows = await (
             await conn.execute(
@@ -142,9 +154,9 @@ async def fill_pending_briefs_local(
                 JOIN disclosures d ON d.id = b.disclosure_id
                 LEFT JOIN filing_metrics fm ON fm.disclosure_id = d.id
                 LEFT JOIN filing_comparisons fc ON fc.filing_metrics_id = fm.id
-                WHERE b.status IN ('pending', 'failed')
-                  AND d.pdf_url IS NOT NULL
-                  {"AND fm.extract_ok = TRUE" if extract_ok_only else ""}
+                WHERE b.status IN ({status_sql})
+                  {pdf_sql}
+                  {extract_sql}
                 ORDER BY d.published_at DESC NULLS LAST, d.id DESC
                 LIMIT %s
                 """,

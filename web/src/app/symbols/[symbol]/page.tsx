@@ -411,6 +411,8 @@ export default async function SymbolDetailPage({
     expandRaw === "1" || expandRaw === "true" || expandRaw === "yes";
   const rangeRaw = Array.isArray(sp.range) ? sp.range[0] : sp.range;
   const rangeKey = (rangeRaw ?? "").toUpperCase();
+  // Default 3M candles (daily path). 1D only when explicitly requested —
+  // intraday needs multiple stored ticks and is no longer the hero gate.
   const initialChartRange: ChartRangeKey =
     rangeKey === "1D" ||
     rangeKey === "1M" ||
@@ -418,7 +420,7 @@ export default async function SymbolDetailPage({
     rangeKey === "6M" ||
     rangeKey === "1Y"
       ? rangeKey
-      : "1D";
+      : "3M";
   // safeDecode — malformed % sequences → notFound (not URIError 500).
   const symbol = normalizeSymbolParam(raw);
   if (!symbol) {
@@ -803,15 +805,7 @@ export default async function SymbolDetailPage({
             ) : null}
           </div>
           <div className="min-h-20 min-w-0 flex-1 md:max-w-sm">
-            {snapsFailed ? (
-              <p className="text-sm text-muted-foreground" role="status">
-                Couldn’t load recent ticks right now.
-              </p>
-            ) : sparkPoints.length < 2 ? (
-              <p className="text-sm text-muted-foreground">
-                Need two stored ticks for a sparkline.
-              </p>
-            ) : (
+            {initialDailyBars.length >= 2 || sparkPoints.length >= 2 ? (
               <ExpandablePriceChart
                 symbol={data.symbol}
                 points={snaps.points}
@@ -823,6 +817,15 @@ export default async function SymbolDetailPage({
                 initialBars={initialDailyBars}
                 initialRange={initialChartRange}
               />
+            ) : snapsFailed ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                Couldn’t load chart data right now.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground" role="status">
+                No daily path history yet. After path-backfill lands, candles
+                show here.
+              </p>
             )}
             <OptionalLwcNote
               enabled={process.env.NEXT_PUBLIC_CHIME_LWC === "1"}

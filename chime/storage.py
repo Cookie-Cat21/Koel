@@ -2048,7 +2048,9 @@ class Storage:
                         error = NULL,
                         updated_at = now()
                     WHERE disclosure_id = %s
-                      AND status IN ('pending', 'processing', 'failed')
+                      AND status IN (
+                          'pending', 'processing', 'failed', 'skipped'
+                      )
                     RETURNING disclosure_id
                     """,
                     (cleaned, model, tokens_in, tokens_out, disclosure_id),

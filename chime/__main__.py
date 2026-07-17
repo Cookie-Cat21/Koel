@@ -518,7 +518,11 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "drain-briefs-local":
         configure_logging()
         settings = Settings.from_env(require_token=False)
-        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else 50
+        # --limit 0 ⇒ board-wide batch (local fill cap); default 200.
+        if isinstance(args.limit, int) and not isinstance(args.limit, bool):
+            limit = 2000 if args.limit <= 0 else args.limit
+        else:
+            limit = 200
 
         async def _local_briefs() -> None:
             from chime.briefs.local_fill import fill_pending_briefs_local
@@ -526,10 +530,14 @@ def main(argv: list[str] | None = None) -> None:
             storage = Storage(settings.database_url)
             await storage.open()
             try:
+                # First-run: fill skipped + title-only (no Groq). Metrics-only
+                # mode remains available later via extract_ok_only=True.
                 result = await fill_pending_briefs_local(
                     storage=storage,
                     limit=limit,
-                    extract_ok_only=True,
+                    extract_ok_only=False,
+                    include_skipped=True,
+                    require_pdf=False,
                 )
                 print(
                     "drain-briefs-local: "
