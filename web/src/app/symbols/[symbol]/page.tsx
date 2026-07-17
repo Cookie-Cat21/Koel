@@ -52,6 +52,11 @@ import { normalizeSymbol, normalizeSymbolParam } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import {
+  loadSymbolPageDisclosures,
+  loadSymbolPageMetrics,
+  loadSymbolPageStock,
+} from "@/lib/db/symbol-page-data";
+import {
   formatCompactNumber,
   formatNumber,
   formatPct,
@@ -434,32 +439,51 @@ export default async function SymbolDetailPage({
           [symbol, ...comparePeers].join(","),
         )}&limit=60`
       : null;
-  const [
-    symRes,
-    snapRes,
-    discRes,
-    metricsRes,
-    briefRes,
-    compareRes,
-    watchRes,
-    forecastRes,
-    dailyBarsRes,
-  ] = await Promise.all([
-      serverApiGet(`/api/v1/symbols/${encoded}`),
+
+  // Stock / disclosures / metrics: read Postgres directly (Vercel Deployment
+  // Protection breaks cookie-bearing self-fetch → empty “No disclosures yet”).
+  let stockLoadFailed = false;
+  let metricsFailed = false;
+  let discsFailed = false;
+  let data: SymbolPayload | null = null;
+  let discs: DisclosuresPayload = { items: [] };
+  let filingMetrics: FilingMetricRow | null = null;
+  let filingComparison: FilingMetricComparison | null = null;
+  let latestBrief: LatestBrief | null = null;
+
+  const [stockResult, discResult, metricsResult, snapRes, compareRes, watchRes, forecastRes, dailyBarsRes] =
+    await Promise.all([
+      loadSymbolPageStock(symbol)
+        .then((row) => ({ ok: true as const, row }))
+        .catch(() => {
+          stockLoadFailed = true;
+          return { ok: false as const, row: null };
+        }),
+      loadSymbolPageDisclosures(symbol, 20)
+        .then((items) => ({ ok: true as const, items }))
+        .catch(() => {
+          discsFailed = true;
+          return { ok: false as const, items: [] as Awaited<
+            ReturnType<typeof loadSymbolPageDisclosures>
+          > };
+        }),
+      loadSymbolPageMetrics(symbol)
+        .then((payload) => ({ ok: true as const, payload }))
+        .catch(() => {
+          metricsFailed = true;
+          return { ok: false as const, payload: null };
+        }),
       serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=60`),
-      serverApiGet(`/api/v1/symbols/${encoded}/disclosures?limit=20`),
-      serverApiGet(`/api/v1/symbols/${encoded}/metrics`),
-      serverApiGet(`/api/v1/symbols/${encoded}/brief`),
       compareQs ? serverApiGet(compareQs) : Promise.resolve(null),
       serverApiGet("/api/v1/watchlist"),
       serverApiGet(`/api/v1/symbols/${encoded}/forecast`),
       serverApiGet(`/api/v1/symbols/${encoded}/daily-bars?limit=260`),
     ]);
 
-  if (symRes.status === 404) {
+  if (!stockLoadFailed && stockResult.ok && stockResult.row == null) {
     notFound();
   }
-  if (!symRes.ok) {
+  if (stockLoadFailed || !stockResult.ok || !stockResult.row) {
     return (
       <Shell>
         <EmptyState
@@ -489,34 +513,69 @@ export default async function SymbolDetailPage({
     );
   }
 
-  let data: SymbolPayload | null = null;
-  try {
-    data = parseSymbolPayload(await symRes.json());
-  } catch {
-    data = null;
-  }
-  if (!data) {
-    return (
-      <Shell>
-        <EmptyState
-          title={`Couldn’t load ${symbol}`}
-          description="Chime got an unexpected symbol payload. Retry in a moment."
-          action={
-            <Button asChild variant="outline">
-              <Link href={`/symbols/${encoded}`}>Try again</Link>
-            </Button>
+  data = {
+    symbol: stockResult.row.symbol,
+    name: stockResult.row.name,
+    sector: stockResult.row.sector,
+    market_cap: null,
+    last:
+      stockResult.row.last && stockResult.row.last.price != null
+        ? {
+            price: stockResult.row.last.price,
+            change: stockResult.row.last.change,
+            change_pct: stockResult.row.last.change_pct,
+            volume: stockResult.row.last.volume,
+            ts: stockResult.row.last.ts,
           }
-        />
-      </Shell>
-    );
+        : null,
+  };
+
+  if (discResult.ok) {
+    discs = { items: discResult.items };
   }
+  if (metricsResult.ok && metricsResult.payload) {
+    const latest = metricsResult.payload.items[0] ?? null;
+    if (latest) {
+      filingMetrics = {
+        kind: latest.kind,
+        entity: latest.entity,
+        currency: latest.currency,
+        fiscal_period_end: latest.fiscal_period_end,
+        eps_basic: latest.eps_basic,
+        revenue: latest.revenue,
+        profit: latest.profit,
+        extract_ok: latest.extract_ok,
+      };
+      const cmp = latest.comparison;
+      filingComparison =
+        cmp &&
+        (cmp.match_quality === "exact_yoy" ||
+          cmp.match_quality === "approx_yoy")
+          ? {
+              match_quality: cmp.match_quality,
+              eps_delta_pct: cmp.eps_delta_pct,
+              revenue_delta_pct: cmp.revenue_delta_pct,
+              profit_delta_pct: cmp.profit_delta_pct,
+            }
+          : cmp
+            ? {
+                match_quality: null,
+                eps_delta_pct: cmp.eps_delta_pct,
+                revenue_delta_pct: cmp.revenue_delta_pct,
+                profit_delta_pct: cmp.profit_delta_pct,
+              }
+            : null;
+    }
+    if (metricsResult.payload.brief) {
+      latestBrief = {
+        title: metricsResult.payload.brief.title,
+        text: metricsResult.payload.brief.text,
+      };
+    }
+  }
+  latestBrief ??= latestBriefFromDisclosures(discs);
 
   let snaps: SnapshotsPayload = { points: [] };
-  let discs: DisclosuresPayload = { items: [] };
-  let filingMetrics: FilingMetricRow | null = null;
-  let filingComparison: FilingMetricComparison | null = null;
-  let latestBrief: LatestBrief | null = null;
-  const metricsFailed = !metricsRes.ok;
   let isWatching = false;
   if (watchRes.ok) {
     try {
@@ -556,9 +615,9 @@ export default async function SymbolDetailPage({
     try {
       const body: unknown = await compareRes.json();
       if (body && typeof body === "object" && !Array.isArray(body)) {
-        const raw = (body as { series?: unknown }).series;
-        if (Array.isArray(raw)) {
-          for (const row of raw) {
+        const rawSeries = (body as { series?: unknown }).series;
+        if (Array.isArray(rawSeries)) {
+          for (const row of rawSeries) {
             if (!row || typeof row !== "object" || Array.isArray(row)) continue;
             const r = row as Record<string, unknown>;
             const peer = normalizeSymbol(r.symbol);
@@ -585,37 +644,8 @@ export default async function SymbolDetailPage({
       comparePeerSeries = [];
     }
   }
-  if (discRes.ok) {
-    try {
-      discs = parseDisclosuresPayload(await discRes.json());
-    } catch {
-      discs = { items: [] };
-    }
-  }
-  if (metricsRes.ok) {
-    try {
-      const metricsBody: unknown = await metricsRes.json();
-      const parsed = parseMetricsPayload(metricsBody);
-      filingMetrics = parsed.metrics;
-      filingComparison = parsed.comparison;
-      latestBrief = parseLatestBriefPayload(metricsBody);
-    } catch {
-      filingMetrics = null;
-      filingComparison = null;
-      latestBrief = null;
-    }
-  }
-  if (!latestBrief && briefRes.ok) {
-    try {
-      latestBrief = parseLatestBriefPayload(await briefRes.json());
-    } catch {
-      latestBrief = null;
-    }
-  }
-  latestBrief ??= latestBriefFromDisclosures(discs);
 
   const snapsFailed = !snapRes.ok;
-  const discsFailed = !discRes.ok;
 
   const initialDailyBars: DailyBarPoint[] = [];
   if (dailyBarsRes?.ok) {

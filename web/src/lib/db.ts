@@ -20,9 +20,16 @@ export function getPool(): Pool {
     throw new Error("DATABASE_URL is not set");
   }
   if (!globalForPg.__chimePgPool) {
+    // Neon / managed Postgres usually require TLS. ``sslmode=require`` in the
+    // URL is enough for libpq clients; node-pg needs an explicit ssl flag when
+    // the host looks like Neon (or sslmode is in the query string).
+    const needsSsl =
+      /[?&]sslmode=(require|verify-full|verify-ca)/i.test(url) ||
+      /\.neon\.tech\b/i.test(url);
     globalForPg.__chimePgPool = new Pool({
       connectionString: url,
       max: 5,
+      ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
     });
   }
   return globalForPg.__chimePgPool;
