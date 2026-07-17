@@ -8,6 +8,43 @@ import { formatNumber } from "@/lib/format";
 
 type Point = { ts: string | null; price: number | null | undefined };
 
+function isSelectiveGate(gate: string | null | undefined): boolean {
+  return (
+    gate === "gated_p90" ||
+    gate === "hpe_p90" ||
+    gate === "gated_c55" ||
+    gate === "gated"
+  );
+}
+
+function gateBadgeMeta(gate: string | null | undefined): {
+  label: string;
+  title: string;
+} | null {
+  if (gate === "gated_p90" || gate === "hpe_p90") {
+    return {
+      label: "Selective ~90%",
+      title:
+        "Selective research emit — historical OOS ~90% when speaking (sparse). Not a guarantee. Not financial advice.",
+    };
+  }
+  if (gate === "gated_c55" || gate === "gated") {
+    return {
+      label: "Selective ~73%",
+      title:
+        "Confidence-gated research emit — historical OOS ~73% when speaking. Not a guarantee. Not financial advice.",
+    };
+  }
+  if (gate === "always_on") {
+    return {
+      label: "Always-on ~60%",
+      title:
+        "Always-on research estimate — historical hit ~60%. Not financial advice.",
+    };
+  }
+  return null;
+}
+
 /**
  * Realtime sparkline with optional dashed forecast overlay.
  * Default = realtime only. Forecast is a model estimate — not advice.
@@ -30,9 +67,8 @@ export function SparklineWithForecast({
   const toggleId = useId();
   const series = finiteSparklinePoints(points);
   const forecast = finiteSparklinePoints(forecastPoints ?? []);
-  // One forecast point is enough for a short overlay; previously required
-  // forecastCoords.length >= 2 which hid single-horizon emits.
   const canToggle = forecast.length >= 1 && series.length >= 2;
+  const spoke = canToggle;
   const bandLabel =
     confidenceBand === "high"
       ? "High"
@@ -41,9 +77,10 @@ export function SparklineWithForecast({
         : confidenceBand === "low"
           ? "Low"
           : null;
-  // Auto-show high-confidence HPE overlays; user can still toggle off.
+  const gateMeta = gateBadgeMeta(gate);
+  // Auto-show selective / high-confidence overlays; user can still toggle off.
   const [showForecast, setShowForecast] = useState(
-    () => confidenceBand === "high" || gate === "hpe_p90",
+    () => isSelectiveGate(gate) || confidenceBand === "high",
   );
 
   if (series.length < 2) {
@@ -119,14 +156,32 @@ export function SparklineWithForecast({
           {showForecast ? " · dashed = model estimate" : ""}
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={
+              spoke
+                ? "rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-emerald-800 uppercase dark:text-emerald-200"
+                : "rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+            }
+            title={
+              spoke
+                ? "Model spoke for this symbol (selective research emit). Not financial advice."
+                : "Model stayed silent — no selective forecast stored for this symbol."
+            }
+          >
+            {spoke ? "Spoke" : "Silent"}
+          </span>
+          {gateMeta ? (
+            <span
+              className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+              title={gateMeta.title}
+            >
+              {gateMeta.label}
+            </span>
+          ) : null}
           {bandLabel ? (
             <span
               className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-              title={
-                gate === "hpe_p90"
-                  ? "High-Precision Emitter — historical OOS ~90% when speaking"
-                  : "Always-on research estimate — historical hit ~60%"
-              }
+              title="Confidence band from historical OOS calibration — not a guarantee."
             >
               Confidence {bandLabel}
               {typeof confidence === "number" && Number.isFinite(confidence)
@@ -150,7 +205,7 @@ export function SparklineWithForecast({
             </label>
           ) : (
             <span className="text-xs text-muted-foreground">
-              No high-confidence forecast stored
+              Silent — no forecast stored
             </span>
           )}
         </div>

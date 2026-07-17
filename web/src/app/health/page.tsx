@@ -8,6 +8,7 @@ import { NfaFooter } from "@/components/nfa-footer";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { sanitizeDisclosureText } from "@/lib/api/disclosure-safe";
+import { toFiniteNumber } from "@/lib/api/finite-number";
 import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
@@ -40,6 +41,30 @@ type BriefQueueHint = {
   };
 };
 
+type MlHealthBlock = {
+  champion: {
+    model_id: string;
+    oos_hit: number | null;
+    oos_gated_hit: number | null;
+    oos_coverage: number | null;
+    status: string;
+  } | null;
+  scoreboard: {
+    hit_20d: number | null;
+    hit_60d: number | null;
+    gated_hit_20d: number | null;
+    n_scored_60d: number;
+  };
+  accrual: {
+    market_summary_days: number;
+    order_book_snapshots: number;
+    latest_order_book_at: string | null;
+    forecast_points_latest_as_of: string | null;
+    spoke_symbols_latest: number;
+  };
+  disclaimer: string;
+};
+
 type HealthPayload = {
   status: "ok" | "degraded";
   db_ok: boolean;
@@ -65,6 +90,7 @@ type HealthPayload = {
   retention?: {
     snapshot_retention_days: number;
   };
+  ml?: MlHealthBlock | null;
 };
 
 function healthUiString(raw: unknown): string | null {
@@ -204,6 +230,80 @@ function parseHealthPayload(body: unknown): HealthPayload | null {
     poller,
     delivery: parseDelivery(r.delivery),
     retention: parseRetention(r.retention),
+    ml: parseMl(r.ml),
+  };
+}
+
+function pctLabel(raw: number | null | undefined): string {
+  if (raw == null || !Number.isFinite(raw)) return "—";
+  return `${(raw * 100).toFixed(1)}%`;
+}
+
+function parseMl(raw: unknown): MlHealthBlock | null {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const m = raw as Record<string, unknown>;
+  let champion: MlHealthBlock["champion"] = null;
+  if (m.champion != null && typeof m.champion === "object" && !Array.isArray(m.champion)) {
+    const c = m.champion as Record<string, unknown>;
+    const modelId =
+      typeof c.model_id === "string" ? c.model_id.trim().slice(0, 128) : "";
+    if (modelId) {
+      champion = {
+        model_id: modelId,
+        oos_hit: toFiniteNumber(c.oos_hit),
+        oos_gated_hit: toFiniteNumber(c.oos_gated_hit),
+        oos_coverage: toFiniteNumber(c.oos_coverage),
+        status:
+          typeof c.status === "string" ? c.status.trim().slice(0, 32) : "champion",
+      };
+    }
+  }
+  const sb =
+    m.scoreboard != null &&
+    typeof m.scoreboard === "object" &&
+    !Array.isArray(m.scoreboard)
+      ? (m.scoreboard as Record<string, unknown>)
+      : {};
+  const ac =
+    m.accrual != null &&
+    typeof m.accrual === "object" &&
+    !Array.isArray(m.accrual)
+      ? (m.accrual as Record<string, unknown>)
+      : {};
+  return {
+    champion,
+    scoreboard: {
+      hit_20d: toFiniteNumber(sb.hit_20d),
+      hit_60d: toFiniteNumber(sb.hit_60d),
+      gated_hit_20d: toFiniteNumber(sb.gated_hit_20d),
+      n_scored_60d: Math.max(0, toNonNegativeSafeInt(sb.n_scored_60d, 0)),
+    },
+    accrual: {
+      market_summary_days: Math.max(
+        0,
+        toNonNegativeSafeInt(ac.market_summary_days, 0),
+      ),
+      order_book_snapshots: Math.max(
+        0,
+        toNonNegativeSafeInt(ac.order_book_snapshots, 0),
+      ),
+      latest_order_book_at: healthTs(ac.latest_order_book_at),
+      forecast_points_latest_as_of:
+        typeof ac.forecast_points_latest_as_of === "string"
+          ? ac.forecast_points_latest_as_of.slice(0, 10)
+          : null,
+      spoke_symbols_latest: Math.max(
+        0,
+        toNonNegativeSafeInt(ac.spoke_symbols_latest, 0),
+      ),
+    },
+    disclaimer:
+      typeof m.disclaimer === "string" && m.disclaimer.trim()
+        ? sanitizeDisclosureText(m.disclaimer, HEALTH_UI_STRING_MAX) ||
+          "Research metrics only — not financial advice."
+        : "Research metrics only — not financial advice.",
   };
 }
 
@@ -253,6 +353,7 @@ export default async function HealthPage() {
   const briefQueue = payload?.poller?.brief_queue ?? null;
   const delivery = payload?.delivery ?? null;
   const retention = payload?.retention ?? null;
+  const ml = payload?.ml ?? null;
   const snapshotAge = timestampAge(payload?.last_snapshot_at);
   const tickAge = timestampAge(payload?.poller?.last_tick_at);
   const pollerUnreachable =
@@ -469,6 +570,71 @@ export default async function HealthPage() {
                 </dl>
               </section>
             )}
+
+            {ml != null ? (
+              <section
+                className="mt-10 border-t border-border/60 pt-6"
+                aria-labelledby="ml-heading"
+              >
+                <h2
+                  id="ml-heading"
+                  className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+                >
+                  Model / forecast
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {ml.disclaimer}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard
+                    label="Champion"
+                    value={ml.champion?.model_id ?? "—"}
+                    hint={
+                      ml.champion
+                        ? `gated OOS ${pctLabel(ml.champion.oos_gated_hit)}`
+                        : "No champion registered"
+                    }
+                  />
+                  <StatCard
+                    label="Gated hit (20d)"
+                    value={pctLabel(ml.scoreboard.gated_hit_20d)}
+                    hint={`Scored rows (60d): ${ml.scoreboard.n_scored_60d}`}
+                  />
+                  <StatCard
+                    label="Spoke symbols"
+                    value={String(ml.accrual.spoke_symbols_latest)}
+                    hint={
+                      ml.accrual.forecast_points_latest_as_of
+                        ? `as of ${ml.accrual.forecast_points_latest_as_of}`
+                        : "No forecast_points yet"
+                    }
+                  />
+                  <StatCard
+                    label="Market summary days"
+                    value={String(ml.accrual.market_summary_days)}
+                    hint={`OB snapshots: ${ml.accrual.order_book_snapshots}`}
+                  />
+                </div>
+                <dl className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Row
+                    label="Hit 20d / 60d"
+                    value={`${pctLabel(ml.scoreboard.hit_20d)} / ${pctLabel(ml.scoreboard.hit_60d)}`}
+                  />
+                  <Row
+                    label="Champion always-on OOS"
+                    value={pctLabel(ml.champion?.oos_hit ?? null)}
+                  />
+                  <Row
+                    label="Latest order book"
+                    value={formatTs(ml.accrual.latest_order_book_at)}
+                  />
+                  <Row
+                    label="Champion coverage"
+                    value={pctLabel(ml.champion?.oos_coverage ?? null)}
+                  />
+                </dl>
+              </section>
+            ) : null}
 
             {delivery != null ? (
               <section

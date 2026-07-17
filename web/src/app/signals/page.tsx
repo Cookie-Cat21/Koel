@@ -18,6 +18,10 @@ import {
 } from "@/lib/api/disclosure-safe";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber } from "@/lib/format";
+import {
+  gateShortLabel,
+  normalizeForecastGate,
+} from "@/lib/forecast-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +41,11 @@ type SignalItem = {
   model_version: string;
   reasons: string[];
   bar_count: number | null;
+  spoke: boolean;
+  forecast_gate: string | null;
+  forecast_gate_label: string | null;
+  forecast_confidence: number | null;
+  forecast_confidence_band: string | null;
 };
 
 function asSignalItems(body: unknown): SignalItem[] | null {
@@ -64,6 +73,16 @@ function asSignalItems(body: unknown): SignalItem[] | null {
       typeof r.name === "string"
         ? sanitizeDisclosureText(r.name, MAX_STOCK_NAME_LENGTH) || null
         : null;
+    const forecastGate = normalizeForecastGate(r.forecast_gate);
+    const forecastConfidence = toFiniteNumber(r.forecast_confidence);
+    const forecastBand =
+      typeof r.forecast_confidence_band === "string"
+        ? r.forecast_confidence_band.trim().slice(0, 16) || null
+        : null;
+    const spoke =
+      typeof r.spoke === "boolean"
+        ? r.spoke
+        : forecastGate != null || forecastConfidence != null;
     out.push({
       symbol,
       name,
@@ -78,6 +97,14 @@ function asSignalItems(body: unknown): SignalItem[] | null {
         const n = toFiniteNumber(r.bar_count);
         return n == null ? null : Math.trunc(n);
       })(),
+      spoke,
+      forecast_gate: forecastGate,
+      forecast_gate_label:
+        typeof r.forecast_gate_label === "string" && r.forecast_gate_label.trim()
+          ? r.forecast_gate_label.trim().slice(0, 32)
+          : gateShortLabel(forecastGate),
+      forecast_confidence: forecastConfidence,
+      forecast_confidence_band: forecastBand,
     });
   }
   return out;
@@ -95,15 +122,30 @@ export default async function SignalsPage() {
     }
   }
 
+  const spokeCount = items?.filter((i) => i.spoke).length ?? 0;
+
   return (
     <div className="min-h-screen bg-background">
       <AppNav />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <PageHeader
           title="Signal Board"
-          description="Research scores from CSE daily path factors (momentum, volatility, liquidity). Higher score is not a buy — informational only."
+          description="Research scores from CSE daily path factors (momentum, volatility, liquidity). Higher score is not a buy — informational only. Spoke means a selective forecast exists; Silent means the model stayed quiet."
         />
         <NfaInline className="mt-3" />
+        {items != null && items.length > 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Forecast coverage on this page:{" "}
+            <span className="font-medium text-foreground">
+              {spokeCount} Spoke
+            </span>
+            {" · "}
+            <span className="font-medium text-foreground">
+              {items.length - spokeCount} Silent
+            </span>
+            . Selective emits are historical OOS-calibrated — not guarantees.
+          </p>
+        ) : null}
 
         {items == null ? (
           <EmptyState
@@ -136,6 +178,23 @@ export default async function SignalsPage() {
                     {row.name ? (
                       <span className="truncate text-sm text-muted-foreground">
                         {row.name}
+                      </span>
+                    ) : null}
+                    <span
+                      className={
+                        row.spoke
+                          ? "rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-emerald-800 uppercase dark:text-emerald-200"
+                          : "rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+                      }
+                    >
+                      {row.spoke ? "Spoke" : "Silent"}
+                    </span>
+                    {row.forecast_gate_label ? (
+                      <span className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                        {row.forecast_gate_label}
+                        {row.forecast_confidence != null
+                          ? ` · ${Math.round(row.forecast_confidence * 100)}%`
+                          : ""}
                       </span>
                     ) : null}
                   </div>

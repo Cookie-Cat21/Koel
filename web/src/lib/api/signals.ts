@@ -12,6 +12,10 @@ import {
 import { toFiniteNumber } from "@/lib/api/finite-number";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
+import {
+  gateShortLabel,
+  normalizeForecastGate,
+} from "@/lib/forecast-gate";
 
 export const MAX_SIGNAL_REASON_LENGTH = 240;
 export const MAX_SIGNAL_REASONS = 8;
@@ -24,6 +28,12 @@ export type SignalRow = {
   model_version: string;
   reasons: string[];
   bar_count: number | null;
+  /** True when a selective/always-on forecast exists for latest as_of. */
+  spoke: boolean;
+  forecast_gate: string | null;
+  forecast_gate_label: string | null;
+  forecast_confidence: number | null;
+  forecast_confidence_band: string | null;
 };
 
 function sanitizeReason(raw: unknown): string | null {
@@ -44,19 +54,57 @@ export async function queryLatestSignals(
     model_version: string;
     reasons: string[] | null;
     bar_count: number | null;
+    forecast_gate: string | null;
+    forecast_confidence: number | null;
+    forecast_confidence_band: string | null;
   }>(
     `
-    SELECT DISTINCT ON (sc.symbol)
+    WITH scores AS (
+      SELECT DISTINCT ON (sc.symbol)
+        sc.symbol,
+        s.name,
+        sc.score,
+        sc.as_of,
+        sc.model_version,
+        sc.reasons,
+        sc.bar_count
+      FROM symbol_scores sc
+      JOIN stocks s ON s.symbol = sc.symbol
+      ORDER BY sc.symbol ASC, sc.as_of DESC, sc.computed_at DESC
+    ),
+    forecasts AS (
+      SELECT DISTINCT ON (fp.symbol)
+        fp.symbol,
+        fp.gate AS forecast_gate,
+        fp.confidence AS forecast_confidence,
+        fp.confidence_band AS forecast_confidence_band
+      FROM forecast_points fp
+      ORDER BY
+        fp.symbol ASC,
+        fp.as_of DESC,
+        CASE
+          WHEN fp.gate IN ('gated_p90', 'hpe_p90') THEN 0
+          WHEN fp.gate IN ('gated_c55', 'gated') THEN 1
+          WHEN fp.confidence_band = 'high' THEN 2
+          WHEN fp.confidence_band = 'medium' THEN 3
+          ELSE 4
+        END,
+        fp.confidence DESC NULLS LAST,
+        fp.computed_at DESC
+    )
+    SELECT
       sc.symbol,
-      s.name,
+      sc.name,
       sc.score,
       sc.as_of,
       sc.model_version,
       sc.reasons,
-      sc.bar_count
-    FROM symbol_scores sc
-    JOIN stocks s ON s.symbol = sc.symbol
-    ORDER BY sc.symbol ASC, sc.as_of DESC, sc.computed_at DESC
+      sc.bar_count,
+      f.forecast_gate,
+      f.forecast_confidence,
+      f.forecast_confidence_band
+    FROM scores sc
+    LEFT JOIN forecasts f ON f.symbol = sc.symbol
     `,
   );
 
@@ -84,6 +132,12 @@ export async function queryLatestSignals(
       asOf = row.as_of.slice(0, 10);
     }
     const barCount = toFiniteNumber(row.bar_count);
+    const forecastGate = normalizeForecastGate(row.forecast_gate);
+    const forecastConfidence = toFiniteNumber(row.forecast_confidence);
+    const forecastBand =
+      typeof row.forecast_confidence_band === "string"
+        ? row.forecast_confidence_band.trim().slice(0, 16) || null
+        : null;
     mapped.push({
       symbol,
       name,
@@ -95,6 +149,11 @@ export async function queryLatestSignals(
           : "unknown",
       reasons,
       bar_count: barCount == null ? null : Math.trunc(barCount),
+      spoke: forecastGate != null || forecastConfidence != null,
+      forecast_gate: forecastGate,
+      forecast_gate_label: gateShortLabel(forecastGate),
+      forecast_confidence: forecastConfidence,
+      forecast_confidence_band: forecastBand,
     });
   }
 

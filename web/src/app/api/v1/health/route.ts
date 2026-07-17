@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { queryMlHealth } from "@/lib/api/ml-health";
 import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
 import { toIso } from "@/lib/api/time";
 import {
@@ -420,6 +421,17 @@ export async function GET(request: NextRequest) {
   const status = dbOk && !pollerDegraded ? "ok" : "degraded";
   const httpStatus = status === "ok" ? 200 : 503;
 
+  let ml: Awaited<ReturnType<typeof queryMlHealth>> | null = null;
+  if (dbOk) {
+    try {
+      const pool = getPool();
+      ml = await queryMlHealth(pool);
+    } catch (err) {
+      console.error("GET /health ml block failed", err);
+      ml = null;
+    }
+  }
+
   const payload: Record<string, unknown> = {
     status,
     db_ok: dbOk,
@@ -434,6 +446,9 @@ export async function GET(request: NextRequest) {
     payload.poller = poller;
   } else {
     payload.poller = null;
+  }
+  if (ml != null) {
+    payload.ml = ml;
   }
 
   if (!dbOk && httpStatus === 503) {

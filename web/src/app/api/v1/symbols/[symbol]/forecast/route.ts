@@ -30,9 +30,9 @@ export async function GET(
 
   try {
     const pool = getPool();
-    // Prefer HPE / higher confidence when several model_versions share as_of.
-    // Use ::text for as_of in the follow-up query — node-pg Date params can
-    // shift calendar dates across TZ boundaries and return zero rows.
+    // Prefer selective gates (p90 / HPE / gated) over always-on when several
+    // model_versions share as_of. Use ::date for as_of in the follow-up query —
+    // node-pg Date params can shift calendar dates across TZ boundaries.
     const latest = await pool.query<{
       as_of: Date | string;
       model_version: string;
@@ -44,11 +44,12 @@ export async function GET(
       ORDER BY
         as_of DESC,
         CASE
-          WHEN gate = 'hpe_p90' THEN 0
-          WHEN confidence_band = 'high' THEN 1
-          WHEN confidence_band = 'medium' THEN 2
-          WHEN confidence_band = 'low' THEN 3
-          ELSE 4
+          WHEN gate IN ('gated_p90', 'hpe_p90') THEN 0
+          WHEN gate IN ('gated_c55', 'gated') THEN 1
+          WHEN confidence_band = 'high' THEN 2
+          WHEN confidence_band = 'medium' THEN 3
+          WHEN confidence_band = 'low' THEN 4
+          ELSE 5
         END,
         confidence DESC NULLS LAST,
         computed_at DESC
