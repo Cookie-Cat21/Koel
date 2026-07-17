@@ -87,17 +87,18 @@ export type ChartRangeKey = "1D" | "1M" | "3M" | "6M" | "1Y";
 /**
  * How many raw sessions/ticks to load for a range chip.
  * 1D = snapshot ticks; others = daily_bars tail length.
+ * Sized so fit-width expand slots stay ~10–14px (not huge candles).
  */
 export function sessionsForRange(range: ChartRangeKey): number {
   switch (range) {
     case "1D":
-      return 160; // enough ticks to bucket into ~48 intraday candles
+      return 240; // bucket into ~72 intraday candles
     case "1M":
-      return 32; // ~1.5 trading months — denser than bare 22
+      return 80; // denser month view (~4 trading months of path)
     case "3M":
-      return 72;
+      return 100;
     case "6M":
-      return 140;
+      return 160;
     case "1Y":
     default:
       return 260;
@@ -106,26 +107,26 @@ export function sessionsForRange(range: ChartRangeKey): number {
 
 /**
  * Target candle count after aggregation for fit-width charts.
- * Tuned for ~10–14px slot on a typical expand dialog (~1100–1400px).
+ * More candles ⇒ smaller bodies when the plot fills the dialog.
  */
 export function displayCandlesForRange(range: ChartRangeKey): number {
   switch (range) {
     case "1D":
-      return 48;
+      return 72;
     case "1M":
-      return 32;
+      return 80;
     case "3M":
-      return 64;
+      return 100;
     case "6M":
-      return 96;
+      return 140;
     case "1Y":
     default:
-      return 120;
+      return 200;
   }
 }
 
-/** Hero strip under the quote — ~3 months looks dense at pack slot. */
-export const HERO_DISPLAY_CANDLES = 64;
+/** Hero strip under the quote — denser pack at fixed pitch. */
+export const HERO_DISPLAY_CANDLES = 80;
 
 /**
  * Build intraday OHLC candles from tick prices for the 1D expand view.
