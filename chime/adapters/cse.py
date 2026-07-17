@@ -2001,11 +2001,36 @@ class CSEClient:
 
         Observed values: ``Banks``, ``Capital Goods``, ``Telecommunication Services``.
         """
+        profile = await self.fetch_company_profile(symbol)
+        if not profile:
+            return None
+        sector = profile.get("sector")
+        if not isinstance(sector, str) or not sector.strip():
+            return None
+        cleaned = sector.strip()
+        if len(cleaned) > 128:
+            cleaned = cleaned[:128].rstrip()
+        return cleaned
+
+    async def fetch_company_profile(self, symbol: str) -> dict[str, Any] | None:
+        """``POST /companyProfile`` — sector, directors, top posts.
+
+        Returns a normalized dict::
+
+            {
+              "symbol": "JKH.N0000",
+              "sector": "Capital Goods" | None,
+              "name": str | None,
+              "top_posts": [raw rows...],
+              "directors": [raw rows...],
+              "key_executives": [raw rows...],
+            }
+        """
         if not isinstance(symbol, str) or not symbol.strip():
             return None
         sym = symbol.strip().upper()
 
-        async def _call() -> str | None:
+        async def _call() -> dict[str, Any] | None:
             raw = await self._request(
                 "POST",
                 COMPANY_PROFILE_PATH,
@@ -2020,22 +2045,69 @@ class CSEClient:
                     error="expected object",
                 )
                 raise ValueError(f"{COMPANY_PROFILE_ENDPOINT}: expected JSON object")
-            rows = raw.get("reqComSumInfo")
-            if not isinstance(rows, list) or not rows:
-                return None
-            first = rows[0]
-            if not isinstance(first, dict):
-                return None
-            sector = first.get("sector")
-            if not isinstance(sector, str) or not sector.strip():
-                return None
-            # Cap hostile long strings from CSE.
-            cleaned = sector.strip()
-            if len(cleaned) > 128:
-                cleaned = cleaned[:128].rstrip()
-            return cleaned
 
-        return cast(str | None, await self._guarded(COMPANY_PROFILE_ENDPOINT, _call))
+            def _row_list(key: str) -> list[dict[str, Any]]:
+                rows = raw.get(key)
+                if not isinstance(rows, list):
+                    return []
+                out: list[dict[str, Any]] = []
+                for row in rows:
+                    if isinstance(row, dict):
+                        out.append(row)
+                return out
+
+            sector: str | None = None
+            name: str | None = None
+            summary = raw.get("reqComSumInfo")
+            if isinstance(summary, list) and summary and isinstance(summary[0], dict):
+                sec = summary[0].get("sector")
+                if isinstance(sec, str) and sec.strip():
+                    sector = sec.strip()[:128]
+                nm = summary[0].get("name") or summary[0].get("companyName")
+                if isinstance(nm, str) and nm.strip():
+                    name = nm.strip()[:200]
+
+            return {
+                "symbol": sym,
+                "sector": sector,
+                "name": name,
+                "top_posts": _row_list("topPosts"),
+                "directors": _row_list("infoCompanyDirector"),
+                "key_executives": _row_list("infoCompanyKeyExecutive"),
+            }
+
+        return cast(
+            dict[str, Any] | None,
+            await self._guarded(COMPANY_PROFILE_ENDPOINT, _call),
+        )
+
+    async def fetch_company_directors(self, symbol: str) -> list[dict[str, Any]]:
+        """Official board seats from ``companyProfile`` (parsed).
+
+        Each item: ``director_id``, ``display_name``, ``name_norm``, ``roles``,
+        ``designation_raw``, ``source_bucket``.
+        """
+        from chime.extractors.cse_directors import merge_cse_board
+
+        profile = await self.fetch_company_profile(symbol)
+        if not profile:
+            return []
+        seats = merge_cse_board(
+            top_posts=profile.get("top_posts"),
+            directors=profile.get("directors"),
+            key_executives=profile.get("key_executives"),
+        )
+        return [
+            {
+                "director_id": s.director_id,
+                "display_name": s.display_name,
+                "name_norm": s.name_norm,
+                "roles": list(s.roles),
+                "designation_raw": s.designation_raw,
+                "source_bucket": s.source_bucket,
+            }
+            for s in seats
+        ]
 
     async def fetch_buy_in_announcements(self) -> list[MarketNotice]:
         return await self._fetch_notice_list(

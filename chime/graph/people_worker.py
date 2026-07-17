@@ -105,7 +105,7 @@ async def process_disclosure_people(
         data,
         title=disclosure.title,
         category=disclosure.category,
-        max_pages=min(cfg.max_pages, 90),
+        max_pages=max(cfg.max_pages, 160),
     )
     saved = await storage.upsert_filing_people_extract(
         {

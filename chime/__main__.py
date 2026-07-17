@@ -27,6 +27,7 @@ from chime.notices_backfill import run_notices_backfill
 from chime.notify import SendResult, send_message
 from chime.path_backfill import run_path_backfill
 from chime.poller import Poller, run_poller_forever
+from chime.graph.directors_sync import run_directors_sync
 from chime.sector_backfill import run_sector_backfill
 from chime.signals import run_signal_score_job
 from chime.storage import Storage
@@ -329,6 +330,7 @@ def main(argv: list[str] | None = None) -> None:
             "drain-metrics",
             "drain-graph",
             "drain-people",
+            "directors-backfill",
             "path-backfill",
             "intraday-backfill",
             "hybrid-backfill",
@@ -361,7 +363,7 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             "bot | poller | both | migrate | tick | "
             "drain-pdfs | drain-briefs | drain-briefs-local | drain-metrics | "
-            "drain-graph | drain-people | "
+            "drain-graph | drain-people | directors-backfill | "
             "path-backfill | intraday-backfill | hybrid-backfill | "
             "score-signals | eval-signals | "
             "sector-backfill | notices-backfill | disclosures-backfill | "
@@ -380,7 +382,8 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             "tick: ignore market hours; "
             "path-backfill/intraday-backfill/hybrid-backfill/"
-            "sector-backfill/notices-backfill: run even if flag off"
+            "sector-backfill/notices-backfill/directors-backfill: "
+            "run even if flag off"
         ),
     )
     parser.add_argument(
@@ -466,6 +469,7 @@ def main(argv: list[str] | None = None) -> None:
         "hybrid-backfill",
         "sector-backfill",
         "notices-backfill",
+        "directors-backfill",
         "ml-forecast",
         "ml-hpe",
         "ml-forecast-unified",
@@ -480,9 +484,9 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(
             "--force is only valid for tick, path-backfill, intraday-backfill, "
             "hybrid-backfill, sector-backfill, notices-backfill, "
-            "disclosures-backfill, financials-backfill, aspi-backfill, "
-            "ml-forecast, ml-hpe, ml-forecast-unified, ml-loop-nightly, "
-            "ml-loop-retrain, ml-loop-research, or ml-ltr-ship"
+            "directors-backfill, disclosures-backfill, financials-backfill, "
+            "aspi-backfill, ml-forecast, ml-hpe, ml-forecast-unified, "
+            "ml-loop-nightly, ml-loop-retrain, ml-loop-research, or ml-ltr-ship"
         )
     if args.period is not None and args.command != "path-backfill":
         parser.error("--period is only valid for path-backfill")
@@ -746,6 +750,46 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_sector_bf())
+        return
+
+    if args.command == "directors-backfill":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else 80
+
+        async def _directors_bf() -> None:
+            storage = Storage(settings.database_url)
+            await storage.open()
+            cse = CSEClient(
+                base_url=settings.cse_base_url,
+                timeout=settings.http_timeout_seconds,
+                fail_max=settings.circuit_fail_max,
+                reset_timeout=settings.circuit_reset_seconds,
+                min_interval_seconds=settings.cse_min_interval_seconds,
+            )
+            try:
+                result = await run_directors_sync(
+                    settings=settings,
+                    storage=storage,
+                    cse=cse,
+                    limit=limit,
+                    force=args.force,
+                    top_by_mcap=True,
+                )
+                print(
+                    "directors-backfill: "
+                    f"targeted={result.symbols_targeted} "
+                    f"updated={result.symbols_updated} "
+                    f"skipped={result.symbols_skipped} "
+                    f"failed={result.symbols_failed} "
+                    f"seats={result.seats_written} "
+                    f"roles={result.roles_written}"
+                )
+            finally:
+                await cse.aclose()
+                await storage.close()
+
+        asyncio.run(_directors_bf())
         return
 
     if args.command == "notices-backfill":

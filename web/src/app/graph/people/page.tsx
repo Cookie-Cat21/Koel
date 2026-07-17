@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "People map · Chime",
   description:
-    "Directors and CEOs from CSE annual reports, sized by linked company market value. Not personal net worth. Not advice.",
+    "Directors and CEOs from official CSE company profiles, sized by linked company market value. Not personal net worth. Not advice.",
 };
 
 export default async function PeopleGraphPage() {
@@ -27,9 +27,11 @@ export default async function PeopleGraphPage() {
   try {
     const pool = getPool();
     const graph = await queryPeopleGraph(pool, {
-      limit: 80,
-      minConfidence: "medium",
-      leadershipOnly: true,
+      limit: 180,
+      // CSE companyProfile seats are stored as high confidence
+      minConfidence: "high",
+      // Full board seats (not only chair/CEO) so the map is dense
+      leadershipOnly: false,
     });
     people = graph.people;
   } catch {
@@ -43,7 +45,7 @@ export default async function PeopleGraphPage() {
         <PageHeader
           eyebrow="Research"
           title="People map"
-          description="Board leaders from public annual reports. Bubble size reflects linked company market value × role — not anyone’s personal net worth."
+          description="Board lists from official CSE company profiles (cse.lk). Bubble size reflects linked company market value × role — not anyone’s personal net worth."
           action={
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" size="sm">

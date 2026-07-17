@@ -2671,6 +2671,113 @@ class Storage:
             )
         return out
 
+    async def list_top_symbols_by_market_cap(self, *, limit: int = 60) -> list[str]:
+        """Voting-share symbols ordered by latest market cap (desc)."""
+        lim = max(1, min(int(limit), 300)) if not isinstance(limit, bool) else 60
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT s.symbol
+                    FROM stocks s
+                    JOIN LATERAL (
+                      SELECT market_cap
+                      FROM price_snapshots p
+                      WHERE p.symbol = s.symbol AND p.market_cap IS NOT NULL
+                      ORDER BY p.ts DESC
+                      LIMIT 1
+                    ) ps ON TRUE
+                    WHERE s.symbol LIKE '%%.N0000'
+                      AND s.symbol <> 'MARKET'
+                    ORDER BY ps.market_cap DESC NULLS LAST
+                    LIMIT %s
+                    """,
+                    (lim,),
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            if isinstance(sym, str) and sym.strip():
+                out.append(sym.strip().upper())
+        return out
+
+    async def list_voting_share_symbols(self, *, limit: int | None = None) -> list[str]:
+        """All ``*.N0000`` symbols in ``stocks`` (alphabetical)."""
+        lim_sql = ""
+        params: list[Any] = []
+        if (
+            limit is not None
+            and isinstance(limit, int)
+            and not isinstance(limit, bool)
+            and limit > 0
+        ):
+            lim_sql = "LIMIT %s"
+            params.append(max(1, min(limit, 500)))
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    f"""
+                    SELECT symbol
+                    FROM stocks
+                    WHERE symbol LIKE '%%.N0000'
+                      AND symbol <> 'MARKET'
+                    ORDER BY symbol ASC
+                    {lim_sql}
+                    """,
+                    tuple(params),
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            if isinstance(sym, str) and sym.strip():
+                out.append(sym.strip().upper())
+        return out
+
+    async def deactivate_person_roles_for_symbol(self, symbol: str) -> int:
+        """Mark all active person roles for an issuer inactive (CSE replace)."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return 0
+        sym = symbol.strip().upper()
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    UPDATE person_company_roles
+                    SET active = FALSE, updated_at = now()
+                    WHERE symbol = %s AND active
+                    RETURNING id
+                    """,
+                    (sym,),
+                )
+            ).fetchall()
+        return len(rows or [])
+
+    async def deactivate_non_cse_person_roles_for_symbol(
+        self, symbol: str, *, source: str = "cse_company_profile"
+    ) -> int:
+        """Deactivate PDF/other seats once official CSE rows exist for symbol."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return 0
+        sym = symbol.strip().upper()
+        src = source if isinstance(source, str) and source.strip() else "cse_company_profile"
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    UPDATE person_company_roles
+                    SET active = FALSE, updated_at = now()
+                    WHERE symbol = %s
+                      AND active
+                      AND COALESCE(extract_notes->>'source', '') <> %s
+                    RETURNING id
+                    """,
+                    (sym, src),
+                )
+            ).fetchall()
+        return len(rows or [])
+
     async def list_disclosures_pending_graph(
         self,
         *,

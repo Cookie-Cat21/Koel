@@ -95,7 +95,7 @@ function PeopleFlow({
   selectedId: number | null;
   onSelect: (id: number | null) => void;
 }) {
-  const top = people.slice(0, 18);
+  const top = people.slice(0, 36);
   const companies = new Map<string, { mcap: number | null; name: string | null }>();
   for (const p of top) {
     for (const r of p.roles) {
@@ -110,17 +110,18 @@ function PeopleFlow({
   }
 
   const maxInf = Math.max(...top.map((p) => p.influence_score), 1);
-  const companyList = Array.from(companies.entries()).slice(0, 24);
+  const companyList = Array.from(companies.entries()).slice(0, 40);
 
   const nodes: Node[] = [];
+  const personCols = 3;
   top.forEach((p, i) => {
-    const size = 40 + (p.influence_score / maxInf) * 36;
-    const row = i % 9;
-    const col = Math.floor(i / 9);
+    const size = 36 + (p.influence_score / maxInf) * 32;
+    const col = i % personCols;
+    const row = Math.floor(i / personCols);
     nodes.push({
       id: `p-${p.id}`,
       type: "person",
-      position: { x: 40 + col * 130, y: 30 + row * 70 },
+      position: { x: 24 + col * 120, y: 20 + row * 62 },
       data: {
         label: shortName(p.name),
         sub: formatCompactNumber(p.influence_score, 1),
@@ -129,12 +130,16 @@ function PeopleFlow({
       },
     });
   });
+  const companyX = 24 + personCols * 120 + 48;
   companyList.forEach(([sym, meta], i) => {
-    const size = 52 + Math.min(28, Math.log10(Math.max(meta.mcap ?? 1e9, 1e9)) * 4);
+    const size = 48 + Math.min(24, Math.log10(Math.max(meta.mcap ?? 1e9, 1e9)) * 3);
     nodes.push({
       id: `c-${sym}`,
       type: "company",
-      position: { x: 420, y: 20 + i * 48 },
+      position: {
+        x: companyX,
+        y: 16 + i * Math.max(40, Math.min(52, 520 / Math.max(companyList.length, 1))),
+      },
       data: {
         label: sym.replace(/\.(N|X)0000$/i, ""),
         sub: formatCompactNumber(meta.mcap, 1),
@@ -198,7 +203,7 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
   const [selectedId, setSelectedId] = useState<number | null>(
     people[0]?.id ?? null,
   );
-  const [leadershipOnly, setLeadershipOnly] = useState(true);
+  const [leadershipOnly, setLeadershipOnly] = useState(false);
 
   const filtered = useMemo(() => {
     if (!leadershipOnly) return people;
@@ -219,7 +224,7 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
     return (
       <EmptyState
         title="No people extracted yet"
-        description="Run drain-people on annual PDFs to populate directors and CEOs from board sections."
+        description="Run directors-backfill to pull official CSE companyProfile boards into the map."
       />
     );
   }
@@ -263,8 +268,8 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
               Research proxy from board seats × company market cap (LKR).
             </p>
           </div>
-          <ol className="max-h-40 space-y-1 overflow-y-auto text-sm">
-            {filtered.slice(0, 12).map((p, i) => (
+          <ol className="max-h-56 space-y-1 overflow-y-auto text-sm">
+            {filtered.slice(0, 30).map((p, i) => (
               <li key={p.id}>
                 <button
                   type="button"

@@ -91,10 +91,11 @@ export async function queryPeopleGraph(
     leadershipOnly?: boolean;
   } = {},
 ): Promise<{ people: PersonNode[]; edges: PersonCompanyEdge[] }> {
-  const limit = Math.min(Math.max(opts.limit ?? 60, 1), 150);
+  const limit = Math.min(Math.max(opts.limit ?? 120, 1), 200);
   const minRank =
     opts.minConfidence === "high" ? 3 : opts.minConfidence === "low" ? 1 : 2;
-  const leadershipOnly = opts.leadershipOnly !== false;
+  // Default false = include full boards (independent / NED / etc.)
+  const leadershipOnly = opts.leadershipOnly === true;
 
   const roleFilter = leadershipOnly
     ? `AND r.role IN (
@@ -127,6 +128,17 @@ export async function queryPeopleGraph(
       LIMIT 1
     ) ps ON TRUE
     WHERE r.active
+      -- Prefer official CSE companyProfile seats when present for that issuer
+      AND (
+        r.extract_notes->>'source' = 'cse_company_profile'
+        OR NOT EXISTS (
+          SELECT 1
+          FROM person_company_roles x
+          WHERE x.symbol = r.symbol
+            AND x.active
+            AND x.extract_notes->>'source' = 'cse_company_profile'
+        )
+      )
       AND CASE r.confidence
             WHEN 'high' THEN 3
             WHEN 'medium' THEN 2

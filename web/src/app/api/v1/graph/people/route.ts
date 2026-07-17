@@ -8,8 +8,8 @@ import { getPool } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-const DEFAULT_LIMIT = 60;
-const MAX_LIMIT = 150;
+const DEFAULT_LIMIT = 120;
+const MAX_LIMIT = 200;
 
 /**
  * GET /api/v1/graph/people — directors/CEOs linked to companies.
@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
   const minRaw = (sp.get("min_confidence") ?? "medium").toLowerCase();
   const minConfidence =
     minRaw === "high" || minRaw === "low" ? minRaw : "medium";
-  const leadershipOnly = sp.get("all_roles") !== "1";
+  // Default: all board roles. Pass leadership=1 to restrict to chair/CEO/MD/…
+  const leadershipOnly = sp.get("leadership") === "1";
 
   try {
     const pool = getPool();
