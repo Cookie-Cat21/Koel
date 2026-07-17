@@ -17,6 +17,7 @@ import {
   type ChartRangeKey,
   type DailyBarPoint,
   HERO_DISPLAY_CANDLES,
+  MIN_TICKS_FOR_INTRADAY,
   displayCandlesForRange,
   sessionsForRange,
   ticksToIntradayBars,
