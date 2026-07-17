@@ -19,6 +19,7 @@ This file tracks **external market / macro feeds** considered for Signal Board f
 | B — public macro | Candidate later | CBSL policy rate / inflation; ToS-clean USD/LKR; WB/IMF open series |
 | C — text | Partial | Filing PDF extract + optional Gemini briefs (existing flags) |
 | D — commercial | Deferred | Finnhub, Polygon, Bloomberg, … |
+| D* — Yahoo CSE (unofficial) | **Research panel only** | `hybrid_daily_bars` via `yfinance` (`.CM` tickers); flag `HYBRID_BACKFILL_ENABLED` default 0; **not** dash truth; CSE wins on overlap; Yahoo cut on/after `YAHOO_STALE_CUTOFF` (2026-02-18) |
 | E — banned | Never | Competitor HTML/APIs; dash→upstream scrapers |
 
 ## Adapter intake checklist (copy per source)

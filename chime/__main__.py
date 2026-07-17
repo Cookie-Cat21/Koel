@@ -313,6 +313,7 @@ def main(argv: list[str] | None = None) -> None:
             "drain-briefs-local",
             "drain-metrics",
             "path-backfill",
+            "hybrid-backfill",
             "score-signals",
             "eval-signals",
             "sector-backfill",
@@ -340,7 +341,7 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             "bot | poller | both | migrate | tick | "
             "drain-pdfs | drain-briefs | drain-briefs-local | drain-metrics | "
-            "path-backfill | score-signals | eval-signals | "
+            "path-backfill | hybrid-backfill | score-signals | eval-signals | "
             "sector-backfill | notices-backfill | disclosures-backfill | "
             "financials-backfill | aspi-backfill | market-summary-backfill | "
             "ml-experiment | "
@@ -355,14 +356,15 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help=(
             "tick: ignore market hours; "
-            "path-backfill/sector-backfill/notices-backfill: run even if flag off"
+            "path-backfill/hybrid-backfill/sector-backfill/notices-backfill: "
+            "run even if flag off"
         ),
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=20,
-        help="For drain-* / path-backfill: max rows/symbols (default 20)",
+        help="For drain-* / path-backfill / hybrid-backfill: max rows/symbols (default 20)",
     )
     parser.add_argument(
         "--all-symbols",
@@ -430,6 +432,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.force and args.command not in (
         "tick",
         "path-backfill",
+        "hybrid-backfill",
         "sector-backfill",
         "notices-backfill",
         "ml-forecast",
@@ -443,7 +446,7 @@ def main(argv: list[str] | None = None) -> None:
         "ml-loop-research",
     ):
         parser.error(
-            "--force is only valid for tick, path-backfill, "
+            "--force is only valid for tick, path-backfill, hybrid-backfill, "
             "sector-backfill, notices-backfill, disclosures-backfill, "
             "financials-backfill, aspi-backfill, ml-forecast, ml-hpe, "
             "ml-forecast-unified, ml-loop-nightly, ml-loop-retrain, "
@@ -573,6 +576,39 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_path_bf())
+        return
+
+    if args.command == "hybrid-backfill":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else None
+
+        async def _hybrid_bf() -> None:
+            from chime.hybrid_backfill import run_hybrid_backfill
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                result = await run_hybrid_backfill(
+                    settings=settings,
+                    storage=storage,
+                    force=args.force,
+                    limit=limit,
+                )
+                print(
+                    "hybrid-backfill: "
+                    f"targeted={result.symbols_targeted} "
+                    f"ok={result.symbols_ok} "
+                    f"skipped={result.symbols_skipped} "
+                    f"failed={result.symbols_failed} "
+                    f"bars={result.bars_upserted} "
+                    f"yahoo_kept={result.yahoo_bars_kept} "
+                    f"cse_copied={result.cse_bars_copied}"
+                )
+            finally:
+                await storage.close()
+
+        asyncio.run(_hybrid_bf())
         return
 
     if args.command == "sector-backfill":

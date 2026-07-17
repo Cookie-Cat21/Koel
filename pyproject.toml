@@ -29,6 +29,10 @@ ml = [
     "scikit-learn>=1.5",
     "numpy>=2",
 ]
+hybrid = [
+    "yfinance>=0.2",
+    "pandas>=2",
+]
 
 [project.scripts]
 chime = "chime.__main__:main"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -168,6 +169,12 @@ class Settings:
     sector_backfill_sleep_seconds: float = 0.35
     # NOTICES_BACKFILL_ENABLED=1 — allow ops CLI to seed market_notices.
     notices_backfill_enabled: bool = False
+    # HYBRID_BACKFILL_ENABLED=1 — Yahoo+CSE splice into hybrid_daily_bars
+    # (ML/research panel). Default 0. Does not replace daily_bars.
+    hybrid_backfill_enabled: bool = False
+    hybrid_backfill_sleep_seconds: float = 0.25
+    # Cut Yahoo rows on/after this date (feed went stale vs CSE).
+    yahoo_stale_cutoff: date = date(2026, 2, 18)
     # ML_FORECAST_ENABLED=1 — score-signals / ml-forecast write HGB path
     # estimates into forecast_points (default 0 = keep naive forecast_path).
     ml_forecast_enabled: bool = False
@@ -200,12 +207,18 @@ class Settings:
         path_bf_raw = _env_str("PATH_BACKFILL_ENABLED", "0")
         sector_bf_raw = _env_str("SECTOR_BACKFILL_ENABLED", "0")
         notices_bf_raw = _env_str("NOTICES_BACKFILL_ENABLED", "0")
+        hybrid_bf_raw = _env_str("HYBRID_BACKFILL_ENABLED", "0")
         ml_fc_raw = _env_str("ML_FORECAST_ENABLED", "0")
         ml_hpe_raw = _env_str("ML_HPE_ENABLED", "0")
         ml_loop_raw = _env_str("ML_LOOP_ENABLED", "0")
         path_period = _int("PATH_BACKFILL_PERIOD", 5)
         if path_period not in {2, 3, 4, 5}:
             path_period = 5
+        yahoo_cut_raw = _env_str("YAHOO_STALE_CUTOFF", "2026-02-18")
+        try:
+            yahoo_cutoff = date.fromisoformat(yahoo_cut_raw.strip())
+        except ValueError:
+            yahoo_cutoff = date(2026, 2, 18)
         market_open = _hhmm("MARKET_OPEN", "09:30")
         market_close = _hhmm("MARKET_CLOSE", "14:30")
         if _minutes(market_close) < _minutes(market_open):
@@ -249,6 +262,11 @@ class Settings:
                 "SECTOR_BACKFILL_SLEEP_SECONDS", 0.35
             ),
             notices_backfill_enabled=notices_bf_raw.strip() == "1",
+            hybrid_backfill_enabled=hybrid_bf_raw.strip() == "1",
+            hybrid_backfill_sleep_seconds=_nonneg_float(
+                "HYBRID_BACKFILL_SLEEP_SECONDS", 0.25
+            ),
+            yahoo_stale_cutoff=yahoo_cutoff,
             ml_forecast_enabled=ml_fc_raw.strip() == "1",
             ml_hpe_enabled=ml_hpe_raw.strip() == "1",
             ml_loop_enabled=ml_loop_raw.strip() == "1",
