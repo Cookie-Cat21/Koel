@@ -13,7 +13,7 @@ from telegram import Bot
 from chime.adapters.cse import CSEClient
 from chime.bot import build_application
 from chime.config import Settings
-from chime.drain import drain_briefs, drain_metrics, drain_pdfs
+from chime.drain import drain_briefs, drain_graph, drain_metrics, drain_pdfs
 from chime.health import HealthState, brief_queue_health_hint, start_health_server
 from chime.logging_setup import configure_logging, get_logger
 from chime.migrate import apply_migrations
@@ -321,6 +321,7 @@ def main(argv: list[str] | None = None) -> None:
             "drain-briefs",
             "drain-briefs-local",
             "drain-metrics",
+            "drain-graph",
             "path-backfill",
             "intraday-backfill",
             "hybrid-backfill",
@@ -353,8 +354,13 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             "bot | poller | both | migrate | tick | "
             "drain-pdfs | drain-briefs | drain-briefs-local | drain-metrics | "
+<<<<<<< HEAD
             "path-backfill | intraday-backfill | hybrid-backfill | "
             "score-signals | eval-signals | "
+=======
+            "drain-graph | "
+            "path-backfill | hybrid-backfill | score-signals | eval-signals | "
+>>>>>>> 508c2b1 (Add company ownership/equity graph from annual CSE PDFs)
             "sector-backfill | notices-backfill | disclosures-backfill | "
             "financials-backfill | aspi-backfill | market-summary-backfill | "
             "ml-experiment | "
@@ -386,7 +392,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--all-symbols",
         action="store_true",
-        help="For drain-pdfs/drain-metrics: include non-watchlist symbols",
+        help="For drain-pdfs/drain-metrics/drain-graph: include non-watchlist symbols",
     )
     parser.add_argument(
         "--period",
@@ -484,7 +490,7 @@ def main(argv: list[str] | None = None) -> None:
         print("Applied:", ", ".join(applied) if applied else "(none)")
         return
 
-    if args.command in ("drain-pdfs", "drain-briefs", "drain-metrics"):
+    if args.command in ("drain-pdfs", "drain-briefs", "drain-metrics", "drain-graph"):
         configure_logging()
         settings = Settings.from_env(require_token=False)
         drain_limit: int = _cli_limit(args.limit, default=20) or 20
@@ -514,6 +520,12 @@ def main(argv: list[str] | None = None) -> None:
                         )
                     finally:
                         await cse.aclose()
+                elif args.command == "drain-graph":
+                    result = await drain_graph(
+                        storage=storage,
+                        limit=limit,
+                        watched_only=watched_only,
+                    )
                 else:
                     result = await drain_metrics(
                         storage=storage,

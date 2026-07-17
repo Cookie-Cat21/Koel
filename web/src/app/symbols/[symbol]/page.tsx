@@ -527,6 +527,9 @@ export default async function SymbolDetailPage({
           <Button asChild variant="outline" size="sm">
             <Link href={`/alerts?symbol=${encoded}`}>New alert</Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/graph?symbol=${encoded}`}>Ownership map</Link>
+          </Button>
           <Button asChild variant="ghost" size="sm">
             <Link href="/watchlist">← Watchlist</Link>
           </Button>

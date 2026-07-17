@@ -18,6 +18,8 @@ from chime.briefs import BriefSettings, briefs_enabled
 from chime.briefs.worker import claim_pending_briefs
 from chime.config import Settings
 from chime.extractors.financial_pdf import is_financial_filing
+from chime.graph import GraphSettings, graph_enabled
+from chime.graph.worker import process_disclosure_graph
 from chime.metrics import MetricsSettings, metrics_enabled
 from chime.metrics.worker import process_disclosure_metrics
 from chime.storage import Storage
@@ -149,3 +151,49 @@ async def drain_metrics(
             )
             errors += 1
     return DrainResult("drain-metrics", len(items), updated, skipped, errors)
+
+
+async def drain_graph(
+    *,
+    storage: Storage,
+    settings: GraphSettings | None = None,
+    limit: int = 20,
+    watched_only: bool = True,
+    symbols: list[str] | None = None,
+) -> DrainResult:
+    """Extract equity + company relationships from pending annual PDFs."""
+    cfg = settings or GraphSettings.from_env()
+    if not graph_enabled(cfg):
+        return DrainResult("drain-graph", 0, 0, 0, 0)
+
+    items = await storage.list_disclosures_pending_graph(
+        limit=limit,
+        watched_only=watched_only,
+        symbols=symbols,
+    )
+    updated = 0
+    skipped = 0
+    errors = 0
+    for disc in items:
+        if not is_financial_filing(title=disc.title, category=disc.category):
+            # Still record a skip extract so we don't spin forever on junk titles
+            skipped += 1
+            continue
+        try:
+            result = await process_disclosure_graph(
+                storage=storage,
+                disclosure=disc,
+                settings=cfg,
+            )
+            if result is None or result.extract_id is None:
+                skipped += 1
+            else:
+                updated += 1
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "drain_graph_failed",
+                disclosure_id=disc.id,
+                error=str(exc)[:200],
+            )
+            errors += 1
+    return DrainResult("drain-graph", len(items), updated, skipped, errors)

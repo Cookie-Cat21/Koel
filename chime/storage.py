@@ -2644,6 +2644,322 @@ class Storage:
             ).fetchone()
         return dict(_as_row(row)) if row is not None else None
 
+    async def list_stock_name_pairs(self) -> list[tuple[str, str | None]]:
+        """All ``(symbol, name)`` rows for company-name resolution."""
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT symbol, name
+                    FROM stocks
+                    WHERE symbol IS NOT NULL
+                    ORDER BY symbol ASC
+                    """
+                )
+            ).fetchall()
+        out: list[tuple[str, str | None]] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            if not isinstance(sym, str) or not sym.strip():
+                continue
+            name = row.get("name")
+            out.append(
+                (
+                    sym.strip().upper(),
+                    name.strip() if isinstance(name, str) and name.strip() else None,
+                )
+            )
+        return out
+
+    async def list_disclosures_pending_graph(
+        self,
+        *,
+        limit: int = 20,
+        watched_only: bool = True,
+        symbols: Sequence[str] | None = None,
+    ) -> list[Disclosure]:
+        """Disclosures with ``pdf_url`` but no ``filing_graph_extracts`` row."""
+        lim = max(1, min(int(limit), 500)) if not isinstance(limit, bool) else 20
+        watched_sql = (
+            """
+            AND d.symbol IN (SELECT DISTINCT symbol FROM watchlist_items)
+            """
+            if watched_only and not symbols
+            else ""
+        )
+        symbol_sql = ""
+        params: list[Any] = []
+        if symbols:
+            cleaned = [
+                s.strip().upper()
+                for s in symbols
+                if isinstance(s, str) and s.strip()
+            ]
+            if cleaned:
+                symbol_sql = "AND d.symbol = ANY(%s)"
+                params.append(cleaned)
+        params.append(lim)
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    f"""
+                    SELECT d.id, d.external_id, d.symbol, d.title, d.category, d.url,
+                           d.company_name, d.published_at, d.seen_at, d.pdf_url
+                    FROM disclosures d
+                    LEFT JOIN filing_graph_extracts g ON g.disclosure_id = d.id
+                    WHERE d.pdf_url IS NOT NULL
+                      AND g.id IS NULL
+                    {watched_sql}
+                    {symbol_sql}
+                    ORDER BY d.id ASC
+                    LIMIT %s
+                    """,
+                    tuple(params),
+                )
+            ).fetchall()
+        out: list[Disclosure] = []
+        for row in _as_rows(rows):
+            disc = self._disclosure_from_row(row)
+            if disc is not None:
+                out.append(disc)
+        return out
+
+    async def upsert_filing_graph_extract(self, row: dict[str, Any]) -> dict[str, Any]:
+        import json as _json
+
+        notes = row.get("extract_notes") or {}
+        if not isinstance(notes, str):
+            notes = _json.dumps(notes)
+        async with self._pool.connection() as conn:
+            saved = await (
+                await conn.execute(
+                    """
+                    INSERT INTO filing_graph_extracts (
+                        disclosure_id, symbol, kind, fiscal_period_end,
+                        entity, scale, currency, equity, equity_label,
+                        equity_ok, relations_ok, extract_ok, extract_notes, pdf_url
+                    ) VALUES (
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s::jsonb, %s
+                    )
+                    ON CONFLICT (disclosure_id) DO UPDATE SET
+                        kind = EXCLUDED.kind,
+                        fiscal_period_end = EXCLUDED.fiscal_period_end,
+                        entity = EXCLUDED.entity,
+                        scale = EXCLUDED.scale,
+                        currency = EXCLUDED.currency,
+                        equity = EXCLUDED.equity,
+                        equity_label = EXCLUDED.equity_label,
+                        equity_ok = EXCLUDED.equity_ok,
+                        relations_ok = EXCLUDED.relations_ok,
+                        extract_ok = EXCLUDED.extract_ok,
+                        extract_notes = EXCLUDED.extract_notes,
+                        pdf_url = EXCLUDED.pdf_url,
+                        updated_at = now()
+                    RETURNING *
+                    """,
+                    (
+                        row["disclosure_id"],
+                        row["symbol"],
+                        row.get("kind") or "unknown",
+                        row.get("fiscal_period_end"),
+                        row.get("entity") or "unknown",
+                        row.get("scale") or "unknown",
+                        row.get("currency") or "LKR",
+                        row.get("equity"),
+                        row.get("equity_label"),
+                        bool(row.get("equity_ok")),
+                        bool(row.get("relations_ok")),
+                        bool(row.get("extract_ok")),
+                        notes,
+                        row.get("pdf_url"),
+                    ),
+                )
+            ).fetchone()
+        assert saved is not None
+        return dict(_as_row(saved))
+
+    async def upsert_company_graph_node(self, row: dict[str, Any]) -> dict[str, Any]:
+        """Upsert listed nodes by symbol; unlisted by name_norm."""
+        node_kind = row.get("node_kind") or "listed"
+        update_equity = bool(row.get("update_equity"))
+        async with self._pool.connection() as conn:
+            if node_kind == "listed":
+                symbol = row.get("symbol")
+                if not isinstance(symbol, str) or not symbol.strip():
+                    raise ValueError("listed node requires symbol")
+                saved = await (
+                    await conn.execute(
+                        """
+                        INSERT INTO company_graph_nodes (
+                            symbol, display_name, name_norm, node_kind,
+                            equity, equity_as_of, equity_scale, equity_currency,
+                            equity_disclosure_id, equity_confidence
+                        ) VALUES (
+                            %s, %s, %s, 'listed',
+                            %s, %s, %s, %s,
+                            %s, %s
+                        )
+                        ON CONFLICT (symbol) DO UPDATE SET
+                            display_name = EXCLUDED.display_name,
+                            name_norm = EXCLUDED.name_norm,
+                            equity = CASE
+                                WHEN %s THEN EXCLUDED.equity
+                                ELSE company_graph_nodes.equity
+                            END,
+                            equity_as_of = CASE
+                                WHEN %s THEN EXCLUDED.equity_as_of
+                                ELSE company_graph_nodes.equity_as_of
+                            END,
+                            equity_scale = CASE
+                                WHEN %s THEN EXCLUDED.equity_scale
+                                ELSE company_graph_nodes.equity_scale
+                            END,
+                            equity_currency = CASE
+                                WHEN %s THEN EXCLUDED.equity_currency
+                                ELSE company_graph_nodes.equity_currency
+                            END,
+                            equity_disclosure_id = CASE
+                                WHEN %s THEN EXCLUDED.equity_disclosure_id
+                                ELSE company_graph_nodes.equity_disclosure_id
+                            END,
+                            equity_confidence = CASE
+                                WHEN %s THEN EXCLUDED.equity_confidence
+                                ELSE company_graph_nodes.equity_confidence
+                            END,
+                            updated_at = now()
+                        RETURNING *
+                        """,
+                        (
+                            symbol.strip().upper(),
+                            row.get("display_name") or symbol.strip().upper(),
+                            row.get("name_norm")
+                            or symbol.strip().upper(),
+                            row.get("equity"),
+                            row.get("equity_as_of"),
+                            row.get("equity_scale") or "unknown",
+                            row.get("equity_currency") or "LKR",
+                            row.get("equity_disclosure_id"),
+                            row.get("equity_confidence") or "none",
+                            update_equity,
+                            update_equity,
+                            update_equity,
+                            update_equity,
+                            update_equity,
+                            update_equity,
+                        ),
+                    )
+                ).fetchone()
+            else:
+                name_norm = row.get("name_norm")
+                if not isinstance(name_norm, str) or not name_norm.strip():
+                    raise ValueError("unlisted node requires name_norm")
+                saved = await (
+                    await conn.execute(
+                        """
+                        INSERT INTO company_graph_nodes (
+                            symbol, display_name, name_norm, node_kind,
+                            equity, equity_as_of, equity_scale, equity_currency,
+                            equity_disclosure_id, equity_confidence
+                        ) VALUES (
+                            NULL, %s, %s, 'unlisted',
+                            NULL, NULL, 'unknown', 'LKR',
+                            NULL, 'none'
+                        )
+                        ON CONFLICT (name_norm) DO UPDATE SET
+                            display_name = EXCLUDED.display_name,
+                            updated_at = now()
+                        RETURNING *
+                        """,
+                        (
+                            row.get("display_name") or name_norm.strip(),
+                            name_norm.strip(),
+                        ),
+                    )
+                ).fetchone()
+        assert saved is not None
+        return dict(_as_row(saved))
+
+    async def upsert_company_graph_edge(self, row: dict[str, Any]) -> dict[str, Any]:
+        import json as _json
+
+        notes = row.get("extract_notes") or {}
+        if not isinstance(notes, str):
+            notes = _json.dumps(notes)
+        async with self._pool.connection() as conn:
+            saved = await (
+                await conn.execute(
+                    """
+                    INSERT INTO company_graph_edges (
+                        src_node_id, dst_node_id, relation,
+                        ownership_pct, ownership_pct_confidence, confidence,
+                        evidence_disclosure_id, evidence_page, evidence_snippet,
+                        extract_notes, active
+                    ) VALUES (
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s::jsonb, TRUE
+                    )
+                    ON CONFLICT (src_node_id, dst_node_id, relation) DO UPDATE SET
+                        ownership_pct = COALESCE(
+                            EXCLUDED.ownership_pct,
+                            company_graph_edges.ownership_pct
+                        ),
+                        ownership_pct_confidence = CASE
+                            WHEN EXCLUDED.ownership_pct IS NOT NULL
+                            THEN EXCLUDED.ownership_pct_confidence
+                            ELSE company_graph_edges.ownership_pct_confidence
+                        END,
+                        confidence = CASE
+                            WHEN EXCLUDED.confidence = 'high' THEN 'high'
+                            WHEN company_graph_edges.confidence = 'high' THEN 'high'
+                            WHEN EXCLUDED.confidence = 'medium' THEN 'medium'
+                            ELSE company_graph_edges.confidence
+                        END,
+                        evidence_disclosure_id = EXCLUDED.evidence_disclosure_id,
+                        evidence_page = EXCLUDED.evidence_page,
+                        evidence_snippet = EXCLUDED.evidence_snippet,
+                        extract_notes = EXCLUDED.extract_notes,
+                        active = TRUE,
+                        updated_at = now()
+                    RETURNING *
+                    """,
+                    (
+                        row["src_node_id"],
+                        row["dst_node_id"],
+                        row["relation"],
+                        row.get("ownership_pct"),
+                        row.get("ownership_pct_confidence") or "none",
+                        row.get("confidence") or "low",
+                        row.get("evidence_disclosure_id"),
+                        row.get("evidence_page"),
+                        row.get("evidence_snippet"),
+                        notes,
+                    ),
+                )
+            ).fetchone()
+        assert saved is not None
+        return dict(_as_row(saved))
+
+    async def get_company_graph_node_by_symbol(
+        self, symbol: str
+    ) -> dict[str, Any] | None:
+        if not isinstance(symbol, str) or not symbol.strip():
+            return None
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT * FROM company_graph_nodes
+                    WHERE symbol = %s
+                    """,
+                    (symbol.strip().upper(),),
+                )
+            ).fetchone()
+        return dict(_as_row(row)) if row is not None else None
+
     async def get_ready_filing_brief(
         self,
         *,
