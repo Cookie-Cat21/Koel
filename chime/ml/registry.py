@@ -60,7 +60,13 @@ async def register_model(storage: Storage, entry: RegistryEntry) -> str:
                 oos_hit = EXCLUDED.oos_hit,
                 oos_gated_hit = EXCLUDED.oos_gated_hit,
                 oos_coverage = EXCLUDED.oos_coverage,
-                status = EXCLUDED.status,
+                -- Never demote an existing champion via re-register collision.
+                status = CASE
+                    WHEN model_registry.status = 'champion'
+                         AND EXCLUDED.status = 'challenger'
+                    THEN model_registry.status
+                    ELSE EXCLUDED.status
+                END,
                 degraded = EXCLUDED.degraded,
                 artifact_path = COALESCE(EXCLUDED.artifact_path, model_registry.artifact_path),
                 notes = EXCLUDED.notes

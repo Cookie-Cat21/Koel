@@ -20,6 +20,7 @@ import { requirePageSession } from "@/lib/auth/page-session";
 import { formatNumber } from "@/lib/format";
 import {
   gateShortLabel,
+  isSelectiveGate,
   normalizeForecastGate,
 } from "@/lib/forecast-gate";
 
@@ -80,9 +81,7 @@ function asSignalItems(body: unknown): SignalItem[] | null {
         ? r.forecast_confidence_band.trim().slice(0, 16) || null
         : null;
     const spoke =
-      typeof r.spoke === "boolean"
-        ? r.spoke
-        : forecastGate != null || forecastConfidence != null;
+      typeof r.spoke === "boolean" ? r.spoke : isSelectiveGate(forecastGate);
     out.push({
       symbol,
       name,

@@ -126,7 +126,9 @@ async def run_loop_retrain(
         if cd.get("cov") is not None:
             gated_cov = float(cd["cov"])
 
-    stamp = date.today().strftime("%Y%m%d")
+    from datetime import datetime, UTC
+
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     challenger_id = f"challenger_gated_c55_{stamp}"
     champ = await get_champion(storage)
     # Promote on gated hit when available (selective serve path)

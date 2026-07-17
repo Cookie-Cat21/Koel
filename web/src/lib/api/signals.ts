@@ -14,6 +14,7 @@ import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import {
   gateShortLabel,
+  isSelectiveGate,
   normalizeForecastGate,
 } from "@/lib/forecast-gate";
 
@@ -149,7 +150,7 @@ export async function queryLatestSignals(
           : "unknown",
       reasons,
       bar_count: barCount == null ? null : Math.trunc(barCount),
-      spoke: forecastGate != null || forecastConfidence != null,
+      spoke: isSelectiveGate(forecastGate),
       forecast_gate: forecastGate,
       forecast_gate_label: gateShortLabel(forecastGate),
       forecast_confidence: forecastConfidence,

@@ -143,10 +143,11 @@ export async function queryMlHealth(pool: Pool): Promise<MlHealthPayload> {
     }>(
       `
       SELECT
-        MAX(as_of) AS as_of,
+        (SELECT MAX(as_of) FROM forecast_points) AS as_of,
         COUNT(DISTINCT symbol)::int AS spoke
       FROM forecast_points
       WHERE as_of = (SELECT MAX(as_of) FROM forecast_points)
+        AND gate IN ('gated_p90', 'hpe_p90', 'gated_c55', 'gated')
       `,
     );
     const raw = fp.rows[0]?.as_of;

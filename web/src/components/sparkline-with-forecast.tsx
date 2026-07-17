@@ -68,7 +68,8 @@ export function SparklineWithForecast({
   const series = finiteSparklinePoints(points);
   const forecast = finiteSparklinePoints(forecastPoints ?? []);
   const canToggle = forecast.length >= 1 && series.length >= 2;
-  const spoke = canToggle;
+  // Spoke = selective gate only (not always-on board fill).
+  const spoke = canToggle && isSelectiveGate(gate);
   const bandLabel =
     confidenceBand === "high"
       ? "High"
