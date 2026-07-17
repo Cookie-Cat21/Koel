@@ -187,13 +187,34 @@ export async function queryCompanyGraph(
     nodeIds.add(e.dst_node_id);
   }
 
-  if (opts.includeIsolates && nodeIds.size < limit) {
+  // Prefer equity-backed isolates; if the graph is still empty (common right
+  // after directors-only seed / sparse PDF edges), fall back to listed issuers
+  // by latest market cap so /graph is browsable instead of a blank canvas.
+  const wantIsolates = opts.includeIsolates || nodeIds.size === 0;
+  if (wantIsolates && nodeIds.size < limit) {
     const iso = await pool.query(
       `
-      SELECT id FROM company_graph_nodes
-      WHERE equity IS NOT NULL
-        AND equity_confidence IN ('medium', 'high')
-      ORDER BY equity DESC NULLS LAST
+      SELECT n.id
+      FROM company_graph_nodes n
+      LEFT JOIN LATERAL (
+        SELECT market_cap
+        FROM price_snapshots p
+        WHERE n.symbol IS NOT NULL AND p.symbol = n.symbol
+          AND p.market_cap IS NOT NULL
+        ORDER BY p.ts DESC
+        LIMIT 1
+      ) ps ON TRUE
+      WHERE n.node_kind = 'listed'
+        AND n.symbol IS NOT NULL
+      ORDER BY
+        CASE
+          WHEN n.equity IS NOT NULL
+           AND n.equity_confidence IN ('medium', 'high') THEN 0
+          ELSE 1
+        END,
+        n.equity DESC NULLS LAST,
+        ps.market_cap DESC NULLS LAST,
+        n.symbol
       LIMIT $1
       `,
       [limit],

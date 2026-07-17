@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
   const minConfidence: GraphConfidence =
     normalizeConfidence(minRaw) ?? "medium";
   const focus = normalizeSymbol(sp.get("symbol"));
-  const includeIsolates = sp.get("include_isolates") === "1";
+  // Default on: otherwise a sparse edge set yields an empty Ownership map even
+  // when listed company_graph_nodes exist (post-migrate / directors-only seed).
+  const includeIsolates = sp.get("include_isolates") !== "0";
 
   try {
     const pool = getPool();

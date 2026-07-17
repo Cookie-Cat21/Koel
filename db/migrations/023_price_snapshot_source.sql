@@ -11,8 +11,30 @@ ALTER TABLE price_snapshots
     CHECK (source IN ('poller', 'cse_intraday'));
 
 -- Collapse duplicate (symbol, ts) before unique index (keep lowest id).
-DELETE FROM price_snapshots a
-    USING price_snapshots b
+-- Remount alert_log FKs onto the survivor row first (Neon had live refs).
+WITH survivors AS (
+    SELECT DISTINCT ON (symbol, ts)
+        id AS keep_id,
+        symbol,
+        ts
+    FROM price_snapshots
+    ORDER BY symbol, ts, id
+),
+dupes AS (
+    SELECT p.id AS drop_id, s.keep_id
+    FROM price_snapshots AS p
+    JOIN survivors AS s
+      ON s.symbol = p.symbol
+     AND s.ts = p.ts
+    WHERE p.id <> s.keep_id
+)
+UPDATE alert_log AS al
+SET snapshot_id = d.keep_id
+FROM dupes AS d
+WHERE al.snapshot_id = d.drop_id;
+
+DELETE FROM price_snapshots AS a
+    USING price_snapshots AS b
     WHERE a.symbol = b.symbol
       AND a.ts = b.ts
       AND a.id > b.id;
