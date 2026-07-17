@@ -94,8 +94,11 @@ export function CandlestickChart({
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        className={cn("w-full", fill ? "min-h-0 flex-1" : "h-[min(55vh,520px)]")}
+        preserveAspectRatio="xMidYMid meet"
+        className={cn(
+          "w-full",
+          fill ? "h-full min-h-[360px] flex-1" : "h-[min(55vh,520px)]",
+        )}
         role="img"
         aria-label={aria}
       >
@@ -131,7 +134,8 @@ export function CandlestickChart({
           else if (down) downN += 1;
           else flatN += 1;
           const bodyTop = Math.min(yO, yC);
-          const bodyH = Math.max(1.5, Math.abs(yC - yO));
+          // Keep a visible body even on tiny price moves (common on CSE ticks).
+          const bodyH = Math.max(Math.max(3, bodyW * 0.85), Math.abs(yC - yO));
           const stroke = up
             ? "stroke-emerald-600 dark:stroke-emerald-400"
             : down

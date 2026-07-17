@@ -116,7 +116,16 @@ export function ExpandablePriceChart({
         price,
       });
     }
-    setTickPoints(out.length >= 2 ? out : points);
+    const sorted =
+      out.length >= 2
+        ? [...out].sort((a, b) => {
+            const ta = a.ts ? Date.parse(a.ts) : NaN;
+            const tb = b.ts ? Date.parse(b.ts) : NaN;
+            if (Number.isFinite(ta) && Number.isFinite(tb)) return ta - tb;
+            return 0;
+          })
+        : points;
+    setTickPoints(sorted);
     setError(null);
     setLastRefresh(new Date().toISOString());
   }, [symbol, points]);
@@ -366,8 +375,8 @@ export function ExpandablePriceChart({
               </div>
             </div>
 
-            {/* Chart fills remaining height */}
-            <div className="flex min-h-0 flex-1 flex-col px-5 pt-4 pb-4">
+            {/* Chart area — centered aspect box so candles aren't stretched */}
+            <div className="flex min-h-0 flex-1 flex-col px-5 pt-3 pb-4">
               {loading ? (
                 <p className="text-sm text-muted-foreground" role="status">
                   Loading chart…
@@ -388,6 +397,7 @@ export function ExpandablePriceChart({
                   fill
                   showForecast={showForecast}
                   forecastPrices={forecastPrices}
+                  className="min-h-0 flex-1"
                   footnote={
                     range === "1D"
                       ? `${chartBars.length} intraday bars from ${tickSeries.length} ticks · ${formatNumber(tickSeries[0]?.price ?? 0)} → ${formatNumber(tickSeries[tickSeries.length - 1]?.price ?? 0)}${showForecast && forecastPrices.length > 0 ? " · dashed = model forecast" : ""} · research only`

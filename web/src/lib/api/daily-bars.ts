@@ -109,13 +109,26 @@ export function ticksToIntradayBars(
   ticks: { ts: string | null; price: number }[],
   targetCandles = 40,
 ): DailyBarPoint[] {
-  const clean = ticks.filter(
-    (t) => typeof t.price === "number" && Number.isFinite(t.price) && t.price > 0,
-  );
+  const clean = ticks
+    .filter(
+      (t) =>
+        typeof t.price === "number" && Number.isFinite(t.price) && t.price > 0,
+    )
+    .slice()
+    .sort((a, b) => {
+      const ta = a.ts ? Date.parse(a.ts) : NaN;
+      const tb = b.ts ? Date.parse(b.ts) : NaN;
+      if (Number.isFinite(ta) && Number.isFinite(tb)) return ta - tb;
+      return 0;
+    });
   if (clean.length < 2) return [];
 
-  const n = Math.max(2, Math.min(targetCandles, Math.floor(clean.length / 2)));
-  const chunk = Math.max(1, Math.ceil(clean.length / n));
+  // Prefer ~2–3 ticks per candle so bodies have room to move.
+  const n = Math.max(
+    4,
+    Math.min(targetCandles, Math.floor(clean.length / 2)),
+  );
+  const chunk = Math.max(2, Math.ceil(clean.length / n));
   const out: DailyBarPoint[] = [];
 
   for (let i = 0; i < clean.length; i += chunk) {
@@ -124,15 +137,29 @@ export function ticksToIntradayBars(
     const prices = slice.map((t) => t.price);
     const open = prices[0]!;
     const close = prices[prices.length - 1]!;
-    const high = Math.max(...prices);
-    const low = Math.min(...prices);
+    let high = Math.max(...prices);
+    let low = Math.min(...prices);
+    // Ensure a visible wick even when flat (pure mark-to-mark ticks).
+    if (high === low) {
+      const pad = Math.max(high * 0.001, 0.01);
+      high += pad;
+      low = Math.max(0.01, low - pad);
+    }
     const lastTs = slice[slice.length - 1]?.ts;
-    let tradeDate = `t${out.length}`;
+    let tradeDate = `t${String(out.length).padStart(2, "0")}`;
     if (typeof lastTs === "string" && lastTs.length >= 16) {
-      // Use time label HH:MM for intraday axis readability
       const d = new Date(lastTs);
       if (Number.isFinite(d.getTime())) {
-        tradeDate = d.toISOString().slice(11, 16);
+        try {
+          tradeDate = d.toLocaleTimeString("en-GB", {
+            timeZone: "Asia/Colombo",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+        } catch {
+          tradeDate = d.toISOString().slice(11, 16);
+        }
       }
     }
     out.push({
