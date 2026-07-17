@@ -304,7 +304,7 @@ export function ExpandablePriceChart({
             aria-modal="true"
             aria-labelledby={titleId}
             data-testid="expand-chart-dialog"
-            className="flex h-[min(92vh,900px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+            className="flex h-[min(94vh,960px)] w-full max-w-[min(96vw,1400px)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
           >
             {/* Header */}
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/60 px-5 py-3.5">
@@ -400,7 +400,17 @@ export function ExpandablePriceChart({
                   fill
                   showForecast={showForecast}
                   forecastPrices={forecastPrices}
-                  maxCandles={range === "1D" ? 48 : 72}
+                  maxCandles={
+                    range === "1D"
+                      ? 60
+                      : range === "1M"
+                        ? 40
+                        : range === "3M"
+                          ? 90
+                          : range === "6M"
+                            ? 180
+                            : 400 /* 1Y: every daily bar, scroll sideways */
+                  }
                   className="min-h-0 flex-1"
                   footnote={
                     range === "1D"

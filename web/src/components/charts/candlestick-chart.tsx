@@ -31,12 +31,13 @@ export function CandlestickChart({
   maxCandles?: number;
 }) {
   const priceMax = Math.max(...rawBars.map((b) => b.close), 0);
-  // Sub-LKR2 names trade on ~0.10 ticks — fewer aggregates = less doji noise.
+  // Full 1Y (maxCandles ≥ 200): keep every session. Shorter caps may
+  // still downsample; pennies get a slightly lower mid-cap only.
   const adaptiveMax =
-    priceMax > 0 && priceMax < 2
-      ? Math.min(maxCandles, 26)
-      : priceMax < 5
-        ? Math.min(maxCandles, 48)
+    maxCandles >= 200
+      ? maxCandles
+      : priceMax > 0 && priceMax < 2
+        ? Math.min(maxCandles, 40)
         : maxCandles;
   const bars = aggregateBarsForDisplay(rawBars, adaptiveMax);
 
@@ -61,9 +62,10 @@ export function CandlestickChart({
   const padR = 56;
   const padT = 20;
   const padB = 40;
-  const slot = 14; // fixed candle pitch in viewBox units
-  const bodyW = 10;
-  const wickW = 1.75;
+  // Wider pitch so a full year of daily candles stays readable when scrolled.
+  const slot = 18;
+  const bodyW = 13;
+  const wickW = 2;
 
   const fc =
     showForecast && forecastPrices
@@ -137,14 +139,17 @@ export function CandlestickChart({
           "relative w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/15",
           fill ? "min-h-0 flex-1" : "",
         )}
+        ref={(el) => {
+          // Pin scroll to most recent candles on mount / data change.
+          if (el) el.scrollLeft = el.scrollWidth;
+        }}
       >
         <svg
           viewBox={`0 0 ${w} ${h}`}
-          preserveAspectRatio="xMidYMid meet"
-          className={cn(
-            "mx-auto block",
-            fill ? "h-full min-h-[400px] w-full" : "h-[min(58vh,540px)] w-full",
-          )}
+          width={w}
+          height={Math.min(480, h)}
+          preserveAspectRatio="xMinYMid meet"
+          className="block max-w-none"
           role="img"
           aria-label={aria}
         >
