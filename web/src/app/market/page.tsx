@@ -4,6 +4,7 @@ import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
 import { ChangeBadge } from "@/components/kit/change-badge";
 import { MoversBarList } from "@/components/kit/movers-bar-list";
+import { BrowseTable } from "@/components/market/browse-table";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
@@ -25,7 +26,6 @@ import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
-import { formatNumber, formatTs } from "@/lib/format";
 
 /** Exported for regression contract — used by movers a11y copy. */
 export function changeDirectionSr(pct: number | null): string {
@@ -366,97 +366,7 @@ export default async function MarketPage({
             }
           />
         ) : (
-          <>
-            <div className="mt-8 hidden overflow-hidden rounded-lg border border-border/70 md:block">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">Market symbols</caption>
-                <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 font-medium">
-                      Symbol
-                    </th>
-                    <th scope="col" className="px-4 py-3 font-medium">
-                      Name
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-right font-medium">
-                      Price
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-right font-medium">
-                      Change%
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-right font-medium">
-                      Updated
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {marketItems.map((item, idx) => (
-                    <tr
-                      key={item.symbol}
-                      className={idx % 2 === 1 ? "bg-muted/25" : undefined}
-                    >
-                      <th scope="row" className="px-4 py-3 font-mono font-medium">
-                        <Link
-                          href={`/symbols/${encodeURIComponent(item.symbol)}`}
-                          className="rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                        >
-                          {item.symbol}
-                        </Link>
-                      </th>
-                      <td className="max-w-xs px-4 py-3 text-muted-foreground">
-                        <span className="block truncate" title={item.name ?? undefined}>
-                          {item.name ?? "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">
-                        {formatNumber(item.price)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ChangeBadge changePct={item.change_pct} />
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                        {formatTs(item.ts)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul
-              className="mt-8 divide-y divide-border/60 md:hidden"
-              aria-label="Market symbols"
-            >
-              {marketItems.map((item) => (
-                <li
-                  key={item.symbol}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/symbols/${encodeURIComponent(item.symbol)}`}
-                      className="rounded-sm font-mono text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    >
-                      {item.symbol}
-                    </Link>
-                    {item.name ? (
-                      <p className="truncate text-sm text-muted-foreground">
-                        {item.name}
-                      </p>
-                    ) : null}
-                    <p className="text-xs text-muted-foreground">
-                      {formatTs(item.ts)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
-                    <p className="font-mono tabular-nums">
-                      {formatNumber(item.price)}
-                    </p>
-                    <ChangeBadge changePct={item.change_pct} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
+          <BrowseTable items={marketItems} />
         )}
       </main>
       <NfaFooter />
