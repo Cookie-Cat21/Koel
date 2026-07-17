@@ -1,0 +1,21 @@
+{
+  "lever": "baseline_cs_lmt_bag",
+  "mean_symbol_hit": 0.5930096245434046,
+  "pooled_hit": 0.5876517872413204,
+  "symbols_ge_070": 19,
+  "n_symbols": 264,
+  "n_rows": 17541,
+  "high_bucket_hit": 0.6869374313940725,
+  "delta_vs_baseline": null,
+  "keep": null,
+  "notes": "path+CS",
+  "extras": {
+    "symbols": 273,
+    "disclosures": 0,
+    "notices": 0,
+    "sector_rs": false,
+    "aspi": false,
+    "financials": false,
+    "yoy": false
+  }
+}

@@ -102,36 +102,63 @@ async def run_loop_retrain(
     diag = analyze_rows(
         rows, model_id="challenger_fin_sector", horizon=1, panel=True
     )
-    # fold hits from diagnose buckets not available — approximate via HIGH band
-    fold_hits = diag.bucket_hits  # unused structure
-    _ = fold_hits
+    # Live gated metrics from WF ledger (B-005)
+    gated_hit = None
+    gated_cov = None
+    async with storage._pool.connection() as conn:
+        cal_row = await (
+            await conn.execute(
+                """
+                SELECT COUNT(*) n,
+                       AVG(CASE WHEN hit THEN 1.0 ELSE 0.0 END)
+                         FILTER (WHERE confidence >= 0.55) gated_hit,
+                       AVG(CASE WHEN confidence >= 0.55 THEN 1.0 ELSE 0.0 END) cov
+                FROM forecast_outcomes
+                WHERE model_version = 'wf_fin_sector_h1'
+                  AND scored = TRUE AND hit IS NOT NULL
+                """
+            )
+        ).fetchone()
+    if cal_row:
+        cd = dict(cal_row)
+        if cd.get("gated_hit") is not None:
+            gated_hit = float(cd["gated_hit"])
+        if cd.get("cov") is not None:
+            gated_cov = float(cd["cov"])
 
     stamp = date.today().strftime("%Y%m%d")
-    challenger_id = f"challenger_fin_sector_{stamp}"
+    challenger_id = f"challenger_gated_c55_{stamp}"
     champ = await get_champion(storage)
-    champ_hit = float(champ["oos_hit"]) if champ and champ.get("oos_hit") is not None else None
+    # Promote on gated hit when available (selective serve path)
+    champ_hit = None
+    if champ:
+        if champ.get("oos_gated_hit") is not None:
+            champ_hit = float(champ["oos_gated_hit"])
+        elif champ.get("oos_hit") is not None:
+            champ_hit = float(champ["oos_hit"])
     parent = champ["model_id"] if champ else None
+    challenger_metric = gated_hit if gated_hit is not None else diag.mean_symbol_hit
 
     await register_model(
         storage,
         RegistryEntry(
             model_id=challenger_id,
-            algo="hgb_clf_lmt_bag_fin_sector",
+            algo="hgb_clf_lmt_bag_gated_c55",
             status="challenger",
             horizons=(1, 2, 3, 5),
-            feature_list=("path", "cs", "sector_rs", "financials", "yoy"),
+            feature_list=("path", "cs", "sector_rs", "financials", "yoy", "conf_gate"),
             oos_hit=diag.mean_symbol_hit,
-            oos_gated_hit=diag.bucket_hits.get("HIGH"),
-            oos_coverage=None,
+            oos_gated_hit=gated_hit if gated_hit is not None else diag.bucket_hits.get("HIGH"),
+            oos_coverage=gated_cov,
             train_start=None,
             train_end=date.today(),
             parent_model_id=parent,
-            notes="weekly loop B challenger",
+            notes="weekly loop B gated challenger (B-005)",
         ),
     )
 
     ok, reasons = _passes_promotion(
-        challenger_hit=diag.mean_symbol_hit,
+        challenger_hit=challenger_metric,
         champion_hit=champ_hit,
         fold_hit_rates=(),
     )
@@ -164,7 +191,7 @@ async def run_loop_retrain(
         promoted=promoted,
         rolled_back=rolled,
         reasons=tuple(reasons),
-        challenger_hit=diag.mean_symbol_hit,
+        challenger_hit=challenger_metric,
         champion_hit=champ_hit,
     )
 

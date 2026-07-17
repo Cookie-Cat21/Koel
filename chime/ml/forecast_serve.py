@@ -28,6 +28,25 @@ from chime.storage import Storage
 log = get_logger(__name__)
 
 ALWAYS_ON_VERSION = "ml_always_on_fin_v1"
+GATED_VERSION = "ml_gated_c55_v1"
+DEFAULT_GATE_THR = 0.55
+
+
+def _load_gate_threshold() -> float:
+    from pathlib import Path
+    import json
+
+    path = Path("data/ml_artifacts/gate_calibration.json")
+    if not path.is_file():
+        return DEFAULT_GATE_THR
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return DEFAULT_GATE_THR
+    thr = data.get("threshold")
+    if isinstance(thr, int | float) and 0.0 <= float(thr) <= 1.0:
+        return float(thr)
+    return DEFAULT_GATE_THR
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +69,8 @@ async def run_unified_forecast(
     - ``hpe_only``: only High-Precision Emitter
     - ``hpe_with_fallback``: HPE then always-on for symbols without HPE emit
     - ``always_on``: always-on stack only
+    - ``gated``: always-on but only emit when confidence ≥ calibrated threshold
+      (B-005 KEEP — ~72% hit @ ~11% coverage at thr=0.55 on WF ledger)
     """
     if not sklearn_available():
         return UnifiedForecastResult(0, 0, 0, mode)
@@ -57,6 +78,7 @@ async def run_unified_forecast(
     hpe_emits = 0
     points = 0
     hpe_symbols: set[str] = set()
+    gate_thr = _load_gate_threshold()
 
     if mode in {"hpe_only", "hpe_with_fallback"}:
         hpe = await run_hpe_forecast(storage=storage, force=True)
@@ -80,7 +102,7 @@ async def run_unified_forecast(
                 hpe_symbols.add(sym.strip().upper())
 
     fallback_emits = 0
-    if mode in {"hpe_with_fallback", "always_on"}:
+    if mode in {"hpe_with_fallback", "always_on", "gated"}:
         from datetime import date
         from pathlib import Path
         import json
@@ -137,11 +159,15 @@ async def run_unified_forecast(
                 if mode == "hpe_with_fallback" and sample.symbol in hpe_symbols:
                     continue
                 conf = score_to_confidence(score)
-                band = confidence_band(conf, gate="always_on")
-                if band == "none":
+                if mode == "gated" and conf < gate_thr:
                     continue
-                # Only write medium+ for fallback to avoid noise, or all low too?
-                # User wants always-on path — write low/medium/high with labels.
+                gate_name = "gated_c55" if mode == "gated" else "always_on"
+                version = GATED_VERSION if mode == "gated" else ALWAYS_ON_VERSION
+                band = confidence_band(conf, gate=gate_name)
+                if band == "none" and mode != "gated":
+                    continue
+                if mode == "gated":
+                    band = "high" if conf >= 0.65 else "medium"
                 bars = series.get(sample.symbol) or []
                 if not bars:
                     continue
@@ -155,6 +181,18 @@ async def run_unified_forecast(
                 if last_ts.tzinfo is None:
                     last_ts = last_ts.replace(tzinfo=UTC)
                 fps = []
+                reasons = (
+                    [
+                        f"Confidence-gated research estimate (thr≥{gate_thr:.2f})",
+                        "WF ledger ~72% hit @ ~11% coverage (NFA)",
+                        f"|score|={abs(score):.3f}",
+                    ]
+                    if mode == "gated"
+                    else [
+                        "Always-on research estimate (historical hit ~60%)",
+                        f"|score|={abs(score):.3f}",
+                    ]
+                )
                 for h in (1, 2, 3, 5):
                     yhat = last_px * (1.0 + direction * mag * (h / 5.0))
                     if not math.isfinite(yhat) or yhat <= 0:
@@ -166,14 +204,11 @@ async def run_unified_forecast(
                             horizon_i=h,
                             ts=last_ts + timedelta(days=h),
                             yhat=yhat,
-                            model_version=ALWAYS_ON_VERSION,
+                            model_version=version,
                             confidence=conf,
                             confidence_band=band,
-                            gate="always_on",
-                            reasons=[
-                                "Always-on research estimate (historical hit ~60%)",
-                                f"|score|={abs(score):.3f}",
-                            ],
+                            gate=gate_name,
+                            reasons=reasons,
                         )
                     )
                 if fps:

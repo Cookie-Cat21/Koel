@@ -46,10 +46,12 @@ async def _load_scored_window(storage: Storage, *, days: int = 60) -> list[dict]
     return [dict(r) for r in rows]
 
 
-def _hit_rate(rows: list[dict], *, gated: bool = False) -> float | None:
+def _hit_rate(
+    rows: list[dict], *, gated: bool = False, gate_thr: float = 0.55
+) -> float | None:
     pool = rows
     if gated:
-        pool = [r for r in rows if (r.get("confidence") or 0) >= 0.35]
+        pool = [r for r in rows if (r.get("confidence") or 0) >= gate_thr]
     usable = [r for r in pool if r.get("hit") is not None]
     if not usable:
         return None
@@ -104,36 +106,59 @@ def _drift_alerts(rows: list[dict], champion_oos_hit: float | None) -> list[str]
 
 async def append_live_scoreboard(storage: Storage, *, alerts: list[str]) -> Path:
     rows = await _load_scored_window(storage, days=60)
+    cal = {}
+    if CALIBRATION.is_file():
+        try:
+            cal = json.loads(CALIBRATION.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            cal = {}
+    thr = float(cal.get("threshold", 0.55))
     hit20 = _hit_rate(
-        [r for r in rows if r.get("issued_at") and r["issued_at"] >= date.today() - timedelta(days=20)]
+        [
+            r
+            for r in rows
+            if r.get("issued_at") and r["issued_at"] >= date.today() - timedelta(days=20)
+        ]
     )
     hit60 = _hit_rate(rows)
     g20 = _hit_rate(
-        [r for r in rows if r.get("issued_at") and r["issued_at"] >= date.today() - timedelta(days=20)],
+        [
+            r
+            for r in rows
+            if r.get("issued_at") and r["issued_at"] >= date.today() - timedelta(days=20)
+        ],
         gated=True,
+        gate_thr=thr,
     )
+    today = date.today().isoformat()
+    h20s = f"{hit20:.4f}" if hit20 is not None else "None"
+    h60s = f"{hit60:.4f}" if hit60 is not None else "None"
+    g20s = f"{g20:.4f}" if g20 is not None else "None"
     line = (
-        f"| {date.today().isoformat()} | {hit20} | {hit60} | {g20} | "
+        f"| {today} | {h20s} | {h60s} | {g20s} | "
         f"{len(rows)} | {'; '.join(alerts) or '-'} |"
     )
     SCOREBOARD.parent.mkdir(parents=True, exist_ok=True)
+    header = "\n".join(
+        [
+            "# Live scoreboard (from forecast_outcomes)",
+            "",
+            "| date | hit_20d | hit_60d | gated_hit_20d | n_60d | alerts |",
+            "|---|---:|---:|---:|---:|---|",
+            "",
+        ]
+    )
     if not SCOREBOARD.exists():
-        SCOREBOARD.write_text(
-            "\n".join(
-                [
-                    "# Live scoreboard (from forecast_outcomes)",
-                    "",
-                    "| date | hit_20d | hit_60d | gated_hit_20d | n_60d | alerts |",
-                    "|---|---:|---:|---:|---:|---|",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-    text = SCOREBOARD.read_text(encoding="utf-8")
-    if date.today().isoformat() not in text:
-        # insert after header table line
-        SCOREBOARD.write_text(text.rstrip() + "\n" + line + "\n", encoding="utf-8")
+        SCOREBOARD.write_text(header + line + "\n", encoding="utf-8")
+        return SCOREBOARD
+    lines = SCOREBOARD.read_text(encoding="utf-8").splitlines()
+    kept = [ln for ln in lines if not ln.startswith(f"| {today} ")]
+    # ensure header present
+    if not any(ln.startswith("| date |") for ln in kept):
+        SCOREBOARD.write_text(header + line + "\n", encoding="utf-8")
+        return SCOREBOARD
+    # append today's line after last table row / at end
+    SCOREBOARD.write_text("\n".join(kept).rstrip() + "\n" + line + "\n", encoding="utf-8")
     return SCOREBOARD
 
 

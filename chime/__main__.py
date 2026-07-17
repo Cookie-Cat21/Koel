@@ -331,6 +331,7 @@ def main(argv: list[str] | None = None) -> None:
             "financials-backfill",
             "aspi-backfill",
             "ml-score-outcomes",
+            "ml-backfill-outcomes",
             "ml-loop-nightly",
             "ml-loop-retrain",
         ],
@@ -342,8 +343,8 @@ def main(argv: list[str] | None = None) -> None:
             "financials-backfill | aspi-backfill | ml-experiment | "
             "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
             "ml-iterate | ml-precision90 | ml-hpe | ml-forecast-unified | "
-            "ml-always-on | ml-score-outcomes | ml-loop-nightly | "
-            "ml-loop-retrain"
+            "ml-always-on | ml-score-outcomes | ml-backfill-outcomes | "
+            "ml-loop-nightly | ml-loop-retrain"
         ),
     )
     parser.add_argument(
@@ -417,7 +418,10 @@ def main(argv: list[str] | None = None) -> None:
         "--mode",
         type=str,
         default="hpe_with_fallback",
-        help="For ml-forecast-unified: hpe_only | hpe_with_fallback | always_on",
+        help=(
+            "For ml-forecast-unified: hpe_only | hpe_with_fallback | "
+            "always_on | gated"
+        ),
     )
     args = parser.parse_args(argv)
     if args.force and args.command not in (
@@ -1080,7 +1084,8 @@ def main(argv: list[str] | None = None) -> None:
         mode = (
             args.mode
             if isinstance(args.mode, str)
-            and args.mode in {"hpe_only", "hpe_with_fallback", "always_on"}
+            and args.mode
+            in {"hpe_only", "hpe_with_fallback", "always_on", "gated"}
             else "hpe_with_fallback"
         )
 
@@ -1178,6 +1183,27 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_score())
+        return
+
+    if args.command == "ml-backfill-outcomes":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+
+        async def _bf_out() -> None:
+            from chime.ml.backfill_outcomes import backfill_walkforward_outcomes
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                result = await backfill_walkforward_outcomes(storage)
+                print(
+                    "ml-backfill-outcomes: "
+                    f"rows={result.rows} folds={result.folds}"
+                )
+            finally:
+                await storage.close()
+
+        asyncio.run(_bf_out())
         return
 
     if args.command == "ml-loop-nightly":

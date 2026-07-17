@@ -129,37 +129,66 @@ async def emit_outcome_rows(
     return len(rows_out)
 
 
+def _nth_session_after(
+    start: date, n: int, dates_sorted: list[date]
+) -> date | None:
+    """Return the n-th trading date strictly after ``start`` (or on start+n)."""
+    if n < 1:
+        return None
+    # index of start if present, else first > start
+    i = 0
+    while i < len(dates_sorted) and dates_sorted[i] < start:
+        i += 1
+    if i < len(dates_sorted) and dates_sorted[i] == start:
+        j = i + n
+    else:
+        # start not a session — count n sessions from next
+        j = i + n - 1
+    if j < 0 or j >= len(dates_sorted):
+        return None
+    return dates_sorted[j]
+
+
 async def score_due_outcomes(storage: Storage, *, limit: int = 5000) -> ScoreOutcomesResult:
-    """Fill y_real/hit for rows whose realized_at <= today and not yet scored."""
-    today = date.today()
+    """Fill y_real/hit when the horizon's session exists in daily_bars.
+
+    Also backfills ``realized_at`` from each symbol's own calendar when null
+    (global calendar often has no *future* sessions at emit time).
+    """
     lim = max(1, min(int(limit), 50_000))
+    # Only consider rows that could already have a next session in daily_bars.
     async with storage._pool.connection() as conn:
+        max_bar = await (
+            await conn.execute("SELECT MAX(trade_date) AS d FROM daily_bars")
+        ).fetchone()
+        max_d = dict(max_bar).get("d") if max_bar else None
+        if not isinstance(max_d, date):
+            return ScoreOutcomesResult(0, 0, 0)
         rows = await (
             await conn.execute(
                 """
                 SELECT id, symbol, issued_at, horizon_days, y_pred, realized_at
                 FROM forecast_outcomes
                 WHERE scored = FALSE
-                  AND realized_at IS NOT NULL
-                  AND realized_at <= %s
-                ORDER BY realized_at ASC, id ASC
+                  AND issued_at < %s
+                ORDER BY issued_at ASC, id ASC
                 LIMIT %s
                 """,
-                (today, lim),
+                (max_d, lim),
             )
         ).fetchall()
 
     examined = scored = skipped = 0
-    # cache bars per symbol
-    bar_cache: dict[str, dict[date, float]] = {}
+    bar_cache: dict[str, tuple[dict[date, float], list[date]]] = {}
 
-    async def prices(symbol: str) -> dict[date, float]:
+    async def prices_and_cal(symbol: str) -> tuple[dict[date, float], list[date]]:
         if symbol in bar_cache:
             return bar_cache[symbol]
         bars = await storage.list_daily_bars(symbol)
         m = {b.trade_date: b.price for b in bars if math.isfinite(b.price)}
-        bar_cache[symbol] = m
-        return m
+        cal = sorted(m)
+        bar_cache[symbol] = (m, cal)
+        return m, cal
 
     async with storage._pool.connection() as conn:
         for row in rows:
@@ -168,20 +197,41 @@ async def score_due_outcomes(storage: Storage, *, limit: int = 5000) -> ScoreOut
             oid = d["id"]
             sym = str(d["symbol"])
             issued = d["issued_at"]
-            realized = d["realized_at"]
             y_pred = float(d["y_pred"])
-            if not isinstance(issued, date) or not isinstance(realized, date):
+            if not isinstance(issued, date):
                 skipped += 1
                 continue
-            px = await prices(sym)
+            px, cal = await prices_and_cal(sym)
+            realized = d.get("realized_at")
+            if not isinstance(realized, date):
+                realized = _nth_session_after(issued, int(d["horizon_days"]), cal)
+                if realized is None:
+                    skipped += 1
+                    continue
+                await conn.execute(
+                    """
+                    UPDATE forecast_outcomes SET realized_at = %s WHERE id = %s
+                    """,
+                    (realized, oid),
+                )
             p0 = px.get(issued)
+            if p0 is None and cal:
+                # snap issued_at to nearest session on/before
+                prior = [x for x in cal if x <= issued]
+                if prior:
+                    issued_eff = prior[-1]
+                    p0 = px.get(issued_eff)
+                else:
+                    skipped += 1
+                    continue
+            else:
+                issued_eff = issued
             p1 = px.get(realized)
             if p0 is None or p1 is None or p0 == 0:
                 skipped += 1
                 continue
+            # Only score once the realized session exists (always true if p1 set)
             y_real = (p1 / p0) - 1.0
-            # demean approx: use raw return for hit vs sign(y_pred)
-            # For panel models y_pred is demeaned; sign match still useful.
             if y_pred == 0 or y_real == 0:
                 hit = None
             else:
@@ -189,12 +239,14 @@ async def score_due_outcomes(storage: Storage, *, limit: int = 5000) -> ScoreOut
             await conn.execute(
                 """
                 UPDATE forecast_outcomes
-                SET y_real = %s, hit = %s, scored = TRUE, scored_at = now()
+                SET y_real = %s, hit = %s, scored = TRUE, scored_at = now(),
+                    realized_at = COALESCE(realized_at, %s)
                 WHERE id = %s
                 """,
-                (y_real, hit, oid),
+                (y_real, hit, realized, oid),
             )
             scored += 1
+            _ = issued_eff
 
     log.info("score_outcomes_done", examined=examined, scored=scored, skipped=skipped)
     return ScoreOutcomesResult(examined, scored, skipped)
@@ -205,8 +257,17 @@ async def attach_regime_and_emit_from_forecast_points(
     *,
     as_of: date | None = None,
 ) -> int:
-    """Copy today's forecast_points into forecast_outcomes with regime tags."""
-    day = as_of or date.today()
+    """Copy latest forecast_points into forecast_outcomes with regime tags."""
+    async with storage._pool.connection() as conn:
+        if as_of is None:
+            row = await (
+                await conn.execute("SELECT MAX(as_of) AS d FROM forecast_points")
+            ).fetchone()
+            day = dict(row).get("d") if row else None
+            if not isinstance(day, date):
+                day = date.today()
+        else:
+            day = as_of
     aspi_r = await aspi_ret_20d_as_of(storage, day)
     reg = tag_regime(as_of=day, aspi_ret_20d=aspi_r)
     async with storage._pool.connection() as conn:
