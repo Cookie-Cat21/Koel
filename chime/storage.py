@@ -616,10 +616,9 @@ class Storage:
         if not by_date:
             return 0
         payload = list(by_date.values())
-        async with self._pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.executemany(
-                    """
+        async with self._pool.connection() as conn, conn.cursor() as cur:
+            await cur.executemany(
+                """
                     INSERT INTO market_daily_summary (
                         trade_date, market_turnover, market_trades,
                         equity_foreign_purchase, equity_foreign_sales,
@@ -642,14 +641,14 @@ class Storage:
                         raw = EXCLUDED.raw,
                         ingested_at = now()
                     """,
-                    [
-                        {
-                            **r,
-                            "raw": Json(r.get("raw") or {}),
-                        }
-                        for r in payload
-                    ],
-                )
+                [
+                    {
+                        **r,
+                        "raw": Json(r.get("raw") or {}),
+                    }
+                    for r in payload
+                ],
+            )
         return len(payload)
 
     async def list_market_daily_summary(self) -> list[dict[str, Any]]:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from chime.logging_setup import get_logger
@@ -43,10 +43,9 @@ def _add_trading_days(start: date, n: int, calendar: list[date]) -> date | None:
     while i < len(calendar) and calendar[i] < start:
         i += 1
     # issued_at may equal a session; realized is n sessions after that session
-    if i >= len(calendar) or calendar[i] != start:
-        # if start not a trading day, use next session as issue anchor
-        if i >= len(calendar):
-            return None
+    # if start not a trading day, the next session anchors the window
+    if i >= len(calendar):
+        return None
     j = i + n
     if j >= len(calendar):
         return None
@@ -104,10 +103,9 @@ async def emit_outcome_rows(
         )
     if not rows_out:
         return 0
-    async with storage._pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.executemany(
-                """
+    async with storage._pool.connection() as conn, conn.cursor() as cur:
+        await cur.executemany(
+            """
                 INSERT INTO forecast_outcomes (
                     model_id, model_version, symbol, issued_at, horizon_days,
                     y_pred, confidence, gate, realized_at, regime_tag
@@ -124,8 +122,8 @@ async def emit_outcome_rows(
                         EXCLUDED.regime_tag, forecast_outcomes.regime_tag
                     )
                 """,
-                rows_out,
-            )
+            rows_out,
+        )
     return len(rows_out)
 
 
@@ -139,11 +137,8 @@ def _nth_session_after(
     i = 0
     while i < len(dates_sorted) and dates_sorted[i] < start:
         i += 1
-    if i < len(dates_sorted) and dates_sorted[i] == start:
-        j = i + n
-    else:
-        # start not a session — count n sessions from next
-        j = i + n - 1
+    # when start is not a session, count n sessions from the next one
+    j = i + n if i < len(dates_sorted) and dates_sorted[i] == start else i + n - 1
     if j < 0 or j >= len(dates_sorted):
         return None
     return dates_sorted[j]

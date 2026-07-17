@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import math
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from chime.logging_setup import get_logger
 from chime.ml import sklearn_available
@@ -69,14 +70,16 @@ def _enrich_cross_section(samples: list[Sample]) -> list[Sample]:
     out: list[Sample] = []
     for day_samples in by_day.values():
 
-        def pct_map(index: int) -> dict[str, float]:
+        def pct_map(
+            index: int, day: list[Sample] = day_samples
+        ) -> dict[str, float]:
             pairs = [
                 (s.symbol, s.x[index])
-                for s in day_samples
+                for s in day
                 if math.isfinite(s.x[index])
             ]
             if len(pairs) < 3:
-                return {s.symbol: float("nan") for s in day_samples}
+                return {s.symbol: float("nan") for s in day}
             ordered = sorted(pairs, key=lambda t: t[1])
             n = len(ordered)
             return {

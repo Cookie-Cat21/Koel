@@ -438,7 +438,15 @@ def test_market_page_and_nav_browse_link() -> None:
     assert 'role="search"' in market_src
     assert "maxLength={MAX_MARKET_Q_LENGTH}" in market_src
     assert "dangerouslySetInnerHTML" not in market_src
-    assert 'aria-label="Market symbols"' in market_src
+    # Symbols table moved into the BrowseTable kit component; the accessible
+    # name must survive wherever the table markup lives.
+    browse_table = WEB / "src" / "components" / "market" / "browse-table.tsx"
+    if 'aria-label="Market symbols"' not in market_src:
+        assert "BrowseTable" in market_src
+        assert browse_table.is_file()
+        assert 'aria-label="Market symbols"' in browse_table.read_text(
+            encoding="utf-8"
+        )
     assert "tradeSummary" not in market_src
     assert "make tick" in market_src
     assert "tick --force" not in market_src

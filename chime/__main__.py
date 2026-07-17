@@ -464,7 +464,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.command in ("drain-pdfs", "drain-briefs", "drain-metrics"):
         configure_logging()
         settings = Settings.from_env(require_token=False)
-        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else 20
+        drain_limit = (
+            args.limit if isinstance(args.limit, int) and args.limit > 0 else 20
+        )
         watched_only = not args.all_symbols
 
         async def _drain() -> None:
@@ -472,7 +474,7 @@ def main(argv: list[str] | None = None) -> None:
             await storage.open()
             try:
                 if args.command == "drain-briefs":
-                    result = await drain_briefs(storage=storage, limit=limit)
+                    result = await drain_briefs(storage=storage, limit=drain_limit)
                 elif args.command == "drain-pdfs":
                     cse = CSEClient(
                         base_url=settings.cse_base_url,
@@ -486,7 +488,7 @@ def main(argv: list[str] | None = None) -> None:
                             storage=storage,
                             cse=cse,
                             settings=settings,
-                            limit=limit,
+                            limit=drain_limit,
                             watched_only=watched_only,
                         )
                     finally:
@@ -494,7 +496,7 @@ def main(argv: list[str] | None = None) -> None:
                 else:
                     result = await drain_metrics(
                         storage=storage,
-                        limit=limit,
+                        limit=drain_limit,
                         watched_only=watched_only,
                     )
                 print(
@@ -511,7 +513,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "drain-briefs-local":
         configure_logging()
         settings = Settings.from_env(require_token=False)
-        limit = args.limit if isinstance(args.limit, int) and args.limit > 0 else 50
+        local_limit = (
+            args.limit if isinstance(args.limit, int) and args.limit > 0 else 50
+        )
 
         async def _local_briefs() -> None:
             from chime.briefs.local_fill import fill_pending_briefs_local
@@ -521,7 +525,7 @@ def main(argv: list[str] | None = None) -> None:
             try:
                 result = await fill_pending_briefs_local(
                     storage=storage,
-                    limit=limit,
+                    limit=local_limit,
                     extract_ok_only=True,
                 )
                 print(
@@ -817,7 +821,7 @@ def main(argv: list[str] | None = None) -> None:
             else args.limit
         )
         raw_horizons = args.horizons if isinstance(args.horizons, str) else "1,5"
-        horizons: list[int] = []
+        horizons = []
         for part in raw_horizons.split(","):
             part = part.strip()
             if not part:

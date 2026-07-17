@@ -61,6 +61,15 @@ function makeRequest(): NextRequest {
   });
 }
 
+/** True for the three core health queries (liveness, snapshot age, delivery). */
+function isBaseHealthQuery(sql: string): boolean {
+  return (
+    sql.includes("SELECT 1") ||
+    sql.includes("FROM price_snapshots") ||
+    sql.includes("FROM alert_log")
+  );
+}
+
 function installDbPool(): string[] {
   process.env.DATABASE_URL = "postgres://unit.test/chime";
   const queries: string[] = [];
@@ -68,6 +77,17 @@ function installDbPool(): string[] {
     query: async (sql: string) => {
       queries.push(sql);
       if (sql.includes("SELECT 1")) return { rows: [] };
+      // ML health block (best-effort, each query individually try/caught in
+      // the route) — answer with empty/zero shapes so the block stays quiet.
+      if (sql.includes("FROM model_registry")) return { rows: [], rowCount: 0 };
+      if (sql.includes("FROM forecast_outcomes")) return { rows: [], rowCount: 0 };
+      if (sql.includes("FROM market_daily_summary")) return { rows: [{ n: 0 }] };
+      if (sql.includes("FROM order_book_snapshots")) {
+        return { rows: [{ n: 0, mx: null }] };
+      }
+      if (sql.includes("FROM forecast_points")) {
+        return { rows: [{ as_of: null, spoke: 0 }] };
+      }
       if (sql.includes("MAX(ts)")) return { rows: [{ max_ts: null }] };
       if (sql.includes("FROM alert_log")) {
         return {
@@ -129,7 +149,17 @@ async function testWatchedMissingDegradesRoute(): Promise<void> {
       "retention default forwarded",
     );
     assert(seenUrls.length === 1, `expected one health fetch, got ${seenUrls.length}`);
-    assert(queries.length === 3, `expected three DB queries, got ${queries.length}`);
+    const baseQueries = queries.filter(isBaseHealthQuery);
+    assert(
+      baseQueries.length === 3,
+      `expected three core DB queries, got ${baseQueries.length}`,
+    );
+    // Anything beyond core must be the allowlisted ML-health block — the
+    // fake pool throws on unknown SQL, so growth here fails loudly.
+    assert(
+      queries.length <= 8,
+      `unexpected extra DB queries (${queries.length} total)`,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

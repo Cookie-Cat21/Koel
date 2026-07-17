@@ -193,7 +193,8 @@ async def test_persist_market_snapshots_last_wins_dedupes_symbol() -> None:
     assert out[0].symbol == "JKH.N0000"
     assert out[0].price == 101.0
     assert "UNNEST" in conn.sql[0] and "UNNEST" in conn.sql[1]
-    assert conn.params[0] == (["JKH.N0000"], ["Second"], [None])
+    # symbols, names, sectors, cse ids (cse_stock_id column landed later)
+    assert conn.params[0] == (["JKH.N0000"], ["Second"], [None], [None])
     assert conn.params[1][0] == ["JKH.N0000"]
     assert conn.params[1][1] == [101.0]
 

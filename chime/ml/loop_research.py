@@ -9,13 +9,13 @@ from pathlib import Path
 
 from chime.logging_setup import get_logger
 from chime.ml.always_on import (
+    _walk_lmt_bagged,
     enrich_samples_with_financial_filings,
     enrich_samples_with_interactions,
     enrich_samples_with_market_summary,
     enrich_samples_with_sector_rs,
     enrich_samples_with_yoy,
     load_yoy_events,
-    _walk_lmt_bagged,
 )
 from chime.ml.dataset import build_samples, load_symbol_bars
 from chime.ml.diagnose import analyze_rows, load_sector_map

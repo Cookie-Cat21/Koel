@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -58,9 +58,7 @@ def _gate_features(sample: Sample, stream: dict[str, Any]) -> bool:
     mode = stream.get("mode", "range")
     if not math.isfinite(rng) or rng < r_cut:
         return False
-    if mode == "range_vol" and (not math.isfinite(vol) or vol < v_cut):
-        return False
-    return True
+    return not (mode == "range_vol" and (not math.isfinite(vol) or vol < v_cut))
 
 
 def _latest_feature_rows(series: dict) -> list[Sample]:

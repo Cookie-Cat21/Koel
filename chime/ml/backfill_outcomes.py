@@ -132,12 +132,11 @@ async def backfill_walkforward_outcomes(
 
     # Chunked upsert — already scored
     chunk = 2000
-    async with storage._pool.connection() as conn:
-        async with conn.cursor() as cur:
-            for i in range(0, len(batch), chunk):
-                part = batch[i : i + chunk]
-                await cur.executemany(
-                    """
+    async with storage._pool.connection() as conn, conn.cursor() as cur:
+        for i in range(0, len(batch), chunk):
+            part = batch[i : i + chunk]
+            await cur.executemany(
+                """
                     INSERT INTO forecast_outcomes (
                         model_id, model_version, symbol, issued_at, horizon_days,
                         y_pred, confidence, gate, realized_at,
@@ -159,13 +158,13 @@ async def backfill_walkforward_outcomes(
                         scored = TRUE,
                         scored_at = now()
                     """,
-                    part,
-                )
-                log.info(
-                    "wf_outcomes_chunk",
-                    written=min(i + chunk, len(batch)),
-                    total=len(batch),
-                )
+                part,
+            )
+            log.info(
+                "wf_outcomes_chunk",
+                written=min(i + chunk, len(batch)),
+                total=len(batch),
+            )
 
     log.info("wf_outcomes_backfilled", rows=len(batch), folds=fold)
     return BackfillResult(rows=len(batch), folds=fold)

@@ -43,8 +43,8 @@ def _load_gate_threshold(*, p90: bool = False) -> float:
         if gate is not None:
             return gate.conf_thr
         return P90_GATE_THR
-    from pathlib import Path
     import json
+    from pathlib import Path
 
     path = Path("data/ml_artifacts/gate_calibration.json")
     if not path.is_file():
@@ -122,9 +122,9 @@ async def run_unified_forecast(
 
     fallback_emits = 0
     if mode in {"hpe_with_fallback", "always_on", "gated", "gated_p90"}:
+        import json
         from datetime import date
         from pathlib import Path
-        import json
 
         series = await load_symbol_bars(storage)
         train = _enrich_cross_section(
