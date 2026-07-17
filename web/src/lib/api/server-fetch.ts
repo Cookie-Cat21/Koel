@@ -175,6 +175,16 @@ export async function serverApiGet(path: string): Promise<Response> {
   }
   const cookie = cookieRaw;
   const url = `${resolveInternalOrigin()}${path}`;
+  // Vercel Deployment Protection (SSO) blocks server→self fetches unless the
+  // automation bypass secret is present. Without it, SSR often gets an HTML
+  // login shell (200) and pages parse empty API payloads.
+  const bypassRaw =
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET ??
+    process.env.DASH_VERCEL_PROTECTION_BYPASS;
+  const bypass =
+    typeof bypassRaw === "string" && bypassRaw.trim()
+      ? bypassRaw.trim()
+      : "";
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), SERVER_API_TIMEOUT_MS);
   try {
@@ -183,6 +193,12 @@ export async function serverApiGet(path: string): Promise<Response> {
       headers: {
         Accept: "application/json",
         cookie,
+        ...(bypass
+          ? {
+              "x-vercel-protection-bypass": bypass,
+              "x-vercel-set-bypass-cookie": "true",
+            }
+          : {}),
       },
       cache: "no-store",
       // Fail closed — open redirects must not bounce the Cookie header off-box.

@@ -84,7 +84,8 @@ to proxy tick detail.
 | Variable | Required by | Notes |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | bot / both | From @BotFather; never log |
-| `DATABASE_URL` | bot, poller, web | Shared; no password in logs |
+| `DATABASE_URL` | bot, poller, web | Shared Neon/Postgres; **direct** host (not `-pooler`) for Vercel SSR; no password in logs |
+| `DASH_VERCEL_PROTECTION_BYPASS` / `VERCEL_AUTOMATION_BYPASS_SECRET` | web (Vercel SSO) | Lets SSR self-fetches past Deployment Protection |
 | `DASH_SESSION_SECRET` | web | Non-empty; fail-closed if empty |
 | `DASH_DEMO_AUTH` | web | Must be `0` / unset on public URLs |
 | `DASH_DEMO_TELEGRAM_IDS` | web (demo only) | Allowlist; never enable demo on open network |

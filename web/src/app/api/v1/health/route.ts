@@ -422,13 +422,41 @@ export async function GET(request: NextRequest) {
   const httpStatus = status === "ok" ? 200 : 503;
 
   let ml: Awaited<ReturnType<typeof queryMlHealth>> | null = null;
+  let dataInventory: {
+    disclosures: number;
+    filing_metrics: number;
+    ready_briefs: number;
+    stocks: number;
+  } | null = null;
   if (dbOk) {
     try {
       const pool = getPool();
       ml = await queryMlHealth(pool);
+      const inv = await pool.query<{
+        disclosures: string | number;
+        filing_metrics: string | number;
+        ready_briefs: string | number;
+        stocks: string | number;
+      }>(
+        `SELECT
+           (SELECT COUNT(*)::bigint FROM disclosures) AS disclosures,
+           (SELECT COUNT(*)::bigint FROM filing_metrics) AS filing_metrics,
+           (SELECT COUNT(*)::bigint FROM disclosure_briefs WHERE status = 'ready') AS ready_briefs,
+           (SELECT COUNT(*)::bigint FROM stocks) AS stocks`,
+      );
+      const row = inv.rows[0];
+      if (row) {
+        dataInventory = {
+          disclosures: toNonNegativeSafeInt(row.disclosures, 0),
+          filing_metrics: toNonNegativeSafeInt(row.filing_metrics, 0),
+          ready_briefs: toNonNegativeSafeInt(row.ready_briefs, 0),
+          stocks: toNonNegativeSafeInt(row.stocks, 0),
+        };
+      }
     } catch (err) {
-      console.error("GET /health ml block failed", err);
+      console.error("GET /health ml/inventory block failed", err);
       ml = null;
+      dataInventory = null;
     }
   }
 
@@ -449,6 +477,9 @@ export async function GET(request: NextRequest) {
   }
   if (ml != null) {
     payload.ml = ml;
+  }
+  if (dataInventory != null) {
+    payload.data = dataInventory;
   }
 
   if (!dbOk && httpStatus === 503) {
