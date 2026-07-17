@@ -1,0 +1,1289 @@
+From adfd455ccb490dcd6de6c1c6982f785ab7965f73 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Fri, 17 Jul 2026 14:38:42 +0000
+Subject: [PATCH] Add Market module powered by Chime (CSE alerts + cash
+ context)
+
+Host CSE watchlist, alerts, and fire detail in Ceyfi with wallet cash
+context beside each ping. Backend /api/market serves mocks by default
+and optionally proxies Chime when CHIME_API_BASE is set. NFA everywhere;
+broker CTA intentionally disabled until a licensed partner.
+---
+ README.md                                     |   3 +
+ backend/.env.example                          |   4 +
+ backend/app/main.py                           |   3 +-
+ backend/app/routers/market.py                 | 305 ++++++++++++++++++
+ docs/MARKET_CHIME.md                          |  33 ++
+ frontend/app/market/alerts/[id]/page.tsx      | 158 +++++++++
+ frontend/app/market/alerts/page.tsx           | 121 +++++++
+ frontend/app/market/layout.tsx                |  17 +
+ frontend/app/market/page.tsx                  | 204 ++++++++++++
+ frontend/app/market/watchlist/page.tsx        |  94 ++++++
+ frontend/components/layout/MobileNav.tsx      |   2 +
+ frontend/components/layout/Sidebar.tsx        |   2 +
+ frontend/components/layout/SiteFooter.tsx     |   1 +
+ .../components/market/CashContextCard.tsx     |  46 +++
+ frontend/components/market/NfaStrip.tsx       |  11 +
+ frontend/lib/chime-market.ts                  |  92 ++++++
+ 16 files changed, 1095 insertions(+), 1 deletion(-)
+ create mode 100644 backend/app/routers/market.py
+ create mode 100644 docs/MARKET_CHIME.md
+ create mode 100644 frontend/app/market/alerts/[id]/page.tsx
+ create mode 100644 frontend/app/market/alerts/page.tsx
+ create mode 100644 frontend/app/market/layout.tsx
+ create mode 100644 frontend/app/market/page.tsx
+ create mode 100644 frontend/app/market/watchlist/page.tsx
+ create mode 100644 frontend/components/market/CashContextCard.tsx
+ create mode 100644 frontend/components/market/NfaStrip.tsx
+ create mode 100644 frontend/lib/chime-market.ts
+
+diff --git a/README.md b/README.md
+index f6ddd48..5da9371 100644
+--- a/README.md
++++ b/README.md
+@@ -23,6 +23,7 @@ Built for **Cursor Buildathon Colombo 2026** by Ardeno Studio.
+ | Module | Route | Persona |
+ |--------|-------|---------|
+ | Diaspora Family Wallet | `/wallet` | Nimal Fernando — diaspora parent |
++| **Market (Chime)** | `/market` | CSE watchlist + alerts + cash context — not a broker |
+ | AI Assistant | `/assistant` | EN + Sinhala voice & chat |
+ | Loan Dashboard | `/loans` | Sunil Bandara — borrower |
+ | Business Bookkeeper | `/business` | Suresh Silva — SME owner |
+@@ -30,6 +31,8 @@ Built for **Cursor Buildathon Colombo 2026** by Ardeno Studio.
+ | Decision Room | `/decisions` | Ranked actions from live data |
+ | Scenario Lab | `/scenarios` | Shock modeling on real balances |
+ 
++See [`docs/MARKET_CHIME.md`](docs/MARKET_CHIME.md) for the Chime-powered Market module.
++
+ ## Quick Start
+ 
+ ```bash
+diff --git a/backend/.env.example b/backend/.env.example
+index 53ca0cf..41816ac 100644
+--- a/backend/.env.example
++++ b/backend/.env.example
+@@ -65,3 +65,7 @@ BACKEND_BASE_URL=http://localhost:8000
+ # Telegram bot (optional — bot disabled when TELEGRAM_BOT_TOKEN is unset)
+ TELEGRAM_BOT_TOKEN=
+ INTERNAL_API_BASE=http://localhost:8000
++
++# Optional — proxy CSE watch/alerts from Chime (Market module)
++CHIME_API_BASE=
++CHIME_DEMO_TELEGRAM_ID=123456789
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 7e9ec94..2eba1fd 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
+ from app.services import metrics_store
+ 
+ from app.config import settings
+-from app.routers import mock, wallet, chat, tts, loans, business, payments, stt, auth, snapshot, banking_tools
++from app.routers import mock, wallet, chat, tts, loans, business, payments, stt, auth, snapshot, banking_tools, market
+ from app.services.auth import (
+     authorize_resource,
+     is_public_path,
+@@ -247,6 +247,7 @@ app.include_router(payhere_router)
+ 
+ 
+ app.include_router(banking_tools.router)
++app.include_router(market.router)
+ 
+ 
+ @app.exception_handler(Exception)
+diff --git a/backend/app/routers/market.py b/backend/app/routers/market.py
+new file mode 100644
+index 0000000..06f6b00
+--- /dev/null
++++ b/backend/app/routers/market.py
+@@ -0,0 +1,305 @@
++"""CSE Market module — Chime-backed (or mock) watchlist + alerts for Ceyfi host UI.
++
++Ceyfi never scrapes cse.lk. When CHIME_API_BASE is set, we proxy Chime's
++/api/v1/* with a demo session; otherwise we return deterministic mocks so
++the Market UI works in demos offline.
++"""
++
++from __future__ import annotations
++
++import os
++from datetime import datetime, timezone
++from typing import Any
++
++import httpx
++from fastapi import APIRouter, Header, HTTPException
++
++from app.services.auth import DEMO_PERSONAS, require_session
++
++router = APIRouter(prefix="/api/market", tags=["market"])
++
++CHIME_API_BASE = os.getenv("CHIME_API_BASE", "").rstrip("/")
++CHIME_DEMO_TELEGRAM_ID = os.getenv("CHIME_DEMO_TELEGRAM_ID", "123456789")
++
++NFA = (
++    "Information only — not financial advice. Not an invitation to deal in "
++    "securities. Ceyfi is not a stockbroker; place trades with your licensed broker."
++)
++
++# Per-persona demo watchlists (mock mode)
++_MOCK_WATCH: dict[str, list[dict[str, Any]]] = {
++    "SEY-USR-001": [
++        {
++            "symbol": "COMB.N0000",
++            "name": "Commercial Bank of Ceylon PLC",
++            "price": 128.5,
++            "change_pct": 1.2,
++            "volume": 245_000,
++        },
++        {
++            "symbol": "JKH.N0000",
++            "name": "John Keells Holdings PLC",
++            "price": 22.4,
++            "change_pct": -0.4,
++            "volume": 1_120_000,
++        },
++        {
++            "symbol": "CARS.N0000",
++            "name": "Carson Cumberbatch PLC",
++            "price": 380.0,
++            "change_pct": 0.8,
++            "volume": 42_000,
++        },
++    ],
++    "SEY-USR-003": [
++        {
++            "symbol": "DIAL.N0000",
++            "name": "Dialog Axiata PLC",
++            "price": 11.2,
++            "change_pct": 0.0,
++            "volume": 890_000,
++        },
++    ],
++    "SEY-BIZ-001": [
++        {
++            "symbol": "HNB.N0000",
++            "name": "Hatton National Bank PLC",
++            "price": 210.0,
++            "change_pct": -0.7,
++            "volume": 156_000,
++        },
++        {
++            "symbol": "SAMP.N0000",
++            "name": "Sampath Bank PLC",
++            "price": 78.5,
++            "change_pct": 0.3,
++            "volume": 98_000,
++        },
++    ],
++}
++
++_MOCK_ALERTS: dict[str, list[dict[str, Any]]] = {
++    "SEY-USR-001": [
++        {
++            "id": "a-comb-above",
++            "symbol": "COMB.N0000",
++            "type": "price_above",
++            "threshold": 125.0,
++            "active": True,
++            "created_at": "2026-07-10T04:00:00Z",
++        },
++        {
++            "id": "a-jkh-move",
++            "symbol": "JKH.N0000",
++            "type": "daily_move",
++            "threshold": 3.0,
++            "active": True,
++            "created_at": "2026-07-12T04:00:00Z",
++        },
++        {
++            "id": "a-cars-disc",
++            "symbol": "CARS.N0000",
++            "type": "disclosure",
++            "threshold": None,
++            "active": True,
++            "created_at": "2026-07-14T04:00:00Z",
++        },
++    ],
++    "SEY-USR-003": [
++        {
++            "id": "a-dial-below",
++            "symbol": "DIAL.N0000",
++            "type": "price_below",
++            "threshold": 10.5,
++            "active": True,
++            "created_at": "2026-07-11T04:00:00Z",
++        },
++    ],
++    "SEY-BIZ-001": [
++        {
++            "id": "a-hnb-above",
++            "symbol": "HNB.N0000",
++            "type": "price_above",
++            "threshold": 220.0,
++            "active": True,
++            "created_at": "2026-07-09T04:00:00Z",
++        },
++    ],
++}
++
++_MOCK_FIRES: dict[str, list[dict[str, Any]]] = {
++    "SEY-USR-001": [
++        {
++            "id": "f-1",
++            "alert_id": "a-comb-above",
++            "symbol": "COMB.N0000",
++            "type": "price_above",
++            "title": "COMB crossed above LKR 125",
++            "message": "COMB.N0000 last 128.50 — above your 125 alert. Not financial advice.",
++            "price": 128.5,
++            "fired_at": "2026-07-17T05:12:00Z",
++            "delivery_status": "sent",
++        },
++        {
++            "id": "f-2",
++            "alert_id": "a-cars-disc",
++            "symbol": "CARS.N0000",
++            "type": "disclosure",
++            "title": "New disclosure on CARS",
++            "message": "Annual report filing detected for CARS.N0000. Review on CSE — not advice.",
++            "price": 380.0,
++            "fired_at": "2026-07-16T09:40:00Z",
++            "delivery_status": "sent",
++        },
++    ],
++    "SEY-USR-003": [],
++    "SEY-BIZ-001": [
++        {
++            "id": "f-3",
++            "alert_id": "a-hnb-above",
++            "symbol": "HNB.N0000",
++            "type": "price_above",
++            "title": "HNB near your alert level",
++            "message": "HNB.N0000 last 210.00 — watching for 220. Demo fire. Not advice.",
++            "price": 210.0,
++            "fired_at": "2026-07-15T06:00:00Z",
++            "delivery_status": "sent",
++        },
++    ],
++}
++
++
++def _user_from_auth(authorization: str | None) -> str:
++    session = require_session(authorization)
++    uid = session.get("user_id")
++    if not uid or uid not in DEMO_PERSONAS:
++        raise HTTPException(status_code=401, detail="Unknown persona")
++    return str(uid)
++
++
++async def _chime_get(path: str) -> Any | None:
++    """Best-effort Chime proxy. Returns None to fall back to mocks."""
++    if not CHIME_API_BASE:
++        return None
++    try:
++        async with httpx.AsyncClient(timeout=8.0) as client:
++            login = await client.post(
++                f"{CHIME_API_BASE}/api/v1/auth/demo",
++                json={"telegram_id": int(CHIME_DEMO_TELEGRAM_ID)},
++            )
++            if login.status_code >= 400:
++                return None
++            cookies = login.cookies
++            res = await client.get(f"{CHIME_API_BASE}{path}", cookies=cookies)
++            if res.status_code >= 400:
++                return None
++            return res.json()
++    except Exception:
++        return None
++
++
++@router.get("/overview")
++async def market_overview(authorization: str | None = Header(default=None)):
++    uid = _user_from_auth(authorization)
++    watch = _MOCK_WATCH.get(uid, [])
++    fires = _MOCK_FIRES.get(uid, [])
++    alerts = _MOCK_ALERTS.get(uid, [])
++
++    live = await _chime_get("/api/v1/watchlist")
++    if isinstance(live, dict) and "items" in live:
++        watch = live["items"]
++    elif isinstance(live, list):
++        watch = live
++
++    live_fires = await _chime_get("/api/v1/alerts/history?limit=10")
++    if isinstance(live_fires, dict) and "items" in live_fires:
++        fires = live_fires["items"]
++    elif isinstance(live_fires, list):
++        fires = live_fires
++
++    return {
++        "source": "chime" if CHIME_API_BASE else "mock",
++        "nfa": NFA,
++        "watchlist": watch,
++        "alerts": alerts,
++        "fires": fires[:5],
++        "as_of": datetime.now(timezone.utc).isoformat(),
++    }
++
++
++@router.get("/watchlist")
++async def market_watchlist(authorization: str | None = Header(default=None)):
++    uid = _user_from_auth(authorization)
++    live = await _chime_get("/api/v1/watchlist")
++    if isinstance(live, dict) and "items" in live:
++        items = live["items"]
++        source = "chime"
++    elif isinstance(live, list):
++        items = live
++        source = "chime"
++    else:
++        items = _MOCK_WATCH.get(uid, [])
++        source = "mock"
++    return {"source": source, "nfa": NFA, "items": items}
++
++
++@router.get("/alerts")
++async def market_alerts(authorization: str | None = Header(default=None)):
++    uid = _user_from_auth(authorization)
++    live = await _chime_get("/api/v1/alerts")
++    if isinstance(live, dict) and "items" in live:
++        items = live["items"]
++        source = "chime"
++    elif isinstance(live, list):
++        items = live
++        source = "chime"
++    else:
++        items = _MOCK_ALERTS.get(uid, [])
++        source = "mock"
++    return {"source": source, "nfa": NFA, "items": items}
++
++
++@router.get("/fires")
++async def market_fires(authorization: str | None = Header(default=None)):
++    uid = _user_from_auth(authorization)
++    live = await _chime_get("/api/v1/alerts/history?limit=50")
++    if live is None:
++        live = await _chime_get("/api/v1/alerts/fires?limit=50")
++    if isinstance(live, dict) and "items" in live:
++        items = live["items"]
++        source = "chime"
++    elif isinstance(live, list):
++        items = live
++        source = "chime"
++    else:
++        items = _MOCK_FIRES.get(uid, [])
++        source = "mock"
++    return {"source": source, "nfa": NFA, "items": items}
++
++
++@router.get("/fires/{fire_id}")
++async def market_fire_detail(
++    fire_id: str,
++    authorization: str | None = Header(default=None),
++):
++    uid = _user_from_auth(authorization)
++    bundle = await market_fires(authorization=authorization)
++    items = list(bundle.get("items") or [])
++    hit = next((x for x in items if str(x.get("id")) == fire_id), None)
++    if not hit:
++        for rows in _MOCK_FIRES.values():
++            hit = next((x for x in rows if x["id"] == fire_id), None)
++            if hit:
++                break
++    if not hit:
++        raise HTTPException(status_code=404, detail="Alert fire not found")
++    return {
++        "source": bundle["source"],
++        "nfa": NFA,
++        "fire": hit,
++        "user_id": uid,
++        "broker_cta": {
++            "label": "Open my broker",
++            "hint": "Ceyfi does not place CSE orders. Use your licensed stockbroker / CDS participant.",
++        },
++    }
+diff --git a/docs/MARKET_CHIME.md b/docs/MARKET_CHIME.md
+new file mode 100644
+index 0000000..86b2885
+--- /dev/null
++++ b/docs/MARKET_CHIME.md
+@@ -0,0 +1,33 @@
++# Market module (Chime-powered)
++
++Ceyfi hosts the **Market** UI. Chime remains the CSE poller / alert engine.
++
++## Routes
++
++| Path | Purpose |
++|---|---|
++| `/market` | Watchlist summary + recent fires + cash context |
++| `/market/watchlist` | Full watch list |
++| `/market/alerts` | Active rules + fire history |
++| `/market/alerts/[id]` | Fire detail + wallet liquid estimate + broker CTA (disabled) |
++
++## Backend
++
++`GET /api/market/*` — authenticated with Ceyfi demo Bearer token.
++
++- Default: mock CSE payloads per persona (demo works offline)
++- Optional: set `CHIME_API_BASE` to proxy live Chime `/api/v1/*` after demo login
++
++```bash
++# backend .env
++CHIME_API_BASE=http://localhost:3000
++CHIME_DEMO_TELEGRAM_ID=123456789
++```
++
++Chime must have `DASH_DEMO_AUTH=1`, a non-empty `DASH_SESSION_SECRET`, and
++`DASH_DEMO_TELEGRAM_IDS` including that id.
++
++## Compliance
++
++Every Market surface carries NFA copy. **No Buy / Sell.** Broker handoff is
++Phase 4 (licensed partner).
+diff --git a/frontend/app/market/alerts/[id]/page.tsx b/frontend/app/market/alerts/[id]/page.tsx
+new file mode 100644
+index 0000000..de3ad24
+--- /dev/null
++++ b/frontend/app/market/alerts/[id]/page.tsx
+@@ -0,0 +1,158 @@
++"use client";
++
++import { useEffect, useState } from "react";
++import Link from "next/link";
++import { useParams } from "next/navigation";
++import { ExternalLink } from "lucide-react";
++
++import { CashContextCard } from "@/components/market/CashContextCard";
++import { NfaStrip } from "@/components/market/NfaStrip";
++import { PageHeader } from "@/components/layout/PageHeader";
++import { buttonVariants } from "@/components/ui/button";
++import { useCurrentUser } from "@/hooks/useCurrentUser";
++import { getFinancialSnapshot } from "@/lib/api";
++import { getMarketFireDetail, type MarketFire } from "@/lib/chime-market";
++import { cn, formatLKR } from "@/lib/utils";
++
++export default function MarketAlertDetailPage() {
++  const params = useParams<{ id: string }>();
++  const fireId = decodeURIComponent(params.id ?? "");
++  const { userId, loading: authLoading } = useCurrentUser();
++  const [fire, setFire] = useState<MarketFire | null>(null);
++  const [nfa, setNfa] = useState("");
++  const [brokerHint, setBrokerHint] = useState("");
++  const [liquid, setLiquid] = useState<number | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    if (authLoading || !userId || !fireId) return;
++    let cancelled = false;
++    (async () => {
++      setLoading(true);
++      setError(null);
++      try {
++        const [detail, snap] = await Promise.all([
++          getMarketFireDetail(fireId),
++          getFinancialSnapshot(userId).catch(() => null),
++        ]);
++        if (cancelled) return;
++        setFire(detail.fire);
++        setNfa(detail.nfa);
++        setBrokerHint(detail.broker_cta?.hint ?? "");
++        if (snap) {
++          setLiquid(
++            Number(snap.current_balance ?? snap.balance_lkr ?? snap.savings_balance) ||
++              null,
++          );
++        }
++      } catch (e) {
++        if (!cancelled) {
++          setError(e instanceof Error ? e.message : "Fire not found");
++        }
++      } finally {
++        if (!cancelled) setLoading(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [authLoading, userId, fireId]);
++
++  return (
++    <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:p-6 lg:p-8">
++      <PageHeader
++        eyebrow="Alert fire"
++        title={
++          fire
++            ? `${(fire.symbol || "").replace(/\.(N|X)0000$/i, "")} · ${fire.type}`
++            : "Alert detail"
++        }
++        description="What moved (Chime) + whether your rupees are ready (Ceyfi). No order is placed here."
++        action={
++          <Link
++            href="/market/alerts"
++            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
++          >
++            All alerts
++          </Link>
++        }
++      />
++      <NfaStrip text={nfa || undefined} />
++
++      {error ? (
++        <p className="text-sm text-destructive">{error}</p>
++      ) : null}
++
++      <div className="grid gap-4 lg:grid-cols-2">
++        <section className="rounded-[1.25rem] border border-ceyfi-line bg-card p-5 dark:border-white/10">
++          {loading || !fire ? (
++            <p className="text-sm text-muted-foreground">Loading…</p>
++          ) : (
++            <div className="space-y-3">
++              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
++                Market signal
++              </p>
++              <h2 className="font-heading text-xl font-semibold">
++                {fire.title ?? "Alert fired"}
++              </h2>
++              <p className="text-sm leading-relaxed text-foreground/90">
++                {fire.message}
++              </p>
++              <dl className="grid grid-cols-2 gap-2 text-sm">
++                <div className="rounded-lg border border-ceyfi-line/70 px-3 py-2 dark:border-white/10">
++                  <dt className="text-[11px] text-muted-foreground">Symbol</dt>
++                  <dd className="font-mono font-semibold">{fire.symbol}</dd>
++                </div>
++                <div className="rounded-lg border border-ceyfi-line/70 px-3 py-2 dark:border-white/10">
++                  <dt className="text-[11px] text-muted-foreground">Last price</dt>
++                  <dd className="font-mono tabular-nums">
++                    {fire.price != null ? formatLKR(fire.price) : "—"}
++                  </dd>
++                </div>
++              </dl>
++              <p className="text-[11px] text-muted-foreground">
++                Fired {fire.fired_at?.replace("T", " ").replace("Z", " UTC")}
++              </p>
++            </div>
++          )}
++        </section>
++
++        <div className="space-y-4">
++          <CashContextCard liquidLkr={liquid} loading={loading} />
++          <section className="rounded-[1.25rem] border border-dashed border-ceyfi-line bg-ceyfi-paper/50 p-4 dark:border-white/15 dark:bg-white/[0.03]">
++            <p className="text-sm font-medium text-ceyfi-ink dark:text-white">
++              Ready to act?
++            </p>
++            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
++              {brokerHint ||
++                "Ceyfi does not place CSE orders. Use your licensed stockbroker."}
++            </p>
++            <div className="mt-3 flex flex-wrap gap-2">
++              <Link
++                href="/wallet"
++                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
++              >
++                Review wallet
++              </Link>
++              <span
++                className={cn(
++                  buttonVariants({ variant: "secondary", size: "sm" }),
++                  "pointer-events-none inline-flex items-center gap-1.5 opacity-70",
++                )}
++                aria-disabled
++              >
++                Open my broker
++                <ExternalLink className="size-3.5" aria-hidden />
++              </span>
++            </div>
++            <p className="mt-2 text-[11px] text-muted-foreground">
++              Broker handoff arrives in a later phase with a licensed partner —
++              button stays disabled on purpose.
++            </p>
++          </section>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/app/market/alerts/page.tsx b/frontend/app/market/alerts/page.tsx
+new file mode 100644
+index 0000000..18de302
+--- /dev/null
++++ b/frontend/app/market/alerts/page.tsx
+@@ -0,0 +1,121 @@
++"use client";
++
++import { useEffect, useState } from "react";
++import Link from "next/link";
++
++import { NfaStrip } from "@/components/market/NfaStrip";
++import { PageHeader } from "@/components/layout/PageHeader";
++import { buttonVariants } from "@/components/ui/button";
++import { useCurrentUser } from "@/hooks/useCurrentUser";
++import {
++  getMarketAlerts,
++  getMarketFires,
++  type MarketAlert,
++  type MarketFire,
++} from "@/lib/chime-market";
++import { cn } from "@/lib/utils";
++
++export default function MarketAlertsPage() {
++  const { userId, loading: authLoading } = useCurrentUser();
++  const [alerts, setAlerts] = useState<MarketAlert[]>([]);
++  const [fires, setFires] = useState<MarketFire[]>([]);
++  const [nfa, setNfa] = useState("");
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    if (authLoading || !userId) return;
++    let cancelled = false;
++    (async () => {
++      setLoading(true);
++      try {
++        const [a, f] = await Promise.all([getMarketAlerts(), getMarketFires()]);
++        if (cancelled) return;
++        setAlerts(a.items ?? []);
++        setFires(f.items ?? []);
++        setNfa(a.nfa || f.nfa);
++      } finally {
++        if (!cancelled) setLoading(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [authLoading, userId]);
++
++  return (
++    <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:p-6 lg:p-8">
++      <PageHeader
++        eyebrow="Market"
++        title="Alerts & fires"
++        description="Chime rules and recent Telegram-ready fires. Open a fire to see cash context — not a trade ticket."
++        action={
++          <Link
++            href="/market"
++            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
++          >
++            Back to Market
++          </Link>
++        }
++      />
++      <NfaStrip text={nfa || undefined} />
++
++      <div className="grid gap-4 lg:grid-cols-2">
++        <section className="rounded-[1.25rem] border border-ceyfi-line bg-card p-4 dark:border-white/10">
++          <h2 className="font-heading text-lg font-semibold">Active rules</h2>
++          {loading ? (
++            <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
++          ) : alerts.length === 0 ? (
++            <p className="mt-3 text-sm text-muted-foreground">No active alerts.</p>
++          ) : (
++            <ul className="mt-3 divide-y divide-ceyfi-line/70 dark:divide-white/10">
++              {alerts.map((a) => (
++                <li key={a.id} className="flex items-center justify-between gap-2 py-2.5">
++                  <div>
++                    <p className="font-mono text-sm font-semibold">
++                      {a.symbol.replace(/\.(N|X)0000$/i, "")}
++                    </p>
++                    <p className="text-[12px] text-muted-foreground">
++                      {a.type}
++                      {a.threshold != null ? ` · ${a.threshold}` : ""}
++                    </p>
++                  </div>
++                  <span className="text-[11px] text-muted-foreground">
++                    {a.active === false ? "paused" : "active"}
++                  </span>
++                </li>
++              ))}
++            </ul>
++          )}
++        </section>
++
++        <section className="rounded-[1.25rem] border border-ceyfi-line bg-card p-4 dark:border-white/10">
++          <h2 className="font-heading text-lg font-semibold">Fire history</h2>
++          {loading ? (
++            <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
++          ) : fires.length === 0 ? (
++            <p className="mt-3 text-sm text-muted-foreground">No fires yet.</p>
++          ) : (
++            <ul className="mt-3 space-y-2">
++              {fires.map((f) => (
++                <li key={f.id}>
++                  <Link
++                    href={`/market/alerts/${encodeURIComponent(f.id)}`}
++                    className="block rounded-xl border border-ceyfi-line/70 px-3 py-2.5 hover:bg-ceyfi-sprout/40 dark:border-white/10 dark:hover:bg-white/[0.04]"
++                  >
++                    <p className="font-mono text-sm font-semibold">
++                      {(f.symbol || "").replace(/\.(N|X)0000$/i, "")}
++                    </p>
++                    <p className="text-[13px]">{f.title ?? f.message ?? f.type}</p>
++                    <p className="mt-0.5 text-[11px] text-muted-foreground">
++                      {f.fired_at?.slice(0, 16)?.replace("T", " ")}
++                    </p>
++                  </Link>
++                </li>
++              ))}
++            </ul>
++          )}
++        </section>
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/app/market/layout.tsx b/frontend/app/market/layout.tsx
+new file mode 100644
+index 0000000..82b43a9
+--- /dev/null
++++ b/frontend/app/market/layout.tsx
+@@ -0,0 +1,17 @@
++import type { Metadata } from "next";
++import { createPageMetadata } from "@/lib/seo";
++
++export const metadata: Metadata = createPageMetadata({
++  title: "Market",
++  description:
++    "CSE watchlist and Chime alerts inside Ceyfi — cash context beside market pings. Not a stockbroker.",
++  path: "/market",
++});
++
++export default function MarketLayout({
++  children,
++}: {
++  children: React.ReactNode;
++}) {
++  return children;
++}
+diff --git a/frontend/app/market/page.tsx b/frontend/app/market/page.tsx
+new file mode 100644
+index 0000000..ebcc968
+--- /dev/null
++++ b/frontend/app/market/page.tsx
+@@ -0,0 +1,204 @@
++"use client";
++
++import { useEffect, useState } from "react";
++import Link from "next/link";
++import { Bell, LineChart, List } from "lucide-react";
++
++import { CashContextCard } from "@/components/market/CashContextCard";
++import { NfaStrip } from "@/components/market/NfaStrip";
++import { PageHeader } from "@/components/layout/PageHeader";
++import { buttonVariants } from "@/components/ui/button";
++import { useCurrentUser } from "@/hooks/useCurrentUser";
++import { getFinancialSnapshot } from "@/lib/api";
++import {
++  getMarketOverview,
++  type MarketAlert,
++  type MarketFire,
++  type MarketWatchItem,
++} from "@/lib/chime-market";
++import { cn, formatLKR } from "@/lib/utils";
++
++export default function MarketPage() {
++  const { userId, loading: authLoading } = useCurrentUser();
++  const [watch, setWatch] = useState<MarketWatchItem[]>([]);
++  const [alerts, setAlerts] = useState<MarketAlert[]>([]);
++  const [fires, setFires] = useState<MarketFire[]>([]);
++  const [nfa, setNfa] = useState<string>("");
++  const [source, setSource] = useState<string>("mock");
++  const [liquid, setLiquid] = useState<number | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    if (authLoading || !userId) return;
++    let cancelled = false;
++    (async () => {
++      setLoading(true);
++      setError(null);
++      try {
++        const [overview, snap] = await Promise.all([
++          getMarketOverview(),
++          getFinancialSnapshot(userId).catch(() => null),
++        ]);
++        if (cancelled) return;
++        setWatch(overview.watchlist ?? []);
++        setAlerts(overview.alerts ?? []);
++        setFires(overview.fires ?? []);
++        setNfa(overview.nfa);
++        setSource(overview.source);
++        if (snap) {
++          setLiquid(
++            Number(snap.current_balance ?? snap.balance_lkr ?? snap.savings_balance) ||
++              null,
++          );
++        }
++      } catch (e) {
++        if (!cancelled) {
++          setError(e instanceof Error ? e.message : "Market unavailable");
++        }
++      } finally {
++        if (!cancelled) setLoading(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [authLoading, userId]);
++
++  return (
++    <div data-module="market" className="mx-auto max-w-[1400px] space-y-5 p-4 sm:p-6 lg:p-8">
++      <PageHeader
++        eyebrow="Market · powered by Chime"
++        title="CSE watch & alerts"
++        description="See names you care about and recent Chime pings next to your Ceyfi cash. You still trade with your licensed broker."
++        action={
++          <div className="flex flex-wrap gap-2">
++            <Link
++              href="/market/watchlist"
++              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
++            >
++              <List className="mr-1.5 size-4" />
++              Watchlist
++            </Link>
++            <Link
++              href="/market/alerts"
++              className={cn(buttonVariants({ size: "sm" }))}
++            >
++              <Bell className="mr-1.5 size-4" />
++              Alerts
++            </Link>
++          </div>
++        }
++        meta={
++          <p className="text-xs text-muted-foreground">
++            Data source: {source === "chime" ? "Live Chime API" : "Demo mock (set CHIME_API_BASE to proxy)"}
++          </p>
++        }
++      />
++
++      <NfaStrip text={nfa || undefined} />
++
++      {error ? (
++        <p className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
++          {error}
++        </p>
++      ) : null}
++
++      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
++        <section className="space-y-4">
++          <div className="rounded-[1.25rem] border border-ceyfi-line bg-card p-4 dark:border-white/10">
++            <div className="mb-3 flex items-center gap-2">
++              <LineChart className="size-4 text-ceyfi-green" aria-hidden />
++              <h2 className="font-heading text-lg font-semibold">Watchlist</h2>
++            </div>
++            {loading ? (
++              <p className="text-sm text-muted-foreground">Loading…</p>
++            ) : watch.length === 0 ? (
++              <p className="text-sm text-muted-foreground">
++                No watched symbols yet. Alerts attach to your Chime watchlist.
++              </p>
++            ) : (
++              <ul className="divide-y divide-ceyfi-line/70 dark:divide-white/10">
++                {watch.map((row) => (
++                  <li
++                    key={row.symbol}
++                    className="flex items-center justify-between gap-3 py-2.5"
++                  >
++                    <div className="min-w-0">
++                      <p className="font-mono text-sm font-semibold">
++                        {row.symbol.replace(/\.(N|X)0000$/i, "")}
++                      </p>
++                      <p className="truncate text-[12px] text-muted-foreground">
++                        {row.name ?? row.symbol}
++                      </p>
++                    </div>
++                    <div className="text-right">
++                      <p className="font-mono text-sm tabular-nums">
++                        {row.price != null ? formatLKR(row.price) : "—"}
++                      </p>
++                      <p
++                        className={
++                          (row.change_pct ?? 0) >= 0
++                            ? "font-mono text-[11px] text-emerald-700 dark:text-emerald-400"
++                            : "font-mono text-[11px] text-red-600 dark:text-red-400"
++                        }
++                      >
++                        {row.change_pct != null
++                          ? `${row.change_pct > 0 ? "+" : ""}${row.change_pct.toFixed(2)}%`
++                          : "—"}
++                      </p>
++                    </div>
++                  </li>
++                ))}
++              </ul>
++            )}
++          </div>
++
++          <div className="rounded-[1.25rem] border border-ceyfi-line bg-card p-4 dark:border-white/10">
++            <div className="mb-3 flex items-center justify-between gap-2">
++              <h2 className="font-heading text-lg font-semibold">Recent fires</h2>
++              <Link
++                href="/market/alerts"
++                className="text-xs font-medium text-ceyfi-green underline-offset-2 hover:underline"
++              >
++                All alerts
++              </Link>
++            </div>
++            {loading ? (
++              <p className="text-sm text-muted-foreground">Loading…</p>
++            ) : fires.length === 0 ? (
++              <p className="text-sm text-muted-foreground">
++                No recent Chime fires. Active rules: {alerts.length}.
++              </p>
++            ) : (
++              <ul className="space-y-2">
++                {fires.map((f) => (
++                  <li key={f.id}>
++                    <Link
++                      href={`/market/alerts/${encodeURIComponent(f.id)}`}
++                      className="block rounded-xl border border-ceyfi-line/70 px-3 py-2.5 transition-colors hover:bg-ceyfi-sprout/40 dark:border-white/10 dark:hover:bg-white/[0.04]"
++                    >
++                      <div className="flex items-baseline justify-between gap-2">
++                        <span className="font-mono text-sm font-semibold">
++                          {(f.symbol || "").replace(/\.(N|X)0000$/i, "")}
++                        </span>
++                        <span className="text-[11px] text-muted-foreground">
++                          {f.fired_at?.slice(0, 16)?.replace("T", " ") ?? ""}
++                        </span>
++                      </div>
++                      <p className="mt-0.5 text-[13px] text-foreground/90">
++                        {f.title ?? f.message ?? f.type}
++                      </p>
++                    </Link>
++                  </li>
++                ))}
++              </ul>
++            )}
++          </div>
++        </section>
++
++        <CashContextCard liquidLkr={liquid} loading={loading} />
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/app/market/watchlist/page.tsx b/frontend/app/market/watchlist/page.tsx
+new file mode 100644
+index 0000000..7cf05f3
+--- /dev/null
++++ b/frontend/app/market/watchlist/page.tsx
+@@ -0,0 +1,94 @@
++"use client";
++
++import { useEffect, useState } from "react";
++import Link from "next/link";
++
++import { NfaStrip } from "@/components/market/NfaStrip";
++import { PageHeader } from "@/components/layout/PageHeader";
++import { buttonVariants } from "@/components/ui/button";
++import { useCurrentUser } from "@/hooks/useCurrentUser";
++import { getMarketWatchlist, type MarketWatchItem } from "@/lib/chime-market";
++import { cn, formatLKR } from "@/lib/utils";
++
++export default function MarketWatchlistPage() {
++  const { userId, loading: authLoading } = useCurrentUser();
++  const [items, setItems] = useState<MarketWatchItem[]>([]);
++  const [nfa, setNfa] = useState("");
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    if (authLoading || !userId) return;
++    let cancelled = false;
++    (async () => {
++      setLoading(true);
++      try {
++        const data = await getMarketWatchlist();
++        if (cancelled) return;
++        setItems(data.items ?? []);
++        setNfa(data.nfa);
++      } finally {
++        if (!cancelled) setLoading(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [authLoading, userId]);
++
++  return (
++    <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:p-6 lg:p-8">
++      <PageHeader
++        eyebrow="Market"
++        title="Watchlist"
++        description="Symbols mirrored from Chime. Manage rules in Alerts — Ceyfi does not scrape cse.lk."
++        action={
++          <Link
++            href="/market"
++            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
++          >
++            Back to Market
++          </Link>
++        }
++      />
++      <NfaStrip text={nfa || undefined} />
++      <div className="overflow-hidden rounded-[1.25rem] border border-ceyfi-line bg-card dark:border-white/10">
++        <div className="grid grid-cols-[minmax(0,1fr)_6rem_5rem] gap-2 border-b border-ceyfi-line px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground dark:border-white/10">
++          <span>Symbol</span>
++          <span className="text-right">Price</span>
++          <span className="text-right">Chg</span>
++        </div>
++        {loading ? (
++          <p className="px-4 py-8 text-sm text-muted-foreground">Loading…</p>
++        ) : items.length === 0 ? (
++          <p className="px-4 py-8 text-sm text-muted-foreground">No watched symbols.</p>
++        ) : (
++          <ul className="divide-y divide-ceyfi-line/70 dark:divide-white/10">
++            {items.map((row) => (
++              <li
++                key={row.symbol}
++                className="grid grid-cols-[minmax(0,1fr)_6rem_5rem] items-center gap-2 px-4 py-3"
++              >
++                <div className="min-w-0">
++                  <p className="font-mono text-sm font-semibold">
++                    {row.symbol.replace(/\.(N|X)0000$/i, "")}
++                  </p>
++                  <p className="truncate text-[12px] text-muted-foreground">
++                    {row.name ?? row.symbol}
++                  </p>
++                </div>
++                <p className="text-right font-mono text-sm tabular-nums">
++                  {row.price != null ? formatLKR(row.price) : "—"}
++                </p>
++                <p className="text-right font-mono text-sm tabular-nums">
++                  {row.change_pct != null
++                    ? `${row.change_pct > 0 ? "+" : ""}${row.change_pct.toFixed(2)}%`
++                    : "—"}
++                </p>
++              </li>
++            ))}
++          </ul>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/components/layout/MobileNav.tsx b/frontend/components/layout/MobileNav.tsx
+index a8d4cb3..48ad9fc 100644
+--- a/frontend/components/layout/MobileNav.tsx
++++ b/frontend/components/layout/MobileNav.tsx
+@@ -11,6 +11,7 @@ import {
+   FlaskConical,
+   LayoutDashboard,
+   Lightbulb,
++  LineChart,
+   MoreHorizontal,
+   Sparkles,
+   User,
+@@ -36,6 +37,7 @@ const MOBILE_PRIMARY = [
+ ];
+ 
+ const MOBILE_MORE = [
++  { href: "/market", label: "Market", icon: LineChart },
+   { href: "/transactions", label: "Activity", icon: ArrowUpDown },
+   { href: "/loans", label: "Loans", icon: CreditCard },
+   { href: "/business", label: "Business", icon: BriefcaseBusiness },
+diff --git a/frontend/components/layout/Sidebar.tsx b/frontend/components/layout/Sidebar.tsx
+index 4578408..642261a 100644
+--- a/frontend/components/layout/Sidebar.tsx
++++ b/frontend/components/layout/Sidebar.tsx
+@@ -11,6 +11,7 @@ import {
+   FlaskConical,
+   LayoutDashboard,
+   Lightbulb,
++  LineChart,
+   LogOut,
+   Sparkles,
+   Wallet,
+@@ -29,6 +30,7 @@ const NAV_GROUPS = [
+     items: [
+       { href: "/", label: "Overview", icon: LayoutDashboard },
+       { href: "/wallet", label: "Wallet", icon: Wallet },
++      { href: "/market", label: "Market", icon: LineChart },
+       { href: "/transactions", label: "Transactions", icon: ArrowUpDown },
+       { href: "/loans", label: "Loans", icon: CreditCard },
+       { href: "/business", label: "Business", icon: BriefcaseBusiness },
+diff --git a/frontend/components/layout/SiteFooter.tsx b/frontend/components/layout/SiteFooter.tsx
+index 2a93fd1..2f61ceb 100644
+--- a/frontend/components/layout/SiteFooter.tsx
++++ b/frontend/components/layout/SiteFooter.tsx
+@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
+ /** HyperUI "Simple stacked" footer pattern — adapted for CEYFI app navigation. */
+ const FOOTER_LINKS = [
+   { href: "/wallet", label: "Wallet" },
++  { href: "/market", label: "Market" },
+   { href: "/loans", label: "Loans" },
+   { href: "/assistant", label: "Assistant" },
+   { href: "/transactions", label: "Transactions" },
+diff --git a/frontend/components/market/CashContextCard.tsx b/frontend/components/market/CashContextCard.tsx
+new file mode 100644
+index 0000000..ca665ea
+--- /dev/null
++++ b/frontend/components/market/CashContextCard.tsx
+@@ -0,0 +1,46 @@
++"use client";
++
++import Link from "next/link";
++import { Wallet } from "lucide-react";
++import { formatLKR } from "@/lib/utils";
++
++export function CashContextCard({
++  liquidLkr,
++  label,
++  loading,
++}: {
++  liquidLkr: number | null;
++  label?: string;
++  loading?: boolean;
++}) {
++  return (
++    <section className="rounded-[1.25rem] border border-ceyfi-line bg-card p-4 shadow-sm dark:border-white/10">
++      <div className="flex items-start gap-3">
++        <span className="grid size-10 place-items-center rounded-xl bg-ceyfi-sprout text-ceyfi-green dark:bg-ceyfi-green/15">
++          <Wallet className="size-5" aria-hidden />
++        </span>
++        <div className="min-w-0 flex-1">
++          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ceyfi-muted">
++            Cash context
++          </p>
++          <p className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ceyfi-ink dark:text-white">
++            {loading
++              ? "…"
++              : liquidLkr != null
++                ? formatLKR(liquidLkr)
++                : "Unavailable"}
++          </p>
++          <p className="mt-1 text-[12px] text-muted-foreground">
++            {label ?? "Liquid estimate from your Ceyfi snapshot — not a buy signal."}
++          </p>
++          <Link
++            href="/wallet"
++            className="mt-3 inline-flex text-sm font-medium text-ceyfi-green underline-offset-2 hover:underline"
++          >
++            Review cash in Wallet
++          </Link>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/frontend/components/market/NfaStrip.tsx b/frontend/components/market/NfaStrip.tsx
+new file mode 100644
+index 0000000..f4c1a16
+--- /dev/null
++++ b/frontend/components/market/NfaStrip.tsx
+@@ -0,0 +1,11 @@
++export function NfaStrip({ text }: { text?: string }) {
++  return (
++    <p
++      role="note"
++      className="rounded-xl border border-ceyfi-line/80 bg-ceyfi-paper/80 px-3 py-2 text-[12px] leading-relaxed text-ceyfi-muted dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55"
++    >
++      {text ??
++        "Information only — not financial advice. Not an invitation to deal in securities. Ceyfi is not a stockbroker."}
++    </p>
++  );
++}
+diff --git a/frontend/lib/chime-market.ts b/frontend/lib/chime-market.ts
+new file mode 100644
+index 0000000..440ccdd
+--- /dev/null
++++ b/frontend/lib/chime-market.ts
+@@ -0,0 +1,92 @@
++/**
++ * Ceyfi Market client — talks to Ceyfi backend `/api/market/*`
++ * (mock Chime payloads, or live proxy when CHIME_API_BASE is set on the backend).
++ */
++import { authHeaders } from "@/lib/auth";
++import { API_BASE, ApiError } from "@/lib/api";
++
++export type MarketWatchItem = {
++  symbol: string;
++  name?: string | null;
++  price?: number | null;
++  change_pct?: number | null;
++  volume?: number | null;
++};
++
++export type MarketAlert = {
++  id: string;
++  symbol: string;
++  type: string;
++  threshold?: number | null;
++  active?: boolean;
++  created_at?: string;
++};
++
++export type MarketFire = {
++  id: string;
++  alert_id?: string;
++  symbol: string;
++  type: string;
++  title?: string;
++  message?: string;
++  price?: number | null;
++  fired_at?: string;
++  delivery_status?: string;
++};
++
++async function marketRequest<T>(path: string): Promise<T> {
++  const res = await fetch(`${API_BASE}${path}`, {
++    headers: { ...authHeaders() },
++    signal: AbortSignal.timeout(8000),
++  });
++  if (!res.ok) {
++    const text = await res.text().catch(() => "Unknown error");
++    throw new ApiError(res.status, text);
++  }
++  return res.json();
++}
++
++export async function getMarketOverview() {
++  return marketRequest<{
++    source: string;
++    nfa: string;
++    watchlist: MarketWatchItem[];
++    alerts: MarketAlert[];
++    fires: MarketFire[];
++    as_of: string;
++  }>("/api/market/overview");
++}
++
++export async function getMarketWatchlist() {
++  return marketRequest<{
++    source: string;
++    nfa: string;
++    items: MarketWatchItem[];
++  }>("/api/market/watchlist");
++}
++
++export async function getMarketAlerts() {
++  return marketRequest<{
++    source: string;
++    nfa: string;
++    items: MarketAlert[];
++  }>("/api/market/alerts");
++}
++
++export async function getMarketFires() {
++  return marketRequest<{
++    source: string;
++    nfa: string;
++    items: MarketFire[];
++  }>("/api/market/fires");
++}
++
++export async function getMarketFireDetail(fireId: string) {
++  return marketRequest<{
++    source: string;
++    nfa: string;
++    fire: MarketFire;
++    user_id: string;
++    broker_cta: { label: string; hint: string };
++  }>(`/api/market/fires/${encodeURIComponent(fireId)}`);
++}
+-- 
+2.43.0
+
