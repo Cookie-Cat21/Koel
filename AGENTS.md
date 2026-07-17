@@ -35,6 +35,20 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='chime'" | gr
 `.env.example` → `.env` for the backend; the `.env` default `DATABASE_URL` already matches.
 Apply migrations with `python3 -m chime.migrate` (idempotent).
 
+> **Injected `DATABASE_URL` secret overrides local Postgres.** This VM ships with
+> Cloud Agent secrets in the OS env (`env | grep DASH_`), including a **Neon**
+> `DATABASE_URL` (`…neon.tech/neondb`) plus a real `DASH_SESSION_SECRET`,
+> `DASH_DEMO_TELEGRAM_IDS`, `DASH_DEFAULT_TELEGRAM_ID`, and `TELEGRAM_BOT_TOKEN`.
+> That injected Neon DB is already migrated + richly seeded, and both the backend
+> (`python3 -m chime …` without an explicit `DATABASE_URL`) and the dashboard
+> (Next.js does **not** let `.env.local` override an existing `process.env` var)
+> will talk to Neon, **not** the local cluster above. So: the local-Postgres setup
+> is optional; to force local instead, pass `DATABASE_URL=…localhost…` inline on
+> the backend command. For the dashboard, just sign in with an ID from the injected
+> `DASH_DEMO_TELEGRAM_IDS` allowlist (e.g. `9001001`) — `ensureUser` creates the
+> row on first login. Never run integration `pytest` with the injected Neon URL
+> exported (it writes fixtures into that shared DB).
+
 ### Non-obvious gotchas
 
 - Use `python3`, not `python` — the CLI examples in `README.md`/`Makefile` say `python`, but
