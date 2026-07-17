@@ -32,9 +32,15 @@ Research / self-improving loop notes. Not financial advice.
 | B-008 vol-scaled label | DEAD (mean −0.005) |
 | B-002 market summary | BLOCKED — API returns ~2 sessions only; nightly accrual started (B-011) |
 | B-012 gated_p90 | **KEEP** thr=0.84 → 90.5% @ n=42; serve `--mode gated_p90` (1 emit today) |
+| B-013 reliability×conf | **KEEP** holdout-validated: sym≥0.61 & conf≥0.71 → **90%@n=60**; live serve 5 emits |
+
+## Stress
+
+- Temporal holdout (last 20% dates): pure conf≥0.80 → 95%@n=21; B-013 params above hold 90%@n=60.
+- In-sample-only sym≥0.71&conf≥0.61 looked good but failed holdout (82%) — discarded.
 
 ## Next
 
-- Accrue B-011 market summary + B-001 order-book history
+- Accrue B-011 market summary + B-001 order-book history (empty outside hours)
 - Score live gated/p90 emits after next CSE session
 - Re-test B-002 at ≥60 market_daily_summary days

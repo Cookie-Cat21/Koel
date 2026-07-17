@@ -177,6 +177,12 @@ async def run_loop_nightly(storage: Storage) -> NightlyResult:
     cal = _recalibrate_gate(rows)
     CALIBRATION.parent.mkdir(parents=True, exist_ok=True)
     CALIBRATION.write_text(json.dumps(cal, indent=2) + "\n", encoding="utf-8")
+    try:
+        from chime.ml.symbol_gate import rebuild_symbol_allowlist
+
+        await rebuild_symbol_allowlist(storage)
+    except Exception as exc:
+        log.warning("symbol_allowlist_rebuild_failed", error=str(exc)[:200])
     path = await append_live_scoreboard(storage, alerts=alerts)
     await write_registry_markdown(storage)
     log.info(

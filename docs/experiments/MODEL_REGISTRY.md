@@ -1,6 +1,6 @@
 # Model registry
 
-**Updated (UTC):** 2026-07-17T03:21:03Z
+**Updated (UTC):** 2026-07-17T03:26:56Z
 
 | model_id | status | algo | oos_hit | oos_gated_hit | coverage | degraded |
 |---|---|---|---:|---:|---:|:---:|

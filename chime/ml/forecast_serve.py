@@ -29,14 +29,19 @@ log = get_logger(__name__)
 
 ALWAYS_ON_VERSION = "ml_always_on_fin_v1"
 GATED_VERSION = "ml_gated_c55_v1"
-GATED_P90_VERSION = "ml_gated_p90_v1"
+GATED_P90_VERSION = "ml_gated_p90_v2"
 DEFAULT_GATE_THR = 0.55
-# WF ledger: thr=0.84 → hit≈0.905 @ n=42 (cov≈0.24%). Selective 90% path.
+# Fallback if allowlist missing: thr=0.84 → hit≈0.905 @ n=42 (cov≈0.24%).
 P90_GATE_THR = 0.84
 
 
 def _load_gate_threshold(*, p90: bool = False) -> float:
     if p90:
+        from chime.ml.symbol_gate import load_symbol_gate
+
+        gate = load_symbol_gate()
+        if gate is not None:
+            return gate.conf_thr
         return P90_GATE_THR
     from pathlib import Path
     import json
@@ -76,8 +81,8 @@ async def run_unified_forecast(
     - ``always_on``: always-on stack only
     - ``gated``: always-on but only emit when confidence ≥ calibrated threshold
       (B-005 KEEP — ~72% hit @ ~11% coverage at thr=0.55 on WF ledger)
-    - ``gated_p90``: ultra-selective gate (thr=0.84) targeting ≥90% precision
-      on WF ledger (very low coverage)
+    - ``gated_p90``: symbol-reliability allowlist × conf gate targeting ≥90%
+      precision (B-013; fallback thr=0.84 if allowlist missing)
     """
     if not sklearn_available():
         return UnifiedForecastResult(0, 0, 0, mode)
@@ -86,6 +91,13 @@ async def run_unified_forecast(
     points = 0
     hpe_symbols: set[str] = set()
     gate_thr = _load_gate_threshold(p90=(mode == "gated_p90"))
+    reliable: set[str] | None = None
+    if mode == "gated_p90":
+        from chime.ml.symbol_gate import load_symbol_gate
+
+        sg = load_symbol_gate()
+        if sg is not None and sg.symbols:
+            reliable = set(sg.symbols)
 
     if mode in {"hpe_only", "hpe_with_fallback"}:
         hpe = await run_hpe_forecast(storage=storage, force=True)
@@ -168,6 +180,12 @@ async def run_unified_forecast(
                 conf = score_to_confidence(score)
                 if mode in {"gated", "gated_p90"} and conf < gate_thr:
                     continue
+                if (
+                    mode == "gated_p90"
+                    and reliable is not None
+                    and sample.symbol not in reliable
+                ):
+                    continue
                 if mode == "gated_p90":
                     gate_name = "gated_p90"
                     version = GATED_P90_VERSION
@@ -197,8 +215,8 @@ async def run_unified_forecast(
                 fps = []
                 if mode == "gated_p90":
                     reasons = [
-                        f"Ultra confidence gate (thr≥{gate_thr:.2f}) — selective ~90% path",
-                        "WF ledger ~90.5% hit @ ~0.24% coverage (NFA)",
+                        f"Reliability×confidence gate (conf≥{gate_thr:.2f})",
+                        "WF ledger ~90% hit on allowlisted symbols (NFA)",
                         f"|score|={abs(score):.3f}",
                     ]
                 elif mode == "gated":
