@@ -18,6 +18,7 @@ Initial seed from force-find ledger + factor expansion waves.
 | B-011 | 15 | OPEN | Accrue `market_daily_summary` nightly until ≥60 days then re-run B-002 | poller + Loop C | — |
 | B-012 | 25 | KEEP | Ultra gate thr=0.84 → ≥90% precision | WF ledger | **KEEP** in-sample 90.5%@n=42; holdout pure conf≥0.80 → 95%@n=21 |
 | B-013 | 18 | KEEP | Symbol reliability × conf gate | temporal holdout | **KEEP** train-fit allowlist; holdout sym≥0.61 & conf≥0.71 → **90%@n=60**; serve `gated_p90` |
+| B-014 | 35 | KEEP-PARTIAL | Magnitude-conditional eval (|y|≥day median) | ml-iterate | mean_symbol≈0.627 (not 0.70) but HIGH bucket≈0.687; reinforces selective path |
 
 **Anti-plateau:** data accrual (B-001/B-011) until market summary / order-book history deepens.
 

@@ -1,0 +1,202 @@
+{
+  "baseline_mean_symbol_hit": 0.5727239480488333,
+  "best_lever": "panel_cs_lmt_bagged",
+  "best_mean_symbol_hit": 0.5930096245434046,
+  "target_met": false,
+  "levers": [
+    {
+      "lever": "baseline_panel_hgb",
+      "pooled_hit": 0.567242460521065,
+      "mean_symbol_hit": 0.5727239480488333,
+      "symbols_ge_070": 15,
+      "symbols_ge_075": 7,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7141818181818181,
+      "notes": "panel demean + M1"
+    },
+    {
+      "lever": "panel_cs_features",
+      "pooled_hit": 0.5767630123710165,
+      "mean_symbol_hit": 0.5823510218708055,
+      "symbols_ge_070": 18,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7301420305102577,
+      "notes": "panel + within-day ret/vol percentiles"
+    },
+    {
+      "lever": "panel_cs_extra",
+      "pooled_hit": 0.5778461889287954,
+      "mean_symbol_hit": 0.5834754553404767,
+      "symbols_ge_070": 19,
+      "symbols_ge_075": 7,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7205263157894737,
+      "notes": "CS + |ret5|/vol\u00d7range/streak"
+    },
+    {
+      "lever": "absolute_cs_hgb",
+      "pooled_hit": 0.5745966592554587,
+      "mean_symbol_hit": 0.5785328971502988,
+      "symbols_ge_070": 17,
+      "symbols_ge_075": 5,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6703393565447333,
+      "notes": "no panel demean + CS features"
+    },
+    {
+      "lever": "panel_cs_large_move_train",
+      "pooled_hit": 0.5857134712958212,
+      "mean_symbol_hit": 0.5913141185026642,
+      "symbols_ge_070": 19,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6827526509413547,
+      "notes": "train on |y_ret|\u2265median only"
+    },
+    {
+      "lever": "panel_sector_models",
+      "pooled_hit": 0.553161165269939,
+      "mean_symbol_hit": 0.558509727687874,
+      "symbols_ge_070": 6,
+      "symbols_ge_075": 2,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6031938899496615,
+      "notes": "global + per-sector HGB when n_train\u226580"
+    },
+    {
+      "lever": "panel_vol_buckets",
+      "pooled_hit": 0.5596602246166125,
+      "mean_symbol_hit": 0.5650119947785712,
+      "symbols_ge_070": 11,
+      "symbols_ge_075": 5,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.669795918367347,
+      "notes": "separate HGB per vol_20d tercile"
+    },
+    {
+      "lever": "panel_ensemble",
+      "pooled_hit": 0.564734051650419,
+      "mean_symbol_hit": 0.5698423091635848,
+      "symbols_ge_070": 16,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7361563517915309,
+      "notes": "0.6 HGB + 0.4 logistic"
+    },
+    {
+      "lever": "panel_cs_ensemble",
+      "pooled_hit": 0.5791003933641183,
+      "mean_symbol_hit": 0.5841208529122718,
+      "symbols_ge_070": 14,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7576257213520198,
+      "notes": "CS features + blend"
+    },
+    {
+      "lever": "panel_absret_weighted",
+      "pooled_hit": 0.5678125534462117,
+      "mean_symbol_hit": 0.5735788429624074,
+      "symbols_ge_070": 13,
+      "symbols_ge_075": 6,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6841038118410381,
+      "notes": "sample weight \u221d |y_ret|"
+    },
+    {
+      "lever": "panel_deeper_hgb",
+      "pooled_hit": 0.5623396613648025,
+      "mean_symbol_hit": 0.5686162167049803,
+      "symbols_ge_070": 12,
+      "symbols_ge_075": 6,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6846112017400762,
+      "notes": "max_depth=6 max_iter=200"
+    },
+    {
+      "lever": "panel_cs_deeper",
+      "pooled_hit": 0.5755088079356935,
+      "mean_symbol_hit": 0.5816146943422488,
+      "symbols_ge_070": 17,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7069377990430622,
+      "notes": "CS features + deeper HGB"
+    },
+    {
+      "lever": "panel_cs_extra_ensemble",
+      "pooled_hit": 0.5772190867111339,
+      "mean_symbol_hit": 0.5820970765186239,
+      "symbols_ge_070": 11,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.7440298507462687,
+      "notes": "CS+extra + blend"
+    },
+    {
+      "lever": "absolute_cs_lmt_bagged",
+      "pooled_hit": 0.5666153583034035,
+      "mean_symbol_hit": 0.5724703766932067,
+      "symbols_ge_070": 13,
+      "symbols_ge_075": 6,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6461355529131986,
+      "notes": "abs CS + large-move train + 5-bag HGB"
+    },
+    {
+      "lever": "panel_cs_lmt_bagged",
+      "pooled_hit": 0.5876517872413204,
+      "mean_symbol_hit": 0.5930096245434046,
+      "symbols_ge_070": 19,
+      "symbols_ge_075": 8,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6869374313940725,
+      "notes": "panel CS + LMT + bagged"
+    },
+    {
+      "lever": "panel_cs_symbol_flip",
+      "pooled_hit": 0.5743116127928852,
+      "mean_symbol_hit": 0.5797666921707609,
+      "symbols_ge_070": 17,
+      "symbols_ge_075": 6,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.6984126984126984,
+      "notes": "flip sign when prior OOS hit <0.45 (n\u226525)"
+    },
+    {
+      "lever": "absolute_cs_lmt_bag_flip",
+      "pooled_hit": 0.5508807935693518,
+      "mean_symbol_hit": 0.5575933364947725,
+      "symbols_ge_070": 13,
+      "symbols_ge_075": 6,
+      "n_symbols": 264,
+      "n_rows": 17541,
+      "high_bucket_hit": 0.622116527942925,
+      "notes": "abs CS + LMT + bag + symbol flip"
+    }
+  ],
+  "recommendations": [
+    "Magnitude-conditional (|y|\u2265day median) on `panel_cs_lmt_bagged`: mean_symbol=0.6272100300592302 pooled=0.6340270669851018 ge70=67/267",
+    "Best always-on `panel_cs_lmt_bagged` mean_symbol_hit=0.5930096245434046 \u2014 still below 0.70.",
+    "Lift vs baseline: +0.020",
+    "HIGH-confidence bucket hit on best lever: 0.6869374313940725 (already near/above 0.70 when selective).",
+    "Always-on 70% board-wide remains hard on ~1y path-only CSE; strongest next data lever is rich filings/fundamentals coverage."
+  ]
+}
