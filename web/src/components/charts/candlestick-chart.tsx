@@ -11,9 +11,16 @@ import { formatNumber } from "@/lib/format";
 export function CandlestickChart({
   bars,
   className,
+  forecastPrices,
+  showForecast = false,
+  height = 420,
 }: {
   bars: DailyBarPoint[];
   className?: string;
+  /** Future model path prices (absolute) after last close. */
+  forecastPrices?: number[];
+  showForecast?: boolean;
+  height?: number;
 }) {
   if (bars.length < 2) {
     return (
@@ -27,10 +34,15 @@ export function CandlestickChart({
   const padR = 8;
   const padT = 12;
   const padB = 28;
-  const w = 720;
-  const h = 320;
+  const w = 960;
+  const h = Math.max(280, Math.min(560, height));
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
+
+  const fc =
+    showForecast && forecastPrices
+      ? forecastPrices.filter((p) => Number.isFinite(p) && p > 0)
+      : [];
 
   let min = Infinity;
   let max = -Infinity;
@@ -38,9 +50,14 @@ export function CandlestickChart({
     if (b.low < min) min = b.low;
     if (b.high > max) max = b.high;
   }
+  for (const p of fc) {
+    if (p < min) min = p;
+    if (p > max) max = p;
+  }
   const span = max > min ? max - min : 1;
   const n = bars.length;
-  const slot = plotW / n;
+  const totalSlots = n + (fc.length > 0 ? fc.length : 0);
+  const slot = plotW / Math.max(1, totalSlots);
   const bodyW = Math.max(1.5, Math.min(8, slot * 0.55));
 
   const yFor = (price: number) =>
@@ -128,6 +145,23 @@ export function CandlestickChart({
             </g>
           );
         })}
+        {fc.length > 0 ? (
+          <polyline
+            fill="none"
+            className="stroke-sky-600 dark:stroke-sky-400"
+            strokeWidth={2}
+            strokeDasharray="5 4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            points={[
+              `${padL + slot * (n - 1) + slot / 2},${yFor(last.close)}`,
+              ...fc.map(
+                (p, i) =>
+                  `${padL + slot * (n + i) + slot / 2},${yFor(p)}`,
+              ),
+            ].join(" ")}
+          />
+        ) : null}
         <text
           x={padL}
           y={h - 10}
@@ -167,8 +201,8 @@ export function CandlestickChart({
       <p className="mt-2 text-xs text-muted-foreground">
         {n} sessions · close {formatNumber(first.close)} →{" "}
         {formatNumber(last.close)} · {upN} up / {downN} down
-        {flatN ? ` / ${flatN} flat` : ""} · vs prior close when open missing ·
-        research only
+        {flatN ? ` / ${flatN} flat` : ""} · vs prior close when open missing
+        {fc.length > 0 ? " · dashed = model forecast" : ""} · research only
       </p>
     </div>
   );

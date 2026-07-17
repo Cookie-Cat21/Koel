@@ -21,7 +21,11 @@ import { OptionalLwcNote } from "@/components/optional-lwc-note";
 import { PageHeader } from "@/components/page-header";
 import { PriceRefresh } from "@/components/price-refresh";
 import { ExpandablePriceChart } from "@/components/charts/expandable-price-chart";
-import { normalizeDailyBar, type DailyBarPoint } from "@/lib/api/daily-bars";
+import {
+  normalizeDailyBar,
+  type ChartRangeKey,
+  type DailyBarPoint,
+} from "@/lib/api/daily-bars";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
 import {
@@ -384,6 +388,7 @@ export default async function SymbolDetailPage({
     category?: string | string[];
     compare?: string | string[];
     expandChart?: string | string[];
+    range?: string | string[];
   }>;
 }) {
   await requirePageSession();
@@ -395,6 +400,16 @@ export default async function SymbolDetailPage({
     : sp.expandChart;
   const expandChart =
     expandRaw === "1" || expandRaw === "true" || expandRaw === "yes";
+  const rangeRaw = Array.isArray(sp.range) ? sp.range[0] : sp.range;
+  const rangeKey = (rangeRaw ?? "").toUpperCase();
+  const initialChartRange: ChartRangeKey =
+    rangeKey === "1D" ||
+    rangeKey === "1M" ||
+    rangeKey === "3M" ||
+    rangeKey === "6M" ||
+    rangeKey === "1Y"
+      ? rangeKey
+      : "1D";
   // safeDecode — malformed % sequences → notFound (not URIError 500).
   const symbol = normalizeSymbolParam(raw);
   if (!symbol) {
@@ -768,6 +783,7 @@ export default async function SymbolDetailPage({
                 gate={forecastGate}
                 initialOpen={expandChart}
                 initialBars={initialDailyBars}
+                initialRange={initialChartRange}
               />
             )}
             <OptionalLwcNote

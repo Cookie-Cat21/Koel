@@ -82,9 +82,13 @@ export function candleBodyOpen(
   return b.close;
 }
 
-/** Sessions for range chips (approx trading days). */
-export function sessionsForRange(range: "1M" | "3M" | "6M" | "1Y"): number {
+export type ChartRangeKey = "1D" | "1M" | "3M" | "6M" | "1Y";
+
+/** Sessions / ticks for range chips. 1D uses snapshot ticks, not daily bars. */
+export function sessionsForRange(range: ChartRangeKey): number {
   switch (range) {
+    case "1D":
+      return 120; // recent realtime ticks
     case "1M":
       return 22;
     case "3M":
