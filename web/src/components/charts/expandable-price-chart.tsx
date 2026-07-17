@@ -10,6 +10,7 @@ import {
   type ChartRangeKey,
   type DailyBarPoint,
   sessionsForRange,
+  ticksToIntradayBars,
 } from "@/lib/api/daily-bars";
 import { isSafeClientApiPath } from "@/lib/api/client-fetch";
 import { toFiniteNumber } from "@/lib/api/finite-number";
@@ -23,7 +24,7 @@ const REALTIME_MS = 20_000;
 
 /**
  * Compact sparkline + corner expand → large chart dialog.
- * 1D = realtime ticks + forecast; longer ranges = daily candles.
+ * All ranges use candlesticks; 1D builds OHLC from realtime ticks.
  */
 export function ExpandablePriceChart({
   symbol,
@@ -75,6 +76,11 @@ export function ExpandablePriceChart({
         .filter((p): p is number => p != null && p > 0),
     [forecastPoints],
   );
+
+  const intradayBars = useMemo(() => {
+    const series = finiteSparklinePoints(tickPoints);
+    return ticksToIntradayBars(series, 40);
+  }, [tickPoints]);
 
   const loadTicks = useCallback(async () => {
     const pathOnly = `/api/v1/symbols/${encodeURIComponent(symbol)}/snapshots`;
@@ -188,7 +194,6 @@ export function ExpandablePriceChart({
     [symbol],
   );
 
-  // Keep compact sparkline ticks in sync when parent refreshes.
   useEffect(() => {
     if (range === "1D") setTickPoints(points);
   }, [points, range]);
@@ -199,7 +204,6 @@ export function ExpandablePriceChart({
     const run = async () => {
       setError(null);
       if (range === "1D") {
-        // Show known ticks immediately; refresh in background.
         setTickPoints(points);
         setLoading(false);
         try {
@@ -228,7 +232,6 @@ export function ExpandablePriceChart({
     };
   }, [open, range, loadTicks, loadDaily, initialBars, points]);
 
-  // Realtime poll while 1D expand is open
   useEffect(() => {
     if (!open || range !== "1D") return;
     const id = window.setInterval(() => {
@@ -246,8 +249,9 @@ export function ExpandablePriceChart({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const modeLabel = range === "1D" ? "Intraday" : "Daily";
+  const chartBars = range === "1D" ? intradayBars : bars;
   const tickSeries = finiteSparklinePoints(tickPoints);
-  const modeLabel = range === "1D" ? "Realtime" : "Daily";
 
   return (
     <div className={className ?? "relative max-w-md"}>
@@ -276,7 +280,7 @@ export function ExpandablePriceChart({
 
       {open ? (
         <div
-          className="fixed inset-0 z-[100] flex items-stretch justify-center bg-black/50 p-2 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-3 sm:p-6"
           role="presentation"
           data-testid="expand-chart-backdrop"
           onClick={(e) => {
@@ -288,19 +292,20 @@ export function ExpandablePriceChart({
             aria-modal="true"
             aria-labelledby={titleId}
             data-testid="expand-chart-dialog"
-            className="flex h-[min(94vh,920px)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-background shadow-xl"
+            className="flex h-[min(92vh,900px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
           >
-            <div className="flex items-start justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
+            {/* Header */}
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/60 px-5 py-3.5">
               <div className="min-w-0">
                 <h2
                   id={titleId}
-                  className="font-display text-lg font-semibold tracking-tight sm:text-xl"
+                  className="font-display text-xl font-semibold tracking-tight"
                 >
                   {symbol} · {modeLabel}
                 </h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {range === "1D"
-                    ? "Realtime ticks from price snapshots — research only, not financial advice."
+                    ? "Intraday candles from live ticks (bucketed OHLC) — research only, not financial advice."
                     : "Green up / red down vs prior close (CSE often omits open) — research only, not financial advice."}
                 </p>
               </div>
@@ -316,8 +321,9 @@ export function ExpandablePriceChart({
               </Button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-4 py-2 sm:px-5">
-              <div className="flex flex-wrap gap-2">
+            {/* Toolbar */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/40 px-5 py-2.5">
+              <div className="flex flex-wrap gap-1.5">
                 {RANGES.map((r) => (
                   <button
                     key={r}
@@ -325,8 +331,8 @@ export function ExpandablePriceChart({
                     onClick={() => setRange(r)}
                     className={
                       range === r
-                        ? "rounded-full border border-foreground/30 bg-muted px-3 py-1 text-xs font-medium"
-                        : "rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground hover:bg-muted/50"
+                        ? "rounded-full border border-foreground/25 bg-foreground px-3.5 py-1.5 text-xs font-semibold text-background"
+                        : "rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                     }
                   >
                     {r}
@@ -350,8 +356,8 @@ export function ExpandablePriceChart({
                   {forecastPrices.length === 0 ? " (none)" : ""}
                 </label>
                 {range === "1D" ? (
-                  <span className="text-[11px] text-muted-foreground">
-                    Live · refresh {REALTIME_MS / 1000}s
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                    Live · {REALTIME_MS / 1000}s
                     {lastRefresh
                       ? ` · ${new Date(lastRefresh).toLocaleTimeString()}`
                       : ""}
@@ -360,7 +366,8 @@ export function ExpandablePriceChart({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            {/* Chart fills remaining height */}
+            <div className="flex min-h-0 flex-1 flex-col px-5 pt-4 pb-4">
               {loading ? (
                 <p className="text-sm text-muted-foreground" role="status">
                   Loading chart…
@@ -369,41 +376,23 @@ export function ExpandablePriceChart({
                 <p className="text-sm text-muted-foreground" role="status">
                   {error}
                 </p>
-              ) : range === "1D" ? (
-                tickSeries.length < 2 ? (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    Need two stored ticks for realtime view.
-                  </p>
-                ) : (
-                  <div className="mx-auto max-w-5xl">
-                    <RealtimeExpandChart
-                      points={tickPoints}
-                      forecastPoints={
-                        showForecast ? forecastPoints : undefined
-                      }
-                    />
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {tickSeries.length} ticks ·{" "}
-                      {formatNumber(tickSeries[0]!.price)} →{" "}
-                      {formatNumber(tickSeries[tickSeries.length - 1]!.price)}
-                      {showForecast && forecastPrices.length > 0
-                        ? " · dashed = model forecast"
-                        : ""}{" "}
-                      · research only
-                    </p>
-                  </div>
-                )
-              ) : bars == null || bars.length === 0 ? (
+              ) : chartBars == null || chartBars.length < 2 ? (
                 <p className="text-sm text-muted-foreground" role="status">
-                  No daily path history yet. On the host, run path-backfill,
-                  then refresh.
+                  {range === "1D"
+                    ? "Need more stored ticks for intraday candles."
+                    : "No daily path history yet. On the host, run path-backfill, then refresh."}
                 </p>
               ) : (
                 <CandlestickChart
-                  bars={bars}
-                  height={480}
+                  bars={chartBars}
+                  fill
                   showForecast={showForecast}
                   forecastPrices={forecastPrices}
+                  footnote={
+                    range === "1D"
+                      ? `${chartBars.length} intraday bars from ${tickSeries.length} ticks · ${formatNumber(tickSeries[0]?.price ?? 0)} → ${formatNumber(tickSeries[tickSeries.length - 1]?.price ?? 0)}${showForecast && forecastPrices.length > 0 ? " · dashed = model forecast" : ""} · research only`
+                      : undefined
+                  }
                 />
               )}
             </div>
@@ -411,85 +400,5 @@ export function ExpandablePriceChart({
         </div>
       ) : null}
     </div>
-  );
-}
-
-/** Larger line chart for 1D expand (ticks + optional forecast). */
-function RealtimeExpandChart({
-  points,
-  forecastPoints,
-}: {
-  points: Point[];
-  forecastPoints?: Point[];
-}) {
-  const series = finiteSparklinePoints(points);
-  const forecast = finiteSparklinePoints(forecastPoints ?? []);
-  if (series.length < 2) return null;
-
-  const combined = [
-    ...series.map((p) => p.price),
-    ...forecast.map((p) => p.price),
-  ];
-  const min = Math.min(...combined);
-  const max = Math.max(...combined);
-  const span = max !== min ? max - min : 1;
-  const w = 960;
-  const h = 420;
-  const pad = 12;
-  const totalN = series.length + (forecast.length > 0 ? forecast.length : 0);
-
-  const toCoord = (price: number, i: number) => {
-    const x = pad + (i / Math.max(1, totalN - 1)) * (w - pad * 2);
-    const y = pad + (1 - (price - min) / span) * (h - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  };
-
-  const realCoords = series.map((p, i) => toCoord(p.price, i));
-  const first = series[0]!.price;
-  const last = series[series.length - 1]!.price;
-  const up = last >= first;
-  const forecastCoords =
-    forecast.length > 0
-      ? [
-          toCoord(last, series.length - 1),
-          ...forecast.map((p, i) => toCoord(p.price, series.length + i)),
-        ]
-      : [];
-
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="h-auto w-full max-h-[55vh]"
-      role="img"
-      aria-label={`Realtime price from ${formatNumber(first)} to ${formatNumber(last)}`}
-    >
-      <rect
-        x={0}
-        y={0}
-        width={w}
-        height={h}
-        className="fill-muted/20"
-        rx={8}
-      />
-      <polyline
-        fill="none"
-        stroke={up ? "oklch(0.45 0.08 185)" : "oklch(0.5 0.1 25)"}
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        points={realCoords.join(" ")}
-      />
-      {forecastCoords.length >= 2 ? (
-        <polyline
-          fill="none"
-          stroke="oklch(0.55 0.04 250)"
-          strokeWidth="2.5"
-          strokeDasharray="6 4"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          points={forecastCoords.join(" ")}
-        />
-      ) : null}
-    </svg>
   );
 }

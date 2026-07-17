@@ -100,3 +100,49 @@ export function sessionsForRange(range: ChartRangeKey): number {
       return 260;
   }
 }
+
+/**
+ * Build intraday OHLC candles from tick prices for the 1D expand view.
+ * Buckets by equal count when timestamps are sparse/missing.
+ */
+export function ticksToIntradayBars(
+  ticks: { ts: string | null; price: number }[],
+  targetCandles = 40,
+): DailyBarPoint[] {
+  const clean = ticks.filter(
+    (t) => typeof t.price === "number" && Number.isFinite(t.price) && t.price > 0,
+  );
+  if (clean.length < 2) return [];
+
+  const n = Math.max(2, Math.min(targetCandles, Math.floor(clean.length / 2)));
+  const chunk = Math.max(1, Math.ceil(clean.length / n));
+  const out: DailyBarPoint[] = [];
+
+  for (let i = 0; i < clean.length; i += chunk) {
+    const slice = clean.slice(i, i + chunk);
+    if (slice.length === 0) continue;
+    const prices = slice.map((t) => t.price);
+    const open = prices[0]!;
+    const close = prices[prices.length - 1]!;
+    const high = Math.max(...prices);
+    const low = Math.min(...prices);
+    const lastTs = slice[slice.length - 1]?.ts;
+    let tradeDate = `t${out.length}`;
+    if (typeof lastTs === "string" && lastTs.length >= 16) {
+      // Use time label HH:MM for intraday axis readability
+      const d = new Date(lastTs);
+      if (Number.isFinite(d.getTime())) {
+        tradeDate = d.toISOString().slice(11, 16);
+      }
+    }
+    out.push({
+      trade_date: tradeDate,
+      open,
+      high,
+      low,
+      close,
+      volume: null,
+    });
+  }
+  return out;
+}
