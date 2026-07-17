@@ -122,6 +122,19 @@ p95 &lt; 5s under normal Telegram. CSE print → user message is bounded by
 
 See [TIJORI.md](TIJORI.md) — run poller for `/market`, `AI_BRIEFS_ENABLED`, `PDF_ENRICH_SLEEP_SECONDS`, optional `CSE_MIN_INTERVAL_SECONDS` / `DISCLOSURE_BULK_FEED`.
 
+## Path / intraday chart backfill (ops)
+
+Flag-gated CSE chart drains (same politeness as path-backfill):
+
+```bash
+python3 -m chime path-backfill --force --limit 0      # daily_bars (~1y)
+python3 -m chime intraday-backfill --force --limit 0  # session ticks
+```
+
+Intraday rows land in `price_snapshots` with ``source='cse_intraday'``. Alert
+`previous_snapshot` only considers ``source='poller'`` so chart backfill cannot
+mute price-cross fires. Prefer `--limit` / off-hours for full-board drains.
+
 ## Disclaimer
 
 Chime relays public market information. Not financial advice.
