@@ -75,9 +75,9 @@ def splice_bars(
     yahoo_rows: list[tuple[date, float, float | None, float | None, float | None, float | None]],
     yahoo_ticker: str,
     stale_cutoff: date = DEFAULT_YAHOO_STALE_CUTOFF,
-) -> list[dict]:
+) -> list[dict[str, object]]:
     """Return hybrid row dicts: CSE everywhere it exists; Yahoo only before CSE start."""
-    by_date: dict[date, dict] = {}
+    by_date: dict[date, dict[str, object]] = {}
     cse_dates = sorted(b.trade_date for b in cse_bars)
     cse_start = cse_dates[0] if cse_dates else None
 

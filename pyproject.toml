@@ -63,6 +63,8 @@ omit = [
     "chime/extractors/cse_pdf_core.py",
     # Offline ML experiment (optional [ml] extra) — not runtime bot/dash path.
     "chime/ml/*",
+    # Optional Yahoo+CSE research panel CLI (optional [hybrid] extra).
+    "chime/hybrid_backfill.py",
 ]
 
 [tool.ruff]
@@ -84,11 +86,24 @@ warn_unused_configs = true
 packages = ["chime"]
 
 [[tool.mypy.overrides]]
-module = ["apscheduler.*", "telegram.*", "pypdf.*", "fitz", "sklearn.*", "numpy.*"]
+module = [
+    "apscheduler.*",
+    "telegram.*",
+    "pypdf.*",
+    "fitz",
+    "sklearn.*",
+    "numpy.*",
+    "yfinance.*",
+]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["chime.ml.*"]
+ignore_errors = true
+
+# Optional Yahoo+CSE research panel (optional [hybrid] extra).
+[[tool.mypy.overrides]]
+module = ["chime.hybrid_backfill"]
 ignore_errors = true
 
 # Research-grade PDF core (CLI + eval helpers); typed surface is financial_pdf.py.

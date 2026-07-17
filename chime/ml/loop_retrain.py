@@ -7,11 +7,11 @@ from datetime import date
 
 from chime.logging_setup import get_logger
 from chime.ml.always_on import (
+    _walk_lmt_bagged,
     enrich_samples_with_financial_filings,
     enrich_samples_with_sector_rs,
     enrich_samples_with_yoy,
     load_yoy_events,
-    _walk_lmt_bagged,
 )
 from chime.ml.dataset import build_samples, load_symbol_bars
 from chime.ml.diagnose import analyze_rows, load_sector_map
@@ -77,9 +77,9 @@ async def run_loop_retrain(
     force_promote_first: bool = False,
 ) -> RetrainResult:
     """Train fin+sector always-on challenger; promote if gates pass."""
+    import json
     from datetime import date as date_cls
     from pathlib import Path
-    import json
 
     series = await load_symbol_bars(storage)
     base = _enrich_cross_section(
@@ -126,7 +126,7 @@ async def run_loop_retrain(
         if cd.get("cov") is not None:
             gated_cov = float(cd["cov"])
 
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     challenger_id = f"challenger_gated_c55_{stamp}"
