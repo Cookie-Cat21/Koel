@@ -30,6 +30,10 @@ export function CandlestickChart({
   forecastPrices,
   showForecast = false,
   fill = false,
+  /** Fit chart to container width (no horizontal scrollbar). Hero/symbol page. */
+  fitWidth = false,
+  /** SVG render height in px (viewBox height scales with this for scroll mode). */
+  chartHeight,
   footnote,
   maxCandles = 72,
 }: {
@@ -38,6 +42,8 @@ export function CandlestickChart({
   forecastPrices?: number[];
   showForecast?: boolean;
   fill?: boolean;
+  fitWidth?: boolean;
+  chartHeight?: number;
   footnote?: string;
   maxCandles?: number;
 }) {
@@ -69,14 +75,14 @@ export function CandlestickChart({
   }
   const lineMode = priceMax < 3 && preFlat / bars.length >= 0.4;
 
-  const padL = 14;
+  const padL = fitWidth ? 10 : 14;
   const padR = 56;
-  const padT = 20;
-  const padB = 40;
-  // Wider pitch so a full year of daily candles stays readable when scrolled.
-  const slot = 18;
-  const bodyW = 13;
-  const wickW = 2;
+  const padT = fitWidth ? 16 : 20;
+  const padB = fitWidth ? 32 : 40;
+  // Comfortable pitch for hero; denser scroll pitch for expand/1Y.
+  const slot = fitWidth ? 22 : 18;
+  const bodyW = fitWidth ? 15 : 13;
+  const wickW = fitWidth ? 2.25 : 2;
 
   const fc =
     showForecast && forecastPrices
@@ -87,8 +93,9 @@ export function CandlestickChart({
   const totalSlots = n + (fc.length > 0 ? fc.length : 0);
   const plotW = totalSlots * slot;
   const w = padL + padR + plotW;
-  const h = 520;
+  const h = chartHeight ?? (fitWidth ? 300 : 520);
   const plotH = h - padT - padB;
+  const displayH = chartHeight ?? (fitWidth ? 280 : 460);
 
   let barMin = Infinity;
   let barMax = -Infinity;
@@ -151,18 +158,19 @@ export function CandlestickChart({
     <div
       className={cn(
         "flex w-full flex-col",
-        fill ? "h-full min-h-0" : "min-h-[320px]",
+        fill ? "h-full min-h-0" : fitWidth ? "min-h-0" : "min-h-[320px]",
         className,
       )}
     >
       <div
         className={cn(
-          "relative w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/15",
+          "relative w-full overflow-y-hidden rounded-xl border border-border/50 bg-gradient-to-b from-muted/25 to-muted/10",
+          fitWidth ? "overflow-x-hidden" : "overflow-x-auto",
           fill ? "min-h-0 flex-1" : "",
         )}
         ref={(el) => {
-          // Pin scroll to most recent candles after layout.
-          if (!el) return;
+          // Pin scroll to most recent candles after layout (scroll mode only).
+          if (!el || fitWidth) return;
           requestAnimationFrame(() => {
             el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
           });
@@ -170,14 +178,18 @@ export function CandlestickChart({
       >
         <svg
           viewBox={`0 0 ${w} ${h}`}
-          preserveAspectRatio="xMinYMid meet"
-          style={{
-            width: w,
-            height: 460,
-            maxWidth: "none",
-            display: "block",
-          }}
-          className="max-w-none"
+          preserveAspectRatio={fitWidth ? "none" : "xMinYMid meet"}
+          style={
+            fitWidth
+              ? { width: "100%", height: displayH, display: "block" }
+              : {
+                  width: w,
+                  height: displayH,
+                  maxWidth: "none",
+                  display: "block",
+                }
+          }
+          className={fitWidth ? "w-full" : "max-w-none"}
           role="img"
           aria-label={aria}
         >

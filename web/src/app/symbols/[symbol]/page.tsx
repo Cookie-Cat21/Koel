@@ -770,41 +770,44 @@ export default async function SymbolDetailPage({
             : "border-border/70"
         }`}
       >
-        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Last price
-              {snapshotStale ? " · stale" : ""}
-            </p>
-            {data.last ? (
-              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span
-                  className={`font-mono text-4xl font-semibold tracking-tight tabular-nums ${
-                    snapshotStale ? "text-muted-foreground" : ""
-                  }`}
-                >
-                  {formatNumber(data.last.price)}
-                </span>
-                <SignedChange
-                  change={data.last.change}
-                  changePct={data.last.change_pct}
-                />
-              </div>
-            ) : (
-              <p className="mt-1 text-sm text-muted-foreground">
-                No stored price yet.
+        <div className="flex flex-col gap-5 p-5 sm:p-6">
+          <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Last price
+                {snapshotStale ? " · stale" : ""}
               </p>
-            )}
-            {data.last?.ts ? (
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                As of {formatTs(data.last.ts)} (SLT)
-                {snapshotStale
-                  ? " — more than a day old; poller may be paused."
-                  : ""}
-              </p>
-            ) : null}
+              {data.last ? (
+                <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span
+                    className={`font-mono text-4xl font-semibold tracking-tight tabular-nums ${
+                      snapshotStale ? "text-muted-foreground" : ""
+                    }`}
+                  >
+                    {formatNumber(data.last.price)}
+                  </span>
+                  <SignedChange
+                    change={data.last.change}
+                    changePct={data.last.change_pct}
+                  />
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  No stored price yet.
+                </p>
+              )}
+              {data.last?.ts ? (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  As of {formatTs(data.last.ts)} (SLT)
+                  {snapshotStale
+                    ? " — more than a day old; poller may be paused."
+                    : ""}
+                </p>
+              ) : null}
+            </div>
           </div>
-          <div className="min-h-20 min-w-0 flex-1 md:max-w-sm">
+
+          <div className="min-w-0 w-full">
             {initialDailyBars.length >= 2 || sparkPoints.length >= 2 ? (
               <ExpandablePriceChart
                 symbol={data.symbol}
@@ -816,6 +819,7 @@ export default async function SymbolDetailPage({
                 initialOpen={expandChart}
                 initialBars={initialDailyBars}
                 initialRange={initialChartRange}
+                className="w-full max-w-none"
               />
             ) : snapsFailed ? (
               <p className="text-sm text-muted-foreground" role="status">

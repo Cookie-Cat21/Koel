@@ -67,13 +67,13 @@ export function ExpandablePriceChart({
   const compactDaily = useMemo(() => {
     const src = bars ?? initialBars;
     if (!src || src.length < 2) return null;
-    // Hero strip ≈ 3M of sessions without stretching the layout.
-    return src.slice(-sessionsForRange("3M"));
+    // Hero: ~2 months of daily sessions — thick candles, no barcode scroll.
+    return src.slice(-sessionsForRange("1M") * 2);
   }, [bars, initialBars]);
   const compactIntraday = useMemo(() => {
     const series = finiteSparklinePoints(points);
     if (series.length < 2) return null;
-    return ticksToIntradayBars(series, 40);
+    return ticksToIntradayBars(series, 32);
   }, [points]);
   // Realtime ticks fetched client-side; falls back to SSR `points` until the
   // first refresh lands (derived, so prop updates never need a reset effect).
@@ -325,31 +325,50 @@ export function ExpandablePriceChart({
   }, [chartBars]);
 
   const compactBars = compactDaily ?? compactIntraday;
+  const heroFrom =
+    compactDaily && compactDaily.length >= 2
+      ? compactDaily[0]!.trade_date
+      : null;
+  const heroTo =
+    compactDaily && compactDaily.length >= 2
+      ? compactDaily[compactDaily.length - 1]!.trade_date
+      : null;
 
   return (
-    <div className={className ?? "relative max-w-md"}>
+    <div className={className ?? "relative w-full"}>
       <div className="relative">
-        <button
-          type="button"
-          ref={triggerRef}
-          data-testid="expand-chart"
-          className="absolute top-0 right-0 z-10 inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-background/85 px-3 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-border hover:text-foreground"
-          onClick={() => setOpen(true)}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          title="Expand chart"
-        >
-          <Maximize2 className="size-3.5" aria-hidden />
-          <span className="hidden sm:inline">Expand</span>
-        </button>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Price chart
+            {heroFrom && heroTo ? (
+              <span className="ml-2 font-mono font-normal normal-case tracking-normal tabular-nums text-muted-foreground/80">
+                {heroFrom} → {heroTo}
+              </span>
+            ) : null}
+          </p>
+          <button
+            type="button"
+            ref={triggerRef}
+            data-testid="expand-chart"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border/70 bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+            onClick={() => setOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            title="Expand chart"
+          >
+            <Maximize2 className="size-3.5" aria-hidden />
+            <span>Expand ranges</span>
+          </button>
+        </div>
         {compactBars && compactBars.length >= 2 ? (
           <CandlestickChart
             bars={compactBars}
-            maxCandles={48}
-            className="pr-16"
+            maxCandles={44}
+            fitWidth
+            chartHeight={280}
             footnote={
               compactDaily
-                ? "Daily candles · expand for ranges · research only"
+                ? "Daily OHLC · expand for 1D / 3M / 6M / 1Y · research only"
                 : "Intraday from stored ticks · research only"
             }
           />
@@ -360,7 +379,6 @@ export function ExpandablePriceChart({
             confidenceBand={confidenceBand}
             gate={gate}
             confidence={confidence}
-            className="pr-16"
           />
         )}
       </div>
