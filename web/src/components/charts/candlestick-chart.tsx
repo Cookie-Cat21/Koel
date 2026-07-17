@@ -230,21 +230,23 @@ export function CandlestickChart({
               </g>
             );
           })}
-          {/* Step close path for tick-size names (SEMB etc.) */}
-          <path
-            fill="none"
-            className="stroke-foreground/30"
-            strokeWidth={1.75}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            d={bars
-              .map((b, i) => {
-                const x = padL + slot * i + slot / 2;
-                const y = yFor(b.close);
-                return i === 0 ? `M ${x} ${y}` : `H ${x} V ${y}`;
-              })
-              .join(" ")}
-          />
+          {/* Step close path only when enough real moves (skip penny doji noise) */}
+          {flatN / n < 0.45 ? (
+            <path
+              fill="none"
+              className="stroke-foreground/25"
+              strokeWidth={1.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              d={bars
+                .map((b, i) => {
+                  const x = padL + slot * i + slot / 2;
+                  const y = yFor(b.close);
+                  return i === 0 ? `M ${x} ${y}` : `H ${x} V ${y}`;
+                })
+                .join(" ")}
+            />
+          ) : null}
           {fc.length > 0 ? (
             <polyline
               fill="none"
