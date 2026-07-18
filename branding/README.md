@@ -1,4 +1,16 @@
-# Chime brand assets
+# Brand assets
+
+## Quiverly (current — rebrand in progress)
+
+Chime is rebranding to **Quiverly** (name collision with Chime Financial, the US neobank).
+
+- `quiverly-logo.svg` — full lowercase **quiverly** wordmark (square master export)
+- `quiverly-mark.svg` — standalone capital **Q** mark with wedge tail (favicon, app icon, avatar)
+
+Casing convention: lowercase `quiverly` in the wordmark/logo, capital-Q monogram for icons,
+"Quiverly" capitalized in prose. Ink is `#1e1e1e`, same as the Chime marks.
+
+## Chime (legacy)
 
 Official lockup from the Claude branding pass (merged via `#14`).
 
