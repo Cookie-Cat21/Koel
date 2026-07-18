@@ -14,7 +14,7 @@ import { getPool } from "@/lib/db";
 export const runtime = "nodejs";
 
 const DEFAULT_LIMIT = 80;
-const MAX_LIMIT = 200;
+const MAX_LIMIT = 400;
 
 /**
  * GET /api/v1/graph — company ownership / equity research graph (Postgres only).

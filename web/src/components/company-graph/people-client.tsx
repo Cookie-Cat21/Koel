@@ -53,8 +53,9 @@ const ROLE_LABEL: Record<string, string> = {
 const ROLE_SORT = (a: string, b: string) =>
   (ROLE_WEIGHT[b as PersonRole] ?? 0) - (ROLE_WEIGHT[a as PersonRole] ?? 0);
 
-const CANVAS_PEOPLE = 18;
-const CANVAS_COMPANIES = 22;
+/** Canvas budget — keep readable but show a denser board map on live data. */
+const CANVAS_PEOPLE = 48;
+const CANVAS_COMPANIES = 40;
 
 function ticker(symbol: string): string {
   return symbol.replace(/\.(N|X)0000$/i, "");
@@ -695,7 +696,8 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
   const [selectedId, setSelectedId] = useState<number | null>(
     people[0]?.id ?? null,
   );
-  const [leadershipOnly, setLeadershipOnly] = useState(true);
+  // Default to all roles so the map isn't capped to a tiny leadership subset.
+  const [leadershipOnly, setLeadershipOnly] = useState(false);
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLOListElement>(null);
 
@@ -827,7 +829,7 @@ export function PeopleGraphClient({ people }: { people: PersonNode[] }) {
               ref={listRef}
               className="max-h-[46%] min-h-0 space-y-0.5 overflow-y-auto px-1.5 py-1.5"
             >
-              {ranked.slice(0, 80).map((p, i) => (
+              {ranked.slice(0, 160).map((p, i) => (
                 <RankRow
                   key={p.id}
                   person={p}

@@ -9,7 +9,7 @@ import { getPool } from "@/lib/db";
 export const runtime = "nodejs";
 
 const DEFAULT_LIMIT = 250;
-const MAX_LIMIT = 500;
+const MAX_LIMIT = 2000;
 
 /**
  * GET /api/v1/graph/people — directors/CEOs linked to companies.
