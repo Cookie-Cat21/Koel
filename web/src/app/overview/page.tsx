@@ -57,7 +57,7 @@ import { alertTypeLabel, formatNumber, formatTs } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Overview · Quiverly",
+  title: "Overview · koel",
   description:
     "CSE market overview — watchlist, movers, and Telegram-backed alerts.",
 };
@@ -398,7 +398,7 @@ export default async function OverviewPage() {
         <PageHeader
           eyebrow="Home"
           title="Overview"
-          description="CSE snapshots from Quiverly’s poller. Set rules here — Telegram is the cherry that pings you when they fire."
+          description="CSE snapshots from koel’s poller. Set rules here — Telegram is the cherry that pings you when they fire."
           action={
             <div className="flex flex-wrap items-center gap-2">
               <MarketSessionChip />

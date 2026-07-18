@@ -5,7 +5,7 @@ const CELL_COUNT = 216;
 /**
  * Thin square-grid texture, radially masked so it fades out toward the
  * edges. Adapted from Watermelon UI's newsletter-5 BackgroundGrid —
- * structure kept, accent color swapped to Quiverly's `primary` token (no
+ * structure kept, accent color swapped to koel's `primary` token (no
  * green in this palette).
  */
 export function HeroGridBackdrop({ className }: { className?: string }) {

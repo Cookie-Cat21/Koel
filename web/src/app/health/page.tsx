@@ -29,8 +29,8 @@ import { formatTs } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Health · Quiverly",
-  description: "Ops liveness for Quiverly poller and Postgres.",
+  title: "Health · koel",
+  description: "Ops liveness for koel poller and Postgres.",
 };
 
 /** Health timestamps older than this need explicit ops attention. */

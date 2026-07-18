@@ -34,7 +34,7 @@ export function TelegramProof({ className }: { className?: string }) {
               <p className="text-[10px] text-white/45">2m ago</p>
             </div>
             <p className="mt-0.5 text-sm font-semibold text-white/90">
-              Quiverly CSE
+              koel CSE
             </p>
             <p className="mt-1 text-xs leading-snug text-white/70">
               New disclosure for JKH.N0000
@@ -59,7 +59,7 @@ export function TelegramProof({ className }: { className?: string }) {
               <p className="text-[11px] text-white/55">now</p>
             </div>
             <p className="mt-0.5 text-base font-semibold text-white">
-              Quiverly CSE
+              koel CSE
             </p>
             <p className="mt-1.5 text-sm leading-snug text-white/90">
               JKH.N0000 crossed above{" "}

@@ -283,7 +283,7 @@ class OpenRouterBriefProvider(_OpenAICompatibleBriefProvider):
             "Authorization": f"Bearer {self._settings.api_key}",
             # OpenRouter ranks / gates some models on these attribution headers.
             "HTTP-Referer": "https://github.com/chime-cse",
-            "X-Title": "Quiverly CSE alerts",
+            "X-Title": "koel CSE alerts",
         }
         log.info(
             self._log_event,

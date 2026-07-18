@@ -28,8 +28,8 @@ const MAX_PAGE_HISTORY_EVENTS = 200;
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "History · Quiverly",
-  description: "Alert fire history from your Quiverly rules.",
+  title: "History · koel",
+  description: "Alert fire history from your koel rules.",
 };
 
 type DeliveryStatus =
@@ -316,7 +316,7 @@ export default async function AlertHistoryPage({
             title="Couldn’t load alert history"
             description={
               <>
-                Quiverly couldn’t read alert fire history from Postgres just now.
+                koel couldn’t read alert fire history from Postgres just now.
                 This is a load error, not an empty history. Retry the request —
                 Telegram pushes still fire when rules match.
               </>

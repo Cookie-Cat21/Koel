@@ -118,7 +118,7 @@ async def test_cmd_start_registers_and_explains() -> None:
     await cmd_start(update, context)
     storage.ensure_user.assert_awaited_once_with(1001)
     reply = update.effective_message.reply_text.await_args.args[0]
-    assert "Quiverly watches" in reply
+    assert "koel watches" in reply
     assert "/help" in reply
     assert "/watch SYMBOL" not in reply  # command dump is /help only
     assert disclaimer() in reply

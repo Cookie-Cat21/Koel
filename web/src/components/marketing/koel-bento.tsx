@@ -29,8 +29,8 @@ const WATCHED_SYMBOLS = [
   { symbol: "LOLC.N0000", top: 62, left: 30, delay: 0.6 },
 ] as const;
 
-/** Quiverly bento grid — remap of Watermelon UI's Bento 2 block, restyled to product tokens. */
-export function QuiverlyBento({ className }: { className?: string }) {
+/** koel bento grid — remap of Watermelon UI's Bento 2 block, restyled to product tokens. */
+export function KoelBento({ className }: { className?: string }) {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   return (
@@ -121,7 +121,7 @@ export function QuiverlyBento({ className }: { className?: string }) {
           <motion.div className="relative z-10 flex w-full flex-col gap-3 overflow-hidden">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
               <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">
-                Quiverly poller
+                koel poller
               </span>
               <div className="flex items-center gap-1.5">
                 <motion.div

@@ -27,7 +27,7 @@ import { getPool } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Market Appetite · Quiverly",
+  title: "Market Appetite · koel",
   description:
     "CSE market appetite research score from breadth, intensity, ASPI, and participation. Not financial advice.",
 };
@@ -69,7 +69,7 @@ export default async function AppetitePage() {
       <AppNav active="/appetite" />
       <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
         <PageHeader
-          eyebrow="Quiverly · Research"
+          eyebrow="koel · Research"
           title="Market Appetite"
           description="Session mood proxy from CSE breadth, move intensity, ASPI day change, and participation. Higher scores are not a tip — research only."
           action={

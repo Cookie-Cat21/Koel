@@ -13,8 +13,8 @@ import { requirePageSession } from "@/lib/auth/page-session";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Settings · Quiverly",
-  description: "Telegram delivery preferences for Quiverly alerts.",
+  title: "Settings · koel",
+  description: "Telegram delivery preferences for koel alerts.",
 };
 
 function quietHour(raw: unknown): number | null | undefined {
@@ -62,7 +62,7 @@ export default async function SettingsPage() {
         <PageHeader
           eyebrow="Account"
           title="Settings"
-          description="Manage digest and quiet-hour preferences. Quiverly still sends actionable alerts through Telegram."
+          description="Manage digest and quiet-hour preferences. koel still sends actionable alerts through Telegram."
         />
 
         {prefs ? (
@@ -70,7 +70,7 @@ export default async function SettingsPage() {
         ) : (
           <EmptyState
             title="Couldn’t load settings"
-            description="Quiverly couldn’t fetch your delivery preferences right now. Refresh in a moment, or keep using Telegram commands while the dashboard recovers."
+            description="koel couldn’t fetch your delivery preferences right now. Refresh in a moment, or keep using Telegram commands while the dashboard recovers."
             action={
               <Button asChild variant="outline">
                 <Link href="/settings">Try again</Link>

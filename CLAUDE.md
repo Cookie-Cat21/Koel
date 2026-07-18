@@ -1,15 +1,15 @@
-# Quiverly — CSE market dash + Telegram alerts
+# koel — CSE market dash + Telegram alerts
 
 ## What this is
 
-Quiverly is a **Colombo Stock Exchange dashboard** for browsing symbols, watching
+koel is a **Colombo Stock Exchange dashboard** for browsing symbols, watching
 what you care about, and managing alert rules — with **Telegram push** as the
 differentiator on top (the cherry). When a price crosses a threshold, a daily
-% move fires, or a disclosure lands, Quiverly pings Telegram even if the browser
+% move fires, or a disclosure lands, koel pings Telegram even if the browser
 is closed.
 
 CSE Tracker Pro and friends cover portfolio / screener / charts well, but their
-price alerts are still browser-open-only. Quiverly’s wedge is real push. The web
+price alerts are still browser-open-only. koel’s wedge is real push. The web
 app is the daily surface; Telegram is how you hear the market when you’re away.
 
 **Deferred (not yet — do not build these yet):**
@@ -53,7 +53,7 @@ Telegram when a rule fires,” it does not belong yet.
   shipped "Tijori Alerts" — a standalone WhatsApp-first filing/alert summarizer
   — specifically to close it, even after Kite already had in-app alerts.
 
-Quiverly = denser CSE dash **plus** Tijori-style push. Not a pure Tracker Pro clone,
+koel = denser CSE dash **plus** Tijori-style push. Not a pure Tracker Pro clone,
 and not alerts-only chrome anymore.
 
 ## Data sources (observed 2026-07-11 — see `docs/endpoint_probe_report.md`)
@@ -142,7 +142,7 @@ scrape HTML; use the JSON endpoints above.
 - Simple cron / scheduled job for the poller (APScheduler or plain cron) —
   no need for Kafka/Flink-scale infra for this volume of data
 - Thin dashboard (when built): Next.js + Tailwind + shadcn; API over existing
-  Postgres / Quiverly domain — not a second CSE scraper
+  Postgres / koel domain — not a second CSE scraper
 
 ## Compliance notes (do not skip)
 

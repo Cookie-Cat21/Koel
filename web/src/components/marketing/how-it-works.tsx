@@ -6,7 +6,7 @@ const STEPS = [
   {
     n: "01",
     title: "Watch CSE symbols",
-    body: "Add the names you care about. Quiverly only polls what you watch.",
+    body: "Add the names you care about. koel only polls what you watch.",
   },
   {
     n: "02",

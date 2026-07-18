@@ -1,13 +1,13 @@
-import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { BlogList } from "@/components/marketing/blog-list";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
-import { QuiverlyFooter } from "@/components/marketing/quiverly-footer";
+import { KoelFooter } from "@/components/marketing/koel-footer";
 import { telegramBotUrl } from "@/lib/marketing";
 
 export const metadata = {
-  title: "Blog · Quiverly",
+  title: "Blog · koel",
   description:
-    "Ops notes and CSE endpoint changes — Quiverly product journal.",
+    "Ops notes and CSE endpoint changes — koel product journal.",
 };
 
 /** Watermelon blog-1 stub — empty until real posts land. */
@@ -22,7 +22,7 @@ export default function BlogPage() {
         tabIndex={-1}
         className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-14"
       >
-        <QuiverlyWordmark size="lg" priority />
+        <KoelWordmark size="lg" priority />
         <BlogList
           className="mt-10"
           heading="Notes from the wire"
@@ -32,7 +32,7 @@ export default function BlogPage() {
           posts={[]}
         />
       </main>
-      <QuiverlyFooter telegramHref={botUrl} />
+      <KoelFooter telegramHref={botUrl} />
     </div>
   );
 }

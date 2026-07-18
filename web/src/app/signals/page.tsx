@@ -27,7 +27,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Signal Board · Quiverly",
+  title: "Signal Board · koel",
   description:
     "Research scores from CSE path data — ranked factors with reasons. Not advice.",
 };

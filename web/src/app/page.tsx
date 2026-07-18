@@ -2,9 +2,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { AnnouncementBar } from "@/components/marketing/announcement-bar";
-import { QuiverlyBento } from "@/components/marketing/quiverly-bento";
+import { KoelBento } from "@/components/marketing/koel-bento";
 import { EndCta } from "@/components/marketing/end-cta";
 import { FaqSplit } from "@/components/marketing/faq-split";
 import { FeatureList } from "@/components/marketing/feature-list";
@@ -13,7 +13,7 @@ import { HowItWorks } from "@/components/marketing/how-it-works";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { MidCta } from "@/components/marketing/mid-cta";
 import { SectionEyebrow } from "@/components/marketing/section-eyebrow";
-import { QuiverlyFooter } from "@/components/marketing/quiverly-footer";
+import { KoelFooter } from "@/components/marketing/koel-footer";
 import { TelegramProof } from "@/components/marketing/telegram-proof";
 import { NfaInline } from "@/components/nfa-inline";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { verifySessionToken } from "@/lib/auth/session";
 import { telegramBotUrl } from "@/lib/marketing";
 
 export const metadata = {
-  title: "Quiverly — CSE alerts on Telegram",
+  title: "koel — CSE alerts on Telegram",
   description:
     "Telegram-first Colombo Stock Exchange alerts. Watch symbols, set rules in a thin dash, get pinged when something fires.",
 };
@@ -30,9 +30,9 @@ export const metadata = {
 const FAQ = [
   {
     id: "tracker",
-    question: "Is Quiverly a CSE Tracker Pro clone?",
+    question: "Is koel a CSE Tracker Pro clone?",
     answer:
-      "No. Quiverly is Telegram-first CSE alerting with a thin management dash. Portfolio, tax, screener, and heavy TA stay out of scope.",
+      "No. koel is Telegram-first CSE alerting with a thin management dash. Portfolio, tax, screener, and heavy TA stay out of scope.",
   },
   {
     id: "fires",
@@ -89,7 +89,7 @@ export default async function HomePage() {
           <HeroGridBackdrop />
           <div className="relative max-w-xl lg:max-w-2xl">
             <div className="chime-rise">
-              <QuiverlyWordmark size="hero" priority />
+              <KoelWordmark size="hero" priority />
             </div>
             <h1 className="chime-rise chime-rise-delay-1 mt-10 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.08]">
               CSE alerts on Telegram.
@@ -181,7 +181,7 @@ export default async function HomePage() {
               A poller that never stops checking, and a bot that never keeps
               you waiting.
             </p>
-            <QuiverlyBento className="mt-10" />
+            <KoelBento className="mt-10" />
           </section>
 
           <MidCta telegramHref={botUrl} className="mt-20" />
@@ -196,7 +196,7 @@ export default async function HomePage() {
           <EndCta telegramHref={botUrl} className="mt-20" />
         </div>
       </main>
-      <QuiverlyFooter telegramHref={botUrl} />
+      <KoelFooter telegramHref={botUrl} />
     </div>
   );
 }

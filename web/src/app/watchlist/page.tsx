@@ -27,7 +27,7 @@ import { formatNumber, formatTs } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Watchlist · Quiverly",
+  title: "Watchlist · koel",
   description: "Symbols you watch for CSE price and disclosure alerts.",
 };
 
@@ -127,7 +127,7 @@ export default async function WatchlistPage() {
             title="Couldn’t load watchlist"
             description={
               <>
-                Quiverly couldn’t fetch your saved symbols just now. This is a
+                koel couldn’t fetch your saved symbols just now. This is a
                 load error, not an empty watchlist. Retry the request, or manage
                 symbols with{" "}
                 <code className="font-mono text-xs">/watch SYMBOL</code> in
@@ -155,7 +155,7 @@ export default async function WatchlistPage() {
                 </Link>{" "}
                 to discover tickers, or use{" "}
                 <code className="font-mono text-xs">/watch SYMBOL</code> in
-                Telegram — Quiverly keeps the list in sync either way. New symbols
+                Telegram — koel keeps the list in sync either way. New symbols
                 appear here after a poller tick, and Telegram{" "}
                 <code className="font-mono text-xs">/watch</code> can seed the
                 stocks table before the dashboard sees them.

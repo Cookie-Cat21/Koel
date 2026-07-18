@@ -21,7 +21,7 @@ const tones: Record<Tone, string> = {
 
 /**
  * Watermelon alert-01 — shadcn Alert + Info icon.
- * lucide instead of @aliimam/icons; Quiverly tones (no blue candy default).
+ * lucide instead of @aliimam/icons; koel tones (no blue candy default).
  */
 export function AlertBanner({
   tone = "info",

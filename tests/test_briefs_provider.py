@@ -515,7 +515,7 @@ async def test_openrouter_summarize_httpx_mock() -> None:
     assert str(req.url) == "https://openrouter.ai/api/v1/chat/completions"
     assert req.headers.get("Authorization") == "Bearer test-key"
     assert req.headers.get("HTTP-Referer") == "https://github.com/chime-cse"
-    assert req.headers.get("X-Title") == "Quiverly CSE alerts"
+    assert req.headers.get("X-Title") == "koel CSE alerts"
     payload = json.loads(req.content)
     assert payload["model"] == "openai/gpt-4o-mini"
     assert payload["messages"][0]["role"] == "system"

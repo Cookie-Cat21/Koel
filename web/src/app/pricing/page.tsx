@@ -1,13 +1,13 @@
-import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { PricingPlans } from "@/components/marketing/pricing-plans";
-import { QuiverlyFooter } from "@/components/marketing/quiverly-footer";
+import { KoelFooter } from "@/components/marketing/koel-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { telegramBotUrl } from "@/lib/marketing";
 
 export const metadata = {
-  title: "Pricing · Quiverly",
-  description: "Quiverly CSE alerts — free via Telegram for v1. No payments yet.",
+  title: "Pricing · koel",
+  description: "koel CSE alerts — free via Telegram for v1. No payments yet.",
 };
 
 /** Watermelon pricing-1 adapted — Free / Later, no checkout. */
@@ -22,7 +22,7 @@ export default function PricingPage() {
         tabIndex={-1}
         className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-14"
       >
-        <QuiverlyWordmark size="lg" priority />
+        <KoelWordmark size="lg" priority />
         <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Pricing
         </h1>
@@ -82,7 +82,7 @@ export default function PricingPage() {
           </p>
         ) : null}
       </main>
-      <QuiverlyFooter telegramHref={botUrl} />
+      <KoelFooter telegramHref={botUrl} />
     </div>
   );
 }

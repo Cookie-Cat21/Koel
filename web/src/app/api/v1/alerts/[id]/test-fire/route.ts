@@ -25,7 +25,7 @@ function dryRunMessage(row: {
   threshold: number | null;
   category: string | null;
 }): string {
-  const bits = [`[dry-run] Quiverly test fire for ${row.symbol}`, `Type: ${row.type}`];
+  const bits = [`[dry-run] koel test fire for ${row.symbol}`, `Type: ${row.type}`];
   if (row.threshold != null) bits.push(`Threshold: ${row.threshold}`);
   if (row.category) bits.push(`Category: ${row.category}`);
   bits.push("No Telegram message was sent.");

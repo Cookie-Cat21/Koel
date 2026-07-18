@@ -16,7 +16,7 @@ export default function NotFound() {
       >
         <EmptyState
           title="Page not found"
-          description="That route isn’t part of the Quiverly dash. Head back to Overview, Browse, or your watchlist."
+          description="That route isn’t part of the koel dash. Head back to Overview, Browse, or your watchlist."
           action={
             <div className="flex flex-wrap gap-2">
               <Button asChild>

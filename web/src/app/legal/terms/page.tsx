@@ -1,11 +1,11 @@
-import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
-import { QuiverlyFooter } from "@/components/marketing/quiverly-footer";
+import { KoelFooter } from "@/components/marketing/koel-footer";
 import { telegramBotUrl } from "@/lib/marketing";
 
 export const metadata = {
-  title: "Terms · Quiverly",
-  description: "Quiverly terms stub — informational tool, not investment advice.",
+  title: "Terms · koel",
+  description: "koel terms stub — informational tool, not investment advice.",
 };
 
 export default function TermsPage() {
@@ -18,13 +18,13 @@ export default function TermsPage() {
         tabIndex={-1}
         className="mx-auto w-full max-w-3xl flex-1 px-6 py-14"
       >
-        <QuiverlyWordmark size="lg" priority />
+        <KoelWordmark size="lg" priority />
         <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Terms
         </h1>
         <div className="mt-8 max-w-2xl space-y-5 text-base leading-relaxed text-muted-foreground">
           <p>
-            Quiverly is an information tool for Colombo Stock Exchange alerts. It
+            koel is an information tool for Colombo Stock Exchange alerts. It
             is not investment advice, not a broker, and not a solicitation to
             deal in securities. You are responsible for verifying prices and
             filings.
@@ -32,7 +32,7 @@ export default function TermsPage() {
           <p>
             Service may be interrupted when upstream CSE endpoints change,
             during outages, or while the poller is outside market hours. Alerts
-            can be delayed or missed — do not rely on Quiverly as your only risk
+            can be delayed or missed — do not rely on koel as your only risk
             control.
           </p>
           <p className="text-sm">
@@ -41,7 +41,7 @@ export default function TermsPage() {
           </p>
         </div>
       </main>
-      <QuiverlyFooter telegramHref={botUrl} />
+      <KoelFooter telegramHref={botUrl} />
     </div>
   );
 }

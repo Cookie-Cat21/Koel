@@ -40,8 +40,8 @@ export function changeDirectionSr(pct: number | null): string {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Browse · Quiverly",
-  description: "CSE symbol browse from Quiverly snapshots — pick what to watch.",
+  title: "Browse · koel",
+  description: "CSE symbol browse from koel snapshots — pick what to watch.",
 };
 
 /** Page size for the symbol table section. */
@@ -281,7 +281,7 @@ export default async function MarketPage({
         <PageHeader
           eyebrow="Market"
           title="Browse"
-          description="CSE symbols from Quiverly’s latest poller snapshots. Find names to watch — Telegram still delivers the push when your rules fire."
+          description="CSE symbols from koel’s latest poller snapshots. Find names to watch — Telegram still delivers the push when your rules fire."
           action={
             <PriceRefresh
               lastSnapshotAt={
@@ -404,7 +404,7 @@ export default async function MarketPage({
         {marketItems === null ? (
           <EmptyState
             title="Couldn’t load market list"
-            description="Quiverly couldn’t read snapshot data just now. Retry in a moment, or check Health if this keeps happening."
+            description="koel couldn’t read snapshot data just now. Retry in a moment, or check Health if this keeps happening."
             action={
               <Button asChild variant="outline">
                 <Link href={browseHref(q, page)}>Retry</Link>

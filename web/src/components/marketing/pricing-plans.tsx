@@ -20,7 +20,7 @@ export type PricingPlan = {
 
 /**
  * Watermelon pricing-1 — plan cards.
- * Quiverly: 2-tier Free / Later, no checkout, Check from lucide (not react-icons).
+ * koel: 2-tier Free / Later, no checkout, Check from lucide (not react-icons).
  */
 export function PricingPlans({
   plans,

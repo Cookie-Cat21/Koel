@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Person dossier — Ardeno Wave A (Tremor RankBarList / HyperUI EventTimeline /
- * StatCard KPIs). Quiverly tokens; no purple/glow kits; not personal net worth.
+ * StatCard KPIs). koel tokens; no purple/glow kits; not personal net worth.
  */
 
 const ROLE_LABEL: Record<string, string> = {
@@ -427,7 +427,7 @@ export function PersonDossierView({ dossier }: { dossier: PersonDossier }) {
               </div>
               <div className="min-w-0 space-y-1 pb-0.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Quiverly · Director dossier
+                  koel · Director dossier
                 </p>
                 <h1 className="truncate font-display text-2xl font-semibold tracking-tight sm:text-3xl">
                   {dossier.name}

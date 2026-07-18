@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 export type StepStatus = "pending" | "active" | "complete";
 
-/** DaisyUI-style steps — how Quiverly works (Ceyfi port). */
+/** DaisyUI-style steps — how koel works (Ceyfi port). */
 export function Steps({
   steps,
   className,

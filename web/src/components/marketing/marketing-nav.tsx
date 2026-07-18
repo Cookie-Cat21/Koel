@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,10 +19,10 @@ export function MarketingNav() {
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          aria-label="Quiverly home"
+          aria-label="koel home"
           className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          <QuiverlyWordmark size="sm" priority />
+          <KoelWordmark size="sm" priority />
         </Link>
         <nav
           aria-label="Marketing"

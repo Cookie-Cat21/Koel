@@ -6,7 +6,7 @@ import { ArrowUpRight, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-const STORAGE_KEY = "quiverly_announce_dismissed_v1";
+const STORAGE_KEY = "koel_announce_dismissed_v1";
 
 /**
  * Watermelon announcement-8 — quiet muted bar + dismiss.
@@ -47,7 +47,7 @@ export function AnnouncementBar({
 
   return (
     <div
-      id="quiverly-announce"
+      id="koel-announce"
       role="region"
       aria-label="Announcement"
       className="border-b border-border/70 bg-muted"

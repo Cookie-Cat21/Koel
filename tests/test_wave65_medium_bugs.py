@@ -46,7 +46,7 @@ def test_filing_url_helpers_reject_non_strings() -> None:
 def test_notify_formatters_reject_non_string_symbol() -> None:
     msg = format_dead_letter_notify(123, 5)  # type: ignore[arg-type]
     assert "after 5 tries" in msg
-    assert "Quiverly could not deliver" in msg
+    assert "koel could not deliver" in msg
 
     follow = format_brief_followup(symbol=None, brief="Ready")  # type: ignore[arg-type]
     assert "Filing brief ready" in follow

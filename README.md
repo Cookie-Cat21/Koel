@@ -1,9 +1,9 @@
-# Quiverly
+# koel
 
 Tijori-for-CSE: thin **Browse**, AI **filing briefs**, and real **Telegram push**
 for the Colombo Stock Exchange — not a portfolio tracker or trading terminal.
 
-Quiverly is a background watcher. You set an alert condition — a price threshold,
+koel is a background watcher. You set an alert condition — a price threshold,
 a daily % move, or "any new disclosure for this company" — and get a Telegram
 message the moment it fires, with no browser tab or app open. The thin dash
 adds `/market` Browse and optional plain-language filing briefs on disclosures;
@@ -14,10 +14,10 @@ push stays primary. Full product plan: [CLAUDE.md](CLAUDE.md). Tijori plan:
 
 ## Rebrand note
 
-The **product name** is **Quiverly** (wordmark: lowercase `quiverly`; mark: capital **Q**).
+The **product name** is **koel** (wordmark: lowercase `koel`; mark: capital **K**).
 The internal Python package, CLI (`python -m chime`), Postgres role/database name,
 env vars, and this repository’s historical codename remain **`chime`** for now —
-only user-facing product surfaces were renamed in the Quiverly rebrand.
+only user-facing product surfaces were renamed in the koel rebrand.
 
 ## Setup
 
@@ -173,5 +173,5 @@ CSRF. Mutations need matching `X-CSRF-Token`. Details:
 
 ## Disclaimer
 
-Quiverly relays publicly available market information. It is an information
+koel relays publicly available market information. It is an information
 tool, not investment advice.

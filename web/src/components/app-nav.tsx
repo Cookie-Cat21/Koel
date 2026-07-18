@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { CommandPalette } from "@/components/command-palette";
 import { NavSession } from "@/components/nav-session";
 import { Button } from "@/components/ui/button";
@@ -65,11 +65,11 @@ export function AppNav({ active }: { active?: string }) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          aria-label="Quiverly home"
+          aria-label="koel home"
           className="shrink-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
           onClick={() => setOpen(false)}
         >
-          <QuiverlyWordmark
+          <KoelWordmark
             size="sm"
             priority
             className="motion-safe:transition-opacity motion-safe:hover:opacity-80"
@@ -120,7 +120,7 @@ export function AppNav({ active }: { active?: string }) {
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none sm:hidden"
             aria-expanded={open}
-            aria-controls="quiverly-mobile-nav"
+            aria-controls="koel-mobile-nav"
             aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen((v) => !v)}
           >
@@ -142,7 +142,7 @@ export function AppNav({ active }: { active?: string }) {
 
       {/* Keep in DOM so aria-controls stays valid when the menu is closed. */}
       <nav
-        id="quiverly-mobile-nav"
+        id="koel-mobile-nav"
         className="border-t border-border/60 px-4 py-2 sm:hidden"
         hidden={!open}
       >

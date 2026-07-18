@@ -151,7 +151,7 @@ def _env_cmd_rate_per_minute() -> int:
 # ≤3 lines including NFA; command dump lives on /help only (WS-014 / E7-B02).
 # Wave5/w20: Browse dash note + disclosure CATEGORY + optional AI brief.
 START_TEXT = (
-    "Quiverly watches the Colombo Stock Exchange and pings Telegram on price, "
+    "koel watches the Colombo Stock Exchange and pings Telegram on price, "
     "move, volume, or disclosure alerts — Browse dash mirrors watchlists; "
     "push stays here.\n"
     "Disclosures: /alert SYMBOL disclosure [CATEGORY]; "

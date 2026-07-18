@@ -12,7 +12,7 @@ export type BlogPost = {
 
 /**
  * Watermelon blog-1 — header + post cards.
- * Softened inset shadows; Quiverly tokens.
+ * Softened inset shadows; koel tokens.
  */
 export function BlogList({
   heading,

@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-/** HyperUI-style stat card — overview / health KPIs (Ceyfi port, Quiverly tokens). */
+/** HyperUI-style stat card — overview / health KPIs (Ceyfi port, koel tokens). */
 export function StatCard({
   label,
   value,

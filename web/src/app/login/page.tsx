@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
-import { QuiverlyLockup } from "@/components/brand/quiverly-brand";
+import { KoelLockup } from "@/components/brand/koel-brand";
 import { LoginForm } from "@/components/login-form";
 import { HeroGridBackdrop } from "@/components/marketing/hero-grid-backdrop";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -15,8 +15,8 @@ import {
 import { verifySessionToken } from "@/lib/auth/session";
 
 export const metadata = {
-  title: "Sign in · Quiverly",
-  description: "Sign in to the Quiverly CSE dashboard — Telegram alerts on top.",
+  title: "Sign in · koel",
+  description: "Sign in to the koel CSE dashboard — Telegram alerts on top.",
 };
 
 export default async function LoginPage({
@@ -59,9 +59,9 @@ export default async function LoginPage({
           <Link
             href="/"
             className="inline-flex motion-safe:transition-opacity motion-safe:hover:opacity-80"
-            aria-label="Quiverly home"
+            aria-label="koel home"
           >
-            <QuiverlyLockup
+            <KoelLockup
               size="hero"
               priority
               className="[&_img:last-child]:h-14 [&_img:last-child]:sm:h-16 [&_img:last-child]:md:h-[4.5rem] [&_img:first-child]:h-14 [&_img:first-child]:sm:h-16 [&_img:first-child]:md:h-[4.5rem]"

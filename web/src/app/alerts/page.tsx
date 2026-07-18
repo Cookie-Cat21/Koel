@@ -36,8 +36,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Alerts · Quiverly",
-  description: "Active alert rules for your Quiverly watchlist.",
+  title: "Alerts · koel",
+  description: "Active alert rules for your koel watchlist.",
 };
 
 function isActivelyMuted(mutedUntil: string | null): boolean {
@@ -132,7 +132,7 @@ export default async function AlertsPage({
         <PageHeader
           eyebrow="Rules"
           title="Alerts"
-          description="Active rules only. Create a price, move, or disclosure alert here; Quiverly adds the symbol to your watchlist and sends the push on Telegram."
+          description="Active rules only. Create a price, move, or disclosure alert here; koel adds the symbol to your watchlist and sends the push on Telegram."
         />
 
         <form
@@ -178,7 +178,7 @@ export default async function AlertsPage({
             title="Couldn’t load alerts"
             description={
               <>
-                Quiverly couldn’t fetch your rules right now. Refresh in a moment,
+                koel couldn’t fetch your rules right now. Refresh in a moment,
                 or set alerts with{" "}
                 <code className="font-mono text-xs">
                   /alert SYMBOL above PRICE
@@ -221,7 +221,7 @@ export default async function AlertsPage({
                   <code className="font-mono text-xs">
                     /alert SYMBOL above PRICE
                   </code>{" "}
-                  in Telegram — Quiverly pushes when it fires.
+                  in Telegram — koel pushes when it fires.
                 </>
               )
             }

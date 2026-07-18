@@ -49,16 +49,16 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quiverly",
+  title: "koel",
   description:
     "Telegram-first CSE alerting — manage watchlists and alert rules.",
   icons: {
     icon: [
-      { url: "/brand/quiverly-mark-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/brand/quiverly-mark-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/brand/quiverly-mark.svg", type: "image/svg+xml" },
+      { url: "/brand/koel-mark-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/koel-mark-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/koel-mark.svg", type: "image/svg+xml" },
     ],
-    apple: [{ url: "/brand/quiverly-mark-180.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/brand/koel-mark-180.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
