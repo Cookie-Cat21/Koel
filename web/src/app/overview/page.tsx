@@ -1,8 +1,10 @@
+import { Clock, Radio } from "lucide-react";
 import Link from "next/link";
 
 import { AppetiteStrip } from "@/components/appetite/appetite-strip";
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { AlertBanner } from "@/components/kit/alert-banner";
 import { CakeCherryBanner } from "@/components/kit/cake-cherry-banner";
 import { ChangeBadge } from "@/components/kit/change-badge";
 import {
@@ -52,8 +54,12 @@ import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import { alertTypeLabel, formatNumber, formatTs } from "@/lib/format";
+import { getMarketSessionState } from "@/lib/market-session";
 
 export const dynamic = "force-dynamic";
+
+/** Match PriceRefresh stale threshold — poller quiet while session is open. */
+const POLLER_STALE_MS = 3 * 60_000;
 
 export const metadata = {
   title: "Overview · Quiverly",
@@ -386,6 +392,16 @@ export default async function OverviewPage() {
       .sort()
       .at(-1) ?? null;
 
+  const session = getMarketSessionState();
+  const freshestMs =
+    typeof freshestTs === "string" ? Date.parse(freshestTs) : Number.NaN;
+  const snapshotAgeMs = Number.isFinite(freshestMs)
+    ? Math.max(0, Date.now() - freshestMs)
+    : null;
+  const pollerStale =
+    session.open &&
+    (snapshotAgeMs == null || snapshotAgeMs >= POLLER_STALE_MS);
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav active="/overview" />
@@ -411,6 +427,39 @@ export default async function OverviewPage() {
             </div>
           }
         />
+
+        {!session.open ? (
+          <AlertBanner
+            className="mt-6"
+            tone="info"
+            icon={Clock}
+            title="Market closed"
+            description="CSE cash session is closed (weekdays 09:30–14:30 SLT). Showing the last stored prints until the next open — expected quiet, not a poller failure. Not financial advice."
+            action={
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link href="/health">Health</Link>
+              </Button>
+            }
+          />
+        ) : pollerStale ? (
+          <AlertBanner
+            className="mt-6"
+            role="alert"
+            tone="warning"
+            icon={Radio}
+            title="Poller looks quiet"
+            description={
+              snapshotAgeMs == null
+                ? "No recent price snapshots while the market session is open. Confirm the poller is running and symbols are on a watchlist. Not financial advice."
+                : `Newest stored snapshot is about ${Math.max(1, Math.floor(snapshotAgeMs / 60_000))}m old while the session is open. The poller may be paused, or watched symbols may be missing ticks. Not financial advice.`
+            }
+            action={
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link href="/health">Health</Link>
+              </Button>
+            }
+          />
+        ) : null}
 
         <CakeCherryBanner />
 
@@ -448,16 +497,23 @@ export default async function OverviewPage() {
         ) : null}
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Watching" value={String(watch.length)} hint="On your list" />
+          <StatCard
+            label="Watching"
+            value={String(watch.length)}
+            hint="On your list"
+            href="/watchlist"
+          />
           <StatCard
             label="Active rules"
             value={String(rules.length)}
             hint={`${armedCount} armed`}
+            href="/alerts"
           />
           <StatCard
             label="Recent fires"
             value={String(fires.length)}
             hint="Latest audit rows"
+            href="/alerts/history"
           />
           <StatCard
             label="Push channel"
