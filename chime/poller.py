@@ -50,6 +50,7 @@ from chime.domain import (
 from chime.health import brief_queue_health_hint
 from chime.logging_setup import get_logger
 from chime.notify import SendResult
+from chime.telegram_markup import fire_mute_keyboard
 from chime.rules import (
     evaluate_big_print_rules,
     evaluate_disclosure_rules,
@@ -63,7 +64,9 @@ from chime.storage import Storage
 log = get_logger(__name__)
 
 # bool kept for test AsyncMocks; production send returns SendResult.
-SendFunc = Callable[[int, str], Awaitable[SendResult | bool]]
+# Extra kwargs (reply_markup) are optional — stubs that only take (chat_id, text)
+# still work via ``_call_send`` TypeError fallback.
+SendFunc = Callable[..., Awaitable[SendResult | bool]]
 # Session try-lock for the CSE poll tick. Distinct from storage.BRIEF_CAP_LOCK_ID
 # (4_201_339) — do not unify; see docs/factory/passes/ADVISORY_LOCK_DEADLOCK.md.
 POLL_LOCK_ID = 4_201_337
@@ -1534,6 +1537,21 @@ class Poller:
         # Wraps midnight: quiet from start..23 and 0..end-1
         return hour >= start or hour < end
 
+    async def _call_send(
+        self,
+        chat_id: int,
+        text: str,
+        *,
+        reply_markup: Any | None = None,
+    ) -> SendResult | bool:
+        """Invoke ``self.send``; fall back if the stub rejects ``reply_markup``."""
+        if reply_markup is None:
+            return await self.send(chat_id, text)
+        try:
+            return await self.send(chat_id, text, reply_markup=reply_markup)
+        except TypeError:
+            return await self.send(chat_id, text)
+
     async def _deliver_one(self, pending: PendingSend) -> None:
         """Send one claimed alert and update alert_log (OK / FAILED / DEFERRED)."""
         # Quiet hours (user prefs) — hold the row (message_sent=false) for retry;
@@ -1546,7 +1564,18 @@ class Poller:
                 log_id=pending.log_id,
             )
             return
-        result = _normalize_send_result(await self.send(pending.telegram_id, pending.message))
+        markup = (
+            fire_mute_keyboard(pending.rule_id)
+            if pending.rule_id is not None
+            else None
+        )
+        result = _normalize_send_result(
+            await self._call_send(
+                pending.telegram_id,
+                pending.message,
+                reply_markup=markup,
+            )
+        )
         symbol = pending.symbol
         if symbol is None and pending.event is not None:
             symbol = pending.event.symbol

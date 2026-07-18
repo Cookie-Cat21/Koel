@@ -55,6 +55,7 @@ async def send_message(
     text: str,
     *,
     block_on_retry_after: bool = True,
+    reply_markup: Any | None = None,
 ) -> SendResult:
     """Send a Telegram message.
 
@@ -62,6 +63,8 @@ async def send_message(
     a ``RetryAfter`` returns ``SendResult.DEFERRED`` immediately so the lock is
     not held for the flood wait. Callers leave ``alert_log.message_sent=False``
     and may bump ``attempt_count`` toward ``MAX_DEFERRED_ATTEMPTS``.
+
+    Optional ``reply_markup`` attaches inline keyboards (e.g. Mute 24h on fires).
     """
     # Fail closed — bool chat_id soft-accepts via Telegram kwargs; non-str text
     # used to throw or coerce mid deliver.
@@ -71,8 +74,11 @@ async def send_message(
     if not isinstance(text, str) or not text:
         log.error("telegram_bad_text", text_type=type(text).__name__)
         return SendResult.FAILED
+    send_kwargs: dict[str, Any] = dict(_SEND_KWARGS)
+    if reply_markup is not None:
+        send_kwargs["reply_markup"] = reply_markup
     try:
-        await bot.send_message(chat_id=chat_id, text=text, **_SEND_KWARGS)
+        await bot.send_message(chat_id=chat_id, text=text, **send_kwargs)
         return SendResult.OK
     except RetryAfter as exc:
         if not block_on_retry_after:
@@ -86,7 +92,7 @@ async def send_message(
         delay = _retry_delay_seconds(exc.retry_after)
         await asyncio.sleep(delay + 0.5)
         try:
-            await bot.send_message(chat_id=chat_id, text=text, **_SEND_KWARGS)
+            await bot.send_message(chat_id=chat_id, text=text, **send_kwargs)
             return SendResult.OK
         except asyncio.CancelledError:
             raise

@@ -4087,6 +4087,36 @@ class Storage:
             ).fetchone()
         return row is not None
 
+    async def mute_alert(
+        self,
+        user_id: int,
+        rule_id: int,
+        muted_until: datetime | None,
+    ) -> bool:
+        """Set or clear ``muted_until`` for a rule owned by ``user_id``.
+
+        Returns True when a row was updated (active or not — mute survives disarm).
+        """
+        if isinstance(rule_id, bool) or not isinstance(rule_id, int) or rule_id < 1:
+            return False
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id < 1:
+            return False
+        if muted_until is not None and not isinstance(muted_until, datetime):
+            return False
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    UPDATE alert_rules
+                    SET muted_until = %s
+                    WHERE id = %s AND user_id = %s
+                    RETURNING id
+                    """,
+                    (muted_until, rule_id, user_id),
+                )
+            ).fetchone()
+        return row is not None
+
     async def deactivate_rules_for_symbol(self, user_id: int, symbol: str) -> int:
         """Deactivate all active rules for user+symbol. Return count."""
         # Fail closed — non-string symbol used to throw on .strip mid deactivate.

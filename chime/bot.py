@@ -12,10 +12,16 @@ import re
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+)
 
 from chime.adapters.cse import CSEClient, allowed_filing_url
 from chime.briefs import briefs_enabled
@@ -149,15 +155,63 @@ def _env_cmd_rate_per_minute() -> int:
 
 
 # ≤3 lines including NFA; command dump lives on /help only (WS-014 / E7-B02).
-# Wave5/w20: Browse dash note + disclosure CATEGORY + optional AI brief.
+# Phase A: guided chips; Browse dash + CATEGORY + optional AI brief stay on /help.
 START_TEXT = (
-    "Quiverly watches the Colombo Stock Exchange and pings Telegram on price, "
-    "move, volume, or disclosure alerts — Browse dash mirrors watchlists; "
-    "push stays here.\n"
-    "Disclosures: /alert SYMBOL disclosure [CATEGORY]; "
-    "optional AI brief when enabled. See /help.\n"
+    "Quiverly watches the Colombo Stock Exchange and pings Telegram when "
+    "your rule hits — price, daily %, or a new disclosure. "
+    "Tap a symbol below to arm a watch + alert (or /help for commands).\n"
+    "Browse dash manages rules; push stays here. "
+    "Disclosure [CATEGORY] + optional AI brief when enabled.\n"
     f"{disclaimer()}"
 )
+
+# Guided /start chips — liquid names retail users already know (labels, not tips).
+_START_SYMBOL_CHIPS: tuple[tuple[str, str], ...] = (
+    ("JKH.N0000", "JKH"),
+    ("COMB.N0000", "COMB"),
+    ("DIAL.N0000", "DIAL"),
+    ("SAMP.N0000", "SAMP"),
+    ("HNB.N0000", "HNB"),
+)
+
+
+def _start_symbol_keyboard() -> InlineKeyboardMarkup:
+    row = [
+        InlineKeyboardButton(label, callback_data=f"onboard:sym:{symbol}")
+        for symbol, label in _START_SYMBOL_CHIPS
+    ]
+    return InlineKeyboardMarkup(
+        [
+            row[:3],
+            row[3:],
+            [InlineKeyboardButton("Type a ticker instead", callback_data="onboard:manual")],
+        ]
+    )
+
+
+def _start_rule_keyboard(symbol: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "Price above", callback_data=f"onboard:rule:{symbol}:above"
+                ),
+                InlineKeyboardButton(
+                    "Price below", callback_data=f"onboard:rule:{symbol}:below"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "Daily move %", callback_data=f"onboard:rule:{symbol}:move"
+                ),
+                InlineKeyboardButton(
+                    "New disclosure",
+                    callback_data=f"onboard:rule:{symbol}:disclosure",
+                ),
+            ],
+            [InlineKeyboardButton("← Pick another symbol", callback_data="onboard:restart")],
+        ]
+    )
 
 # ≤12 lines (E7-B01). /myalerts lists active rules only (E9-B01).
 # E11-B01: alert syntax + NFA one-liner on /help.
@@ -198,15 +252,82 @@ class ParsedAlert:
     category: str | None = None
 
 
+def _env_positive_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or not isinstance(raw, str) or not raw.strip():
+        return default
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        return default
+    return value if value >= 1 else default
+
+
+def free_alert_cap() -> int:
+    """Match dash ``DASH_FREE_ALERT_QUOTA`` / FREE_ALERT_CAP=3."""
+    return _env_positive_int("DASH_FREE_ALERT_QUOTA", 3)
+
+
+def free_watch_cap() -> int:
+    """Match dash ``DASH_FREE_WATCH_QUOTA`` / FREE_WATCH_CAP=5."""
+    return _env_positive_int("DASH_FREE_WATCH_QUOTA", 5)
+
+
 def normalize_symbol(raw: str) -> str | None:
     # Fail closed — non-strings used to throw on .strip mid /watch|/alert|/brief.
     if not isinstance(raw, str):
         return None
     s = raw.strip().upper()
-    if not s or not SYMBOL_RE.match(s):
+    if not s:
         return None
-    # CSE common shares often use .N0000 — accept bare ticker and common forms
+    # Bare tickers (JKH) → common-share form JKH.N0000 for CSE lookups.
+    if "." not in s and re.fullmatch(r"[A-Z0-9]{1,12}", s):
+        s = f"{s}.N0000"
+    if not SYMBOL_RE.match(s):
+        return None
     return s
+
+
+async def _watch_quota_blocked(storage: Storage, user_id: int, symbol: str) -> str | None:
+    """Return an error reply when free watch cap would be exceeded."""
+    watchlist = await storage.list_watchlist(user_id)
+    if symbol in watchlist:
+        return None
+    cap = free_watch_cap()
+    if len(watchlist) >= cap:
+        return (
+            f"Free tier allows up to {cap} watches. "
+            f"Remove one with /unwatch, or see Pro on the dash pricing page.\n"
+            f"{disclaimer()}"
+        )
+    return None
+
+
+async def _alert_quota_blocked(
+    storage: Storage,
+    user_id: int,
+    *,
+    symbol: str,
+    alert_type: AlertType,
+    threshold: float | None,
+) -> str | None:
+    """Return an error reply when free alert cap would block a *new* rule."""
+    rules = await storage.list_alerts(user_id)
+    for rule in rules:
+        if (
+            rule.symbol == symbol
+            and rule.type == alert_type
+            and rule.threshold == threshold
+        ):
+            return None  # idempotent create — not a new slot
+    cap = free_alert_cap()
+    if len(rules) >= cap:
+        return (
+            f"Free tier allows up to {cap} active alerts. "
+            f"Cancel one with /cancel ALERT_ID, or see Pro on the dash pricing page.\n"
+            f"{disclaimer()}"
+        )
+    return None
 
 
 def _parse_threshold_token(raw: str) -> float | None:
@@ -426,7 +547,222 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     storage: Storage = context.application.bot_data["storage"]
     await _user_id(storage, update)
     if update.effective_message:
-        await update.effective_message.reply_text(START_TEXT)
+        await update.effective_message.reply_text(
+            START_TEXT,
+            reply_markup=_start_symbol_keyboard(),
+        )
+
+
+async def onboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Guided /start: pick symbol → pick rule → create alert (or prompt for threshold)."""
+    query = update.callback_query
+    if query is None or not query.data:
+        return
+    await query.answer()
+    data = query.data
+    if not data.startswith("onboard:"):
+        return
+
+    storage: Storage = context.application.bot_data["storage"]
+    cse: CSEClient = context.application.bot_data["cse"]
+    user_id = await _user_id(storage, update)
+    if user_id is None:
+        return
+
+    if data == "onboard:manual":
+        await query.edit_message_text(
+            _clamp_telegram_message(
+                "Type a ticker with /watch SYMBOL, then /alert …\n"
+                f"Example: /watch JKH.N0000\n{disclaimer()}"
+            )
+        )
+        return
+
+    if data == "onboard:restart":
+        await query.edit_message_text(
+            START_TEXT,
+            reply_markup=_start_symbol_keyboard(),
+        )
+        return
+
+    if data.startswith("onboard:sym:"):
+        symbol = data.removeprefix("onboard:sym:").strip().upper()
+        status, info = await _lookup_symbol(cse, symbol)
+        if status == "upstream":
+            await query.edit_message_text(
+                f"cse.lk unreachable, try again.\n{disclaimer()}"
+            )
+            return
+        if status == "not_found" or info is None:
+            await query.edit_message_text(
+                f"Couldn't find {symbol} on cse.lk.\n{disclaimer()}"
+            )
+            return
+        watch_block = await _watch_quota_blocked(storage, user_id, symbol)
+        if watch_block is not None:
+            await query.edit_message_text(watch_block)
+            return
+        await storage.upsert_stock(symbol, info.name)
+        await storage.add_watch(user_id, symbol)
+        name = info.name or symbol
+        price_s = f"{info.price:g}" if info.price is not None else "?"
+        await query.edit_message_text(
+            _clamp_telegram_message(
+                f"Watching {symbol} ({name}) — last {price_s}.\n"
+                f"Pick a rule type:\n{disclaimer()}"
+            ),
+            reply_markup=_start_rule_keyboard(symbol),
+        )
+        return
+
+    if data.startswith("onboard:rule:"):
+        parts = data.split(":")
+        # onboard:rule:SYMBOL:kind
+        if len(parts) < 4:
+            return
+        symbol = parts[2].strip().upper()
+        kind = parts[3].strip().lower()
+        status, info = await _lookup_symbol(cse, symbol)
+        if status != "ok" or info is None:
+            await query.edit_message_text(
+                f"Couldn't refresh {symbol}. Try /watch {symbol}.\n{disclaimer()}"
+            )
+            return
+        watch_block = await _watch_quota_blocked(storage, user_id, symbol)
+        if watch_block is not None:
+            await query.edit_message_text(watch_block)
+            return
+        await storage.upsert_stock(symbol, info.name)
+        await storage.add_watch(user_id, symbol)
+        price = info.price
+
+        if kind == "disclosure":
+            alert_block = await _alert_quota_blocked(
+                storage,
+                user_id,
+                symbol=symbol,
+                alert_type=AlertType.DISCLOSURE,
+                threshold=None,
+            )
+            if alert_block is not None:
+                await query.edit_message_text(alert_block)
+                return
+            rule = await storage.create_alert_rule(
+                user_id, symbol, AlertType.DISCLOSURE, None
+            )
+            await query.edit_message_text(
+                _clamp_telegram_message(
+                    f"Alert #{rule.id} set: new disclosure for {symbol}.\n"
+                    f"You'll get a Telegram ping when a filing lands.\n{disclaimer()}"
+                )
+            )
+            return
+
+        if kind == "move":
+            thr = 3.0
+            alert_block = await _alert_quota_blocked(
+                storage,
+                user_id,
+                symbol=symbol,
+                alert_type=AlertType.DAILY_MOVE,
+                threshold=thr,
+            )
+            if alert_block is not None:
+                await query.edit_message_text(alert_block)
+                return
+            rule = await storage.create_alert_rule(
+                user_id, symbol, AlertType.DAILY_MOVE, thr
+            )
+            await query.edit_message_text(
+                _clamp_telegram_message(
+                    f"Alert #{rule.id} set: {symbol} daily move ≥ {thr:g}%.\n"
+                    f"Change with /alert {symbol} move PERCENT\n{disclaimer()}"
+                )
+            )
+            return
+
+        if kind in ("above", "below") and price is not None and math.isfinite(price):
+            # Sensible default: ±2% from last trade (not a tip — just a starter threshold).
+            if kind == "above":
+                thr = round(price * 1.02, 2)
+                alert_type = AlertType.PRICE_ABOVE
+                side = "above"
+            else:
+                thr = round(price * 0.98, 2)
+                alert_type = AlertType.PRICE_BELOW
+                side = "below"
+            alert_block = await _alert_quota_blocked(
+                storage,
+                user_id,
+                symbol=symbol,
+                alert_type=alert_type,
+                threshold=thr,
+            )
+            if alert_block is not None:
+                await query.edit_message_text(alert_block)
+                return
+            rule = await storage.create_alert_rule(
+                user_id, symbol, alert_type, thr
+            )
+            await query.edit_message_text(
+                _clamp_telegram_message(
+                    f"Alert #{rule.id} set: {symbol} {side} {thr:g} "
+                    f"(last {price:g}).\n"
+                    f"Tweak: /alert {symbol} {side} PRICE\n{disclaimer()}"
+                )
+            )
+            return
+
+        await query.edit_message_text(
+            _clamp_telegram_message(
+                f"Set a threshold manually:\n"
+                f"/alert {symbol} above PRICE\n"
+                f"/alert {symbol} below PRICE\n{disclaimer()}"
+            )
+        )
+        return
+
+
+async def mute_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Tap-to-mute on fire cards: ``mute:{rule_id}:24h``."""
+    query = update.callback_query
+    if query is None or not query.data:
+        return
+    await query.answer()
+    data = query.data
+    if not data.startswith("mute:"):
+        return
+    parts = data.split(":")
+    if len(parts) != 3 or parts[2] != "24h":
+        return
+    try:
+        rule_id = int(parts[1])
+    except ValueError:
+        return
+    if rule_id < 1:
+        return
+    storage: Storage = context.application.bot_data["storage"]
+    user_id = await _user_id(storage, update)
+    if user_id is None:
+        return
+    muted_until = datetime.now(UTC) + timedelta(hours=24)
+    ok = await storage.mute_alert(user_id, rule_id, muted_until)
+    if ok:
+        await query.edit_message_reply_markup(reply_markup=None)
+        # Prefer a short confirmation reply; keep original fire text intact.
+        if query.message is not None:
+            await query.message.reply_text(
+                _clamp_telegram_message(
+                    f"Muted alert #{rule_id} for 24 hours.\n{disclaimer()}"
+                )
+            )
+    else:
+        if query.message is not None:
+            await query.message.reply_text(
+                _clamp_telegram_message(
+                    f"Couldn't mute #{rule_id} — check /myalerts.\n{disclaimer()}"
+                )
+            )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -462,6 +798,10 @@ async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     assert info is not None
     user_id = await _user_id(storage, update)
     assert user_id is not None
+    blocked = await _watch_quota_blocked(storage, user_id, symbol)
+    if blocked is not None:
+        await update.effective_message.reply_text(blocked)
+        return
     await storage.upsert_stock(symbol, info.name)
     await storage.add_watch(user_id, symbol)
     await update.effective_message.reply_text(
@@ -535,6 +875,16 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if alert_type == AlertType.HALT and symbol == MARKET_SYMBOL:
         user_id = await _user_id(storage, update)
         assert user_id is not None
+        alert_block = await _alert_quota_blocked(
+            storage,
+            user_id,
+            symbol=symbol,
+            alert_type=alert_type,
+            threshold=threshold,
+        )
+        if alert_block is not None:
+            await update.effective_message.reply_text(alert_block)
+            return
         await storage.upsert_stock(
             MARKET_SYMBOL, "Colombo Stock Exchange (market-wide)"
         )
@@ -564,6 +914,20 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     user_id = await _user_id(storage, update)
     assert user_id is not None
+    watch_block = await _watch_quota_blocked(storage, user_id, symbol)
+    if watch_block is not None:
+        await update.effective_message.reply_text(watch_block)
+        return
+    alert_block = await _alert_quota_blocked(
+        storage,
+        user_id,
+        symbol=symbol,
+        alert_type=alert_type,
+        threshold=threshold,
+    )
+    if alert_block is not None:
+        await update.effective_message.reply_text(alert_block)
+        return
     await storage.upsert_stock(symbol, info.name)
     rule = await storage.create_alert_rule(
         user_id, symbol, alert_type, threshold, category=category
@@ -931,5 +1295,7 @@ def build_application(
     app.add_handler(CommandHandler("myalerts", cmd_myalerts))
     app.add_handler(CommandHandler("mywatchlist", cmd_mywatchlist))
     app.add_handler(CommandHandler("brief", cmd_brief))
+    app.add_handler(CallbackQueryHandler(onboard_callback, pattern=r"^onboard:"))
+    app.add_handler(CallbackQueryHandler(mute_callback, pattern=r"^mute:"))
     app.add_error_handler(on_error)
     return app

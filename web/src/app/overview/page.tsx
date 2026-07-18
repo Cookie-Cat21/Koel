@@ -18,7 +18,11 @@ import {
   SectorHeatStrip,
   type SectorHeatItem,
 } from "@/components/kit/sector-heat-strip";
-import { ArmedBadge } from "@/components/kit/status-badge";
+import {
+  ArmedBadge,
+  DeliveryBadge,
+  type DeliveryStatusKey,
+} from "@/components/kit/status-badge";
 import { StatCard } from "@/components/kit/stat-card";
 import { MarketSessionChip } from "@/components/market-session-chip";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -90,12 +94,33 @@ type AlertRule = {
   armed: boolean;
 };
 
+const DELIVERY_STATUS_KEYS = new Set<DeliveryStatusKey>([
+  "sent",
+  "delivered_unmarked",
+  "retrying",
+  "dead_lettered",
+]);
+
+function deliveryLabel(status: DeliveryStatusKey): string {
+  switch (status) {
+    case "sent":
+      return "Sent";
+    case "delivered_unmarked":
+      return "Delivered";
+    case "retrying":
+      return "Retrying";
+    case "dead_lettered":
+      return "Failed";
+  }
+}
+
 type HistoryEvent = {
   id: number;
   symbol: string;
   type: string;
   fired_at: string | null;
   message_text: string | null;
+  delivery_status: DeliveryStatusKey | null;
 };
 
 async function readJson(res: Response | null): Promise<unknown> {
@@ -201,6 +226,13 @@ function parseHistory(body: unknown): HistoryEvent[] {
       typeof r.symbol === "string" ? r.symbol : null,
     );
     if (!symbol) continue;
+    const rawStatus =
+      typeof r.delivery_status === "string" ? r.delivery_status : "";
+    const delivery_status: DeliveryStatusKey | null = DELIVERY_STATUS_KEYS.has(
+      rawStatus as DeliveryStatusKey,
+    )
+      ? (rawStatus as DeliveryStatusKey)
+      : null;
     out.push({
       id,
       symbol,
@@ -210,6 +242,7 @@ function parseHistory(body: unknown): HistoryEvent[] {
         typeof r.message_text === "string"
           ? sanitizeDisclosureText(r.message_text, 240)
           : null,
+      delivery_status,
     });
   }
   return out;
@@ -704,9 +737,17 @@ export default async function OverviewPage() {
                     >
                       {ev.symbol}
                     </Link>
-                    <time className="text-xs text-muted-foreground">
-                      {formatTs(ev.fired_at)}
-                    </time>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {ev.delivery_status ? (
+                        <DeliveryBadge
+                          status={ev.delivery_status}
+                          label={deliveryLabel(ev.delivery_status)}
+                        />
+                      ) : null}
+                      <time className="text-xs text-muted-foreground">
+                        {formatTs(ev.fired_at)}
+                      </time>
+                    </div>
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {alertTypeLabel(ev.type)}

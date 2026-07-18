@@ -88,12 +88,16 @@ export default function PricingPage() {
               <li>Quiet hours &amp; digest controls</li>
             </ul>
             <Button asChild className="mt-8 w-full" size="lg" variant="outline">
-              <a href={PRO_WAITLIST_MAILTO}>
-                Coming soon — bank transfer
-              </a>
+              <Link href="/pricing/bank-transfer">
+                Pay by bank transfer
+              </Link>
             </Button>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Manual bank transfer + admin activate. No PayHere yet.
+              Manual transfer + admin activate.{" "}
+              <a href={PRO_WAITLIST_MAILTO} className="underline underline-offset-2">
+                Or email waitlist
+              </a>
+              . No PayHere yet.
             </p>
           </article>
 

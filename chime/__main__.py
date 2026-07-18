@@ -189,9 +189,13 @@ async def _run_both(settings: Settings) -> None:
     )
     bot = Bot(settings.telegram_bot_token)
 
-    async def send(chat_id: int, text: str) -> SendResult:
+    async def send(
+        chat_id: int, text: str, **kwargs: object
+    ) -> SendResult:
         # Lock is released before Telegram I/O (CORE-004) — honor RetryAfter.
-        return await send_message(bot, chat_id, text, block_on_retry_after=True)
+        return await send_message(
+            bot, chat_id, text, block_on_retry_after=True, **kwargs
+        )
 
     health = HealthState()
     server = start_health_server(settings.health_host, settings.health_port, health)
@@ -248,9 +252,13 @@ async def _run_poller(settings: Settings) -> None:
     )
     bot = Bot(settings.telegram_bot_token)
 
-    async def send(chat_id: int, text: str) -> SendResult:
+    async def send(
+        chat_id: int, text: str, **kwargs: object
+    ) -> SendResult:
         # Lock is released before Telegram I/O (CORE-004) — honor RetryAfter.
-        return await send_message(bot, chat_id, text, block_on_retry_after=True)
+        return await send_message(
+            bot, chat_id, text, block_on_retry_after=True, **kwargs
+        )
 
     health = HealthState()
     server = start_health_server(settings.health_host, settings.health_port, health)
@@ -1875,8 +1883,12 @@ def main(argv: list[str] | None = None) -> None:
             )
             bot = Bot(settings.telegram_bot_token)
 
-            async def send(chat_id: int, text: str) -> SendResult:
-                return await send_message(bot, chat_id, text, block_on_retry_after=True)
+            async def send(
+                chat_id: int, text: str, **kwargs: object
+            ) -> SendResult:
+                return await send_message(
+                    bot, chat_id, text, block_on_retry_after=True, **kwargs
+                )
 
             poller = Poller(settings, storage, cse, send)
             try:

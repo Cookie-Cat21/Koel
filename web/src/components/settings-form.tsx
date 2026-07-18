@@ -190,10 +190,27 @@ export function SettingsForm({ initial }: { initial: SettingsPreferences }) {
         </section>
 
         <section className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
-          Active alert quota:{" "}
-          <span className="font-mono text-foreground tabular-nums">
-            {initial.alert_quota_max}
-          </span>
+          <p>
+            Plan:{" "}
+            <span className="font-medium text-foreground">
+              {initial.alert_quota_max === 100 || initial.alert_quota_max <= 3
+                ? "Free"
+                : "Pro / raised"}
+            </span>
+            {" · "}
+            <Link
+              href="/pricing"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              Pricing
+            </Link>
+          </p>
+          <p className="mt-1">
+            Active alert quota:{" "}
+            <span className="font-mono text-foreground tabular-nums">
+              {initial.alert_quota_max === 100 ? "3 (free default)" : initial.alert_quota_max}
+            </span>
+          </p>
         </section>
 
         <div className="flex flex-wrap items-center gap-3">

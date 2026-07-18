@@ -19,7 +19,7 @@ from chime.domain import AlertType, disclaimer
     [
         ("JKH.N0000", "JKH.N0000"),
         ("  jkh.n0000  ", "JKH.N0000"),
-        ("COMB", "COMB"),
+        ("COMB", "COMB.N0000"),
         ("samp.N0000", "SAMP.N0000"),
     ],
 )

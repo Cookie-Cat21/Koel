@@ -7,6 +7,7 @@ No I/O inside evaluation.
 from __future__ import annotations
 
 import math
+import os
 from datetime import UTC, datetime
 from typing import Any, TypeGuard
 from zoneinfo import ZoneInfo
@@ -38,6 +39,37 @@ def _as_utc_aware(dt: datetime) -> datetime:
 def _finite(value: float | None) -> TypeGuard[float]:
     """True when value is a real finite float (not None / NaN / ±Inf)."""
     return value is not None and math.isfinite(value)
+
+
+def _illiquid_min_volume() -> float:
+    """Env ``CHIME_ILLIQUID_MIN_VOLUME`` (default 1) — skip thin price crosses.
+
+    Missing / non-finite volume never blocks (fail open on unknown liquidity).
+    Set env to ``0`` to disable the floor.
+    """
+    raw = os.getenv("CHIME_ILLIQUID_MIN_VOLUME", "1")
+    if not isinstance(raw, str) or not raw.strip():
+        return 1.0
+    try:
+        value = float(raw.strip())
+    except ValueError:
+        return 1.0
+    if not math.isfinite(value) or value < 0:
+        return 1.0
+    return value
+
+
+def _is_illiquid_print(snapshot: PriceSnapshot) -> bool:
+    """True when volume is known and below the illiquid floor."""
+    floor = _illiquid_min_volume()
+    if floor <= 0:
+        return False
+    vol = snapshot.volume
+    if vol is None or isinstance(vol, bool) or not isinstance(vol, (int, float)):
+        return False
+    if not math.isfinite(vol):
+        return False
+    return vol < floor
 
 
 def _pct_from_previous_close(price: float | None, previous_close: float | None) -> float | None:
@@ -179,7 +211,11 @@ def evaluate_price_rules(
             if rule.threshold is None or not math.isfinite(rule.threshold):
                 continue
             thr = rule.threshold
-            if rule.armed and crossed_above(prev_price, curr, thr):
+            if (
+                rule.armed
+                and crossed_above(prev_price, curr, thr)
+                and not _is_illiquid_print(snapshot)
+            ):
                 events.append(
                     AlertEvent(
                         rule_id=rule.id,
@@ -216,7 +252,11 @@ def evaluate_price_rules(
             if rule.threshold is None or not math.isfinite(rule.threshold):
                 continue
             thr = rule.threshold
-            if rule.armed and crossed_below(prev_price, curr, thr):
+            if (
+                rule.armed
+                and crossed_below(prev_price, curr, thr)
+                and not _is_illiquid_print(snapshot)
+            ):
                 events.append(
                     AlertEvent(
                         rule_id=rule.id,
