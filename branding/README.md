@@ -1,17 +1,15 @@
-# Chime brand assets
+# Quiverly brand assets
 
-Official lockup from the Claude branding pass (merged via `#14`).
+Product name in prose/UI: **Quiverly**. Wordmark: lowercase **quiverly**. Mark: capital **Q**.
 
-- `chime-logo.svg` / `chime-logo.png` — full lowercase **chime** wordmark (square master export)
-- `chime-mark.svg` / `chime-mark.png` — standalone **C** mark (favicon, app icon, avatar)
-- `chime-logo-tight.svg` / `chime-mark-tight.svg` — same paths, tight `viewBox` for UI chrome
-
-SVGs are the source of truth. Square PNGs are 6250×6250 masters.
-
-**Web runtime copies** live under `web/public/brand/` and use the **tight** crop so nav/hero
-wordmarks are not drowned in empty square padding. Prefer `/brand/chime-logo.svg` via
-`ChimeWordmark` / `ChimeMark` in `web/src/components/brand/chime-brand.tsx`.
+- `quiverly-logo.svg` — full lowercase wordmark (square master)
+- `quiverly-mark.svg` — standalone **Q** mark (favicon, app icon, avatar)
+- `quiverly-logo-tight.svg` / `quiverly-mark-tight.svg` — tight `viewBox` for UI chrome
 
 Ink color in the paths is `#1e1e1e` — keep dash/marketing paper light so the mark stays readable.
-Do not swap in the Signal Ice all-caps SVG candidates under `docs/brand/svg/` for product chrome;
-those remain research archives after the red treatment was rejected.
+
+**Web runtime copies** live under `web/public/brand/` and use the **tight** crop so nav/hero
+wordmarks are not drowned in empty square padding. Prefer `/brand/quiverly-logo.svg` via
+`QuiverlyWordmark` / `QuiverlyMark` in `web/src/components/brand/quiverly-brand.tsx`.
+
+Legacy `chime-*` files in this folder remain as archives; do not use them for product chrome.
