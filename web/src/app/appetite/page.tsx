@@ -71,7 +71,7 @@ export default async function AppetitePage() {
         <PageHeader
           eyebrow="Chime · Research"
           title="Market Appetite"
-          description="Session mood proxy from CSE breadth, move intensity, ASPI day change, and participation. Higher scores are not a buy signal — research only."
+          description="Session mood proxy from CSE breadth, move intensity, ASPI day change, and participation. Higher scores are not a tip — research only."
           action={
             <Button asChild variant="outline" size="sm">
               <Link href="/overview">Overview</Link>

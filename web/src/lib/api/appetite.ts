@@ -45,13 +45,13 @@ export const BAND_LABEL: Record<AppetiteBand, string> = {
   strong_appetite: "Strong Appetite",
 };
 
-/** Soft zone fills — muted, not neon. */
+/** Zone fills — readable on meter + badges (muted, not neon). */
 export const BAND_ZONE_COLOR: Record<AppetiteBand, string> = {
-  extreme_caution: "oklch(0.72 0.06 25)",
-  caution: "oklch(0.78 0.05 55)",
-  neutral: "oklch(0.82 0.02 250)",
-  appetite: "oklch(0.78 0.05 165)",
-  strong_appetite: "oklch(0.72 0.07 155)",
+  extreme_caution: "oklch(0.78 0.09 25)",
+  caution: "oklch(0.84 0.08 70)",
+  neutral: "oklch(0.86 0.04 250)",
+  appetite: "oklch(0.84 0.08 165)",
+  strong_appetite: "oklch(0.78 0.10 155)",
 };
 
 export function normalizeBand(raw: unknown): AppetiteBand {

@@ -92,12 +92,12 @@ export function AppetiteBandBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border border-border/60 px-2 py-0.5 text-sm font-medium",
+        "inline-flex items-center rounded-md border border-foreground/15 px-2.5 py-0.5 text-sm font-semibold tracking-tight shadow-sm",
         className,
       )}
       style={{
         backgroundColor: BAND_ZONE_COLOR[band],
-        color: "oklch(0.22 0.02 250)",
+        color: "oklch(0.2 0.03 250)",
       }}
     >
       {BAND_LABEL[band]}
