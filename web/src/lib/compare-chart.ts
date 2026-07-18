@@ -1,9 +1,19 @@
+import type { DailyBarPoint } from "@/lib/api/daily-bars";
 import {
   finiteSparklinePoints,
   MAX_SPARKLINE_POINTS,
 } from "@/lib/sparkline";
 
 export const MAX_COMPARE_SYMBOLS = 4;
+
+/** Poller ticks per symbol on the multi-company line overlay.
+ * Higher = denser / more accurate path (API max 200). */
+export const COMPARE_TICK_LIMIT = 180;
+
+/** Daily bars shown in single-symbol compare candles.
+ * Tuned so fixed-pitch bodies (~8–9px) fill a typical card width
+ * without fattening (≈1Y trading days after light aggregation). */
+export const COMPARE_CANDLE_BARS = 120;
 
 export type ComparePoint = { ts: string | null; price: number };
 export type CompareSeries = { symbol: string; points: ComparePoint[] };
@@ -83,4 +93,39 @@ function formatCompareTick(
   }
   if (total <= 1) return "0";
   return String(index);
+}
+
+/**
+ * Scale daily OHLC for the single-symbol compare candle view.
+ * Indexed mode rebases the first close to 100 (same idea as line overlay).
+ */
+export function scaleDailyBarsForCompare(
+  bars: DailyBarPoint[],
+  mode: CompareScaleMode,
+  maxBars = COMPARE_CANDLE_BARS,
+): DailyBarPoint[] {
+  if (!Array.isArray(bars) || bars.length < 2) return [];
+  const sliced = bars.slice(-Math.max(2, maxBars));
+  if (mode !== "indexed") {
+    return sliced.map((b) => ({ ...b }));
+  }
+  const base = sliced[0]?.close;
+  if (base == null || !Number.isFinite(base) || base === 0) {
+    return sliced.map((b) => ({ ...b }));
+  }
+  const factor = 100 / base;
+  return sliced.map((b) => {
+    const open =
+      b.open != null && Number.isFinite(b.open) && b.open > 0
+        ? Number((b.open * factor).toFixed(4))
+        : null;
+    return {
+      trade_date: b.trade_date,
+      open,
+      high: Number((b.high * factor).toFixed(4)),
+      low: Number((b.low * factor).toFixed(4)),
+      close: Number((b.close * factor).toFixed(4)),
+      volume: b.volume,
+    };
+  });
 }

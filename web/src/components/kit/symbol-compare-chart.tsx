@@ -13,6 +13,7 @@ import {
 import { readBoundedResponseText } from "@/lib/api/read-bounded-text";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import {
+  COMPARE_TICK_LIMIT,
   MAX_COMPARE_SYMBOLS,
   buildCompareChartRows,
   compareSeriesKey,
@@ -81,6 +82,10 @@ type PolySeries = {
   pointsAttr: string;
 };
 
+/** Wide plot coords — fills the compare card (was a letterboxed 640×240). */
+const COMPARE_CHART_WIDTH = 1120;
+const COMPARE_CHART_HEIGHT = 224;
+
 function buildSvgPolylines(
   symbols: string[],
   rows: ReturnType<typeof buildCompareChartRows>,
@@ -94,9 +99,9 @@ function buildSvgPolylines(
 } | null {
   if (rows.length < 2 || symbols.length < 1) return null;
 
-  const width = 640;
-  const height = 240;
-  const plot = { left: 48, top: 16, right: 16, bottom: 32 };
+  const width = COMPARE_CHART_WIDTH;
+  const height = COMPARE_CHART_HEIGHT;
+  const plot = { left: 48, top: 12, right: 20, bottom: 28 };
   const plotW = width - plot.left - plot.right;
   const plotH = height - plot.top - plot.bottom;
 
@@ -209,7 +214,6 @@ export function SymbolCompareChart({
     useState<CompareSeries[]>(initialPeerSeries);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const selectedPeers = useMemo(() => {
     const list: string[] = [];
     for (let i = 0; i < scale - 1; i++) {
@@ -241,7 +245,7 @@ export function SymbolCompareChart({
       try {
         const qs = new URLSearchParams({
           symbols: [base, ...peerKey.split(",")].join(","),
-          limit: "60",
+          limit: String(COMPARE_TICK_LIMIT),
         });
         const res = await fetch(`/api/v1/compare?${qs.toString()}`, {
           credentials: "same-origin",
@@ -309,13 +313,12 @@ export function SymbolCompareChart({
     [series, mode],
   );
 
+  const needsPeers = scale > 1;
   const svg = useMemo(
     () => buildSvgPolylines(selectedSymbols, rows),
     [selectedSymbols, rows],
   );
-
-  const needsPeers = scale > 1;
-  const showChart =
+  const showLineChart =
     svg != null && (!needsPeers || selectedPeers.length >= 1);
 
   function addPeerFromDraft() {
@@ -364,9 +367,9 @@ export function SymbolCompareChart({
           Price compare
         </h2>
         <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          Overlay up to {MAX_COMPARE_SYMBOLS} listed symbols from stored ticks.
-          Indexed mode starts each line at 100 so different price levels stay
-          readable. Not financial advice.
+          Overlay up to {MAX_COMPARE_SYMBOLS} listed symbols from stored ticks
+          (~{COMPARE_TICK_LIMIT} points each). Indexed mode starts each line at
+          100 so different price levels stay readable. Not financial advice.
         </p>
       </div>
 
@@ -500,7 +503,7 @@ export function SymbolCompareChart({
           </p>
         ) : null}
 
-        {showChart && svg ? (
+        {showLineChart && svg ? (
           <div className="rounded-lg border border-border/70 bg-muted/15 p-3">
             <ul className="mb-2 flex flex-wrap gap-3" aria-label="Series legend">
               {svg.series.map((s) => (
@@ -520,6 +523,7 @@ export function SymbolCompareChart({
             <svg
               viewBox={`0 0 ${svg.width} ${svg.height}`}
               className="h-56 w-full"
+              preserveAspectRatio="none"
               role="img"
               aria-label={`Price compare for ${selectedSymbols.join(", ")} (${
                 mode === "indexed" ? "indexed to 100" : "LKR"
@@ -576,7 +580,8 @@ export function SymbolCompareChart({
               {mode === "indexed"
                 ? "Y axis: indexed (first tick = 100)."
                 : "Y axis: last price (LKR)."}{" "}
-              Stored poller ticks only — not financial advice.
+              Stored poller ticks (~{COMPARE_TICK_LIMIT}) — not financial
+              advice.
             </p>
           </div>
         ) : !loading && !needsPeers ? (

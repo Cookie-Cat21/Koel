@@ -260,7 +260,7 @@ export default async function SymbolDetailPage({
     comparePeers.length > 0
       ? `/api/v1/compare?symbols=${encodeURIComponent(
           [symbol, ...comparePeers].join(","),
-        )}&limit=60`
+        )}&limit=180`
       : null;
 
   // Stock / disclosures / metrics: read Postgres directly (Vercel Deployment
@@ -286,7 +286,7 @@ export default async function SymbolDetailPage({
       loadSymbolPageMetrics(symbol)
         .then((payload) => ({ ok: true as const, payload }))
         .catch(() => ({ ok: false as const, payload: null })),
-      serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=60`),
+      serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=180`),
       compareQs ? serverApiGet(compareQs) : Promise.resolve(null),
       serverApiGet("/api/v1/watchlist"),
       serverApiGet(`/api/v1/symbols/${encoded}/forecast`),

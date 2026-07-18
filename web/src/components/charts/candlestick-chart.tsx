@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import {
   aggregateBarsForDisplay,
@@ -40,6 +40,12 @@ export function CandlestickChart({
    * Use for the hero strip so a short series doesn't stretch card-wide.
    */
   pack = false,
+  /**
+   * Cap candle pitch when ``fitWidth`` (px). Wider cards otherwise fatten
+   * each body — pass ~8–10 for compare / dense strips that must fill the
+   * same frame without looking stretched. Unused width is centered.
+   */
+  maxSlot,
   /** SVG render height in px when not filling a flex parent. */
   chartHeight,
   footnote,
@@ -52,6 +58,7 @@ export function CandlestickChart({
   fill?: boolean;
   fitWidth?: boolean;
   pack?: boolean;
+  maxSlot?: number;
   chartHeight?: number;
   footnote?: string;
   maxCandles?: number;
@@ -59,7 +66,10 @@ export function CandlestickChart({
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [frame, setFrame] = useState({ w: 720, h: chartHeight ?? 280 });
 
-  useEffect(() => {
+  // useLayoutEffect so viewBox width matches the card before paint — a stale
+  // 720px viewBox + preserveAspectRatio="none" was horizontally stretching
+  // every candle (and wick) in wide compare cards.
+  useLayoutEffect(() => {
     if (!fitWidth) return;
     const el = frameRef.current;
     if (!el) return;
@@ -69,21 +79,35 @@ export function CandlestickChart({
         ? Math.max(160, Math.floor(height))
         : (chartHeight ?? 280);
       setFrame((prev) => {
-        const w = Math.floor(width);
-        const h = nextH;
-        if (prev.w === w && prev.h === h) return prev;
-        return { w, h };
+        const nextW = Math.floor(width);
+        if (prev.w === nextW && prev.h === nextH) return prev;
+        return { w: nextW, h: nextH };
       });
     };
-    apply(el.clientWidth, el.clientHeight);
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      apply(rect.width, rect.height);
+    };
+    measure();
     const ro = new ResizeObserver((entries) => {
-      const cr = entries[0]?.contentRect;
-      if (!cr) return;
-      apply(cr.width, cr.height);
+      const entry = entries[0];
+      if (!entry) return;
+      const box = entry.borderBoxSize?.[0];
+      if (box) {
+        apply(box.inlineSize, box.blockSize);
+        return;
+      }
+      apply(entry.contentRect.width, entry.contentRect.height);
     });
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [fitWidth, fill, chartHeight]);
+    // Second pass after fonts/layout settle (compare card is often still
+    // expanding when daily bars hydrate in).
+    const raf = requestAnimationFrame(measure);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [fitWidth, fill, chartHeight, rawBars.length]);
 
   const priceMax = Math.max(...rawBars.map((b) => b.close), 0);
   // Scroll mode may keep a dense 1Y series; fit-width always respects
@@ -130,31 +154,42 @@ export function CandlestickChart({
   // pack (hero): fixed pitch, intrinsic centered width.
   // fitWidth+fill (expand): always use the full frame width — short ranges
   // like 1M get wider candles, not empty side gutters.
+  const displayH = chartHeight ?? 280;
   const h = fitWidth && !pack ? frame.h : chartHeight ?? (fitWidth ? 280 : 520);
   const MIN_SLOT = 5;
   const PACK_SLOT = 11;
   const frameW = Math.max(padL + padR + 40, frame.w);
   const innerW = frameW - padL - padR;
+  const slotCap =
+    typeof maxSlot === "number" &&
+    Number.isFinite(maxSlot) &&
+    maxSlot >= MIN_SLOT
+      ? maxSlot
+      : null;
+  // Comfort pitch: fixed candle width (no JS measure). SVG keeps its aspect
+  // ratio inside the card so wide viewports cannot fatten/stretch bodies.
+  const comfortPitch = slotCap != null && fitWidth && !pack;
   const slot = pack
     ? PACK_SLOT
-    : fitWidth
-      ? Math.max(MIN_SLOT, innerW / totalSlots)
-      : 18;
+    : comfortPitch
+      ? slotCap
+      : fitWidth
+        ? Math.max(MIN_SLOT, innerW / totalSlots)
+        : 18;
   const usedPlot = totalSlots * slot;
   const contentW = padL + padR + usedPlot;
   const drawPadL = padL;
   const drawPadR = padR;
   // Wider slots → thicker bodies so ranges fill without looking like sparse ticks.
-  const bodyRatio = pack ? 0.82 : fitWidth ? 0.84 : 0.72;
+  const bodyRatio = pack || comfortPitch ? 0.82 : fitWidth ? 0.84 : 0.72;
   const bodyW = pack || fitWidth
     ? Math.max(3.5, Math.min(slot * bodyRatio, slot - 0.75))
     : 13;
   const wickW = pack || fitWidth
     ? Math.max(1.25, Math.min(2.75, slot * 0.16))
     : 2;
-  const w = pack ? contentW : fitWidth ? frameW : contentW;
+  const w = pack || comfortPitch ? contentW : fitWidth ? frameW : contentW;
   const plotH = Math.max(40, h - padT - padB);
-  const displayH = chartHeight ?? 280;
 
   let barMin = Infinity;
   let barMax = -Infinity;
@@ -235,12 +270,12 @@ export function CandlestickChart({
         }}
         className={cn(
           "relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-b from-muted/25 to-muted/10",
-          pack
-            ? "w-full max-w-full overflow-x-hidden"
+          pack || comfortPitch
+            ? "flex w-full max-w-full items-center justify-center overflow-x-hidden"
             : fitWidth
               ? "w-full overflow-x-hidden"
               : "w-full overflow-x-auto overflow-y-hidden",
-          fill && !pack ? "min-h-0 flex-1" : "",
+          fill && !pack && !comfortPitch ? "min-h-0 flex-1" : "",
         )}
         style={
           pack
@@ -252,31 +287,54 @@ export function CandlestickChart({
                 aspectRatio: `${Math.max(1, w)} / ${Math.max(1, h)}`,
                 height: "auto",
               }
-            : fitWidth && !fill
-              ? { height: displayH }
-              : undefined
+            : comfortPitch
+              ? { height: displayH, width: "100%" }
+              : fitWidth && !fill
+                ? { height: displayH }
+                : undefined
         }
       >
         <svg
           viewBox={`0 0 ${w} ${h}`}
+          data-fit={fitWidth ? "1" : "0"}
+          data-max-slot={maxSlot ?? ""}
+          data-comfort={comfortPitch ? "1" : "0"}
           preserveAspectRatio={
-            pack ? "xMidYMid meet" : fitWidth ? "none" : "xMinYMid meet"
+            pack || comfortPitch
+              ? "xMidYMid meet"
+              : fitWidth
+                ? "none"
+                : "xMinYMid meet"
           }
           style={
-            pack || fitWidth
+            comfortPitch
               ? {
-                  width: "100%",
                   height: "100%",
+                  width: "auto",
+                  maxWidth: "100%",
+                  aspectRatio: `${Math.max(1, w)} / ${Math.max(1, h)}`,
                   display: "block",
                 }
-              : {
-                  width: w,
-                  height: 460,
-                  maxWidth: "none",
-                  display: "block",
-                }
+              : pack || fitWidth
+                ? {
+                    width: "100%",
+                    height: "100%",
+                    display: "block",
+                  }
+                : {
+                    width: w,
+                    height: 460,
+                    maxWidth: "none",
+                    display: "block",
+                  }
           }
-          className={pack || fitWidth ? "h-full w-full" : "max-w-none"}
+          className={
+            comfortPitch
+              ? "max-h-full"
+              : pack || fitWidth
+                ? "h-full w-full"
+                : "max-w-none"
+          }
           role="img"
           aria-label={aria}
         >

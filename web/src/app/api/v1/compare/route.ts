@@ -12,13 +12,14 @@ export const runtime = "nodejs";
 
 /** Max companies on one compare chart (product scale lock). */
 export const MAX_COMPARE_SYMBOLS = 4;
-const DEFAULT_LIMIT = 60;
+/** Default tick depth — denser overlays than the old 60-point strip. */
+const DEFAULT_LIMIT = 180;
 const MAX_LIMIT = 200;
 /** Cap raw `symbols` query length before split/normalize. */
 const MAX_SYMBOLS_PARAM_CHARS = 256;
 
 /**
- * GET /api/v1/compare?symbols=A,B,C&limit=60
+ * GET /api/v1/compare?symbols=A,B,C&limit=180
  * Multi-symbol price series from Postgres only (no cse.lk).
  * 1–4 unique symbols; each series ascending by ts (chart-friendly).
  */
