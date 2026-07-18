@@ -82,6 +82,10 @@ type PolySeries = {
   pointsAttr: string;
 };
 
+/** Wide plot coords — fills the compare card (was a letterboxed 640×240). */
+const COMPARE_CHART_WIDTH = 1120;
+const COMPARE_CHART_HEIGHT = 224;
+
 function buildSvgPolylines(
   symbols: string[],
   rows: ReturnType<typeof buildCompareChartRows>,
@@ -95,9 +99,9 @@ function buildSvgPolylines(
 } | null {
   if (rows.length < 2 || symbols.length < 1) return null;
 
-  const width = 640;
-  const height = 240;
-  const plot = { left: 48, top: 16, right: 16, bottom: 32 };
+  const width = COMPARE_CHART_WIDTH;
+  const height = COMPARE_CHART_HEIGHT;
+  const plot = { left: 48, top: 12, right: 20, bottom: 28 };
   const plotW = width - plot.left - plot.right;
   const plotH = height - plot.top - plot.bottom;
 
@@ -309,12 +313,11 @@ export function SymbolCompareChart({
     [series, mode],
   );
 
+  const needsPeers = scale > 1;
   const svg = useMemo(
     () => buildSvgPolylines(selectedSymbols, rows),
     [selectedSymbols, rows],
   );
-
-  const needsPeers = scale > 1;
   const showLineChart =
     svg != null && (!needsPeers || selectedPeers.length >= 1);
 
@@ -520,7 +523,7 @@ export function SymbolCompareChart({
             <svg
               viewBox={`0 0 ${svg.width} ${svg.height}`}
               className="h-56 w-full"
-              preserveAspectRatio="xMidYMid meet"
+              preserveAspectRatio="none"
               role="img"
               aria-label={`Price compare for ${selectedSymbols.join(", ")} (${
                 mode === "indexed" ? "indexed to 100" : "LKR"
