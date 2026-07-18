@@ -89,7 +89,8 @@ export async function queryCompanyGraph(
 ): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
   const minConf = opts.minConfidence ?? "medium";
   const minRank = CONF_RANK[minConf] ?? 2;
-  const limit = Math.min(Math.max(opts.limit ?? 80, 1), 200);
+  // Cap high enough for a full listed↔listed ownership map after densify.
+  const limit = Math.min(Math.max(opts.limit ?? 80, 1), 400);
   const focus = opts.focusSymbol ? normalizeSymbol(opts.focusSymbol) : null;
 
   const edgeRows = await pool.query(
@@ -182,15 +183,19 @@ export async function queryCompanyGraph(
     if (bestByPair.size >= limit * 2) break;
   }
   const edges = Array.from(bestByPair.values());
+  const edgeNodeIds = new Set<number>();
   for (const e of edges) {
+    edgeNodeIds.add(e.src_node_id);
+    edgeNodeIds.add(e.dst_node_id);
     nodeIds.add(e.src_node_id);
     nodeIds.add(e.dst_node_id);
   }
 
   // Prefer equity-backed isolates; if the graph is still empty (common right
-  // after directors-only seed / sparse PDF edges), fall back to listed issuers
-  // by latest market cap so /graph is browsable instead of a blank canvas.
-  const wantIsolates = opts.includeIsolates || nodeIds.size === 0;
+  // after directors-only seed / sparse PDF edges), fill remaining budget with
+  // listed issuers by market cap so /graph is browsable instead of blank.
+  // Never drop edge endpoints to make room for isolates.
+  const wantIsolates = opts.includeIsolates || edgeNodeIds.size === 0;
   if (wantIsolates && nodeIds.size < limit) {
     const iso = await pool.query(
       `
@@ -229,7 +234,12 @@ export async function queryCompanyGraph(
     return { nodes: [], edges: [] };
   }
 
-  const ids = Array.from(nodeIds).slice(0, limit);
+  const isolateIds = Array.from(nodeIds).filter((id) => !edgeNodeIds.has(id));
+  const isolateBudget = Math.max(0, limit - edgeNodeIds.size);
+  const ids = [
+    ...Array.from(edgeNodeIds),
+    ...isolateIds.slice(0, isolateBudget),
+  ];
   const nodeRows = await pool.query(
     `
     SELECT
@@ -289,7 +299,11 @@ export async function queryCompanyGraph(
     });
   }
 
-  return { nodes, edges };
+  const kept = new Set(nodes.map((n) => n.id));
+  const keptEdges = edges.filter(
+    (e) => kept.has(e.src_node_id) && kept.has(e.dst_node_id),
+  );
+  return { nodes, edges: keptEdges };
 }
 
 export async function queryGraphNodeDetail(

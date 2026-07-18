@@ -104,7 +104,7 @@ export async function queryPeopleGraph(
     leadershipOnly?: boolean;
   } = {},
 ): Promise<{ people: PersonNode[]; edges: PersonCompanyEdge[] }> {
-  const limit = Math.min(Math.max(opts.limit ?? 200, 1), 500);
+  const limit = Math.min(Math.max(opts.limit ?? 200, 1), 2000);
   const minRank =
     opts.minConfidence === "high" ? 3 : opts.minConfidence === "low" ? 1 : 2;
   // Default false = include full boards (independent / NED / etc.)

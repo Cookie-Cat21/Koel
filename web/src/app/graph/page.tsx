@@ -38,7 +38,7 @@ export default async function GraphPage({
     // Medium+ only — CSE has no ownership JSON; low/group_mention is noise.
     const graph = await queryCompanyGraph(pool, {
       minConfidence: "medium",
-      limit: 160,
+      limit: 300,
       focusSymbol: null,
       includeIsolates: true,
     });

@@ -28,7 +28,7 @@ export default async function PeoplePage() {
   let loadError = false;
   try {
     const graph = await queryPeopleGraph(getPool(), {
-      limit: 400,
+      limit: 1500,
       minConfidence: "high",
       leadershipOnly: false,
     });
