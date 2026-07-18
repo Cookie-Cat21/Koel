@@ -38,6 +38,11 @@ export type MarketBrowseQuery = {
   offset: number;
   /** Already normalized (or empty). */
   q?: string;
+  /**
+   * Optional sector filter — already normalized. Case-insensitive substring
+   * match on ``stocks.sector`` (thin browse click-through, not a screener).
+   */
+  sector?: string;
   sort: MarketBrowseSort;
   /**
    * Optional movers fence: `up` ⇒ change_pct > 0, `down` ⇒ change_pct < 0.
@@ -57,7 +62,7 @@ function orderClause(sort: MarketBrowseSort): string {
   return "ps.change_pct DESC NULLS LAST, s.symbol ASC";
 }
 
-type BrowseFilter = Pick<MarketBrowseQuery, "q" | "direction">;
+type BrowseFilter = Pick<MarketBrowseQuery, "q" | "sector" | "direction">;
 
 /** Shared FROM + WHERE for list + count (latest snapshot INNER JOIN). */
 function browseFromWhere(opts: BrowseFilter): {
@@ -74,6 +79,13 @@ function browseFromWhere(opts: BrowseFilter): {
     params.push(`%${escapeLikePattern(q.toUpperCase())}%`);
     whereParts.push(
       `(UPPER(s.symbol) LIKE $${params.length} ESCAPE '\\' OR UPPER(COALESCE(s.name, '')) LIKE $${params.length} ESCAPE '\\')`,
+    );
+  }
+  const sector = typeof opts.sector === "string" ? opts.sector.trim() : "";
+  if (sector) {
+    params.push(`%${escapeLikePattern(sector.toUpperCase())}%`);
+    whereParts.push(
+      `UPPER(COALESCE(s.sector, '')) LIKE $${params.length} ESCAPE '\\'`,
     );
   }
   if (opts.direction === "up") {

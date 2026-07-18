@@ -32,3 +32,13 @@ def test_app_nav_scenarios_not_in_primary_links() -> None:
     assert "href.length > best.length" in source
     assert "path.startsWith(`${href}/`)" in source
     assert "path === href" in source
+    # Phase A: research surfaces nest under Research, not primary chrome.
+    assert "primaryLinks" in source
+    assert "researchLinks" in source
+    assert "Research" in source
+    assert 'href: "/appetite"' in source
+    assert 'href: "/signals"' in source
+    assert 'href: "/people"' in source
+    assert 'href: "/graph"' in source
+    # resolveActiveNavHref still covers research routes via allNavLinks.
+    assert "allNavLinks" in source

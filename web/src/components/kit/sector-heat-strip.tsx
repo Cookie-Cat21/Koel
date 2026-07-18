@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +11,7 @@ export type SectorHeatItem = {
 
 /**
  * Soft sector heat strip — color by change_pct, not a heatmap terminal.
+ * Each chip links to Browse filtered by that sector name.
  */
 export function SectorHeatStrip({
   items,
@@ -32,25 +35,30 @@ export function SectorHeatStrip({
         const pct = item.change_pct;
         const up = pct != null && pct > 0;
         const down = pct != null && pct < 0;
+        const href = `/market?sector=${encodeURIComponent(item.name)}`;
         return (
-          <li
-            key={item.sector_id}
-            title={`${item.name}: ${formatPct(pct)}`}
-            className={cn(
-              "rounded-md border px-2 py-1 text-xs",
-              up &&
-                "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
-              down &&
-                "border-destructive/25 bg-destructive/10 text-destructive",
-              !up &&
-                !down &&
-                "border-border bg-muted/40 text-muted-foreground",
-            )}
-          >
-            <span className="max-w-[10rem] truncate font-medium">{item.name}</span>
-            <span className="ml-1.5 font-mono tabular-nums">
-              {formatPct(pct)}
-            </span>
+          <li key={item.sector_id}>
+            <Link
+              href={href}
+              title={`${item.name}: ${formatPct(pct)} — browse sector`}
+              className={cn(
+                "inline-flex items-center rounded-md border px-2 py-1 text-xs focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+                up &&
+                  "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
+                down &&
+                  "border-destructive/25 bg-destructive/10 text-destructive",
+                !up &&
+                  !down &&
+                  "border-border bg-muted/40 text-muted-foreground",
+              )}
+            >
+              <span className="max-w-[10rem] truncate font-medium">
+                {item.name}
+              </span>
+              <span className="ml-1.5 font-mono tabular-nums">
+                {formatPct(pct)}
+              </span>
+            </Link>
           </li>
         );
       })}

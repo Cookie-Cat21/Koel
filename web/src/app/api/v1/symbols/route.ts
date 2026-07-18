@@ -21,10 +21,11 @@ const MAX_LIMIT = 200;
 /**
  * GET /api/v1/symbols — thin market browse from Postgres (latest snapshots).
  * Query: limit (default 50, max 200), offset (max 10000), q (symbol/name
- * substring, max 64, LIKE-metachar escaped), sort=change_pct|symbol
- * (default change_pct). Response includes ``total`` for pagination.
+ * substring, max 64, LIKE-metachar escaped), sector (stocks.sector substring,
+ * same sanitizer as q), sort=change_pct|symbol (default change_pct).
+ * Response includes ``total`` for pagination.
  * Session required; CSRF not required (safe GET).
- * No cse.lk. Not a screener (no sector/volume filters).
+ * No cse.lk. Not a multi-filter screener (no volume/OHLC board).
  */
 export async function GET(request: NextRequest) {
   // Session only — GET must not require CSRF (double-submit is for mutations).
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
   offset = Math.min(offset, MAX_SYMBOLS_OFFSET);
 
   const q = normalizeMarketQuery(sp.get("q"));
+  const sector = normalizeMarketQuery(sp.get("sector"));
   // Fail closed — non-string searchParams mocks used to throw on .trim.
   const sortParam = sp.get("sort");
   const sortBase =
@@ -52,7 +54,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const pool = getPool();
-    const filter = { q: q || undefined };
+    const filter = {
+      q: q || undefined,
+      sector: sector || undefined,
+    };
     const [items, total] = await Promise.all([
       queryMarketBrowse(pool, {
         limit,
@@ -70,6 +75,7 @@ export async function GET(request: NextRequest) {
       offset,
       sort,
       q: q || null,
+      sector: sector || null,
     });
   } catch (err) {
     console.error("GET /symbols failed", err);

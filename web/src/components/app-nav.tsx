@@ -1,8 +1,9 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { QuiverlyWordmark } from "@/components/brand/quiverly-brand";
 import { CommandPalette } from "@/components/command-palette";
@@ -10,13 +11,9 @@ import { NavSession } from "@/components/nav-session";
 import { Button } from "@/components/ui/button";
 
 /** Primary nav — Scenarios stays off primary until Phase 3 AI is live. */
-const links = [
+const primaryLinks = [
   { href: "/overview", label: "Overview" },
   { href: "/market", label: "Browse" },
-  { href: "/appetite", label: "Appetite" },
-  { href: "/signals", label: "Signals" },
-  { href: "/people", label: "People" },
-  { href: "/graph", label: "Graph" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/alerts", label: "Alerts" },
   { href: "/alerts/history", label: "History" },
@@ -24,10 +21,22 @@ const links = [
   { href: "/health", label: "Health" },
 ] as const;
 
+/** Research surfaces — secondary disclosure so alert core stays obvious. */
+const researchLinks = [
+  { href: "/appetite", label: "Appetite" },
+  { href: "/signals", label: "Signals" },
+  { href: "/people", label: "People" },
+  { href: "/graph", label: "Graph" },
+] as const;
+
+const allNavLinks = [...primaryLinks, ...researchLinks] as const;
+
+type NavHref = (typeof allNavLinks)[number]["href"];
+
 /**
  * Resolve which nav href is active. Prefers the explicit `active` prop, else
  * the current pathname. Longest prefix wins so `/alerts/history` highlights
- * History (not Alerts), and `/scenarios` exact-matches Scenarios.
+ * History (not Alerts), and research routes still resolve under Research.
  */
 /**
  * Cap nav path strings — multi-MB forged ``active`` / pathname used to burn
@@ -37,14 +46,14 @@ export const MAX_NAV_PATH_LENGTH = 512;
 
 export function resolveActiveNavHref(
   current: string | null | undefined,
-): (typeof links)[number]["href"] | undefined {
+): NavHref | undefined {
   // Fail closed — non-strings used to throw on .startsWith / .endsWith.
   if (typeof current !== "string" || !current) return undefined;
   if (current.length > MAX_NAV_PATH_LENGTH) return undefined;
   const path =
     current.length > 1 && current.endsWith("/") ? current.slice(0, -1) : current;
-  let best: (typeof links)[number]["href"] | undefined;
-  for (const { href } of links) {
+  let best: NavHref | undefined;
+  for (const { href } of allNavLinks) {
     if (path === href || path.startsWith(`${href}/`)) {
       if (best === undefined || href.length > best.length) {
         best = href;
@@ -54,11 +63,52 @@ export function resolveActiveNavHref(
   return best;
 }
 
+function isResearchHref(href: string | undefined): boolean {
+  return researchLinks.some((l) => l.href === href);
+}
+
+function navLinkClass(isActive: boolean, base = ""): string {
+  return [
+    base,
+    "rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+    isActive
+      ? "font-medium text-foreground"
+      : "text-muted-foreground transition-colors hover:text-foreground",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function AppNav({ active }: { active?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [researchOpen, setResearchOpen] = useState(false);
+  const researchWrapRef = useRef<HTMLDivElement>(null);
+  const researchMenuId = useId();
   const activeHref = resolveActiveNavHref(active ?? pathname);
+  const researchActive = isResearchHref(activeHref);
+
+  useEffect(() => {
+    if (!researchOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (
+        researchWrapRef.current &&
+        !researchWrapRef.current.contains(e.target as Node)
+      ) {
+        setResearchOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setResearchOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [researchOpen]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-sm">
@@ -78,23 +128,65 @@ export function AppNav({ active }: { active?: string }) {
 
         {/* Desktop / tablet */}
         <nav className="hidden items-center gap-x-5 text-sm sm:flex">
-          {links.map((link) => {
+          {primaryLinks.map((link) => {
             const isActive = activeHref === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={
-                  isActive
-                    ? "rounded-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    : "rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                }
+                className={navLinkClass(isActive)}
               >
                 {link.label}
               </Link>
             );
           })}
+          <div className="relative" ref={researchWrapRef}>
+            <button
+              type="button"
+              className={navLinkClass(
+                researchActive,
+                "inline-flex items-center gap-1",
+              )}
+              aria-expanded={researchOpen}
+              aria-controls={researchMenuId}
+              aria-haspopup="menu"
+              onClick={() => setResearchOpen((v) => !v)}
+            >
+              Research
+              <ChevronDown
+                aria-hidden
+                className={`size-3.5 opacity-70 motion-safe:transition-transform ${researchOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {researchOpen ? (
+              <ul
+                id={researchMenuId}
+                role="menu"
+                className="absolute top-full left-0 z-50 mt-2 min-w-[10rem] rounded-md border border-border/70 bg-background py-1 shadow-sm"
+              >
+                {researchLinks.map((link) => {
+                  const isActive = activeHref === link.href;
+                  return (
+                    <li key={link.href} role="none">
+                      <Link
+                        role="menuitem"
+                        href={link.href}
+                        aria-current={isActive ? "page" : undefined}
+                        onClick={() => setResearchOpen(false)}
+                        className={navLinkClass(
+                          isActive,
+                          "block px-3 py-2 text-sm",
+                        )}
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -147,7 +239,7 @@ export function AppNav({ active }: { active?: string }) {
         hidden={!open}
       >
         <ul className="flex flex-col">
-          {links.map((link) => {
+          {primaryLinks.map((link) => {
             const isActive = activeHref === link.href;
             return (
               <li key={link.href}>
@@ -168,6 +260,33 @@ export function AppNav({ active }: { active?: string }) {
             );
           })}
         </ul>
+        <div className="border-t border-border/60 pt-2 pb-1">
+          <p className="px-0 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Research
+          </p>
+          <ul className="flex flex-col">
+            {researchLinks.map((link) => {
+              const isActive = activeHref === link.href;
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={isActive ? "page" : undefined}
+                    tabIndex={open ? undefined : -1}
+                    onClick={() => setOpen(false)}
+                    className={`block rounded-sm py-3 text-base focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
+                      isActive
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
         <div className="border-t border-border/60 py-3">
           <NavSession compact />
         </div>
