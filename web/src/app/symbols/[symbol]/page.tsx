@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/page-header";
 import { PriceRefresh } from "@/components/price-refresh";
 import { ExpandablePriceChart } from "@/components/charts/expandable-price-chart";
 import {
+  dayChangeScopeLabel,
   normalizeDailyBar,
   type ChartRangeKey,
   type DailyBarPoint,
@@ -640,6 +641,7 @@ export default async function SymbolDetailPage({
                   <SignedChange
                     change={data.last.change}
                     changePct={data.last.change_pct}
+                    asOfTs={data.last.ts}
                   />
                 </div>
               ) : (
@@ -923,9 +925,12 @@ function Stat({
 function SignedChange({
   change,
   changePct,
+  asOfTs,
 }: {
   change: number | null;
   changePct: number | null;
+  /** Snapshot stamp — drives today vs prior-session scope label. */
+  asOfTs: string | null;
 }) {
   const direction =
     changePct != null && changePct > 0
@@ -949,6 +954,7 @@ function SignedChange({
       : `${change > 0 ? "+" : ""}${formatNumber(change)}`;
   const pctLabel = changePct == null ? null : formatPct(changePct);
   if (changeLabel == null && pctLabel == null) return null;
+  const scope = dayChangeScopeLabel(asOfTs);
   return (
     <span className={`font-mono text-lg font-medium tabular-nums ${tone}`}>
       <span className="sr-only">
@@ -956,8 +962,15 @@ function SignedChange({
       </span>
       {changeLabel ?? ""}
       {pctLabel ? `${changeLabel != null ? " " : ""}(${pctLabel})` : ""}
-      <span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
-        today
+      <span
+        className="ml-1.5 font-sans text-xs font-normal text-muted-foreground"
+        title={
+          scope === "today"
+            ? "Change vs previous close for today's session"
+            : "Change vs previous close for that session (market may be closed)"
+        }
+      >
+        {scope}
       </span>
     </span>
   );
