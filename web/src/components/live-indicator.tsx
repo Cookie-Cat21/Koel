@@ -7,18 +7,20 @@ export function LiveIndicator({
   className,
 }: {
   label?: string;
-  tone?: "ok" | "stale" | "down";
+  tone?: "ok" | "stale" | "down" | "closed";
   className?: string;
 }) {
   const tones = {
     ok: "bg-emerald-50 text-emerald-800",
     stale: "bg-amber-50 text-amber-900",
     down: "bg-red-50 text-red-800",
+    closed: "bg-slate-100 text-slate-700",
   } as const;
   const dots = {
     ok: "bg-emerald-500",
     stale: "bg-amber-500",
     down: "bg-red-500",
+    closed: "bg-slate-400",
   } as const;
 
   return (

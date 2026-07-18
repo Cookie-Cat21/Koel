@@ -1384,6 +1384,12 @@ def main(argv: list[str] | None = None) -> None:
 
             from chime.domain import DailyBar
 
+            # chartId=1 → ASPI (sectorId 1); chartId=40 → S&P SL20 (sectorId 40).
+            indexes = (
+                ("ASPI", "All Share Price Index", 1),
+                ("SNP_SL20", "S&P Sri Lanka 20", 40),
+            )
+
             storage = Storage(settings.database_url)
             await storage.open()
             cse = CSEClient(
@@ -1394,24 +1400,32 @@ def main(argv: list[str] | None = None) -> None:
                 min_interval_seconds=settings.cse_min_interval_seconds,
             )
             try:
-                await storage.upsert_stock("ASPI", "All Share Price Index")
-                series = await cse.fetch_index_chart(period=5)
-                bars = [
-                    DailyBar(
-                        symbol="ASPI",
-                        trade_date=d,
-                        price=v,
-                        high=None,
-                        low=None,
-                        open=None,
-                        volume=None,
-                        source_period=5,
-                        bar_ts=datetime(d.year, d.month, d.day, 18, 30, tzinfo=UTC),
+                for symbol, name, chart_id in indexes:
+                    await storage.upsert_stock(symbol, name)
+                    series = await cse.fetch_index_chart(
+                        chart_id=chart_id, period=5
                     )
-                    for d, v, _pc in series
-                ]
-                n = await storage.persist_daily_bars(bars) if bars else 0
-                print(f"aspi-backfill: points={len(series)} upserted={n}")
+                    bars = [
+                        DailyBar(
+                            symbol=symbol,
+                            trade_date=d,
+                            price=v,
+                            high=None,
+                            low=None,
+                            open=None,
+                            volume=None,
+                            source_period=5,
+                            bar_ts=datetime(
+                                d.year, d.month, d.day, 18, 30, tzinfo=UTC
+                            ),
+                        )
+                        for d, v, _pc in series
+                    ]
+                    n = await storage.persist_daily_bars(bars) if bars else 0
+                    print(
+                        f"aspi-backfill: {symbol} chartId={chart_id} "
+                        f"points={len(series)} upserted={n}"
+                    )
             finally:
                 await cse.aclose()
                 await storage.close()

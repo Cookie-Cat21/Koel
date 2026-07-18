@@ -50,6 +50,8 @@ export function ExpandablePriceChart({
   initialOpen = false,
   initialBars = null,
   initialRange = "3M",
+  /** ``indexes`` uses ``/api/v1/indexes/{code}/…`` (ASPI / S&P SL20). */
+  seriesKind = "symbol",
 }: {
   symbol: string;
   points: Point[];
@@ -61,6 +63,7 @@ export function ExpandablePriceChart({
   initialOpen?: boolean;
   initialBars?: DailyBarPoint[] | null;
   initialRange?: ChartRangeKey;
+  seriesKind?: "symbol" | "index";
 }) {
   const titleId = useId();
   const forecastToggleId = useId();
@@ -131,7 +134,11 @@ export function ExpandablePriceChart({
   }, [bars, initialBars]);
 
   const fetchTicks = useCallback(async (): Promise<Point[] | null> => {
-    const pathOnly = `/api/v1/symbols/${encodeURIComponent(symbol)}/snapshots`;
+    const base =
+      seriesKind === "index"
+        ? `/api/v1/indexes/${encodeURIComponent(symbol)}/snapshots`
+        : `/api/v1/symbols/${encodeURIComponent(symbol)}/snapshots`;
+    const pathOnly = base;
     if (!isSafeClientApiPath(pathOnly)) {
       throw new Error("Invalid request path.");
     }
@@ -169,12 +176,15 @@ export function ExpandablePriceChart({
       if (ta !== tb) return ta - tb;
       return 0;
     });
-  }, [symbol]);
+  }, [symbol, seriesKind]);
 
   const fetchDaily = useCallback(
     async (r: Exclude<ChartRangeKey, "1D">): Promise<DailyBarPoint[]> => {
       const limit = sessionsForRange(r);
-      const pathOnly = `/api/v1/symbols/${encodeURIComponent(symbol)}/daily-bars`;
+      const pathOnly =
+        seriesKind === "index"
+          ? `/api/v1/indexes/${encodeURIComponent(symbol)}/daily-bars`
+          : `/api/v1/symbols/${encodeURIComponent(symbol)}/daily-bars`;
       if (!isSafeClientApiPath(pathOnly)) {
         throw new Error("Invalid request path.");
       }
@@ -185,7 +195,9 @@ export function ExpandablePriceChart({
       if (!res.ok) {
         throw new Error(
           res.status === 404
-            ? "Unknown symbol."
+            ? seriesKind === "index"
+              ? "Unknown index."
+              : "Unknown symbol."
             : `Could not load daily path history (${res.status}).`,
         );
       }
@@ -231,7 +243,7 @@ export function ExpandablePriceChart({
       }
       return out;
     },
-    [symbol],
+    [symbol, seriesKind],
   );
 
   useEffect(() => {
@@ -420,7 +432,7 @@ export function ExpandablePriceChart({
       <div className="relative">
         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Price chart
+            {seriesKind === "index" ? "Index chart" : "Price chart"}
             {heroFrom && heroTo ? (
               <span className="ml-2 font-mono font-normal normal-case tracking-normal tabular-nums text-muted-foreground/80">
                 {heroFrom} → {heroTo}
@@ -449,7 +461,9 @@ export function ExpandablePriceChart({
             chartHeight={220}
             footnote={
               compactDaily
-                ? "Daily OHLC · expand for ranges · research only"
+                ? seriesKind === "index"
+                  ? "Daily closes · expand for ranges · research only"
+                  : "Daily OHLC · expand for ranges · research only"
                 : "Intraday from stored ticks · research only"
             }
           />

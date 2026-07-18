@@ -28,6 +28,11 @@ export type BuildDataQualityNoticesInput = {
   symbol: string;
   hasLastPrice: boolean;
   snapshotStale: boolean;
+  /**
+   * CSE cash session closed (clock fence). When true with a stored price,
+   * prefer a calm “market closed” notice over age-based “stale”.
+   */
+  marketClosed?: boolean;
   sparkPointCount: number;
   /** Caps how many banners we show (highest priority first). */
   maxNotices?: number;
@@ -119,13 +124,21 @@ export function buildDataQualityNotices(
       title: "No stored price yet",
       description: `Chime has not stored a price tick for ${symbol}. Snapshots appear during market hours (09:30–14:30 SLT, weekdays) once the symbol is watched. Not financial advice.`,
     });
+  } else if (input.marketClosed) {
+    notices.push({
+      id: "market-closed",
+      tone: "info",
+      title: "Market closed",
+      description:
+        "CSE cash session is closed (weekdays 09:30–14:30 SLT). Showing the last stored print until the next session — this is expected, not a poller failure. Not financial advice.",
+    });
   } else if (input.snapshotStale) {
     notices.push({
       id: "stale-price",
       tone: "warning",
       title: "Price snapshot looks stale",
       description:
-        "The last tick is more than a day old. The poller may be paused outside market hours, or this symbol may not be on an active watchlist. Not financial advice.",
+        "The last tick is more than a day old while the market session is open. The poller may be paused, or this symbol may not be on an active watchlist. Not financial advice.",
     });
   }
 
