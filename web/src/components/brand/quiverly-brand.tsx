@@ -4,20 +4,20 @@ import { cn } from "@/lib/utils";
 
 type BrandSize = "sm" | "md" | "lg" | "hero";
 
-/** Aspect ~3.1:1 — matches tight-cropped `/brand/quiverly-logo.svg`. */
+/** Aspect ~3.38:1 — matches tight-cropped `/brand/quiverly-logo.svg`. */
 const WORDMARK = {
-  sm: { width: 112, height: 36, className: "h-6 w-auto" },
-  md: { width: 140, height: 45, className: "h-8 w-auto" },
-  lg: { width: 196, height: 63, className: "h-10 w-auto" },
-  hero: { width: 336, height: 108, className: "h-12 w-auto sm:h-14 md:h-16" },
+  sm: { width: 108, height: 32, className: "h-6 w-auto" },
+  md: { width: 135, height: 40, className: "h-8 w-auto" },
+  lg: { width: 183, height: 54, className: "h-10 w-auto" },
+  hero: { width: 325, height: 96, className: "h-12 w-auto sm:h-14 md:h-16" },
 } as const;
 
-/** Near-square mark — matches tight-cropped `/brand/quiverly-mark.svg`. */
+/** Slightly tall Q mark (ring + foot) — matches `/brand/quiverly-mark.svg`. */
 const MARK = {
-  sm: { width: 28, height: 28, className: "h-7 w-7" },
-  md: { width: 36, height: 36, className: "h-9 w-9" },
-  lg: { width: 48, height: 48, className: "h-12 w-12" },
-  hero: { width: 72, height: 72, className: "h-16 w-16 sm:h-20 sm:w-20" },
+  sm: { width: 26, height: 30, className: "h-7 w-auto" },
+  md: { width: 32, height: 36, className: "h-9 w-auto" },
+  lg: { width: 42, height: 48, className: "h-12 w-auto" },
+  hero: { width: 64, height: 72, className: "h-16 w-auto sm:h-20" },
 } as const;
 
 /** Standalone Q mark — favicon / compact chrome. */
