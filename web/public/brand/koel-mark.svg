@@ -1,6 +1,9 @@
-<?xml version="1" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 2026.4 2026.4" role="img" aria-label="koel">
-<g transform="translate(38.5 0)">
-<path fill="#1A1A1A" d="M268.2 1758.2V268.2H684.2V899.2Q732.2 837.2 780.2 775.2Q828.2 713.2 876.2 651.2L1172.2 268.2H1653.2L1133.2 908.2L1681.2 1758.2H1205.2L865.2 1190.2L684.2 1412.2V1758.2Z"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-39.594310500000006 -37.84 247.68 247.68" role="img" aria-label="koel">
+<g transform="translate(-10.000000,182.000000) scale(0.100000,-0.100000)"
+fill="#1A1A1A" stroke="none">
+<path d="M100 960 l0 -860 185 0 185 0 0 228 0 227 93 93 94 93 313 -320 314
+-321 250 0 251 0 -435 435 -435 435 418 418 c229 229 417 420 417 425 0 4
+-107 7 -237 7 l-238 0 -402 -402 -403 -403 0 403 0 402 -185 0 -185 0 0 -860z"/>
 </g>
 </svg>

@@ -190,7 +190,6 @@ def test_login_page_a11y_contract() -> None:
     assert 'aria-label="koel home"' in page_src
     assert 'id="login-explainer"' in page_src
     assert 'aria-labelledby="login-explainer"' in page_src
-    assert 'aria-labelledby="login-explainer"' in page_src
     assert 'rounded-full bg-foreground/55' in page_src
     assert "<li>- " not in page_src
 

@@ -1,7 +1,10 @@
-<?xml version="1" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 2145.6 2145.6" role="img" aria-label="koel">
-<rect width="100%" height="100%" fill="#000000"/>
-<g transform="translate(38.5 0)">
-<path fill="#1A1A1A" d="M327.8 1817.8V327.8H743.8V958.8Q791.8 896.8 839.8 834.8Q887.8 772.8 935.8 710.8L1231.8 327.8H1712.8L1192.8 967.8L1740.8 1817.8H1264.8L924.8 1249.8L743.8 1471.8V1817.8Z"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-39.594310500000006 -37.84 247.68 247.68" role="img" aria-label="koel">
+<rect x="-39.594310500000006" y="-37.84" width="247.68" height="247.68" fill="#000000"/>
+<g transform="translate(-10.000000,182.000000) scale(0.100000,-0.100000)"
+fill="#1A1A1A" stroke="none">
+<path d="M100 960 l0 -860 185 0 185 0 0 228 0 227 93 93 94 93 313 -320 314
+-321 250 0 251 0 -435 435 -435 435 418 418 c229 229 417 420 417 425 0 4
+-107 7 -237 7 l-238 0 -402 -402 -403 -403 0 403 0 402 -185 0 -185 0 0 -860z"/>
 </g>
 </svg>

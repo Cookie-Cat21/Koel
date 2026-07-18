@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 type BrandSize = "sm" | "md" | "lg" | "hero";
 
-/** Aspect ~2.27:1 — matches tight-cropped `/brand/koel-logo.svg`. */
+/** Aspect ~2.3:1 — matches Canva-traced `/brand/koel-logo.svg`. */
 const WORDMARK = {
   sm: { width: 108, height: 48, className: "h-6 w-auto" },
   md: { width: 135, height: 60, className: "h-8 w-auto" },
