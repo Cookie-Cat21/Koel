@@ -1,8 +1,11 @@
 # Plan: Broker / CDS public feeds (not holdings)
 
 **Date:** 2026-07-18  
-**Status:** research complete · **no adapters shipped** · ToS gate open  
+**Status:** research complete · **spike script landed** · **no adapters shipped** · ToS gate open  
 **Fence:** Dash density + Telegram alerts + Signal Board factors. No portfolio sync, no buy/sell language, no competitor scrape.
+
+**Live spike (research-only):**  
+`python3 scripts/experiments/lolc_public_feeds_spike.py` → [`LOLC_PUBLIC_FEEDS_SPIKE.md`](./LOLC_PUBLIC_FEEDS_SPIKE.md)
 
 Related: [`docs/THIRD_PARTY_DATA.md`](../THIRD_PARTY_DATA.md) · [`docs/factory/workstreams/FACTOR_INDEX.md`](../factory/workstreams/FACTOR_INDEX.md) (F-086) · [`docs/factory/CHIME_MASTER_PLAN.md`](../factory/CHIME_MASTER_PLAN.md) (P1 / P1b)
 

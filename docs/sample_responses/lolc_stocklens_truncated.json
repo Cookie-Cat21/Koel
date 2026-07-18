@@ -1,0 +1,62 @@
+{
+  "last_modified": "2026-07-17 11:24:13",
+  "data": [
+    {
+      "Company Tiker": "AAF.N0000",
+      "Company Name": "ASIA ASSET FINANCE PLC",
+      "Sector": "Diversified Financials",
+      "Market Price (LKR)": "57.9",
+      "Market Capitalization (LKR Mn)": "7,191",
+      "Foreign Holding%": "73.14%",
+      "4QT Earnings (LKR Mn)": "1,038",
+      "PE (x)": "9.23",
+      "Sector PE (x)": "7.13",
+      "PBV (x)": "1.51",
+      "Sector PBV (x)": "0.93",
+      "DY (%)": "0.98%",
+      "DPS (LKR)": "0.57",
+      "EPS 4QT (LKR)": "6.27",
+      "NAV (LKR)": "38.45",
+      "ROE (%)": "21.74%"
+    },
+    {
+      "Company Tiker": "AAF.P0000",
+      "Company Name": "ASIA ASSET FINANCE PLC (P)",
+      "Sector": "Diversified Financials",
+      "Market Price (LKR)": "66.5",
+      "Market Capitalization (LKR Mn)": "2,753",
+      "Foreign Holding%": "0.00%",
+      "4QT Earnings (LKR Mn)": "1,038",
+      "PE (x)": "10.61",
+      "Sector PE (x)": "7.13",
+      "PBV (x)": "1.73",
+      "Sector PBV (x)": "0.93",
+      "DY (%)": "2.11%",
+      "DPS (LKR)": "1.4",
+      "EPS 4QT (LKR)": "6.27",
+      "NAV (LKR)": "38.45",
+      "ROE (%)": "21.74%"
+    },
+    {
+      "Company Tiker": "AAIC.N0000",
+      "Company Name": "SOFTLOGIC LIFE INSURANCE PLC",
+      "Sector": "Insurance",
+      "Market Price (LKR)": "84",
+      "Market Capitalization (LKR Mn)": "26,578",
+      "Foreign Holding%": "15.78%",
+      "4QT Earnings (LKR Mn)": "4,871",
+      "PE (x)": "5.46",
+      "Sector PE (x)": "8.74",
+      "PBV (x)": "1.90",
+      "Sector PBV (x)": "1.17",
+      "DY (%)": "11.67%",
+      "DPS (LKR)": "9.8",
+      "EPS 4QT (LKR)": "15.39",
+      "NAV (LKR)": "44.25",
+      "ROE (%)": "34.79%"
+    }
+  ],
+  "_truncated": true,
+  "_original_row_count": 302,
+  "_note": "Research sample only \u2014 not for redistribution as a full board dump."
+}

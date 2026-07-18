@@ -1,0 +1,578 @@
+{
+  "started_at": "2026-07-18T03:30:31.815536+00:00",
+  "as_of": "2026-07-18",
+  "purpose": "research-only spike \u2014 no prod ingest",
+  "nfa": "Not financial advice. Metrics are descriptive only.",
+  "sources": {
+    "stocklens": {
+      "url": "https://www.lolcsecurities.lk/api/stock-screener/",
+      "http_status": 200,
+      "bytes": 196388,
+      "content_type": "application/json; charset=utf-8",
+      "sha256": "7fae96705ffb5c36"
+    },
+    "dividends": {
+      "url": "https://www.lolcsecurities.lk/dividend-calendar/dividends_db.csv",
+      "http_status": 200,
+      "bytes": 233258,
+      "content_type": "text/csv",
+      "sha256": "5dac85fd07f57378"
+    },
+    "cds_infoline_index": {
+      "url": "https://www.cds.lk/services/depository-operations/publications-downloads/cds-monthly-reports/",
+      "http_status": 200,
+      "bytes": 149690,
+      "content_type": "text/html; charset=UTF-8"
+    }
+  },
+  "analyses": {
+    "stocklens": {
+      "last_modified": "2026-07-17 11:24:13",
+      "n_rows": 302,
+      "n_tickers": 302,
+      "keys": [
+        "Company Tiker",
+        "Company Name",
+        "Sector",
+        "Market Price (LKR)",
+        "Market Capitalization (LKR Mn)",
+        "Foreign Holding%",
+        "4QT Earnings (LKR Mn)",
+        "PE (x)",
+        "Sector PE (x)",
+        "PBV (x)",
+        "Sector PBV (x)",
+        "DY (%)",
+        "DPS (LKR)",
+        "EPS 4QT (LKR)",
+        "NAV (LKR)",
+        "ROE (%)"
+      ],
+      "sectors": 20,
+      "sector_top": [
+        [
+          "Food, Beverage & Tobacco",
+          48
+        ],
+        [
+          "Diversified Financials",
+          46
+        ],
+        [
+          "Consumer Services",
+          36
+        ],
+        [
+          "Capital Goods",
+          30
+        ],
+        [
+          "Materials",
+          24
+        ],
+        [
+          "Real Estate Management & Development",
+          19
+        ],
+        [
+          "Banks",
+          17
+        ],
+        [
+          "Insurance",
+          14
+        ]
+      ],
+      "coverage": [
+        {
+          "field": "Market Price (LKR)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 42.85,
+          "min": 0.1,
+          "max": 15103.25
+        },
+        {
+          "field": "Market Capitalization (LKR Mn)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 7151.5,
+          "min": 45.0,
+          "max": 406655.0
+        },
+        {
+          "field": "Foreign Holding%",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 0.97,
+          "min": 0.0,
+          "max": 93.64
+        },
+        {
+          "field": "4QT Earnings (LKR Mn)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 528.0,
+          "min": -21978.0,
+          "max": 63043.0
+        },
+        {
+          "field": "PE (x)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 10.775,
+          "min": -1427.47,
+          "max": 660.82
+        },
+        {
+          "field": "Sector PE (x)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 11.86,
+          "min": -190.76,
+          "max": 48.09
+        },
+        {
+          "field": "PBV (x)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 1.3,
+          "min": -30.77,
+          "max": 371.7
+        },
+        {
+          "field": "Sector PBV (x)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 1.17,
+          "min": 0.8,
+          "max": 12.63
+        },
+        {
+          "field": "DY (%)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 0.54,
+          "min": 0.0,
+          "max": 32.0
+        },
+        {
+          "field": "DPS (LKR)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 0.455,
+          "min": 0.0,
+          "max": 157.54
+        },
+        {
+          "field": "EPS 4QT (LKR)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 2.935,
+          "min": -75.27,
+          "max": 845.78
+        },
+        {
+          "field": "NAV (LKR)",
+          "non_null": 302,
+          "n": 302,
+          "pct": 100.0,
+          "median": 29.81,
+          "min": -48.99,
+          "max": 13886.49
+        },
+        {
+          "field": "ROE (%)",
+          "non_null": 290,
+          "n": 302,
+          "pct": 96.0,
+          "median": 10.43,
+          "min": -244.97,
+          "max": 230.54
+        }
+      ],
+      "foreign_holding": {
+        "n": 302,
+        "median": 0.97,
+        "p90": 36.65,
+        "max": 93.64,
+        "high_fh_sample": [
+          {
+            "symbol": "CTC.N0000",
+            "fh_pct": 93.64,
+            "name": "CEYLON TOBACCO COMPANY PLC"
+          },
+          {
+            "symbol": "DIAL.N0000",
+            "fh_pct": 90.59,
+            "name": "DIALOG AXIATA PLC"
+          },
+          {
+            "symbol": "HUNT.N0000",
+            "fh_pct": 87.37,
+            "name": "HUNTER & COMPANY PLC"
+          },
+          {
+            "symbol": "TAJ.N0000",
+            "fh_pct": 86.32,
+            "name": "TAL LANKA HOTELS PLC"
+          },
+          {
+            "symbol": "GHLL.N0000",
+            "fh_pct": 85.93,
+            "name": "GALADARI HOTELS (LANKA) PLC"
+          },
+          {
+            "symbol": "OSEA.N0000",
+            "fh_pct": 85.77,
+            "name": "OVERSEAS REALTY (CEYLON) PLC"
+          },
+          {
+            "symbol": "BOGA.N0000",
+            "fh_pct": 83.15,
+            "name": "BOGALA GRAPHITE LANKA PLC"
+          },
+          {
+            "symbol": "ALHP.N0000",
+            "fh_pct": 82.37,
+            "name": "ANILANA HOTELS AND PROPERTIES PLC"
+          }
+        ]
+      },
+      "pe_vs_sector_cheapest": [
+        {
+          "symbol": "RENU.N0000",
+          "pe_over_sector": 0.082,
+          "pe": 3.93,
+          "sector_pe": 48.09
+        },
+        {
+          "symbol": "RCH.N0000",
+          "pe_over_sector": 0.11,
+          "pe": 5.3,
+          "sector_pe": 48.09
+        },
+        {
+          "symbol": "UDPL.N0000",
+          "pe_over_sector": 0.145,
+          "pe": 2.32,
+          "sector_pe": 16.03
+        },
+        {
+          "symbol": "ASHO.N0000",
+          "pe_over_sector": 0.168,
+          "pe": 3.19,
+          "sector_pe": 19.0
+        },
+        {
+          "symbol": "AHUN.N0000",
+          "pe_over_sector": 0.205,
+          "pe": 9.86,
+          "sector_pe": 48.09
+        },
+        {
+          "symbol": "TANG.N0000",
+          "pe_over_sector": 0.224,
+          "pe": 10.75,
+          "sector_pe": 48.09
+        },
+        {
+          "symbol": "NEH.N0000",
+          "pe_over_sector": 0.245,
+          "pe": 11.76,
+          "sector_pe": 48.09
+        },
+        {
+          "symbol": "STAF.N0000",
+          "pe_over_sector": 0.25,
+          "pe": 12.01,
+          "sector_pe": 48.09
+        }
+      ],
+      "pe_vs_sector_richest": [
+        {
+          "symbol": "UBF.N0000",
+          "pe_over_sector": 9.533,
+          "pe": 67.97,
+          "sector_pe": 7.13
+        },
+        {
+          "symbol": "CALF.N0000",
+          "pe_over_sector": 9.944,
+          "pe": 70.9,
+          "sector_pe": 7.13
+        },
+        {
+          "symbol": "HVA.N0000",
+          "pe_over_sector": 11.602,
+          "pe": 185.98,
+          "sector_pe": 16.03
+        },
+        {
+          "symbol": "KPHL.N0000",
+          "pe_over_sector": 12.168,
+          "pe": 131.9,
+          "sector_pe": 10.84
+        },
+        {
+          "symbol": "CRL.N0000",
+          "pe_over_sector": 12.38,
+          "pe": 88.27,
+          "sector_pe": 7.13
+        }
+      ],
+      "sample_normalized_row": {
+        "symbol": "AAF.N0000",
+        "name": "ASIA ASSET FINANCE PLC",
+        "sector": "Diversified Financials",
+        "price": 57.9,
+        "mcap_mn": 7191.0,
+        "foreign_holding_pct": 73.14,
+        "pe": 9.23,
+        "sector_pe": 7.13,
+        "pbv": 1.51,
+        "sector_pbv": 0.93,
+        "dy_pct": 0.98,
+        "dps": 0.57,
+        "eps_4qt": 6.27,
+        "nav": 38.45,
+        "roe_pct": 21.74
+      },
+      "suffix_mix": {
+        "N0000": 280,
+        "P0000": 1,
+        "X0000": 21
+      }
+    },
+    "dividends": {
+      "n_rows": 2331,
+      "n_parsed_xd": 2331,
+      "fields": [
+        "D_ANN",
+        "D_XD",
+        "D_PAY",
+        "CODE",
+        "DPS",
+        "INTERIM",
+        "FY",
+        "S_ANN",
+        "S_XD",
+        "DIV_DEC"
+      ],
+      "unique_symbols": 267,
+      "xd_min": "2015-12-23",
+      "xd_max": "2026-08-17",
+      "upcoming_count": 14,
+      "upcoming_next_15": [
+        {
+          "symbol": "VLL.N0000",
+          "d_ann": "2026-07-09",
+          "d_xd": "2026-07-20",
+          "d_pay": "2026-08-07",
+          "dps": 0.2,
+          "interim": "First",
+          "fy": "FY27"
+        },
+        {
+          "symbol": "VLL.X0000",
+          "d_ann": "2026-07-09",
+          "d_xd": "2026-07-20",
+          "d_pay": "2026-08-07",
+          "dps": 0.2,
+          "interim": "First",
+          "fy": "FY27"
+        },
+        {
+          "symbol": "AAF.N0000",
+          "d_ann": "2026-06-30",
+          "d_xd": "2026-07-24",
+          "d_pay": "2026-08-13",
+          "dps": 0.57,
+          "interim": "Final",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "AAF.P0000",
+          "d_ann": "2026-06-30",
+          "d_xd": "2026-07-24",
+          "d_pay": "2026-08-13",
+          "dps": 0.7,
+          "interim": "Final",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "BUKI.N0000",
+          "d_ann": "2026-07-15",
+          "d_xd": "2026-07-24",
+          "d_pay": "2026-08-13",
+          "dps": 5.73,
+          "interim": "First",
+          "fy": "FY27"
+        },
+        {
+          "symbol": "GLAS.N0000",
+          "d_ann": "2026-05-22",
+          "d_xd": "2026-07-27",
+          "d_pay": "2026-08-14",
+          "dps": 2.98,
+          "interim": "Final",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "ALLI.N0000",
+          "d_ann": "2026-06-25",
+          "d_xd": "2026-07-27",
+          "d_pay": "2026-08-14",
+          "dps": 10.0,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "SFCL.N0000",
+          "d_ann": "2026-06-15",
+          "d_xd": "2026-07-31",
+          "d_pay": "2026-08-19",
+          "dps": 2.8,
+          "interim": "Final",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "TKYO.N0000",
+          "d_ann": "2026-06-30",
+          "d_xd": "2026-08-05",
+          "d_pay": "2026-08-24",
+          "dps": 2.5,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "TKYO.X0000",
+          "d_ann": "2026-06-30",
+          "d_xd": "2026-08-05",
+          "d_pay": "2026-08-24",
+          "dps": 2.5,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "CTEA.N0000",
+          "d_ann": "2026-06-19",
+          "d_xd": "2026-08-07",
+          "d_pay": "2026-08-28",
+          "dps": 25.0,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "BRR.N0000",
+          "d_ann": "2026-07-14",
+          "d_xd": "2026-08-10",
+          "d_pay": "2026-07-31",
+          "dps": 0.2,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "SOY.N0000",
+          "d_ann": "2026-06-26",
+          "d_xd": "2026-08-14",
+          "d_pay": "2026-09-04",
+          "dps": 8.0,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        },
+        {
+          "symbol": "ASHO.N0000",
+          "d_ann": "2026-05-25",
+          "d_xd": "2026-08-17",
+          "d_pay": "2026-09-07",
+          "dps": 30.0,
+          "interim": "Final/Other",
+          "fy": "FY26"
+        }
+      ],
+      "xd_soon_horizon_counts": {
+        "3": 2,
+        "7": 5,
+        "14": 8,
+        "30": 14
+      },
+      "top_symbols_by_history": [
+        [
+          "CTC.N0000",
+          48
+        ],
+        [
+          "LLUB.N0000",
+          34
+        ],
+        [
+          "DIPD.N0000",
+          34
+        ],
+        [
+          "HAYC.N0000",
+          33
+        ],
+        [
+          "JKH.N0000",
+          31
+        ],
+        [
+          "CCS.N0000",
+          27
+        ],
+        [
+          "TPL.N0000",
+          25
+        ],
+        [
+          "MGT.N0000",
+          25
+        ]
+      ],
+      "sample_row": {
+        "symbol": "CARE.N0000",
+        "d_ann": "2015-12-14",
+        "d_xd": "2015-12-23",
+        "d_pay": "2016-01-05",
+        "dps": 0.6,
+        "interim": "Final/Other",
+        "fy": "FY16"
+      }
+    },
+    "cds_infoline_index": {
+      "n_pdf_links": 25,
+      "latest_5": [
+        "http://www.cds.lk/wp-content/uploads/2026/05/CDS-INFOLINE_April-2026.pdf",
+        "http://www.cds.lk/wp-content/uploads/2026/05/CDS-INFOLINE_March-2026.pdf",
+        "http://www.cds.lk/wp-content/uploads/2026/05/CDS-INFOLINE_February-2026.pdf",
+        "http://www.cds.lk/wp-content/uploads/2026/05/CDS-INFOLINE_January-2026.pdf",
+        "http://www.cds.lk/wp-content/uploads/2026/02/CDS-INFOLINE_December-2025.pdf"
+      ]
+    }
+  },
+  "errors": [],
+  "takeaways": {
+    "fundamentals_board_usable": true,
+    "foreign_holding_fills_f086_gap": true,
+    "xd_soon_alerts_near_term": 8,
+    "would_need_for_prod": [
+      "ToS / redistribution decision for LOLC",
+      "Postgres tables + flag-default-0 adapters",
+      "Attribution + as-of on dash",
+      "CSE prices remain truth (ignore LOLC price for quotes)"
+    ]
+  }
+}
