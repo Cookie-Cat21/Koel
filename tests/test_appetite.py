@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import math
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from chime.appetite import (
-    AppetiteDayResult,
     backfill_appetite,
     band_for_score,
     build_day_result,
@@ -245,6 +244,7 @@ async def test_compute_day_empty_returns_none() -> None:
 @pytest.mark.asyncio
 async def test_compute_from_snapshots() -> None:
     storage = MagicMock()
+    ts = datetime(2026, 7, 16, 10, 0, tzinfo=UTC)
     storage.list_latest_price_snapshots = AsyncMock(
         return_value=[
             PriceSnapshot(
@@ -254,7 +254,7 @@ async def test_compute_from_snapshots() -> None:
                 change=1.0,
                 change_pct=1.0,
                 volume=1000.0,
-                ts=__import__("datetime").datetime(2026, 7, 16, 10, 0, tzinfo=__import__("datetime").UTC),
+                ts=ts,
                 previous_close=99.0,
             ),
             PriceSnapshot(
@@ -264,7 +264,7 @@ async def test_compute_from_snapshots() -> None:
                 change=-1.0,
                 change_pct=-2.0,
                 volume=500.0,
-                ts=__import__("datetime").datetime(2026, 7, 16, 10, 0, tzinfo=__import__("datetime").UTC),
+                ts=ts,
                 previous_close=51.0,
             ),
         ]
