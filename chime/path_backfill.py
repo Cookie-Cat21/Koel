@@ -52,6 +52,62 @@ async def seed_cse_stock_ids_from_trade_summary(
     return with_ids
 
 
+async def seed_cse_stock_ids_from_company_info(
+    *,
+    storage: Storage,
+    cse: CSEClient,
+    limit: int = 40,
+    sleep_seconds: float = 0.35,
+) -> int:
+    """Fill ``cse_stock_id`` via ``companyInfoSummery`` for thin names.
+
+    ``tradeSummary`` omits some listed issuers (e.g. TAP) even though
+    ``companyInfoSummery`` still returns a chart ``id``. Without this seed,
+    path backfill never reaches them and the dash falls back to fat tick
+    blocks instead of daily candles.
+    """
+    if (
+        isinstance(limit, bool)
+        or not isinstance(limit, int)
+        or limit <= 0
+    ):
+        return 0
+    pause = (
+        sleep_seconds
+        if isinstance(sleep_seconds, int | float)
+        and not isinstance(sleep_seconds, bool)
+        and sleep_seconds >= 0
+        else 0.35
+    )
+    symbols = await storage.list_symbols_missing_cse_stock_id(limit=limit)
+    seeded = 0
+    for idx, symbol in enumerate(symbols):
+        try:
+            snap = await cse.fetch_company_info(symbol)
+        except Exception as exc:
+            log.warning(
+                "path_backfill_company_info_failed",
+                symbol=symbol,
+                error=str(exc),
+            )
+            snap = None
+        if snap is not None and snap.cse_stock_id is not None:
+            await storage.upsert_stock(
+                symbol,
+                snap.name,
+                cse_stock_id=snap.cse_stock_id,
+            )
+            seeded += 1
+            log.info(
+                "path_backfill_company_info_seeded",
+                symbol=symbol,
+                stock_id=snap.cse_stock_id,
+            )
+        if pause > 0 and idx + 1 < len(symbols):
+            await asyncio.sleep(float(pause))
+    return seeded
+
+
 async def run_path_backfill(
     *,
     settings: Settings,
@@ -90,6 +146,21 @@ async def run_path_backfill(
 
     if seed_ids:
         await seed_cse_stock_ids_from_trade_summary(storage=storage, cse=cse)
+        # Cap companyInfo probes so a limited ops pass still finishes quickly.
+        info_limit = 40
+        if (
+            limit is not None
+            and isinstance(limit, int)
+            and not isinstance(limit, bool)
+            and limit > 0
+        ):
+            info_limit = min(40, limit)
+        await seed_cse_stock_ids_from_company_info(
+            storage=storage,
+            cse=cse,
+            limit=info_limit,
+            sleep_seconds=float(pause),
+        )
 
     targets = await storage.list_stocks_with_cse_ids()
     if (

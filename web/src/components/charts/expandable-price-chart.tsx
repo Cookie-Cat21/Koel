@@ -74,10 +74,19 @@ export function ExpandablePriceChart({
     if (!src || src.length < 2) return null;
     return src.slice(-HERO_DISPLAY_CANDLES);
   }, [bars, initialBars]);
+  // Hero only uses intraday when the latest Colombo session has enough
+  // prints — otherwise a handful of ticks becomes a few fat blocks that
+  // look nothing like candles (common when daily_bars is still empty).
   const compactIntraday = useMemo(() => {
     const series = filterLatestColomboSession(newestFiniteTicks(points));
-    if (series.length < 2) return null;
-    return ticksToIntradayBars(series, displayCandlesForRange("1D"));
+    if (
+      !isColomboSessionToday(series) ||
+      series.length < MIN_TICKS_FOR_INTRADAY
+    ) {
+      return null;
+    }
+    const built = ticksToIntradayBars(series, displayCandlesForRange("1D"));
+    return built.length >= 4 ? built : null;
   }, [points]);
   // Realtime ticks fetched client-side; falls back to SSR `points` until the
   // first refresh lands (derived, so prop updates never need a reset effect).

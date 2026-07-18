@@ -20,7 +20,11 @@ from chime.adapters.cse import (
 )
 from chime.config import Settings
 from chime.domain import DailyBar, PriceSnapshot
-from chime.path_backfill import PathBackfillResult, run_path_backfill
+from chime.path_backfill import (
+    PathBackfillResult,
+    run_path_backfill,
+    seed_cse_stock_ids_from_company_info,
+)
 
 
 def test_trade_row_maps_cse_stock_id() -> None:
@@ -153,7 +157,9 @@ async def test_path_backfill_force_runs_and_persists() -> None:
         ]
     )
     storage.list_stocks_with_cse_ids = AsyncMock(return_value=[("JKH.N0000", 297)])
+    storage.list_symbols_missing_cse_stock_id = AsyncMock(return_value=[])
     storage.persist_daily_bars = AsyncMock(return_value=1)
+    storage.upsert_stock = AsyncMock()
 
     cse = AsyncMock()
     cse.fetch_trade_summary = AsyncMock(
@@ -166,6 +172,7 @@ async def test_path_backfill_force_runs_and_persists() -> None:
             )
         ]
     )
+    cse.fetch_company_info = AsyncMock(return_value=None)
     cse.fetch_company_chart = AsyncMock(return_value=[bar])
 
     result = await run_path_backfill(
@@ -181,3 +188,29 @@ async def test_path_backfill_force_runs_and_persists() -> None:
     assert result.bars_upserted == 1
     cse.fetch_company_chart.assert_awaited_once()
     storage.persist_daily_bars.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_company_info_seed_fills_missing_ids() -> None:
+    storage = AsyncMock()
+    storage.list_symbols_missing_cse_stock_id = AsyncMock(
+        return_value=["TAP.N0000"]
+    )
+    storage.upsert_stock = AsyncMock()
+    cse = AsyncMock()
+    cse.fetch_company_info = AsyncMock(
+        return_value=PriceSnapshot(
+            symbol="TAP.N0000",
+            price=30.1,
+            ts=datetime.now(UTC),
+            name="AMBEON CAPITAL PLC",
+            cse_stock_id=2145,
+        )
+    )
+    n = await seed_cse_stock_ids_from_company_info(
+        storage=storage, cse=cse, limit=10, sleep_seconds=0.0
+    )
+    assert n == 1
+    storage.upsert_stock.assert_awaited_once_with(
+        "TAP.N0000", "AMBEON CAPITAL PLC", cse_stock_id=2145
+    )

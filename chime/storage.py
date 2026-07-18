@@ -485,15 +485,23 @@ class Storage:
         return rows
 
     async def list_stocks_with_cse_ids(self) -> list[tuple[str, int]]:
-        """Return ``(symbol, cse_stock_id)`` for path backfill targets."""
+        """Return ``(symbol, cse_stock_id)`` for path backfill targets.
+
+        Prefer symbols with no ``daily_bars`` yet so a ``--limit`` pass fills
+        gaps (thin names / late watchlist adds) instead of re-hitting A… first.
+        """
         async with self._pool.connection() as conn:
             rows = await (
                 await conn.execute(
                     """
-                    SELECT symbol, cse_stock_id
-                    FROM stocks
-                    WHERE cse_stock_id IS NOT NULL
-                    ORDER BY symbol ASC
+                    SELECT s.symbol, s.cse_stock_id
+                    FROM stocks s
+                    WHERE s.cse_stock_id IS NOT NULL
+                    ORDER BY
+                      EXISTS (
+                        SELECT 1 FROM daily_bars d WHERE d.symbol = s.symbol
+                      ) ASC,
+                      s.symbol ASC
                     """
                 )
             ).fetchall()
@@ -509,6 +517,48 @@ class Storage:
             if isinstance(raw_id, bool) or not isinstance(raw_id, int) or raw_id <= 0:
                 continue
             out.append((symbol, raw_id))
+        return out
+
+    async def list_symbols_missing_cse_stock_id(
+        self, *, limit: int = 40
+    ) -> list[str]:
+        """Listed CSE tickers that still need a chart ``stockId``.
+
+        Prefers symbols that already have poller snapshots (someone cares)
+        and skips synthetic rows like ``MARKET`` / bare indexes.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+            return []
+        cap = min(limit, 200)
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT s.symbol
+                    FROM stocks s
+                    WHERE s.cse_stock_id IS NULL
+                      AND s.symbol ~ '^[A-Z0-9]+\\.[A-Z][0-9]{4}$'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM daily_bars d WHERE d.symbol = s.symbol
+                      )
+                    ORDER BY
+                      EXISTS (
+                        SELECT 1 FROM price_snapshots p WHERE p.symbol = s.symbol
+                      ) DESC,
+                      s.symbol ASC
+                    LIMIT %s
+                    """,
+                    (cap,),
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            raw = row.get("symbol")
+            if not isinstance(raw, str):
+                continue
+            symbol = raw.strip().upper()
+            if symbol:
+                out.append(symbol)
         return out
 
     async def persist_daily_bars(self, bars: list[DailyBar]) -> int:
