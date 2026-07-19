@@ -45,13 +45,21 @@ async def _pending_annual_by_symbol(storage: Storage) -> list[Disclosure]:
               AND d.symbol IS NOT NULL
               AND d.symbol LIKE '%.N0000'
               AND g.id IS NULL
+              -- True annual only — '%financial statement%' used to match interims
+              -- and burn the drain on not_annual skips.
               AND (
-                d.title ILIKE '%annual%'
-                OR d.category ILIKE '%annual%'
-                OR d.title ILIKE '%audited%'
-                OR d.title ILIKE '%financial statement%'
-                OR d.external_id LIKE 'financials:annual:%'
+                d.external_id LIKE 'financials:annual:%'
+                OR d.title ILIKE '%annual report%'
+                OR (
+                  d.category ILIKE '%annual%'
+                  AND d.title ILIKE '%annual%'
+                )
               )
+              AND d.title NOT ILIKE '%interim%'
+              AND d.title NOT ILIKE '%quarterly%'
+              AND d.title NOT ILIKE '%three months%'
+              AND d.external_id NOT LIKE 'financials:quarterly:%'
+              AND d.external_id NOT LIKE 'financials:other:%'
             ORDER BY d.symbol, d.published_at DESC NULLS LAST, d.id DESC
             """
         )
