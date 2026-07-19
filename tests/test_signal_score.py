@@ -8,7 +8,7 @@ from chime.domain import DailyBar
 from chime.scenarios.guardrails import contains_buy_sell_language
 from chime.signals.eval import evaluate_walk_forward
 from chime.signals.forecast import forecast_path
-from chime.signals.job import _percentile_ranks
+from chime.signals.job import _bars_as_of, _percentile_ranks
 from chime.signals.score import MODEL_VERSION, ExtraFactors, score_symbol_path
 
 
@@ -192,6 +192,15 @@ def test_percentile_ranks_basic() -> None:
     assert ranks["a"] == 0.0
     assert ranks["c"] == 1.0
     assert 0.0 < ranks["b"] < 1.0
+
+
+def test_bars_as_of_truncates_and_passthrough() -> None:
+    bars = _bars([10.0 + i for i in range(10)], start=date(2026, 7, 1))
+    assert _bars_as_of(bars, None) == bars
+    cut = _bars_as_of(bars, date(2026, 7, 5))
+    assert len(cut) == 5
+    assert all(b.trade_date <= date(2026, 7, 5) for b in cut)
+    assert _bars_as_of(bars, date(2026, 6, 30)) == []
 
 
 def test_walk_forward_eval_runs() -> None:

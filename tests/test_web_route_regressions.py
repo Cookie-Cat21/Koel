@@ -18,6 +18,7 @@ UNIT_SPARKLINE_MTS = Path(__file__).resolve().parent / "web_sparkline_finite_uni
 UNIT_PERIOD_TECH_MTS = Path(__file__).resolve().parent / "web_period_tech_unit.mts"
 UNIT_APPETITE_MAX_MTS = Path(__file__).resolve().parent / "web_appetite_max_unit.mts"
 UNIT_GITHUB_ACTIONS_MTS = Path(__file__).resolve().parent / "web_github_actions_health_unit.mts"
+UNIT_SIGNAL_RANKS_MTS = Path(__file__).resolve().parent / "web_signal_ranks_unit.mts"
 
 RUNTIME_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"}
 SKIP_DIRS = {".next", "node_modules"}
@@ -863,6 +864,32 @@ def test_appetite_max_stitch_unit() -> None:
             f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
         )
     assert "WEB_APPETITE_MAX_UNIT_OK" in proc.stdout
+
+
+def test_signal_ranks_unit() -> None:
+    """Signal Board: sort/rank helpers + prior-day Δ (+ = rose)."""
+    assert UNIT_SIGNAL_RANKS_MTS.is_file(), f"missing {UNIT_SIGNAL_RANKS_MTS}"
+    _require_web_node_modules()
+    npx = _npx()
+    staged = WEB / ".web_signal_ranks_unit.mts"
+    staged.write_text(UNIT_SIGNAL_RANKS_MTS.read_text(encoding="utf-8"), encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            [npx, "--yes", "tsx", str(staged.name)],
+            cwd=str(WEB),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    finally:
+        staged.unlink(missing_ok=True)
+    if proc.returncode != 0:
+        pytest.fail(
+            f".web_signal_ranks_unit.mts failed ({proc.returncode}):\n"
+            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+    assert "WEB_SIGNAL_RANKS_UNIT_OK" in proc.stdout
 
 
 def test_github_actions_health_unit() -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from chime.domain import DailyBar
 from chime.logging_setup import get_logger
@@ -28,6 +28,14 @@ class SignalScoreResult:
     symbols_skipped: int
     forecasts_written: int
     model_version: str
+    as_of: str | None = None
+
+
+def _bars_as_of(bars: list[DailyBar], as_of: date | None) -> list[DailyBar]:
+    """Keep bars on/before ``as_of`` (for historical leaderboard snapshots)."""
+    if as_of is None:
+        return bars
+    return [b for b in bars if b.trade_date <= as_of]
 
 
 def _window_return_from_bars(bars: list[DailyBar], n: int = 20) -> float | None:
@@ -70,6 +78,8 @@ async def _sector_peer_ret_20d(
     *,
     symbol: str,
     cache: dict[str, float | None],
+    bars_by_symbol: dict[str, list[DailyBar]] | None = None,
+    as_of: date | None = None,
 ) -> float | None:
     sector = await storage.get_stock_sector(symbol)
     if sector is None:
@@ -81,7 +91,10 @@ async def _sector_peer_ret_20d(
     for peer in peers:
         if peer == symbol:
             continue
-        peer_bars = await storage.list_daily_bars(peer)
+        if bars_by_symbol is not None and peer in bars_by_symbol:
+            peer_bars = bars_by_symbol[peer]
+        else:
+            peer_bars = _bars_as_of(await storage.list_daily_bars(peer), as_of)
         ret = _window_return_from_bars(peer_bars, 20)
         if ret is not None:
             rets.append(ret)
@@ -96,12 +109,17 @@ async def run_signal_score_job(
     limit: int | None = None,
     model_version: str = MODEL_VERSION,
     ml_forecast: bool = False,
+    as_of: date | None = None,
 ) -> SignalScoreResult:
     """Score all symbols that have daily bars (or first ``limit`` symbols).
 
+    When ``as_of`` is set, bars are truncated to that trade date so a historical
+    leaderboard snapshot can be written (for rank Δ vs the next session).
+
     When ``ml_forecast`` is True, write HGB ``forecast_points`` once after
     scoring (requires optional ``[ml]`` extra). Otherwise use naive
-    ``forecast_path`` per symbol (legacy).
+    ``forecast_path`` per symbol (legacy). Historical ``as_of`` runs always
+    skip ML forecast writes (those stay tip-of-book).
     """
     symbols = await storage.list_symbols_with_daily_bars()
     if (
@@ -112,12 +130,15 @@ async def run_signal_score_job(
     ):
         symbols = symbols[:limit]
 
+    # Historical snapshots: never emit tip-of-book ML forecasts.
+    write_ml = bool(ml_forecast) and as_of is None
+
     # Pass 1: load bars + 20d returns (current and lag-5 for rank stability).
     bars_by_symbol: dict[str, list[DailyBar]] = {}
     ret20_now: dict[str, float] = {}
     ret20_lag: dict[str, float] = {}
     for symbol in symbols:
-        bars = await storage.list_daily_bars(symbol)
+        bars = _bars_as_of(await storage.list_daily_bars(symbol), as_of)
         bars_by_symbol[symbol] = bars
         r_now = _window_return_from_bars(bars, 20)
         if r_now is not None:
@@ -142,14 +163,22 @@ async def run_signal_score_job(
     skipped = 0
     forecasts = 0
     peer_cache: dict[str, float | None] = {}
-    since = datetime.now(UTC) - timedelta(days=30)
+    # Anchor disclosure window to the score tip (or clock for live runs).
+    tip_day = as_of or datetime.now(UTC).date()
+    since = datetime(tip_day.year, tip_day.month, tip_day.day, tzinfo=UTC) - timedelta(
+        days=30
+    )
     aspi_pct = await storage.latest_index_change_pct("ASPI")
 
     for symbol in symbols:
         bars = bars_by_symbol.get(symbol, [])
         yoy = await storage.get_latest_filing_yoy(symbol)
         peer_ret = await _sector_peer_ret_20d(
-            storage, symbol=symbol, cache=peer_cache
+            storage,
+            symbol=symbol,
+            cache=peer_cache,
+            bars_by_symbol=bars_by_symbol,
+            as_of=as_of,
         )
         disc_n = await storage.count_disclosures_since(symbol, since=since)
         notice_by = await storage.count_notices_by_type_since(symbol, since=since)
@@ -188,7 +217,7 @@ async def run_signal_score_job(
             if pair_ret is None and pair in bars_by_symbol:
                 pair_ret = _window_return_from_bars(bars_by_symbol[pair], 20)
             elif pair_ret is None:
-                pair_bars = await storage.list_daily_bars(pair)
+                pair_bars = _bars_as_of(await storage.list_daily_bars(pair), as_of)
                 pair_ret = _window_return_from_bars(pair_bars, 20)
             if my_ret is not None and pair_ret is not None:
                 dual_gap = my_ret - pair_ret
@@ -216,9 +245,12 @@ async def run_signal_score_job(
         if result is None:
             skipped += 1
             continue
+        # Historical --as-of runs pin the snapshot day so the board does not
+        # fragment across last-trade dates for idle symbols.
+        write_as_of = as_of if as_of is not None else result.as_of
         await storage.upsert_symbol_score(
             symbol=result.symbol,
-            as_of=result.as_of,
+            as_of=write_as_of,
             model_version=model_version,
             score=result.score,
             components=result.components,
@@ -226,12 +258,13 @@ async def run_signal_score_job(
             bar_count=result.bar_count,
         )
         scored += 1
-        if not ml_forecast:
+        # Naive path forecast only for live tip runs without ML flag.
+        if not write_ml and as_of is None and not ml_forecast:
             points = forecast_path(bars)
             if points:
                 forecasts += await storage.replace_forecast_points(points)
 
-    if ml_forecast:
+    if write_ml:
         from chime.ml.serve import write_ml_forecasts
 
         ml_result = await write_ml_forecasts(
@@ -246,6 +279,7 @@ async def run_signal_score_job(
         symbols_skipped=skipped,
         forecasts_written=forecasts,
         model_version=model_version,
+        as_of=as_of.isoformat() if as_of is not None else None,
     )
     log.info("signal_score_job_done", **asdict(out))
     return out

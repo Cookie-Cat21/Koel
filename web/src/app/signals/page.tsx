@@ -47,16 +47,32 @@ type SignalItem = {
   forecast_gate_label: string | null;
   forecast_confidence: number | null;
   forecast_confidence_band: string | null;
+  rank: number;
+  prior_rank: number | null;
+  rank_delta: number | null;
 };
 
-function asSignalItems(body: unknown): SignalItem[] | null {
+type SignalBoardBody = {
+  items: SignalItem[];
+  as_of: string | null;
+  prior_as_of: string | null;
+};
+
+function asDateIso(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1]! : null;
+}
+
+function asSignalBoard(body: unknown): SignalBoardBody | null {
   if (body == null || typeof body !== "object" || Array.isArray(body)) {
     return null;
   }
-  const items = (body as { items?: unknown }).items;
-  if (!Array.isArray(items)) return null;
+  const root = body as Record<string, unknown>;
+  const itemsRaw = root.items;
+  if (!Array.isArray(itemsRaw)) return null;
   const out: SignalItem[] = [];
-  for (const row of items) {
+  for (const row of itemsRaw) {
     if (out.length >= MAX_PAGE_ITEMS) break;
     if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
     const r = row as Record<string, unknown>;
@@ -82,11 +98,14 @@ function asSignalItems(body: unknown): SignalItem[] | null {
         : null;
     const spoke =
       typeof r.spoke === "boolean" ? r.spoke : isSelectiveGate(forecastGate);
+    const rankRaw = toFiniteNumber(r.rank);
+    const priorRankRaw = toFiniteNumber(r.prior_rank);
+    const rankDeltaRaw = toFiniteNumber(r.rank_delta);
     out.push({
       symbol,
       name,
       score: toFiniteNumber(r.score),
-      as_of: typeof r.as_of === "string" ? r.as_of.slice(0, 10) : null,
+      as_of: asDateIso(r.as_of),
       model_version:
         typeof r.model_version === "string" && r.model_version.trim()
           ? r.model_version.trim().slice(0, 64)
@@ -104,24 +123,70 @@ function asSignalItems(body: unknown): SignalItem[] | null {
           : gateShortLabel(forecastGate),
       forecast_confidence: forecastConfidence,
       forecast_confidence_band: forecastBand,
+      rank: rankRaw == null || rankRaw < 1 ? out.length + 1 : Math.trunc(rankRaw),
+      prior_rank:
+        priorRankRaw == null || priorRankRaw < 1
+          ? null
+          : Math.trunc(priorRankRaw),
+      rank_delta: rankDeltaRaw == null ? null : Math.trunc(rankDeltaRaw),
     });
   }
-  return out;
+  return {
+    items: out,
+    as_of: asDateIso(root.as_of),
+    prior_as_of: asDateIso(root.prior_as_of),
+  };
+}
+
+function RankDeltaBadge({
+  priorRank,
+  rankDelta,
+  hasPriorBoard,
+}: {
+  priorRank: number | null;
+  rankDelta: number | null;
+  hasPriorBoard: boolean;
+}) {
+  if (!hasPriorBoard) return null;
+  if (priorRank == null || rankDelta == null) {
+    return (
+      <span className="text-xs tabular-nums text-muted-foreground">new</span>
+    );
+  }
+  if (rankDelta === 0) {
+    return (
+      <span className="text-xs tabular-nums text-muted-foreground">—</span>
+    );
+  }
+  if (rankDelta > 0) {
+    return (
+      <span className="text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
+        ↑{rankDelta}
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs font-medium tabular-nums text-rose-700 dark:text-rose-300">
+      ↓{Math.abs(rankDelta)}
+    </span>
+  );
 }
 
 export default async function SignalsPage() {
   await requirePageSession();
   const res = await serverApiGet("/api/v1/signals?limit=50");
-  let items: SignalItem[] | null = null;
+  let board: SignalBoardBody | null = null;
   if (res?.ok) {
     try {
-      items = asSignalItems(await res.json());
+      board = asSignalBoard(await res.json());
     } catch {
-      items = null;
+      board = null;
     }
   }
 
+  const items = board?.items ?? null;
   const spokeCount = items?.filter((i) => i.spoke).length ?? 0;
+  const hasDelta = board?.prior_as_of != null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,8 +197,25 @@ export default async function SignalsPage() {
           description="Research scores from CSE daily path factors (momentum, volatility, liquidity). Higher score is not a buy — informational only. Spoke means a selective forecast exists; Silent means the model stayed quiet."
         />
         <NfaInline className="mt-3" />
-        {items != null && items.length > 0 ? (
+        {board != null && board.as_of ? (
           <p className="mt-3 text-sm text-muted-foreground">
+            Board as of{" "}
+            <span className="font-medium text-foreground">{board.as_of}</span>
+            {hasDelta ? (
+              <>
+                {" · "}
+                rank Δ vs{" "}
+                <span className="font-medium text-foreground">
+                  {board.prior_as_of}
+                </span>
+              </>
+            ) : (
+              <> · rank Δ needs a prior daily score run</>
+            )}
+          </p>
+        ) : null}
+        {items != null && items.length > 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
             Forecast coverage on this page:{" "}
             <span className="font-medium text-foreground">
               {spokeCount} Spoke
@@ -154,19 +236,24 @@ export default async function SignalsPage() {
         ) : items.length === 0 ? (
           <EmptyState
             title="No scores yet"
-            description="Run path backfill then: python3 -m chime score-signals --limit 1000"
+            description="Run path backfill then: python3 -m chime score-signals --limit 0"
           />
         ) : (
           <ol className="mt-8 divide-y divide-border rounded-lg border border-border">
-            {items.map((row, idx) => (
+            {items.map((row) => (
               <li
                 key={row.symbol}
                 className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      #{idx + 1}
+                    <span className="inline-flex items-baseline gap-1.5 text-xs text-muted-foreground tabular-nums">
+                      <span>#{row.rank}</span>
+                      <RankDeltaBadge
+                        priorRank={row.prior_rank}
+                        rankDelta={row.rank_delta}
+                        hasPriorBoard={hasDelta}
+                      />
                     </span>
                     <Link
                       href={`/symbols/${encodeURIComponent(row.symbol)}`}
@@ -208,6 +295,11 @@ export default async function SignalsPage() {
                     {row.model_version}
                     {row.as_of ? ` · as of ${row.as_of}` : ""}
                     {row.bar_count != null ? ` · ${row.bar_count} bars` : ""}
+                    {row.prior_rank != null
+                      ? ` · was #${row.prior_rank}`
+                      : hasDelta
+                        ? " · new to board"
+                        : ""}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

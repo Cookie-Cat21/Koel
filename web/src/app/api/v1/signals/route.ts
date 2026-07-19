@@ -13,7 +13,7 @@ const MAX_LIMIT = 100;
 
 /**
  * GET /api/v1/signals — Signal Board research scores (Postgres only).
- * Sorted high→low score. Higher ≠ buy. Session required.
+ * Sorted high→low score with prior-day rank Δ. Higher ≠ buy. Session required.
  */
 export async function GET(request: NextRequest) {
   const gated = await requireSession(request);
@@ -28,9 +28,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const pool = getPool();
-    const items = await queryLatestSignals(pool, { limit, offset });
+    const board = await queryLatestSignals(pool, { limit, offset });
     return jsonOk({
-      items,
+      items: board.items,
+      as_of: board.as_of,
+      prior_as_of: board.prior_as_of,
+      model_version: board.model_version,
       limit,
       offset,
       disclaimer:

@@ -1,0 +1,74 @@
+# Daily Signal Board scoring — writes symbol_scores for the latest path tip
+# so the dash can show leaderboard rank Δ vs the prior as_of day.
+#
+# Requires repo secret: DATABASE_URL.
+# Kill switch: vars.SCORE_SIGNALS=0 skips scheduled runs (dispatch still works).
+#
+# Research scores only — not financial advice. Postgres + CSE path bars only.
+
+name: score-signals
+
+on:
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: Optional YYYY-MM-DD historical tip (leave empty for latest bars)
+        required: false
+        default: ""
+      limit:
+        description: Max symbols (0 = all with daily bars)
+        required: false
+        default: "0"
+  schedule:
+    # Weekdays ~16:45 Asia/Colombo (11:15 UTC) — after CSE close (14:30 SLT).
+    - cron: "15 11 * * 1-5"
+
+concurrency:
+  group: score-signals
+  cancel-in-progress: false
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.SCORE_SIGNALS != '0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: pip install -e ".[dev]"
+
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL secret is not set"
+            exit 1
+          fi
+
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m chime migrate
+
+      - name: Score Signal Board
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Keep ML forecast emission on the ml-self-learn workflow.
+          ML_FORECAST_ENABLED: "0"
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '0' }}"
+          AS_OF="${{ github.event.inputs.as_of || '' }}"
+          if [ -n "$AS_OF" ]; then
+            python -m chime score-signals --limit "$LIMIT" --as-of "$AS_OF"
+          else
+            python -m chime score-signals --limit "$LIMIT"
+          fi

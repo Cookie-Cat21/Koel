@@ -398,6 +398,15 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     parser.add_argument(
+        "--as-of",
+        type=str,
+        default=None,
+        help=(
+            "For score-signals: YYYY-MM-DD tip date — truncate daily bars and "
+            "write a historical leaderboard snapshot (rank Δ needs ≥2 as_of days)"
+        ),
+    )
+    parser.add_argument(
         "--all-symbols",
         action="store_true",
         help=(
@@ -852,6 +861,16 @@ def main(argv: list[str] | None = None) -> None:
         configure_logging()
         settings = Settings.from_env(require_token=False)
         limit = _cli_limit(args.limit)
+        as_of_raw = args.as_of if isinstance(args.as_of, str) else None
+        as_of_day = None
+        if as_of_raw and as_of_raw.strip():
+            from datetime import date as _date
+
+            try:
+                as_of_day = _date.fromisoformat(as_of_raw.strip())
+            except ValueError:
+                print(f"score-signals: invalid --as-of {as_of_raw!r} (want YYYY-MM-DD)")
+                return
 
         async def _score() -> None:
             storage = Storage(settings.database_url)
@@ -861,6 +880,7 @@ def main(argv: list[str] | None = None) -> None:
                     storage=storage,
                     limit=limit,
                     ml_forecast=settings.ml_forecast_enabled,
+                    as_of=as_of_day,
                 )
                 print(
                     "score-signals: "
@@ -869,7 +889,8 @@ def main(argv: list[str] | None = None) -> None:
                     f"skipped={result.symbols_skipped} "
                     f"forecast_pts={result.forecasts_written} "
                     f"model={result.model_version} "
-                    f"ml_forecast={int(settings.ml_forecast_enabled)}"
+                    f"ml_forecast={int(settings.ml_forecast_enabled)} "
+                    f"as_of={result.as_of or 'latest'}"
                 )
             finally:
                 await storage.close()
