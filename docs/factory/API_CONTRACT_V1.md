@@ -160,8 +160,8 @@ Requires authenticated session (v1). Prefer proxying poller health and/or DB pin
     "appetite_cse_tip": "2026-07-17"
   },
   "ci": {
-    "repo": "Cookie-Cat21/Koel",
-    "html_url": "https://github.com/Cookie-Cat21/Koel/actions",
+    "repo": "ArdenoStudio/Koel",
+    "html_url": "https://github.com/ArdenoStudio/Koel/actions",
     "runs": [],
     "fetched_at": "2026-07-19T12:00:00.000Z"
   },

@@ -11,10 +11,14 @@ import {
 } from "./src/lib/api/github-actions-health.ts";
 
 function testRepoResolve() {
-  assert.equal(resolveHealthGithubRepo(undefined), "Cookie-Cat21/Koel");
-  assert.equal(resolveHealthGithubRepo("Cookie-Cat21/Koel"), "Cookie-Cat21/Koel");
-  assert.equal(resolveHealthGithubRepo("../evil"), "Cookie-Cat21/Koel");
-  assert.equal(resolveHealthGithubRepo("https://evil"), "Cookie-Cat21/Koel");
+  assert.equal(resolveHealthGithubRepo(undefined), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("ArdenoStudio/Koel"), "ArdenoStudio/Koel");
+  // Legacy fork / old Vercel env defaults must not point Health at the fork.
+  assert.equal(resolveHealthGithubRepo("Cookie-Cat21/Koel"), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("cookie-cat21/koel"), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("Cookie-Cat21/Other"), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("../evil"), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("https://evil"), "ArdenoStudio/Koel");
 }
 
 async function testFetchPickLatest() {
@@ -31,7 +35,7 @@ async function testFetchPickLatest() {
             head_branch: "main",
             event: "push",
             run_number: 10,
-            html_url: "https://github.com/Cookie-Cat21/Koel/actions/runs/10",
+            html_url: "https://github.com/ArdenoStudio/Koel/actions/runs/10",
             updated_at: "2026-07-19T12:00:00Z",
           },
           {
@@ -41,7 +45,7 @@ async function testFetchPickLatest() {
             head_branch: "feat",
             event: "pull_request",
             run_number: 9,
-            html_url: "https://github.com/Cookie-Cat21/Koel/actions/runs/9",
+            html_url: "https://github.com/ArdenoStudio/Koel/actions/runs/9",
             updated_at: "2026-07-19T11:00:00Z",
           },
           {
@@ -51,7 +55,7 @@ async function testFetchPickLatest() {
             head_branch: "main",
             event: "schedule",
             run_number: 3,
-            html_url: "https://github.com/Cookie-Cat21/Koel/actions/runs/3",
+            html_url: "https://github.com/ArdenoStudio/Koel/actions/runs/3",
             updated_at: "2026-07-19T10:00:00Z",
           },
         ],
@@ -61,6 +65,7 @@ async function testFetchPickLatest() {
 
   const block = await queryGithubActionsHealth(fetchImpl);
   assert.ok(block);
+  assert.equal(block!.repo, "ArdenoStudio/Koel");
   assert.equal(block!.runs.length, 2);
   assert.equal(block!.runs[0]!.workflow, "CI");
   assert.equal(block!.runs[0]!.conclusion, "success");

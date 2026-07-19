@@ -100,6 +100,58 @@ type CiRun = {
   updated_at: string | null;
 };
 
+/** Expected scheduled / ops workflows — Health checklist (fail-soft). */
+const SCHEDULED_JOBS: ReadonlyArray<{
+  id: string;
+  label: string;
+  /** Match against Actions run ``name`` (case-insensitive substring). */
+  match: string;
+  cadence: string;
+}> = [
+  {
+    id: "pdf-metrics-drain",
+    label: "pdf-metrics-drain",
+    match: "pdf-metrics-drain",
+    cadence: "hourly",
+  },
+  {
+    id: "score-signals",
+    label: "score-signals",
+    match: "score-signals",
+    cadence: "weekdays ~16:45 SLT",
+  },
+  {
+    id: "ml-self-learn",
+    label: "ml-self-learn",
+    match: "ml-self-learn",
+    cadence: "weekdays ~16:00 SLT",
+  },
+  {
+    id: "path-backfill",
+    label: "path-backfill",
+    match: "path-backfill",
+    cadence: "weekly (Sun)",
+  },
+  {
+    id: "appetite-backfill",
+    label: "appetite-backfill",
+    match: "appetite-backfill",
+    cadence: "weekdays ~17:15 SLT",
+  },
+  {
+    id: "sector-notices-backfill",
+    label: "sector-notices-backfill",
+    match: "sector-notices-backfill",
+    cadence: "weekly (Wed)",
+  },
+  {
+    id: "ci",
+    label: "CI",
+    match: "ci",
+    cadence: "on push / PR",
+  },
+];
+
 type CiHealthBlock = {
   repo: string;
   html_url: string;
@@ -815,6 +867,80 @@ export default async function HealthPage() {
                     ))}
                   </ul>
                 )}
+                {ci != null ? (
+                  <div className="mt-6">
+                    <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      Scheduled jobs
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                      Expected ops workflows vs latest run seen in the strip
+                      above. Missing = no recent run returned (not necessarily
+                      broken).
+                    </p>
+                    <ul className="mt-3 divide-y divide-border/60 rounded-xl border border-border">
+                      {SCHEDULED_JOBS.map((job) => {
+                        const needle = job.match.toLowerCase();
+                        const run = ci.runs.find((r) => {
+                          const wf = r.workflow.toLowerCase();
+                          // Short names (e.g. "CI") must match exactly.
+                          return needle.length <= 3
+                            ? wf === needle
+                            : wf.includes(needle);
+                        });
+                        const seen = run != null;
+                        const ok =
+                          seen &&
+                          (run.conclusion === "success" ||
+                            run.status === "in_progress" ||
+                            run.status === "queued");
+                        return (
+                          <li
+                            key={job.id}
+                            className="flex flex-wrap items-center gap-3 px-4 py-2.5"
+                          >
+                            <span
+                              className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-medium ${
+                                ok
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                  : seen
+                                    ? "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+                                    : "border-border bg-muted text-muted-foreground"
+                              }`}
+                              aria-hidden
+                            >
+                              {ok ? "✓" : seen ? "!" : "—"}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-mono text-sm text-foreground">
+                                {job.label}
+                              </p>
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                {job.cadence}
+                                {run?.updated_at
+                                  ? ` · last ${formatTs(run.updated_at)}`
+                                  : " · no recent run"}
+                              </p>
+                            </div>
+                            {run ? (
+                              <a
+                                href={run.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 text-xs font-medium text-foreground underline-offset-4 hover:underline"
+                              >
+                                #{run.run_number}
+                              </a>
+                            ) : (
+                              <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                                —
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 

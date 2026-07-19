@@ -52,6 +52,20 @@ jobs:
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
           python -m chime drain-metrics --limit "$LIMIT"
+      - name: Drain graph (ownership / equity links)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CSE_MIN_INTERVAL_SECONDS: "0.2"
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '30' }}"
+          python -m chime drain-graph --limit "$LIMIT"
+      - name: Drain people (directors from PDFs)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CSE_MIN_INTERVAL_SECONDS: "0.2"
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '30' }}"
+          python -m chime drain-people --limit "$LIMIT"
       - name: Drain briefs (optional)
         if: ${{ github.event.inputs.run_briefs == 'true' || vars.DRAIN_BRIEFS == '1' }}
         env:

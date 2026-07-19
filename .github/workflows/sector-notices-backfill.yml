@@ -1,0 +1,64 @@
+# Optional sector labels + market notices seed for Signal Board factors.
+# Requires repo secret: DATABASE_URL.
+# Kill switch: vars.SECTOR_NOTICES_BACKFILL=0 skips scheduled runs.
+#
+# CSE JSON only — not financial advice.
+
+name: sector-notices-backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      sector_limit:
+        description: Max symbols for sector-backfill (0 = all missing)
+        required: false
+        default: "80"
+  schedule:
+    # Wednesdays ~03:00 Asia/Colombo (21:30 UTC Tue).
+    - cron: "30 21 * * 2"
+
+concurrency:
+  group: sector-notices-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.SECTOR_NOTICES_BACKFILL != '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL secret is not set"
+            exit 1
+          fi
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m chime migrate
+      - name: Sector backfill
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CSE_MIN_INTERVAL_SECONDS: "0.25"
+          SECTOR_BACKFILL_ENABLED: "1"
+        run: |
+          LIMIT="${{ github.event.inputs.sector_limit || '80' }}"
+          python -m chime sector-backfill --force --limit "$LIMIT"
+      - name: Notices backfill
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CSE_MIN_INTERVAL_SECONDS: "0.25"
+          NOTICES_BACKFILL_ENABLED: "1"
+        run: python -m chime notices-backfill --force

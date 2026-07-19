@@ -1,0 +1,58 @@
+# Optional CSE daily path backfill — seeds daily_bars for charts / Signal Board.
+# Requires repo secret: DATABASE_URL.
+# Kill switch: vars.PATH_BACKFILL=0 skips scheduled runs (dispatch still works).
+#
+# Polite CSE JSON only — not financial advice.
+
+name: path-backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Max symbols (0 = all board symbols with ids)
+        required: false
+        default: "50"
+  schedule:
+    # Sundays ~02:00 Asia/Colombo (20:30 UTC Sat) — off-hours board top-up.
+    - cron: "30 20 * * 6"
+
+concurrency:
+  group: path-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.PATH_BACKFILL != '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL secret is not set"
+            exit 1
+          fi
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m chime migrate
+      - name: Path backfill
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CSE_MIN_INTERVAL_SECONDS: "0.25"
+          PATH_BACKFILL_ENABLED: "1"
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '50' }}"
+          python -m chime path-backfill --force --limit "$LIMIT"

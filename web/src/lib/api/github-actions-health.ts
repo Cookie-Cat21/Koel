@@ -7,10 +7,17 @@
 import { toNonNegativeSafeInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
 
-export const HEALTH_GITHUB_REPO_DEFAULT = "Cookie-Cat21/Koel";
-export const HEALTH_CI_FETCH_TIMEOUT_MS = 2500;
-export const HEALTH_CI_RUNS_MAX = 8;
+export const HEALTH_GITHUB_REPO_DEFAULT = "ArdenoStudio/Koel";
+/** Public Actions API can be slow from Vercel; keep fail-soft but give it room. */
+export const HEALTH_CI_FETCH_TIMEOUT_MS = 8000;
+/** Enough slots for CI + drain + ML + backfill workflows on Health. */
+export const HEALTH_CI_RUNS_MAX = 12;
 export const HEALTH_CI_STRING_MAX = 96;
+
+/** Legacy fork / old default — always resolve to the canonical Actions repo. */
+const HEALTH_GITHUB_REPO_ALIASES: Record<string, string> = {
+  "cookie-cat21/koel": HEALTH_GITHUB_REPO_DEFAULT,
+};
 
 export type CiWorkflowRun = {
   workflow: string;
@@ -70,6 +77,12 @@ export function resolveHealthGithubRepo(raw: unknown): string {
   }
   // Fail closed — ``..`` segments must never reach the Actions URL builder.
   if (trimmed.includes("..")) return HEALTH_GITHUB_REPO_DEFAULT;
+  const aliased = HEALTH_GITHUB_REPO_ALIASES[trimmed.toLowerCase()];
+  if (aliased) return aliased;
+  // Any other cookie-cat21/* env leftover → canonical org (same repo name).
+  if (trimmed.toLowerCase().startsWith("cookie-cat21/")) {
+    return HEALTH_GITHUB_REPO_DEFAULT;
+  }
   return trimmed;
 }
 
@@ -143,7 +156,7 @@ export async function queryGithubActionsHealth(
       {
         method: "GET",
         signal: ctrl.signal,
-        redirect: "error",
+        redirect: "follow",
         headers,
         // Cache briefly on the Next data cache when available.
         next: { revalidate: 60 },
