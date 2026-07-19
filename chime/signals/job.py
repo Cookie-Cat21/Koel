@@ -258,12 +258,11 @@ async def run_signal_score_job(
             bar_count=result.bar_count,
         )
         scored += 1
-        if not write_ml:
-            # Naive path forecast only for live tip runs without ML flag.
-            if as_of is None and not ml_forecast:
-                points = forecast_path(bars)
-                if points:
-                    forecasts += await storage.replace_forecast_points(points)
+        # Naive path forecast only for live tip runs without ML flag.
+        if not write_ml and as_of is None and not ml_forecast:
+            points = forecast_path(bars)
+            if points:
+                forecasts += await storage.replace_forecast_points(points)
 
     if write_ml:
         from chime.ml.serve import write_ml_forecasts
