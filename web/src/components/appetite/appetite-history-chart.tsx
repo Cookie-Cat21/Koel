@@ -4,17 +4,24 @@ import { useMemo, useState } from "react";
 
 import {
   BAND_ZONE_COLOR,
+  bandForScore,
   type AppetiteDay,
 } from "@/lib/api/appetite";
 import { cn } from "@/lib/utils";
 
-type RangeKey = "3M" | "1Y" | "MAX";
+type RangeKey = "3M" | "1Y" | "5Y" | "MAX";
 
-/** Calendar-day windows for CSE-truth chips. MAX uses hybrid when available. */
+/** Calendar-day windows. 5Y/MAX prefer hybrid research when loaded. */
 const RANGE_CALENDAR_DAYS: Record<Exclude<RangeKey, "MAX">, number> = {
   "3M": 92,
   "1Y": 365,
+  "5Y": 365 * 5,
 };
+
+/** Draw at most this many points — long hybrid ranges get aggregated. */
+const MAX_DRAW_POINTS = 220;
+
+type AggregateMode = "none" | "week" | "month";
 
 function parseTradeDateMs(iso: string): number {
   const t = Date.parse(`${iso}T12:00:00Z`);
@@ -57,6 +64,78 @@ export function stitchHybridWithCse(
     return Number.isFinite(ms) && ms > tipMs;
   });
   return tail.length === 0 ? hybridAsc : [...hybridAsc, ...tail];
+}
+
+/** UTC ISO week key — Monday-based YYYY-Www. */
+export function weekBucketKey(iso: string): string | null {
+  const ms = parseTradeDateMs(iso);
+  if (!Number.isFinite(ms)) return null;
+  const d = new Date(ms);
+  // ISO week: Thursday determines year; Monday is week start.
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export function monthBucketKey(iso: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  return iso.slice(0, 7);
+}
+
+/**
+ * Collapse dense daily appetite into week/month averages so long charts stay
+ * readable. Keeps the last session's date+score as the final point so the tip
+ * matches the live headline.
+ */
+export function aggregateAppetiteSeries(
+  days: AppetiteDay[],
+  mode: AggregateMode,
+): AppetiteDay[] {
+  if (mode === "none" || days.length < 3) return days;
+  const keyFn = mode === "week" ? weekBucketKey : monthBucketKey;
+  const buckets = new Map<string, AppetiteDay[]>();
+  const order: string[] = [];
+  for (const d of days) {
+    const key = keyFn(d.trade_date);
+    if (!key) continue;
+    if (!buckets.has(key)) {
+      buckets.set(key, []);
+      order.push(key);
+    }
+    buckets.get(key)!.push(d);
+  }
+  if (order.length < 2) return days;
+
+  const out: AppetiteDay[] = [];
+  for (const key of order) {
+    const group = buckets.get(key)!;
+    const last = group[group.length - 1]!;
+    const mean =
+      group.reduce((sum, g) => sum + g.score, 0) / Math.max(1, group.length);
+    const score = Math.max(0, Math.min(100, mean));
+    out.push({
+      ...last,
+      score,
+      band: bandForScore(score),
+    });
+  }
+
+  // Tip fidelity — last plotted point = latest raw session score/date.
+  const tip = days[days.length - 1]!;
+  if (out.length > 0) {
+    out[out.length - 1] = tip;
+  }
+  return out;
+}
+
+/** Pick aggregation so drawn points stay near MAX_DRAW_POINTS. */
+export function chooseAggregateMode(pointCount: number): AggregateMode {
+  if (pointCount <= MAX_DRAW_POINTS) return "none";
+  // ~5 trading days/week → weekly if that lands under the cap.
+  if (pointCount / 5 <= MAX_DRAW_POINTS) return "week";
+  return "month";
 }
 
 function formatAxisDate(iso: string): string {
@@ -113,8 +192,9 @@ function tickIndexes(n: number, target = 5): number[] {
 
 /**
  * Appetite history chart.
- * 3M / 1Y = CSE-truth path. MAX = Yahoo+CSE hybrid research when loaded,
- * otherwise falls back to full CSE with an honest note.
+ * 3M / 1Y = CSE-truth daily path.
+ * 5Y / MAX = Yahoo+CSE hybrid when loaded (falls back to CSE), drawn as
+ * weekly/monthly averages when the raw series is too dense to read.
  */
 export function AppetiteHistoryChart({
   historyAsc,
@@ -122,7 +202,7 @@ export function AppetiteHistoryChart({
   className,
 }: {
   historyAsc: AppetiteDay[];
-  /** Long research series (source=hybrid_research). Used only for MAX. */
+  /** Long research series (source=hybrid_research). Used for 5Y / MAX. */
   hybridHistoryAsc?: AppetiteDay[];
   className?: string;
 }) {
@@ -133,14 +213,29 @@ export function AppetiteHistoryChart({
   );
   const hasHybrid = hybridHistoryAsc.length >= 2;
 
-  const series = useMemo(() => {
+  const rawSeries = useMemo(() => {
     if (range === "MAX") {
       return hasHybrid ? maxSeries : historyAsc;
+    }
+    if (range === "5Y") {
+      const base = hasHybrid ? maxSeries : historyAsc;
+      return sliceByCalendarDays(base, RANGE_CALENDAR_DAYS["5Y"]);
     }
     return sliceByCalendarDays(historyAsc, RANGE_CALENDAR_DAYS[range]);
   }, [historyAsc, maxSeries, hasHybrid, range]);
 
-  const usingHybridMax = range === "MAX" && hasHybrid;
+  const aggregateMode = useMemo(
+    () => chooseAggregateMode(rawSeries.length),
+    [rawSeries.length],
+  );
+
+  const series = useMemo(
+    () => aggregateAppetiteSeries(rawSeries, aggregateMode),
+    [rawSeries, aggregateMode],
+  );
+
+  const usingHybridLong =
+    (range === "MAX" || range === "5Y") && hasHybrid;
 
   if (series.length < 2) {
     return (
@@ -180,14 +275,20 @@ export function AppetiteHistoryChart({
   const last = series[series.length - 1]!;
   const xTicks = tickIndexes(
     series.length,
-    usingHybridMax ? 6 : series.length <= 80 ? 4 : 6,
+    usingHybridLong || range === "5Y" ? 6 : series.length <= 80 ? 4 : 6,
   );
   const shortWindow = range === "3M";
+  const aggLabel =
+    aggregateMode === "month"
+      ? "monthly avg"
+      : aggregateMode === "week"
+        ? "weekly avg"
+        : null;
 
   return (
     <div className={cn("w-full", className)}>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        {(["3M", "1Y", "MAX"] as const).map((k) => (
+        {(["3M", "1Y", "5Y", "MAX"] as const).map((k) => (
           <button
             key={k}
             type="button"
@@ -204,24 +305,30 @@ export function AppetiteHistoryChart({
           </button>
         ))}
         <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
-          {first.trade_date} → {last.trade_date} · {series.length} sessions · min{" "}
+          {first.trade_date} → {last.trade_date}
+          {aggLabel ? ` · ${aggLabel}` : ""} · {rawSeries.length.toLocaleString()}{" "}
+          sessions · min{" "}
           {Math.round(Math.min(...series.map((d) => d.score)))} / max{" "}
           {Math.round(Math.max(...series.map((d) => d.score)))}
         </span>
       </div>
-      {usingHybridMax ? (
+      {usingHybridLong ? (
         <p
           className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-foreground"
           role="status"
         >
           Research reconstruction (Yahoo + CSE) — not CSE official. 3M / 1Y stay
-          on the CSE-truth path. Recent sessions after the hybrid tip use CSE.
+          on the CSE-truth path.
+          {aggLabel
+            ? ` ${range} draws ${aggLabel} so the long path stays readable.`
+            : null}{" "}
+          Recent sessions after the hybrid tip use CSE.
         </p>
       ) : null}
-      {range === "MAX" && !hasHybrid ? (
+      {(range === "MAX" || range === "5Y") && !hasHybrid ? (
         <p className="mb-2 text-xs text-muted-foreground" role="status">
-          MAX is meant to be Yahoo+CSE hybrid research history. Hybrid appetite
-          scores are not loaded yet — showing full CSE path (~1y) until
+          {range} is meant to be Yahoo+CSE hybrid research history. Hybrid
+          appetite scores are not loaded yet — showing CSE path until
           ``appetite-backfill --hybrid`` finishes.
         </p>
       ) : null}
@@ -229,7 +336,7 @@ export function AppetiteHistoryChart({
         viewBox={`0 0 ${w} ${h}`}
         className="h-auto w-full"
         role="img"
-        aria-label={`Market Appetite from ${first.trade_date} to ${last.trade_date}, latest ${Math.round(last.score)}${usingHybridMax ? ", Yahoo+CSE research" : ""}`}
+        aria-label={`Market Appetite from ${first.trade_date} to ${last.trade_date}, latest ${Math.round(last.score)}${usingHybridLong ? ", Yahoo+CSE research" : ""}${aggLabel ? `, ${aggLabel}` : ""}`}
       >
         {zoneBands.map((z) => {
           const yTop = padT + (1 - z.y1 / 100) * plotH;

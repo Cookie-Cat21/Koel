@@ -181,7 +181,7 @@ export default async function AppetitePage() {
                   id="appetite-history-heading"
                   className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
                 >
-                  History · 3M/1Y CSE · MAX Yahoo+CSE research
+                  History · 3M/1Y CSE · 5Y/MAX Yahoo+CSE research
                 </h2>
                 <AppetiteHistoryChart
                   historyAsc={history}
@@ -252,10 +252,12 @@ export default async function AppetitePage() {
                 CSE-truth window is ~1 year of daily bars (3M / 1Y chips).
                 Partial sessions (thin universe) are kept in history but
                 skipped for the headline.{" "}
-                <span className="text-foreground">MAX</span> uses the Yahoo+CSE
+                <span className="text-foreground">5Y</span> /{" "}
+                <span className="text-foreground">MAX</span> use the Yahoo+CSE
                 hybrid research reconstruction when scored — never labeled as
                 official CSE — with recent CSE sessions stitched after the
-                hybrid tip.
+                hybrid tip. Long ranges draw weekly/monthly averages so the
+                path stays readable.
               </p>
             </section>
           </>

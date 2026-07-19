@@ -1,10 +1,16 @@
 /**
- * Appetite MAX stitch + calendar slice helpers.
+ * Appetite MAX stitch + aggregate helpers.
  * Invoked via npx tsx from web/ after staging.
  */
 import assert from "node:assert/strict";
 
-import { stitchHybridWithCse } from "./src/components/appetite/appetite-history-chart.tsx";
+import {
+  aggregateAppetiteSeries,
+  chooseAggregateMode,
+  monthBucketKey,
+  stitchHybridWithCse,
+  weekBucketKey,
+} from "./src/components/appetite/appetite-history-chart.tsx";
 import type { AppetiteDay } from "./src/lib/api/appetite.ts";
 
 function day(trade_date: string, score: number): AppetiteDay {
@@ -50,5 +56,32 @@ function testStitch() {
   assert.equal(stitchHybridWithCse(hybrid, []).length, 2);
 }
 
+function testAggregate() {
+  assert.equal(monthBucketKey("2020-03-15"), "2020-03");
+  assert.equal(weekBucketKey("2020-01-06")?.startsWith("2020-W"), true);
+
+  assert.equal(chooseAggregateMode(100), "none");
+  assert.equal(chooseAggregateMode(400), "week");
+  assert.equal(chooseAggregateMode(6000), "month");
+
+  const jan = [
+    day("2020-01-02", 10),
+    day("2020-01-15", 30),
+    day("2020-01-31", 50),
+    day("2020-02-03", 70),
+    day("2020-02-28", 90),
+  ];
+  const monthly = aggregateAppetiteSeries(jan, "month");
+  assert.equal(monthly.length, 2);
+  // First month avg (10+30+50)/3 = 30
+  assert.ok(Math.abs(monthly[0]!.score - 30) < 1e-9);
+  // Tip fidelity — last point is raw tip, not Feb avg
+  assert.equal(monthly[1]!.trade_date, "2020-02-28");
+  assert.equal(monthly[1]!.score, 90);
+
+  assert.equal(aggregateAppetiteSeries(jan, "none").length, 5);
+}
+
 testStitch();
+testAggregate();
 console.log("WEB_APPETITE_MAX_UNIT_OK");
