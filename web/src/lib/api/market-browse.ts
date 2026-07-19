@@ -38,6 +38,13 @@ export type MarketBrowseQuery = {
   offset: number;
   /** Already normalized (or empty). */
   q?: string;
+  /**
+   * Exact sector name match (case-insensitive) after sanitize — light P1 filter,
+   * not a multi-filter screener.
+   */
+  sector?: string;
+  /** When true, only symbols with a successful EPS extract. */
+  has_eps?: boolean;
   sort: MarketBrowseSort;
   /**
    * Optional movers fence: `up` ⇒ change_pct > 0, `down` ⇒ change_pct < 0.
@@ -57,7 +64,10 @@ function orderClause(sort: MarketBrowseSort): string {
   return "ps.change_pct DESC NULLS LAST, s.symbol ASC";
 }
 
-type BrowseFilter = Pick<MarketBrowseQuery, "q" | "direction">;
+type BrowseFilter = Pick<
+  MarketBrowseQuery,
+  "q" | "direction" | "sector" | "has_eps"
+>;
 
 /** Shared FROM + WHERE for list + count (latest snapshot INNER JOIN). */
 function browseFromWhere(opts: BrowseFilter): {
@@ -75,6 +85,20 @@ function browseFromWhere(opts: BrowseFilter): {
     whereParts.push(
       `(UPPER(s.symbol) LIKE $${params.length} ESCAPE '\\' OR UPPER(COALESCE(s.name, '')) LIKE $${params.length} ESCAPE '\\')`,
     );
+  }
+  const sector =
+    typeof opts.sector === "string" ? opts.sector.trim() : "";
+  if (sector) {
+    params.push(sector.toUpperCase());
+    whereParts.push(`UPPER(COALESCE(s.sector, '')) = $${params.length}`);
+  }
+  if (opts.has_eps === true) {
+    whereParts.push(`EXISTS (
+      SELECT 1 FROM filing_metrics fm
+      WHERE fm.symbol = s.symbol
+        AND fm.extract_ok = TRUE
+        AND fm.eps_basic IS NOT NULL
+    )`);
   }
   if (opts.direction === "up") {
     whereParts.push("ps.change_pct > 0");

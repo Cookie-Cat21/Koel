@@ -77,6 +77,7 @@ export type SymbolPageStock = {
   symbol: string;
   name: string | null;
   sector: string | null;
+  market_cap: number | null;
   last: {
     price: number | null;
     change: number | null;
@@ -84,6 +85,14 @@ export type SymbolPageStock = {
     volume: number | null;
     ts: string | null;
   } | null;
+};
+
+export type SymbolPageEquity = {
+  equity: number;
+  equity_scale: string;
+  equity_confidence: string;
+  equity_as_of: string | null;
+  equity_currency: string;
 };
 
 export type SymbolPageDisclosure = {
@@ -141,9 +150,10 @@ export async function loadSymbolPageStock(
     change: number | null;
     change_pct: number | null;
     volume: number | null;
+    market_cap: number | null;
     ts: Date | string;
   }>(
-    `SELECT price, change, change_pct, volume, ts
+    `SELECT price, change, change_pct, volume, market_cap, ts
      FROM price_snapshots
      WHERE symbol = $1
      ORDER BY ts DESC
@@ -164,7 +174,62 @@ export async function loadSymbolPageStock(
     symbol: normalizeSymbol(row.symbol) ?? symbol,
     name: sanitizeDisclosureText(row.name, MAX_STOCK_NAME_LENGTH),
     sector: sanitizeDisclosureText(row.sector, MAX_STOCK_SECTOR_LENGTH),
+    market_cap:
+      snap.rows.length === 0
+        ? null
+        : toFiniteNumber(snap.rows[0].market_cap),
     last,
+  };
+}
+
+/** Honest equity / NAV extract from ownership graph — medium/high only. */
+export async function loadSymbolPageEquity(
+  symbol: string,
+): Promise<SymbolPageEquity | null> {
+  const pool = getPool();
+  const result = await pool.query<{
+    equity: number | null;
+    equity_scale: string | null;
+    equity_confidence: string | null;
+    equity_as_of: Date | string | null;
+    equity_currency: string | null;
+  }>(
+    `SELECT equity, equity_scale, equity_confidence, equity_as_of, equity_currency
+       FROM company_graph_nodes
+      WHERE symbol = $1
+        AND node_kind = 'listed'
+        AND equity IS NOT NULL
+        AND equity_confidence IN ('medium', 'high')
+      ORDER BY
+        CASE equity_confidence WHEN 'high' THEN 0 ELSE 1 END,
+        equity_as_of DESC NULLS LAST
+      LIMIT 1`,
+    [symbol],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  const equity = toFiniteNumber(row.equity);
+  if (equity == null) return null;
+  const scale =
+    typeof row.equity_scale === "string" && row.equity_scale
+      ? row.equity_scale
+      : "unknown";
+  const confidence =
+    row.equity_confidence === "high" || row.equity_confidence === "medium"
+      ? row.equity_confidence
+      : null;
+  if (!confidence) return null;
+  const currency =
+    typeof row.equity_currency === "string" &&
+    /^[A-Z]{3,8}$/.test(row.equity_currency)
+      ? row.equity_currency
+      : "LKR";
+  return {
+    equity,
+    equity_scale: scale,
+    equity_confidence: confidence,
+    equity_as_of: dateOnly(row.equity_as_of),
+    equity_currency: currency,
   };
 }
 

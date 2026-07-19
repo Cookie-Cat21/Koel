@@ -2,6 +2,7 @@
 
 **Status:** Active — Waves 1–5 implemented on `cursor/wire-chime-brand-assets-0a71` (2026-07-14). Phased P1–P5 still gated.  
 **Authority:** [CLAUDE.md](../../CLAUDE.md) · [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [FINANCE_DASH_INSPIRATION.md](../brand/FINANCE_DASH_INSPIRATION.md) · [COMMIT_FACTORY.md](COMMIT_FACTORY.md)  
+**Competitive edge program (vs CSEPal):** [KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md](KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md) — 30-loop agentic catch-up without becoming a screener.  
 **Supersedes operating one-liner in** [CHIME_HORIZON.md](CHIME_HORIZON.md) §1 (horizon score targets still apply)
 
 ---

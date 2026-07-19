@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { motion, type Transition, useReducedMotion } from "motion/react";
@@ -12,6 +13,8 @@ export type FireNotification = {
   subtitle: string;
   time: string;
   href?: string;
+  /** Optional delivery chip (e.g. Telegram sent). */
+  badge?: ReactNode;
 };
 
 const transition: Transition = {
@@ -79,6 +82,9 @@ export function NotificationList({
                 <p className="truncate font-mono text-sm font-medium text-foreground">
                   {notification.title}
                 </p>
+                {notification.badge ? (
+                  <span className="shrink-0">{notification.badge}</span>
+                ) : null}
               </div>
               <p className="mt-0.5 text-xs font-medium text-muted-foreground">
                 <span>{notification.time}</span>
@@ -120,7 +126,7 @@ export function NotificationList({
           className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           View all fires
-          <ArrowUpRight className="size-4" />
+          <ArrowUpRight className="size-3.5" aria-hidden />
         </Link>
       </div>
     </motion.div>

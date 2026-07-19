@@ -15,6 +15,7 @@ UNIT_SYMBOLS_MTS = Path(__file__).resolve().parent / "web_symbols_route_unit.mts
 UNIT_MOVERS_MTS = Path(__file__).resolve().parent / "web_movers_route_unit.mts"
 UNIT_DISCLOSURES_MTS = Path(__file__).resolve().parent / "web_disclosures_route_unit.mts"
 UNIT_SPARKLINE_MTS = Path(__file__).resolve().parent / "web_sparkline_finite_unit.mts"
+UNIT_PERIOD_TECH_MTS = Path(__file__).resolve().parent / "web_period_tech_unit.mts"
 
 RUNTIME_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"}
 SKIP_DIRS = {".next", "node_modules"}
@@ -802,6 +803,38 @@ def test_sparkline_finite_points_unit() -> None:
             f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
         )
     assert "WEB_SPARKLINE_FINITE_UNIT_OK" in proc.stdout
+
+
+def test_period_tech_fundamentals_unit() -> None:
+    """Edge loops: period returns, tech labels, honest NAV/P/B/ROE helpers."""
+    assert UNIT_PERIOD_TECH_MTS.is_file(), f"missing {UNIT_PERIOD_TECH_MTS}"
+    for rel in (
+        "src/lib/api/period-returns.ts",
+        "src/lib/api/tech-labels.ts",
+        "src/lib/api/fundamentals.ts",
+    ):
+        assert (WEB / rel).is_file(), rel
+    _require_web_node_modules()
+    npx = _npx()
+    staged = WEB / ".web_period_tech_unit.mts"
+    staged.write_text(UNIT_PERIOD_TECH_MTS.read_text(encoding="utf-8"), encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            [npx, "--yes", "tsx", str(staged.name)],
+            cwd=str(WEB),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    finally:
+        staged.unlink(missing_ok=True)
+    if proc.returncode != 0:
+        pytest.fail(
+            f".web_period_tech_unit.mts failed ({proc.returncode}):\n"
+            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+    assert "WEB_PERIOD_TECH_UNIT_OK" in proc.stdout
 
 
 def test_disclosures_route_joins_briefs_and_pdf_fields() -> None:

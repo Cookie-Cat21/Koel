@@ -73,9 +73,15 @@ type BrowsePayload = {
   total: number | null;
 };
 
-function browseHref(q: string, page: number): string {
+function browseHref(
+  q: string,
+  page: number,
+  opts: { sector?: string; hasEps?: boolean } = {},
+): string {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
+  if (opts.sector) params.set("sector", opts.sector);
+  if (opts.hasEps) params.set("has_eps", "1");
   if (page > 1) params.set("page", String(page));
   const s = params.toString();
   return s ? `/market?${s}` : "/market";
@@ -212,12 +218,28 @@ function MoversList({
 export default async function MarketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>;
+  searchParams: Promise<{
+    q?: string | string[];
+    page?: string | string[];
+    sector?: string | string[];
+    has_eps?: string | string[];
+  }>;
 }) {
   await requirePageSession();
   const sp = await searchParams;
   // Sanitize before any reflection (input defaultValue) or API round-trip.
   const q = normalizeMarketQuery(sp.q);
+  const sector =
+    sanitizeDisclosureText(
+      firstSearchParam(sp.sector),
+      MAX_STOCK_SECTOR_LENGTH,
+    ) ?? "";
+  const hasEpsRaw = firstSearchParam(sp.has_eps);
+  const hasEps =
+    hasEpsRaw === "1" ||
+    (typeof hasEpsRaw === "string" &&
+      hasEpsRaw.trim().toLowerCase() === "true");
+  const filterOpts = { sector: sector || undefined, hasEps };
   const pageParsed = toSafePositiveInt(firstSearchParam(sp.page));
   const page = pageParsed ?? 1;
   const offset = (page - 1) * BROWSE_PAGE_SIZE;
@@ -228,17 +250,22 @@ export default async function MarketPage({
     sort: "change_pct",
   });
   if (q) qs.set("q", q);
+  if (sector) qs.set("sector", sector);
+  if (hasEps) qs.set("has_eps", "1");
+
+  const browseOnly = Boolean(q || sector || hasEps);
 
   const [res, gainersRes, losersRes, sectorsRes] = await Promise.all([
     serverApiGet(`/api/v1/symbols?${qs.toString()}`),
-    // Top movers / sectors only when not searching — keeps browse discovery thin.
-    q
+    // Top movers / sectors only when not filtering — keeps browse discovery thin.
+    browseOnly
       ? Promise.resolve(null)
       : serverApiGet("/api/v1/market/movers?direction=up&limit=5"),
-    q
+    browseOnly
       ? Promise.resolve(null)
       : serverApiGet("/api/v1/market/movers?direction=down&limit=5"),
-    q ? Promise.resolve(null) : serverApiGet("/api/v1/sectors"),
+    // Always load sectors for chip filter (even when filtering).
+    serverApiGet("/api/v1/sectors"),
   ]);
 
   const browse = await readJsonPayload(res, asBrowsePayload);
@@ -255,7 +282,7 @@ export default async function MarketPage({
 
   // Out-of-range page → first page (preserve search).
   if (totalPages != null && page > totalPages) {
-    redirect(browseHref(q, 1));
+    redirect(browseHref(q, 1, filterOpts));
   }
 
   const rangeStart =
@@ -315,16 +342,71 @@ export default async function MarketPage({
             placeholder="Symbol or name"
             className="min-w-[12rem] flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
+          {sector ? (
+            <input type="hidden" name="sector" value={sector} />
+          ) : null}
+          {hasEps ? <input type="hidden" name="has_eps" value="1" /> : null}
           <Button type="submit" variant="outline">
             Search
           </Button>
         </form>
 
+        <div
+          className="mt-4 flex flex-wrap items-center gap-2"
+          aria-label="Light browse filters"
+        >
+          <Link
+            href={browseHref(q, 1, { hasEps })}
+            className={`rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
+              !sector
+                ? "border-foreground/30 bg-foreground/5 text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            All sectors
+          </Link>
+          {(sectorItems ?? []).slice(0, 12).map((item) => {
+            const active =
+              sector.length > 0 &&
+              sector.toUpperCase() === item.name.toUpperCase();
+            return (
+              <Link
+                key={item.sector_id}
+                href={browseHref(q, 1, {
+                  sector: item.name,
+                  hasEps,
+                })}
+                className={`max-w-[12rem] truncate rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
+                  active
+                    ? "border-foreground/30 bg-foreground/5 text-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+                title={item.name}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
+          <Link
+            href={browseHref(q, 1, {
+              sector: sector || undefined,
+              hasEps: !hasEps,
+            })}
+            className={`rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
+              hasEps
+                ? "border-foreground/30 bg-foreground/5 text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Has EPS
+          </Link>
+        </div>
+
         <p className="mt-3">
           <NfaInline />
         </p>
 
-        {!q && gainerItems !== null && loserItems !== null ? (
+        {!browseOnly && gainerItems !== null && loserItems !== null ? (
           <section className="mt-8" aria-labelledby="top-movers-heading">
             <h2
               id="top-movers-heading"
@@ -359,7 +441,7 @@ export default async function MarketPage({
           </section>
         ) : null}
 
-        {!q && sectorItems !== null ? (
+        {!browseOnly && sectorItems !== null ? (
           <section className="mt-8" aria-labelledby="sectors-heading">
             <h2
               id="sectors-heading"
@@ -368,7 +450,8 @@ export default async function MarketPage({
               Sectors
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              CSE sector index change from the latest poll — name and change only.
+              CSE sector index change from the latest poll — tap a chip above to
+              filter the table.
             </p>
             {(sectorItems ?? []).length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground" role="status">
@@ -384,12 +467,13 @@ export default async function MarketPage({
                     key={item.sector_id}
                     className="flex items-center justify-between gap-2 py-2"
                   >
-                    <span
-                      className="min-w-0 truncate text-sm text-foreground"
+                    <Link
+                      href={browseHref("", 1, { sector: item.name, hasEps })}
+                      className="min-w-0 truncate text-sm text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                       title={item.name}
                     >
                       {item.name}
-                    </span>
+                    </Link>
                     <ChangeBadge
                       changePct={item.change_pct}
                       className="shrink-0"
@@ -407,7 +491,7 @@ export default async function MarketPage({
             description="koel couldn’t read snapshot data just now. Retry in a moment, or check Health if this keeps happening."
             action={
               <Button asChild variant="outline">
-                <Link href={browseHref(q, page)}>Retry</Link>
+                <Link href={browseHref(q, page, filterOpts)}>Retry</Link>
               </Button>
             }
           />
@@ -415,14 +499,14 @@ export default async function MarketPage({
           <EmptyState
             title="No symbols yet"
             description={
-              q
-                ? "No symbols matched that search. Try another query, or browse again after the next market update."
+              browseOnly
+                ? "No symbols matched that filter. Clear search or sector / Has EPS chips, or browse again after the next market update."
                 : "No snapshot data yet. On the host, run make tick (or leave poller/both running) to seed browse, then refresh. Open Health if this persists."
             }
             action={
-              q ? (
+              browseOnly ? (
                 <Button asChild variant="outline">
-                  <Link href="/market">Clear search</Link>
+                  <Link href="/market">Clear filters</Link>
                 </Button>
               ) : undefined
             }
@@ -453,7 +537,7 @@ export default async function MarketPage({
                 >
                   {hasPrev ? (
                     <Button asChild variant="outline" size="sm">
-                      <Link href={browseHref(q, page - 1)} rel="prev">
+                      <Link href={browseHref(q, page - 1, filterOpts)} rel="prev">
                         Previous
                       </Link>
                     </Button>
@@ -464,7 +548,7 @@ export default async function MarketPage({
                   )}
                   {hasNext ? (
                     <Button asChild variant="outline" size="sm">
-                      <Link href={browseHref(q, page + 1)} rel="next">
+                      <Link href={browseHref(q, page + 1, filterOpts)} rel="next">
                         Next
                       </Link>
                     </Button>
@@ -490,7 +574,7 @@ export default async function MarketPage({
                 <div className="flex items-center gap-2">
                   {hasPrev ? (
                     <Button asChild variant="outline" size="sm">
-                      <Link href={browseHref(q, page - 1)} rel="prev">
+                      <Link href={browseHref(q, page - 1, filterOpts)} rel="prev">
                         Previous
                       </Link>
                     </Button>
@@ -501,7 +585,7 @@ export default async function MarketPage({
                   )}
                   {hasNext ? (
                     <Button asChild variant="outline" size="sm">
-                      <Link href={browseHref(q, page + 1)} rel="next">
+                      <Link href={browseHref(q, page + 1, filterOpts)} rel="next">
                         Next
                       </Link>
                     </Button>

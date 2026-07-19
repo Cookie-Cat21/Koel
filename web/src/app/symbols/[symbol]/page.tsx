@@ -14,7 +14,17 @@ import {
   type FilingMetricRow,
   type LatestBrief,
 } from "@/components/kit/filing-metrics-panel";
+import { FilingSnapshotStrip } from "@/components/kit/filing-snapshot-strip";
+import { FundamentalsStrip } from "@/components/kit/fundamentals-strip";
+import { PeriodReturnsStrip } from "@/components/kit/period-returns-strip";
 import { SymbolCompareChart } from "@/components/kit/symbol-compare-chart";
+import { TechLabelsStrip } from "@/components/kit/tech-labels-strip";
+import { computeFundamentals } from "@/lib/api/fundamentals";
+import {
+  closesFromBars,
+  computePeriodReturns,
+} from "@/lib/api/period-returns";
+import { barsFromDaily, computeTechLabels } from "@/lib/api/tech-labels";
 import {
   buildDataQualityNotices,
   parseFilingQualitySummary,
@@ -50,6 +60,7 @@ import { toIso } from "@/lib/api/time";
 import { requirePageSession } from "@/lib/auth/page-session";
 import {
   loadSymbolPageDisclosures,
+  loadSymbolPageEquity,
   loadSymbolPageMetrics,
   loadSymbolPageStock,
 } from "@/lib/db/symbol-page-data";
@@ -275,7 +286,7 @@ export default async function SymbolDetailPage({
   let latestBrief: LatestBrief | null = null;
   let filingQuality: FilingQualitySummary | null = null;
 
-  const [stockResult, discResult, metricsResult, snapRes, compareRes, watchRes, forecastRes, dailyBarsRes, metricsApiRes] =
+  const [stockResult, discResult, metricsResult, equityResult, snapRes, compareRes, watchRes, forecastRes, dailyBarsRes, metricsApiRes] =
     await Promise.all([
       loadSymbolPageStock(symbol)
         .then((row) => ({ ok: true as const, row }))
@@ -289,6 +300,9 @@ export default async function SymbolDetailPage({
       loadSymbolPageMetrics(symbol)
         .then((payload) => ({ ok: true as const, payload }))
         .catch(() => ({ ok: false as const, payload: null })),
+      loadSymbolPageEquity(symbol)
+        .then((row) => ({ ok: true as const, row }))
+        .catch(() => ({ ok: false as const, row: null })),
       serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=180`),
       compareQs ? serverApiGet(compareQs) : Promise.resolve(null),
       serverApiGet("/api/v1/watchlist"),
@@ -339,7 +353,7 @@ export default async function SymbolDetailPage({
     symbol: stockResult.row.symbol,
     name: stockResult.row.name,
     sector: stockResult.row.sector,
-    market_cap: null,
+    market_cap: stockResult.row.market_cap,
     last:
       stockResult.row.last && stockResult.row.last.price != null
         ? {
@@ -509,6 +523,25 @@ export default async function SymbolDetailPage({
       // leave empty — expand dialog can client-fetch
     }
   }
+
+  const periodReturns = computePeriodReturns(closesFromBars(initialDailyBars));
+  const techLabels = computeTechLabels(barsFromDaily(initialDailyBars));
+  const quote = data;
+  const fundamentals = computeFundamentals({
+    equity:
+      equityResult.ok && equityResult.row
+        ? {
+            equity: equityResult.row.equity,
+            equity_scale: equityResult.row.equity_scale,
+            equity_confidence: equityResult.row.equity_confidence,
+            equity_as_of: equityResult.row.equity_as_of,
+            equity_currency: equityResult.row.equity_currency,
+          }
+        : null,
+    lastPrice: quote?.last?.price ?? null,
+    marketCap: quote?.market_cap ?? null,
+    profit: filingMetrics?.profit ?? null,
+  });
 
   const forecastPoints: { ts: string | null; price: number | null }[] = [];
   let forecastConfidence: number | null = null;
@@ -741,6 +774,14 @@ export default async function SymbolDetailPage({
             ) : null}
           </dl>
         ) : null}
+        <PeriodReturnsStrip returns={periodReturns} />
+        <TechLabelsStrip labels={techLabels} />
+        <FilingSnapshotStrip
+          epsBasic={filingMetrics?.eps_basic ?? null}
+          currency={filingMetrics?.currency ?? null}
+          comparison={filingComparison}
+        />
+        <FundamentalsStrip labels={fundamentals} />
       </section>
 
       {!data.last ? (

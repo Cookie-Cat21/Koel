@@ -360,7 +360,7 @@ UI must not render a Level-1 quote board from optional OHLC fields. Contract sur
 
 ### `GET /api/v1/symbols`
 
-Thin market browse list (Tijori/CSE Phase 1). Session required. Postgres only — latest `price_snapshots` via **INNER JOIN** (symbols with no tick omitted). UI `/market` calls with `limit=100&sort=change_pct` (+ optional `q`).
+Thin market browse list (Tijori/CSE Phase 1). Session required. Postgres only — latest `price_snapshots` via **INNER JOIN** (symbols with no tick omitted). UI `/market` calls with `limit=50&sort=change_pct` (+ optional `q` / light P1 filters).
 
 Query:
 
@@ -369,6 +369,8 @@ Query:
 | `limit` | `50` | Max `200` |
 | `offset` | `0` | |
 | `q` | — | Optional symbol/name substring (case-insensitive) |
+| `sector` | — | Optional exact sector name match (case-insensitive) — light P1 chip filter |
+| `has_eps` | — | When `1` / `true`, only symbols with a successful `filing_metrics.eps_basic` extract |
 | `sort` | `change_pct` | `change_pct` (desc, nulls last) or `symbol` (asc) |
 
 **Response** `200`
@@ -389,11 +391,13 @@ Query:
   "limit": 50,
   "offset": 0,
   "sort": "change_pct",
-  "q": null
+  "q": null,
+  "sector": null,
+  "has_eps": false
 }
 ```
 
-Fence: discovery list for watchlist setup — not a screener or OHLC board. See [TIJORI_CSE_PLAN.md](TIJORI_CSE_PLAN.md).
+Fence: discovery list for watchlist setup — light sector / Has EPS chips only; not a multi-filter screener or OHLC board. See [TIJORI_CSE_PLAN.md](TIJORI_CSE_PLAN.md).
 
 ### `GET /api/v1/market/movers`
 

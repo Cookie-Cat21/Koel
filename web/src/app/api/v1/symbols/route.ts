@@ -5,6 +5,10 @@ import {
   queryMarketBrowse,
 } from "@/lib/api/market-browse";
 import {
+  MAX_STOCK_SECTOR_LENGTH,
+  sanitizeDisclosureText,
+} from "@/lib/api/disclosure-safe";
+import {
   MAX_SYMBOLS_OFFSET,
   normalizeMarketQuery,
 } from "@/lib/api/market-query";
@@ -21,10 +25,11 @@ const MAX_LIMIT = 200;
 /**
  * GET /api/v1/symbols — thin market browse from Postgres (latest snapshots).
  * Query: limit (default 50, max 200), offset (max 10000), q (symbol/name
- * substring, max 64, LIKE-metachar escaped), sort=change_pct|symbol
- * (default change_pct). Response includes ``total`` for pagination.
+ * substring, max 64, LIKE-metachar escaped), sector (exact name, light P1),
+ * has_eps=1 (EPS extract present), sort=change_pct|symbol (default change_pct).
+ * Response includes ``total`` for pagination.
  * Session required; CSRF not required (safe GET).
- * No cse.lk. Not a screener (no sector/volume filters).
+ * No cse.lk. Not a multi-filter screener.
  */
 export async function GET(request: NextRequest) {
   // Session only — GET must not require CSRF (double-submit is for mutations).
@@ -41,6 +46,16 @@ export async function GET(request: NextRequest) {
   offset = Math.min(offset, MAX_SYMBOLS_OFFSET);
 
   const q = normalizeMarketQuery(sp.get("q"));
+  const sectorRaw = sp.get("sector");
+  const sector =
+    sanitizeDisclosureText(
+      typeof sectorRaw === "string" ? sectorRaw : null,
+      MAX_STOCK_SECTOR_LENGTH,
+    ) ?? "";
+  const hasEpsRaw = sp.get("has_eps");
+  const has_eps =
+    hasEpsRaw === "1" ||
+    (typeof hasEpsRaw === "string" && hasEpsRaw.trim().toLowerCase() === "true");
   // Fail closed — non-string searchParams mocks used to throw on .trim.
   const sortParam = sp.get("sort");
   const sortBase =
@@ -52,7 +67,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const pool = getPool();
-    const filter = { q: q || undefined };
+    const filter = {
+      q: q || undefined,
+      sector: sector || undefined,
+      has_eps: has_eps || undefined,
+    };
     const [items, total] = await Promise.all([
       queryMarketBrowse(pool, {
         limit,
@@ -70,6 +89,8 @@ export async function GET(request: NextRequest) {
       offset,
       sort,
       q: q || null,
+      sector: sector || null,
+      has_eps: has_eps || false,
     });
   } catch (err) {
     console.error("GET /symbols failed", err);

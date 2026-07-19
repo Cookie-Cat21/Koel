@@ -17,7 +17,11 @@ import {
   type SectorHeatItem,
 } from "@/components/kit/sector-heat-strip";
 import { NotificationList } from "@/components/kit/notification-list";
-import { ArmedBadge } from "@/components/kit/status-badge";
+import {
+  ArmedBadge,
+  DeliveryBadge,
+  type DeliveryStatusKey,
+} from "@/components/kit/status-badge";
 import { StatCard } from "@/components/kit/stat-card";
 import { MarketSessionChip } from "@/components/market-session-chip";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -91,7 +95,36 @@ type HistoryEvent = {
   type: string;
   fired_at: string | null;
   message_text: string | null;
+  delivery_status: DeliveryStatusKey;
+  message_sent: boolean;
 };
+
+function deliveryLabel(status: DeliveryStatusKey): string {
+  switch (status) {
+    case "sent":
+      return "Telegram sent";
+    case "delivered_unmarked":
+      return "Delivered";
+    case "retrying":
+      return "Retrying";
+    case "dead_lettered":
+      return "Dead-lettered";
+  }
+}
+
+/** Compact age for poller / snapshot freshness (overview honesty chip). */
+function ageLabel(iso: string | null): string {
+  if (!iso) return "No ticks yet";
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "Unknown age";
+  const mins = Math.max(0, Math.floor((Date.now() - t) / 60_000));
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 async function readJson(res: Response | null): Promise<unknown> {
   if (!res || !res.ok) return null;
@@ -196,6 +229,16 @@ function parseHistory(body: unknown): HistoryEvent[] {
       typeof r.symbol === "string" ? r.symbol : null,
     );
     if (!symbol) continue;
+    const statusRaw =
+      typeof r.delivery_status === "string" ? r.delivery_status : "";
+    const delivery_status: DeliveryStatusKey | null =
+      statusRaw === "sent" ||
+      statusRaw === "retrying" ||
+      statusRaw === "dead_lettered" ||
+      statusRaw === "delivered_unmarked"
+        ? statusRaw
+        : null;
+    if (!delivery_status) continue;
     out.push({
       id,
       symbol,
@@ -205,6 +248,8 @@ function parseHistory(body: unknown): HistoryEvent[] {
         typeof r.message_text === "string"
           ? sanitizeDisclosureText(r.message_text, 240)
           : null,
+      delivery_status,
+      message_sent: r.message_sent === true,
     });
   }
   return out;
@@ -386,6 +431,14 @@ export default async function OverviewPage() {
       .filter((t): t is string => typeof t === "string" && !!t)
       .sort()
       .at(-1) ?? null;
+  const lastTelegramFire = fires.find(
+    (f) => f.delivery_status === "sent" || f.message_sent,
+  );
+  const lastFireHint = lastTelegramFire
+    ? `${lastTelegramFire.symbol} · ${ageLabel(lastTelegramFire.fired_at)}`
+    : fires[0]
+      ? `${fires[0].symbol} · ${deliveryLabel(fires[0].delivery_status)}`
+      : "No fires yet";
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -456,14 +509,24 @@ export default async function OverviewPage() {
             hint={`${armedCount} armed`}
           />
           <StatCard
-            label="Recent fires"
-            value={String(fires.length)}
-            hint="Latest audit rows"
+            label="Last Telegram fire"
+            value={
+              lastTelegramFire
+                ? ageLabel(lastTelegramFire.fired_at)
+                : fires.length > 0
+                  ? deliveryLabel(fires[0].delivery_status)
+                  : "—"
+            }
+            hint={lastFireHint}
           />
           <StatCard
-            label="Push channel"
-            value="Telegram"
-            hint="Cherry on top — fires even when this tab is closed"
+            label="Snapshot age"
+            value={ageLabel(freshestTs)}
+            hint={
+              freshestTs
+                ? "Freshest watchlist / index tick in koel"
+                : "Poller hasn’t written a tick yet"
+            }
           />
         </div>
 
@@ -639,6 +702,12 @@ export default async function OverviewPage() {
                   .join(" — "),
                 time: formatTs(ev.fired_at),
                 href: `/symbols/${encodeURIComponent(ev.symbol)}`,
+                badge: (
+                  <DeliveryBadge
+                    status={ev.delivery_status}
+                    label={deliveryLabel(ev.delivery_status)}
+                  />
+                ),
               }))}
             />
           </div>
