@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 
 import { Providers } from "@/components/providers";
 import { SkipLink } from "@/components/skip-link";
@@ -80,6 +81,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col font-sans">
         <SkipLink />
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
