@@ -191,12 +191,10 @@ export async function queryCompanyGraph(
     nodeIds.add(e.dst_node_id);
   }
 
-  // Prefer equity-backed isolates; if the graph is still empty (common right
-  // after directors-only seed / sparse PDF edges), fill remaining budget with
-  // listed issuers by market cap so /graph is browsable instead of blank.
-  // Never drop edge endpoints to make room for isolates.
+  // When isolates are requested, load the full listed universe (up to
+  // ``limit``) — do not drop unlinked issuers once a few PDF edges exist.
   const wantIsolates = opts.includeIsolates || edgeNodeIds.size === 0;
-  if (wantIsolates && nodeIds.size < limit) {
+  if (wantIsolates) {
     const iso = await pool.query(
       `
       SELECT n.id
@@ -235,7 +233,9 @@ export async function queryCompanyGraph(
   }
 
   const isolateIds = Array.from(nodeIds).filter((id) => !edgeNodeIds.has(id));
-  const isolateBudget = Math.max(0, limit - edgeNodeIds.size);
+  const isolateBudget = wantIsolates
+    ? Math.max(0, limit - edgeNodeIds.size)
+    : Math.max(0, Math.min(limit, limit - edgeNodeIds.size));
   const ids = [
     ...Array.from(edgeNodeIds),
     ...isolateIds.slice(0, isolateBudget),

@@ -1253,6 +1253,20 @@ def test_symbol_data_quality_notices() -> None:
     assert "emptyBriefHint" in panel
 
 
+def test_ownership_map_shows_listed_isolates() -> None:
+    """Ownership map must keep unlinked listed issuers (full CSE board)."""
+    page = (WEB / "src" / "app" / "graph" / "page.tsx").read_text(encoding="utf-8")
+    client = (
+        WEB / "src" / "components" / "company-graph" / "graph-client.tsx"
+    ).read_text(encoding="utf-8")
+    api = (WEB / "src" / "lib" / "api" / "graph.ts").read_text(encoding="utf-8")
+    assert "limit: 400" in page
+    assert "includeIsolates: true" in page
+    assert "activeNodeIds" not in client
+    assert "with links" in client
+    assert "full listed universe" in api or "unlinked issuers" in api
+
+
 def test_index_charts_use_close_to_close_candles() -> None:
     """ASPI / SNP_SL20 are CSE close-only — synthesize prior-close candles."""
     expand = (

@@ -112,22 +112,10 @@ export function CompanyGraphClient({
     return edges.filter((e) => rank[e.confidence] >= rank.medium);
   }, [edges]);
 
-  const activeNodeIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const e of filteredEdges) {
-      ids.add(e.src_node_id);
-      ids.add(e.dst_node_id);
-    }
-    if (ids.size === 0) {
-      for (const n of nodes) {
-        if (n.equity != null) ids.add(n.id);
-      }
-    }
-    return ids;
-  }, [filteredEdges, nodes]);
-
+  // Show every loaded listed issuer (incl. isolates with no PDF links yet).
+  // Edge-only filtering hid ~170 CSE names even though nodes already exist.
   const visibleNodes = useMemo(() => {
-    let list = nodes.filter((n) => activeNodeIds.has(n.id));
+    let list = nodes.slice();
     if (holdingsOnly) {
       const hubIds = new Set(
         filteredEdges
@@ -149,10 +137,21 @@ export function CompanyGraphClient({
       for (const e of filteredEdges) {
         if (keep.has(e.src_node_id)) keep.add(e.dst_node_id);
       }
-      list = nodes.filter((n) => keep.has(n.id) && activeNodeIds.has(n.id));
+      list = nodes.filter((n) => keep.has(n.id));
     }
     return list;
-  }, [nodes, activeNodeIds, holdingsOnly, filteredEdges]);
+  }, [nodes, holdingsOnly, filteredEdges]);
+
+  const linkedListedCount = useMemo(() => {
+    const ids = new Set<number>();
+    for (const e of filteredEdges) {
+      ids.add(e.src_node_id);
+      ids.add(e.dst_node_id);
+    }
+    return nodes.filter(
+      (n) => n.node_kind === "listed" && ids.has(n.id),
+    ).length;
+  }, [filteredEdges, nodes]);
 
   const visibleEdges = useMemo(() => {
     const ids = new Set(visibleNodes.map((n) => n.id));
@@ -253,7 +252,7 @@ export function CompanyGraphClient({
             id: "companies",
             label: "Companies",
             value: String(visibleNodes.length),
-            hint: `${listedCount} listed on CSE`,
+            hint: `${listedCount} listed · ${linkedListedCount} with links`,
           },
           {
             id: "links",
@@ -504,7 +503,8 @@ export function CompanyGraphClient({
                 focus.
               </p>
               <p className="text-[11px]">
-                {visibleNodes.length} companies · {visibleEdges.length} links
+                {visibleNodes.length} companies ({linkedListedCount} linked) ·{" "}
+                {visibleEdges.length} links · isolates have no PDF ties yet
               </p>
             </div>
           )}
