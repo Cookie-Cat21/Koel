@@ -43,6 +43,7 @@ async def _pending_annual_by_symbol(storage: Storage) -> list[Disclosure]:
             WHERE d.pdf_url IS NOT NULL
               AND btrim(d.pdf_url) <> ''
               AND d.symbol IS NOT NULL
+              AND d.symbol LIKE '%.N0000'
               AND g.id IS NULL
               AND (
                 d.title ILIKE '%annual%'
