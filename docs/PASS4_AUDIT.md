@@ -1,4 +1,4 @@
-# Pass 4 adversarial audit — Chime (post–Pass 3)
+# Pass 4 adversarial audit — Quiverly (post–Pass 3)
 
 **Verdict: CONVERGE**
 

@@ -1,6 +1,6 @@
 # Third-party open-source dependencies
 
-Chime does **not** vendor upstream source trees into this repo. Runtime
+koel does **not** vendor upstream source trees into this repo. Runtime
 dependencies come from PyPI (Python package) and npm (`web/`).
 
 ## Python (`pyproject.toml`)
@@ -65,12 +65,20 @@ dev-only.
 | Split hero structure | Cult Hero Color Panels (structure only) | Pattern only | 2026-07-15 | Copy left / proof right — **no shaders** |
 | Mid CTA left/right | [HyperUI CTAs](https://www.hyperui.dev/components/marketing/ctas) | MIT | 2026-07-15 | `MidCta` — ink band, dual actions |
 | Telegram proof panel | Daisy chat pattern (in-tree) | Pattern | 2026-07-15 | `TelegramProof` — not a device-frame hero |
+| Announcement-8 | [Watermelon announcement-8](https://registry.watermelon.sh/r/announcement-8.json) | MIT | 2026-07-18 | `AnnouncementBar` — muted dismissible market-hours bar |
+| FAQ-3 | [Watermelon faq-3](https://registry.watermelon.sh/r/faq-3.json) | MIT | 2026-07-18 | `FaqSection` — numbered accordion; no open gradient |
+| FAQ-6 | [Watermelon faq-6](https://registry.watermelon.sh/r/faq-6.json) | MIT | 2026-07-18 | `FaqSplit` — dashed split FAQ on `/` |
+| CTA-1 | [Watermelon cta-1](https://registry.watermelon.sh/r/cta-1.json) | MIT | 2026-07-18 | `MidCta` / `EndCta` — glow blobs stripped |
+| Pricing-1 | [Watermelon pricing-1](https://registry.watermelon.sh/r/pricing-1.json) | MIT | 2026-07-18 | `PricingPlans` — Free / Later, no checkout |
+| Blog-1 | [Watermelon blog-1](https://registry.watermelon.sh/r/blog-1.json) | MIT | 2026-07-18 | `BlogList` + `/blog` stub |
+| Alert-01 | [Watermelon alert-01](https://registry.watermelon.sh/r/alert-01.json) | MIT | 2026-07-18 | `AlertBanner` — lucide Info, koel tones |
+| Notification list | [Watermelon notification-list](https://registry.watermelon.sh/r/notification-list.json) | MIT | 2026-07-18 | `NotificationList` — real alert fires on overview |
 
 ### Dash kit patterns (adapted in-tree — no new npm deps)
 
 | Pattern | Source | License | Date | Notes |
 |---|---|---|---|---|
-| Rank bar list | [Tremor Bar List](https://tremor.so/docs/ui/bar-list) | Apache-2.0 pattern | 2026-07-17 | `RankBarList` — influence / shared seats; Chime tokens |
+| Rank bar list | [Tremor Bar List](https://tremor.so/docs/ui/bar-list) | Apache-2.0 pattern | 2026-07-17 | `RankBarList` — influence / shared seats; koel tokens |
 | Filter chips | HyperUI filter density | MIT pattern | 2026-07-17 | `FilterChip` — All / Leadership on `/people` |
 | Event timeline | [HyperUI timelines](https://www.hyperui.dev/) | MIT pattern | 2026-07-17 | `EventTimeline` — dossier Across years |
 | KPI strip | HyperUI stats / IndexStrip density | MIT pattern | 2026-07-17 | `KpiStrip` — ownership map summary |

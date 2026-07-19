@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
-import { ChimeWordmark } from "@/components/brand/chime-brand";
+import { KoelLockup } from "@/components/brand/koel-brand";
 import { LoginForm } from "@/components/login-form";
+import { HeroGridBackdrop } from "@/components/marketing/hero-grid-backdrop";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import {
@@ -14,8 +15,8 @@ import {
 import { verifySessionToken } from "@/lib/auth/session";
 
 export const metadata = {
-  title: "Sign in · Chime",
-  description: "Sign in to the Chime CSE dashboard — Telegram alerts on top.",
+  title: "Sign in · koel",
+  description: "Sign in to the koel CSE dashboard — Telegram alerts on top.",
 };
 
 export default async function LoginPage({
@@ -47,50 +48,79 @@ export default async function LoginPage({
   const telegramLoginEnabled = process.env.DASH_TELEGRAM_LOGIN === "1";
 
   return (
-    <main id="main-content" tabIndex={-1} className="chime-atmosphere flex min-h-full flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="chime-atmosphere relative flex min-h-full flex-1 flex-col"
+    >
+      <HeroGridBackdrop />
+      <div className="relative mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16 sm:py-20">
         <div className="chime-rise">
           <Link
             href="/"
-            className="inline-block motion-safe:transition-opacity motion-safe:hover:opacity-80"
-            aria-label="Chime home"
+            className="inline-flex motion-safe:transition-opacity motion-safe:hover:opacity-80"
+            aria-label="koel home"
           >
-            <ChimeWordmark size="hero" priority />
+            <KoelLockup size="hero" priority />
           </Link>
         </div>
-        <h1 className="chime-rise chime-rise-delay-1 mt-5 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+
+        <h1 className="chime-rise chime-rise-delay-1 mt-10 max-w-md font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-[1.08]">
           CSE alerts on Telegram.
-          <span className="mt-1 block text-muted-foreground">
+          <span className="mt-2 block font-medium text-muted-foreground">
             Dash when you need to manage.
           </span>
         </h1>
+
         {sessionExpired ? (
           <p
             role="status"
             data-testid="session-expired-notice"
-            className="chime-rise chime-rise-delay-1 mt-4 text-sm text-foreground"
+            className="chime-rise chime-rise-delay-1 mt-5 text-sm text-foreground"
           >
             Your session expired. Sign in again to open the dashboard.
           </p>
         ) : null}
+
         <p
           id="login-explainer"
-          className="chime-rise chime-rise-delay-2 mt-3 text-sm text-muted-foreground sm:text-base"
+          className="chime-rise chime-rise-delay-2 mt-5 max-w-md text-base leading-relaxed text-muted-foreground"
         >
           Browse the market, watch symbols, and manage rules here. Telegram is
           the cherry — you still get the ping when a rule fires with the tab
           closed.
         </p>
+
         <ul
-          className="chime-rise chime-rise-delay-2 mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground"
+          className="chime-rise chime-rise-delay-2 mt-6 max-w-md space-y-2.5 text-sm text-muted-foreground"
           aria-labelledby="login-explainer"
         >
-          <li>Overview of movers, watchlist, and armed rules</li>
-          <li>Price, move, and disclosure alerts</li>
-          <li>Push on Telegram when something matches</li>
+          <li className="flex gap-2.5">
+            <span
+              aria-hidden
+              className="mt-2 size-1 shrink-0 rounded-full bg-foreground/50"
+            />
+            <span>Overview of movers, watchlist, and armed rules</span>
+          </li>
+          <li className="flex gap-2.5">
+            <span
+              aria-hidden
+              className="mt-2 size-1 shrink-0 rounded-full bg-foreground/50"
+            />
+            <span>Price, move, and disclosure alerts</span>
+          </li>
+          <li className="flex gap-2.5">
+            <span
+              aria-hidden
+              className="mt-2 size-1 shrink-0 rounded-full bg-foreground/50"
+            />
+            <span>Push on Telegram when something matches</span>
+          </li>
         </ul>
-        <NfaInline className="chime-rise chime-rise-delay-2 mt-4" />
-        <div className="chime-rise chime-rise-delay-3 mt-8">
+
+        <NfaInline className="chime-rise chime-rise-delay-2 mt-5" />
+
+        <div className="chime-rise chime-rise-delay-3 mt-10 max-w-sm rounded-2xl border border-border/80 bg-card/90 p-5 shadow-[0_1px_0_oklch(0.2_0.01_260/0.04)] backdrop-blur-sm sm:p-6">
           <LoginForm
             allowlist={allowlist}
             defaultTelegramId={defaultId}
@@ -107,7 +137,9 @@ export default async function LoginPage({
           ) : null}
         </div>
       </div>
-      <NfaFooter />
+      <div className="relative">
+        <NfaFooter />
+      </div>
     </main>
   );
 }

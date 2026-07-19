@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-/** DaisyUI-style chat bubble — Telegram proof on landing (Ceyfi port, Chime tokens). */
+/** DaisyUI-style chat bubble — Telegram proof on landing (Ceyfi port, koel tokens). */
 export function ChatBubble({
   align = "start",
   header,

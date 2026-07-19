@@ -1,6 +1,6 @@
 # Production runbook — bot + poller + web
 
-How to run Chime’s three surfaces in production (or a staging VM). Compose
+How to run Quiverly’s three surfaces in production (or a staging VM). Compose
 provides Postgres by default; optional **`web` profile** builds/runs the Next.js
 dash next to it (`docker compose --profile web up -d` / `make up-web`). Prefer
 one poller leader per database.
@@ -106,7 +106,7 @@ Structured JSON logs (structlog). Grep keys documented in
 
 ## Telegram-OK durable ledger
 
-After Telegram accepts an alert, Chime fsyncs a local OK marker before updating
+After Telegram accepts an alert, Quiverly fsyncs a local OK marker before updating
 Postgres so a restart after a DB-write outage does not re-send the same alert.
 Default path: `/tmp/chime/delivery-ok-<database-hash>.jsonl`; override with
 `CHIME_DELIVERY_OK_LEDGER=/var/lib/chime/delivery-ok.jsonl` on hosts where
@@ -137,4 +137,4 @@ mute price-cross fires. Prefer `--limit` / off-hours for full-board drains.
 
 ## Disclaimer
 
-Chime relays public market information. Not financial advice.
+Quiverly relays public market information. Not financial advice.

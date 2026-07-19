@@ -30,7 +30,7 @@ No multi-year / max history found. `POST /charts` (date-range) still **400**.
 ## Trade date convention
 
 Daily bar timestamps are typically `18:30:00Z` (= midnight Asia/Colombo).  
-Chime stores `trade_date` as the **Asia/Colombo calendar date** of `t`.
+Quiverly stores `trade_date` as the **Asia/Colombo calendar date** of `t`.
 
 ## Full-market cost (estimate)
 

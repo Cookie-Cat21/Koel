@@ -1,4 +1,4 @@
-# Chime live readiness scorecard (brutal)
+# Quiverly live readiness scorecard (brutal)
 
 **Date:** 2026-07-16  
 **Target:** Neon + https://chime-cse.vercel.app  

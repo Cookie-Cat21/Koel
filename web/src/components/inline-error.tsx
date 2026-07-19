@@ -24,7 +24,7 @@ export function sanitizeInlineError(raw: unknown): string {
     : cleaned;
 }
 
-/** Form-adjacent validation / API error — accessible, Chime destructive tone. */
+/** Form-adjacent validation / API error — accessible, koel destructive tone. */
 export function InlineError({ message, id, className }: InlineErrorProps) {
   if (message == null || message === "") return null;
   // Fail closed — never render uncapped / control-laden / non-string errors.

@@ -1,10 +1,10 @@
-# Chime marketing site — master plan
+# Quiverly marketing site — master plan
 
 **Status:** Planning (survey complete 2026-07-15)  
 **Authority:** [CLAUDE.md](../CLAUDE.md) · [CHIME_BRAND.md](../brand/CHIME_BRAND.md) · [ARDENO_STEAL_SHEET.md](../brand/ARDENO_STEAL_SHEET.md) · [DASH_COMPONENT_FILTER.md](DASH_COMPONENT_FILTER.md)  
 **Product rule:** Telegram = product. Site = front door + trust. Dash = daily cake.
 
-This plan expands the thin `/` landing into a real marketing surface (including FAQ densify, pricing stub, blog later) **without** turning Chime into a broker dashboard or generic SaaS wallpaper.
+This plan expands the thin `/` landing into a real marketing surface (including FAQ densify, pricing stub, blog later) **without** turning Quiverly into a broker dashboard or generic SaaS wallpaper.
 
 ---
 
@@ -34,7 +34,7 @@ Cross-checked against factory license fence + brand rules (cool paper, near-blac
 
 ## 2. License & kit gate (hard)
 
-| Source | License | Bulk? | Chime action |
+| Source | License | Bulk? | Quiverly action |
 |---|---|---|---|
 | **HyperUI** | MIT | Pattern OK | **Primary steal** for marketing HTML → React |
 | **shadcn/ui** | MIT | Yes | Stack lock — Accordion, etc. as needed |
@@ -56,7 +56,7 @@ Log every pasted block in `THIRD_PARTY.md` (name, URL, MIT/SPDX, date).
 
 ### ACCEPT (build from these)
 
-| # | Pattern | Source | Use on Chime |
+| # | Pattern | Source | Use on Quiverly |
 |---|---|---|---|
 | 1 | FAQ divided + chevrons | HyperUI FAQs | Harden `FaqSection` (lucide chevron, hairline rules) |
 | 2 | Feature **list** (not 3-card grid) | HyperUI Feature Grids — list | “What you can alert on” as rows |
@@ -119,7 +119,7 @@ Brand wordmark hero-level · one headline · one supporting sentence · one CTA 
 ```
 [optional announcement bar]
 [atmosphere]
-  Hero: ChimeWordmark + headline + sentence + [Open Telegram] [Open dash]
+  Hero: QuiverlyWordmark + headline + sentence + [Open Telegram] [Open dash]
   Proof: one Telegram ChatBubble (fired alert) — not a carousel
   How it works: 3 Steps
   What you can watch: HyperUI-style feature LIST (price / move / disclosure / YoY)
@@ -156,7 +156,7 @@ Motion budget (keep ≤3): atmosphere drift · hero rise · one micro (CTA lift 
 ### Wave 3 — Blog (light)
 1. `content/blog/*.mdx` or markdown  
 2. `/blog` list (HyperUI blog cards — max 3 featured, no magazine wall)  
-3. First posts: “Why Telegram”, “What Chime is not”, “Filing YoY alerts”  
+3. First posts: “Why Telegram”, “What Quiverly is not”, “Filing YoY alerts”  
 4. No comments, no CMS  
 
 **Done when:** 2–3 posts live; dash routes untouched.
@@ -205,7 +205,7 @@ Optional public `MarketingNav`: Wordmark · How it works (anchor) · Pricing · 
 
 1. Remove the nav — is the brand still obvious?  
 2. Does this look like a trading terminal or KPI SaaS? → cut  
-3. Would someone think Chime replaces Telegram? → rewrite CTAs  
+3. Would someone think Quiverly replaces Telegram? → rewrite CTAs  
 4. Any Pro/Commons-Clause import? → remove  
 5. `prefers-reduced-motion` still honored?  
 

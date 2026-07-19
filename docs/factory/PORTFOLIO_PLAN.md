@@ -8,12 +8,12 @@ portfolio_score   = Σ repo_score(r)   over all enrolled factories
 
 **Not the KPI:** raw `git rev-list --count`, whitespace farms, split fixes.
 
-**Horizon:** Multi-year climb across many products. Chime is **node 1** (~148 `repo_score` so far).
+**Horizon:** Multi-year climb across many products. Quiverly is **node 1** (~148 `repo_score` so far).
 
-**Near-term (active):** [CHIME_HORIZON.md](CHIME_HORIZON.md) — Chime `repo_score` **2K–3K** (midpoint 2500).  
+**Near-term (active):** [CHIME_HORIZON.md](CHIME_HORIZON.md) — Quiverly `repo_score` **2K–3K** (midpoint 2500).  
 **Later:** 10K portfolio / 50M fantasy — only after this band.
 
-**Authority:** Each repo still obeys its own constitution (for Chime: `CLAUDE.md` + `COMMIT_FACTORY.md`). Farming banned everywhere.
+**Authority:** Each repo still obeys its own constitution (for Quiverly: `CLAUDE.md` + `COMMIT_FACTORY.md`). Farming banned everywhere.
 
 ---
 
@@ -61,7 +61,7 @@ Every orchestrator session:
 
 ---
 
-## 3. Chime fuel pipeline (keeps hours busy)
+## 3. Quiverly fuel pipeline (keeps hours busy)
 
 Pre-seeded epoch ladder (fence-legal only):
 
@@ -77,7 +77,7 @@ Pre-seeded epoch ladder (fence-legal only):
 
 When Epoch N clears → open N+1 from this ladder (or `scripts/factory/refill_board.py`).
 
-**Estimated Chime-only proper ceiling:** hundreds–low thousands. Operating band **2K–3K**: [CHIME_HORIZON.md](CHIME_HORIZON.md).
+**Estimated Quiverly-only proper ceiling:** hundreds–low thousands. Operating band **2K–3K**: [CHIME_HORIZON.md](CHIME_HORIZON.md).
 
 ---
 
@@ -93,7 +93,7 @@ For each new product:
    ```
 4. Meta job (later): `scripts/factory/portfolio_sum.py` reads all nodes → `portfolio_score`.
 
-**Until other repos exist:** Chime runs solo; `portfolio_score == chime.repo_score`.
+**Until other repos exist:** Quiverly runs solo; `portfolio_score == chime.repo_score`.
 
 ---
 
@@ -134,4 +134,4 @@ Resume next session from `docs/factory/HANDOFF.md`.
 | `refuted_fixed_same_wave` | Quality |
 | `raw_commit_count` | **Ignore** for goals |
 
-Climb toward **2K–3K Chime `repo_score` first** — product truth and fuel map in [CHIME_HORIZON.md](CHIME_HORIZON.md).
+Climb toward **2K–3K Quiverly `repo_score` first** — product truth and fuel map in [CHIME_HORIZON.md](CHIME_HORIZON.md).

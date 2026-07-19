@@ -63,7 +63,7 @@ Additional gaps:
 |---|---|---|
 | DASH_IA §3 `POST /watchlist` | “validates via CSE adapter; upserts `stocks`” | User-driven dash adds hit cse.lk **outside** poller tick budget, concurrent with market-hours poller |
 | DASH_IA §6 parity | “validate symbol via CSE” | Same — doubles unofficial load; looks like a second scraper from one IP |
-| DASH_IA §3 conventions | “short poll optional later” | Safe if polling Chime API; unsafe if anyone “refreshes quotes” from CSE |
+| DASH_IA §3 conventions | “short poll optional later” | Safe if polling Quiverly API; unsafe if anyone “refreshes quotes” from CSE |
 | CORE WS-003/020 | Bulk + disclosure-rule-only polls | Reduces load — do not undo with dash CSE calls |
 | CORE/adversarial WS-096 | Circuit half-open stampede | Dash-triggered CSE on recovery worsens herd |
 
@@ -119,7 +119,7 @@ Apply via WS-021 (or this planning PR). Replace/append as follows.
 
 **After** the sentence beginning “Every bot response involving a price…”, **append:**
 
-> The same NFA framing applies to every dashboard view and API-driven UI string that shows prices, % moves, alert thresholds, or fire history. Prefer a short sitewide footer plus a notice adjacent to price blocks. Do not use buy/sell/recommend language. Dashboards read market data from Chime Postgres (poller-written); they must not call cse.lk from the browser and must not open a second unbounded CSE client alongside the poller. Symbol validation for dash mutations uses stored `stocks` / poller data, or the poller’s rate-limited adapter under one shared budget — never a parallel scraper.
+> The same NFA framing applies to every dashboard view and API-driven UI string that shows prices, % moves, alert thresholds, or fire history. Prefer a short sitewide footer plus a notice adjacent to price blocks. Do not use buy/sell/recommend language. Dashboards read market data from Quiverly Postgres (poller-written); they must not call cse.lk from the browser and must not open a second unbounded CSE client alongside the poller. Symbol validation for dash mutations uses stored `stocks` / poller data, or the poller’s rate-limited adapter under one shared budget — never a parallel scraper.
 
 ### 5.3 CLAUDE.md — Thin dashboard bullet (sparkline ≠ TA)
 

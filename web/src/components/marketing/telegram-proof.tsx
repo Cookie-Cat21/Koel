@@ -1,5 +1,4 @@
-import { TelegramIcon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
@@ -23,8 +22,14 @@ export function TelegramProof({ className }: { className?: string }) {
         className="absolute inset-x-6 -top-4 -z-10 -rotate-2 scale-[0.96] rounded-[1.35rem] border border-white/10 bg-[oklch(0.16_0.014_260)] px-4 py-3.5 opacity-60 shadow-md"
       >
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#2AABEE] text-white">
-            <HugeiconsIcon icon={TelegramIcon} size={18} />
+          <span className="mt-0.5 size-9 shrink-0 overflow-hidden rounded-full shadow-sm">
+            <Image
+              src="/brand/telegram-mark.svg"
+              alt=""
+              width={36}
+              height={36}
+              className="size-full object-cover"
+            />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
@@ -34,7 +39,7 @@ export function TelegramProof({ className }: { className?: string }) {
               <p className="text-[10px] text-white/45">2m ago</p>
             </div>
             <p className="mt-0.5 text-sm font-semibold text-white/90">
-              Chime CSE
+              koel CSE
             </p>
             <p className="mt-1 text-xs leading-snug text-white/70">
               New disclosure for JKH.N0000
@@ -47,9 +52,15 @@ export function TelegramProof({ className }: { className?: string }) {
         <div className="flex items-start gap-3">
           <span
             aria-hidden
-            className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-[11px] bg-[#2AABEE] text-white"
+            className="mt-0.5 size-10 shrink-0 overflow-hidden rounded-full shadow-sm ring-1 ring-white/10"
           >
-            <HugeiconsIcon icon={TelegramIcon} size={20} />
+            <Image
+              src="/brand/telegram-mark.svg"
+              alt=""
+              width={40}
+              height={40}
+              className="size-full object-cover"
+            />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
@@ -59,7 +70,7 @@ export function TelegramProof({ className }: { className?: string }) {
               <p className="text-[11px] text-white/55">now</p>
             </div>
             <p className="mt-0.5 text-base font-semibold text-white">
-              Chime CSE
+              koel CSE
             </p>
             <p className="mt-1.5 text-sm leading-snug text-white/90">
               JKH.N0000 crossed above{" "}

@@ -152,7 +152,7 @@ Each workstream is a real improvement toward alert correctness, zero-dup / zero-
 
 - **id:** WS-015
 - **title:** `/myalerts` shows armed / fire state + cancel hint
-- **why it matters:** Users cannot tell a disarmed sticky-above alert from an armed one, so they think Chime is broken after a fire until price rearms.
+- **why it matters:** Users cannot tell a disarmed sticky-above alert from an armed one, so they think Quiverly is broken after a fire until price rearms.
 - **acceptance criterion:** `/myalerts` lists id, type, threshold, and armed/waiting-rearm for price rules; includes one-line `/cancel ALERT_ID` hint; empty state unchanged.
 - **estimated commits:** 1
 - **dependencies:** none

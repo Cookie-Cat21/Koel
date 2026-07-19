@@ -70,7 +70,7 @@ UI default date window is **last ~3 months**; role flags gate download UX (`ROLE
 - Dead 404s: `historicalData`, `historicalPrices`, `sharePriceHistory`, `priceHistory`, `stockHistory`, `companyChartData`, …
 - `aspi/year`: YTD performance **scalars** only  
 - WebSocket (`/api/ws`, `/app/request-aspi`, …): live market push, not history dump  
-- `financials`: useful for **fundamental PDF history**, not daily prices (Chime already extracts some via disclosure pipeline)
+- `financials`: useful for **fundamental PDF history**, not daily prices (Quiverly already extracts some via disclosure pipeline)
 
 ## 4. What this means for ML
 

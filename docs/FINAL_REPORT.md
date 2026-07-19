@@ -1,4 +1,4 @@
-# Chime — Stage A final report
+# Quiverly — Stage A final report
 
 ## Stage A delivered
 

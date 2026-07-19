@@ -72,8 +72,8 @@ if [[ "${login_code}" != "200" ]]; then
   echo "dash_smoke: FAIL GET /login → ${login_code}"
   exit 1
 fi
-if ! grep -q "Chime" /tmp/chime-dash-login.body; then
-  echo "dash_smoke: FAIL /login body missing Chime brand"
+if ! grep -qi "koel" /tmp/chime-dash-login.body; then
+  echo "dash_smoke: FAIL /login body missing koel brand"
   exit 1
 fi
 echo "dash_smoke: OK GET /login → 200"

@@ -125,13 +125,13 @@ Once daily scores exist, these product surfaces unlock:
 
 ## 4. UI plan (elements found)
 
-**Stack decision:** Stay on Chime (Next.js + Tailwind + shadcn + existing SVG/`motion`).  
+**Stack decision:** Stay on Quiverly (Next.js + Tailwind + shadcn + existing SVG/`motion`).  
 **Do not** add `@tremor/react` or Magic UI packs unless brush/zoom forces Recharts later.  
 **License fence:** no React Bits Commons Clause / unpaid Pro-only blocks in product — **pattern-copy** only.
 
 ### Patterns to copy (from Ardeno UI set + docs)
 
-| Element | Source | Role in Chime |
+| Element | Source | Role in Quiverly |
 |---|---|---|
 | **Bullet chart / qualitative zones** | [shadcnblocks chart-card26](https://www.shadcnblocks.com/block/chart-card26) | Best Fear↔Appetite metaphor — horizontal zones + marker |
 | **ProgressBar / Tracker** | [Tremor ProgressBar](https://tremor.so/docs/visualizations/progress-bar), [Tracker](https://tremor.so/docs/visualizations/tracker) | Spectrum track; 90d band ticks |
@@ -139,7 +139,7 @@ Once daily scores exist, these product surfaces unlock:
 | **Radial / arc gauge** | [shadcn radial charts](https://ui.shadcn.com/charts/radial) | Optional `/appetite` hero only |
 | **Interactive area chips** | [shadcn.io area-interactive](https://www.shadcn.io/charts/area-interactive) | `3M \| 1Y \| 5Y \| MAX` (MAX = hybrid or accrual) |
 | **NumberTicker** | [Magic UI](https://magicui.design/docs/components/number-ticker) | Optional score count-in on dedicated page |
-| **Existing Chime** | `KpiStrip`, `IndexStrip`, `SectorHeatStrip`, `Sparkline`, `ExpandablePriceChart` chips, `NfaInline`/`NfaFooter` | **Default building blocks** |
+| **Existing Quiverly** | `KpiStrip`, `IndexStrip`, `SectorHeatStrip`, `Sparkline`, `ExpandablePriceChart` chips, `NfaInline`/`NfaFooter` | **Default building blocks** |
 
 ### What not to ship
 

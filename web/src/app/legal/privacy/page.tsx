@@ -1,11 +1,11 @@
-import { ChimeWordmark } from "@/components/brand/chime-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
-import { ChimeFooter } from "@/components/marketing/chime-footer";
+import { KoelFooter } from "@/components/marketing/koel-footer";
 import { telegramBotUrl } from "@/lib/marketing";
 
 export const metadata = {
-  title: "Privacy · Chime",
-  description: "Chime privacy stub — public CSE data, Telegram identity.",
+  title: "Privacy · koel",
+  description: "koel privacy stub — public CSE data, Telegram identity.",
 };
 
 export default function PrivacyPage() {
@@ -18,13 +18,13 @@ export default function PrivacyPage() {
         tabIndex={-1}
         className="mx-auto w-full max-w-3xl flex-1 px-6 py-14"
       >
-        <ChimeWordmark size="lg" priority />
+        <KoelWordmark size="lg" priority />
         <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Privacy
         </h1>
         <div className="mt-8 max-w-2xl space-y-5 text-base leading-relaxed text-muted-foreground">
           <p>
-            Chime stores your Telegram user id (when you sign in), watchlist
+            koel stores your Telegram user id (when you sign in), watchlist
             symbols, alert rules, and delivery logs needed to send pushes. We
             use publicly available CSE market data — we do not scrape competitor
             products.
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
           </p>
         </div>
       </main>
-      <ChimeFooter telegramHref={botUrl} />
+      <KoelFooter telegramHref={botUrl} />
     </div>
   );
 }

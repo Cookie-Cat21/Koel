@@ -129,9 +129,9 @@ Types for `alert_rules.type`: `price_above` \| `price_below` \| `daily_move` \| 
 | Field | Content |
 |---|---|
 | **id** | WS-026 |
-| **title** | App shell with Chime brand-readable chrome |
+| **title** | App shell with Quiverly brand-readable chrome |
 | **why** | Bar #8: brand-readable first viewport; not a generic admin template. |
-| **acceptance criterion** | Shared layout: wordmark “Chime”, primary nav, content region; CSS variables for color/type; first viewport of `/watchlist` reads as Chime management, not a stock terminal; no purple-glow / fake dashboard chrome. |
+| **acceptance criterion** | Shared layout: wordmark “Quiverly”, primary nav, content region; CSS variables for color/type; first viewport of `/watchlist` reads as Quiverly management, not a stock terminal; no purple-glow / fake dashboard chrome. |
 | **commits** | (1) Root layout + nav. (2) Tokens + typography. |
 | **deps** | WS-025, WS-022 |
 | **risk** | Over-designing a marketing hero — keep shell utilitarian but branded. |

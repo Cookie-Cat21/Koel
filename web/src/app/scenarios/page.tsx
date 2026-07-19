@@ -9,7 +9,7 @@ import { scenariosEnabled } from "@/lib/scenarios";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Scenarios · Chime",
+  title: "Scenarios · koel",
   description:
     "Optional on-demand scenario reactions from public CSE filings — stub only.",
 };
@@ -55,7 +55,7 @@ export default async function ScenariosPage() {
             description={
               <>
                 <code className="font-mono text-xs">AI_SCENARIOS_ENABLED=1</code>{" "}
-                is set, but Chime has no LLM scenario runner yet. This page stays
+                is set, but koel has no LLM scenario runner yet. This page stays
                 a thin stub: no personas, no queued runs, no model calls. Simulated
                 reactions from public info only — never advice.
               </>

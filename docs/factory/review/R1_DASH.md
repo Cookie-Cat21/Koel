@@ -87,7 +87,7 @@ CLAUDE fence: dash is **secondary**, not a place users are expected to live; not
 | **Full app shell + bottom nav (WS-026/027)** | Reads as a primary product surface. Keep chrome minimal; avoid “daily driver” IA. |
 | **Symbol page = quote + sparkline + disclosures + watch/alert CTAs (WS-035/036)** | Densest route; easiest to slide into CSE Tracker Pro lite. Cap content; no OHLC board. |
 | **Sparkline (WS-035)** | Allowed as “not TA,” but agents grab chart libs. Hard-ban `ta`, TradingView, candle/volume profile; SVG polyline from snapshots only — or defer. |
-| **Live refresh / short poll** | Turns dash into the thing that must stay open — exact competitor failure mode Chime exists to avoid. |
+| **Live refresh / short poll** | Turns dash into the thing that must stay open — exact competitor failure mode Quiverly exists to avoid. |
 | **shadcn defaults + RESOURCES kits** | RESOURCES still lists Tremor, Aceternity, HyperUI, etc. under a stale “out of scope” header — magnet for glossy dashboard chrome and purple gradients. Retitle and **remove chart kits** from the active pointer list. |
 | **WS-026 “brand-readable first viewport” on `/watchlist`** | Conflicts with utilitarian management UI; over-read as marketing hero. Brand belongs strongest on `/login`; app pages stay quiet. |
 | **Armed/active badges + filters (WS-033)** | Fine at bot parity; “screener-like filters” already flagged — enforce symbol search only, no multi-sort market browser. |

@@ -82,7 +82,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       count: bars.length,
       bars,
       disclaimer:
-        "Daily OHLC from Chime path history — research only, not financial advice.",
+        "Daily OHLC from koel path history — research only, not financial advice.",
     });
   } catch (err) {
     console.error("GET /symbols/:symbol/daily-bars failed", err);

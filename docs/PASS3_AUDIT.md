@@ -1,4 +1,4 @@
-# Pass 3 adversarial audit — Chime (post–Pass 2)
+# Pass 3 adversarial audit — Quiverly (post–Pass 2)
 
 **Verdict: CONVERGE candidate — no findings above minor.**
 

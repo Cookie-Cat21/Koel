@@ -1,10 +1,16 @@
-import { ChevronDown } from "lucide-react";
+"use client";
 
+import { Minus, Plus } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export type FaqItem = { question: string; answer: string };
 
-/** HyperUI FAQ pattern — native details + lucide chevron. */
+/**
+ * Watermelon faq-3 — numbered FAQ rows.
+ * Native <details> for reliable expand (visual port of faq-3).
+ */
 export function FaqSection({
   items,
   eyebrow = "FAQ",
@@ -19,39 +25,56 @@ export function FaqSection({
   className?: string;
 }) {
   return (
-    <section className={cn("w-full", className)}>
-      <p className="relative mb-2 pl-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        <span
-          aria-hidden
-          className="absolute top-1/2 left-0 h-3 w-[3px] -translate-y-1/2 rounded-sm bg-primary"
-        />
-        {eyebrow}
-      </p>
-      <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-        {heading}
-      </h2>
-      {description ? (
-        <p className="mt-3 max-w-xl text-base text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
-      <div className="mt-6 divide-y divide-border/80 border-y border-border/80">
-        {items.map((item) => (
-          <details key={item.question} className="group">
-            <summary className="cursor-pointer list-none py-4 text-sm font-semibold text-foreground marker:content-none focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center justify-between gap-3">
-                {item.question}
-                <ChevronDown
-                  aria-hidden
-                  className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                />
-              </span>
-            </summary>
-            <p className="pb-4 text-sm leading-relaxed text-muted-foreground">
-              {item.answer}
-            </p>
-          </details>
-        ))}
+    <section className={cn("w-full", className)} aria-labelledby="faq-heading">
+      <div className="mb-10 flex w-full max-w-xl flex-col sm:mb-12">
+        <Badge
+          variant="outline"
+          className="mb-4 w-fit gap-1.5 rounded-full border-border bg-background px-3 py-1 text-xs font-medium tracking-wide text-muted-foreground"
+        >
+          <span className="inline-block size-1.5 rounded-full bg-foreground" />
+          {eyebrow}
+        </Badge>
+        <h2
+          id="faq-heading"
+          className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
+        >
+          {heading}
+        </h2>
+        {description ? (
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {description}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex w-full flex-col gap-2">
+        {items.map((item, i) => {
+          const num = String(i + 1).padStart(2, "0");
+          return (
+            <details
+              key={item.question}
+              className="group overflow-hidden border border-border bg-muted/30 transition-colors hover:bg-muted/50 open:bg-muted/60"
+            >
+              <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4 marker:content-none sm:px-6 sm:py-5 [&::-webkit-details-marker]:hidden">
+                <span className="w-8 shrink-0 text-center font-mono text-xs font-semibold tracking-widest text-muted-foreground/60 tabular-nums">
+                  {num}
+                </span>
+                <span className="flex-1 text-left text-sm font-medium leading-snug text-foreground sm:text-base">
+                  {item.question}
+                </span>
+                <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
+                  <Plus className="block size-3.5 group-open:hidden" />
+                  <Minus className="hidden size-3.5 group-open:inline" />
+                </span>
+              </summary>
+              <div className="px-5 pb-5 pl-[4.25rem] sm:px-6 sm:pb-6">
+                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {item.answer}
+                </p>
+              </div>
+            </details>
+          );
+        })}
       </div>
     </section>
   );

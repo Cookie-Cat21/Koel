@@ -17,16 +17,16 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props) {
   const { id: raw } = await params;
   const id = toSafePositiveInt(raw);
-  if (id == null) return { title: "Person · Chime" };
+  if (id == null) return { title: "Person · koel" };
   try {
     const dossier = await queryPersonDossier(getPool(), id);
-    if (!dossier) return { title: "Person · Chime" };
+    if (!dossier) return { title: "Person · koel" };
     return {
-      title: `${dossier.name} · People · Chime`,
+      title: `${dossier.name} · People · koel`,
       description: `CSE board seats and co-director network for ${dossier.name}. Research proxy — not personal net worth.`,
     };
   } catch {
-    return { title: "Person · Chime" };
+    return { title: "Person · koel" };
   }
 }
 

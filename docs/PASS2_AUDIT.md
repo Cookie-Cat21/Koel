@@ -1,4 +1,4 @@
-# Pass 2 adversarial audit — Chime Stage A (post–Pass 1)
+# Pass 2 adversarial audit — Quiverly Stage A (post–Pass 1)
 
 **Verdict: Pass 1 did not close the dual-poller / leader-election bar.** Session advisory locks are acquired and released on *different pooled connections*, so the lock is ineffective and can stall polling. Most other Pass 1 fixes hold under code review. The suggested “sticky above + failed send → new `event_key` duplicate” path is **refuted** for normal evaluate semantics.
 

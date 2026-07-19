@@ -44,9 +44,9 @@ Open-source text extract often **finds numbers**, but disambiguation is the hard
 |---|---|
 | `edgartools` / US XBRL | Poor fit — CSE archives are PDFs, not XBRL |
 | `FinTable` / `report_parser` / LLM table parse | Plausible on the 72% “strong” subset; needs per-layout tweaks + validation |
-| Chime `pypdf` briefs (already shipped) | Right layer for **narrative** summaries |
+| Quiverly `pypdf` briefs (already shipped) | Right layer for **narrative** summaries |
 
-## Recommendation for Chime
+## Recommendation for Quiverly
 
 1. **Do try calcs offline** on the strong subset (this spike supports that).  
 2. **Do not** push raw computed EPS/PE/YoY as alert truth in v1.  

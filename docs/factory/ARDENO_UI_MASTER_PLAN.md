@@ -1,7 +1,7 @@
-# Ardeno UI → Chime master plan
+# Ardeno UI → Quiverly master plan
 
 **Date:** 2026-07-17  
-**Goal:** Integrate useful patterns from the Ardeno bookmark folder into Chime’s
+**Goal:** Integrate useful patterns from the Ardeno bookmark folder into Quiverly’s
 thin CSE dash + Telegram cherry — **adapt patterns**, never vendor whole kits.
 
 ## Fence (non-negotiable)
@@ -17,7 +17,7 @@ thin CSE dash + Telegram cherry — **adapt patterns**, never vendor whole kits.
 | 21st.dev | Per-item MIT after SPDX — **reject** Financial Dashboard wholesale |
 | Magic UI Animated Beam | MIT — optional `/health` only |
 | React Bits | **REJECT** (Commons Clause) |
-| Apple Cards Carousel | **REJECT** for Chime (marketing chrome) |
+| Apple Cards Carousel | **REJECT** for Quiverly (marketing chrome) |
 
 Product non-goals stay: no portfolio/tax/screener terminal, no purple-glow SaaS,
 no AGPL forks, `web/` stays Postgres-only.
@@ -70,7 +70,7 @@ filters for board events · `marketStatus` poller gating (backend, not UI kit).
 
 ## Port checklist (each item)
 
-1. Adapt to Chime CSS tokens (no indigo/purple defaults)  
+1. Adapt to Quiverly CSS tokens (no indigo/purple defaults)  
 2. Log in `docs/THIRD_PARTY.md`  
 3. `npm run typecheck`  
 4. Adversarial: “trading terminal / Tracker Pro?” → revert if yes  

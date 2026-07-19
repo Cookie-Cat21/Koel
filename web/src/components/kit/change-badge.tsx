@@ -12,7 +12,7 @@ function changeDirectionSr(pct: number | null | undefined): string {
 }
 
 /**
- * Daily % change chip — Tremor badge-03 / HyperUI pattern, Chime tokens.
+ * Daily % change chip — Tremor badge-03 / HyperUI pattern, koel tokens.
  * Soft fill; not a solid KPI wall.
  */
 export function ChangeBadge({

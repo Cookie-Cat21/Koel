@@ -1,4 +1,4 @@
-# Chime — Factory Metrics
+# Quiverly — Factory Metrics
 
 **Purpose:** Define how we measure *proper commits* and factory health.  
 **Authority:** Subordinate to [COMMIT_FACTORY.md](COMMIT_FACTORY.md) and [CLAUDE.md](../CLAUDE.md).  
@@ -161,7 +161,7 @@ Source of truth: [workstreams/INDEX.md](workstreams/INDEX.md) + wave notes — n
 
 **“Trillion commits”, “50M/10K raw commits on this repo”, or any raw commit-count KPI is rejected.** It rewards farming, thrash, and split fixes. It conflicts with the constitution: quality over count.
 
-The **active** aspiration is **Chime `repo_score` ∈ [2000, 3000]** (midpoint 2500) — see [CHIME_HORIZON.md](CHIME_HORIZON.md). Larger portfolio numbers wait.
+The **active** aspiration is **Quiverly `repo_score` ∈ [2000, 3000]** (midpoint 2500) — see [CHIME_HORIZON.md](CHIME_HORIZON.md). Larger portfolio numbers wait.
 
 ### Replacement KPIs (report monthly)
 

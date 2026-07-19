@@ -116,14 +116,14 @@ def test_web_runtime_sources_do_not_import_or_call_cse_lk() -> None:
 def test_dashboard_pages_render_nfa_footer() -> None:
     """Every dash page keeps sitewide NFA footer chrome (WS-028).
 
-    Marketing landing uses ChimeFooter (embeds NFA_FOOTER) instead of NfaFooter.
+    Marketing landing uses KoelFooter (embeds NFA_FOOTER) instead of NfaFooter.
     """
     landing = WEB / "src" / "app" / "page.tsx"
     landing_src = landing.read_text(encoding="utf-8")
-    assert 'import { ChimeFooter } from "@/components/marketing/chime-footer";' in landing_src
-    assert "<ChimeFooter" in landing_src
+    assert 'import { KoelFooter } from "@/components/marketing/koel-footer";' in landing_src
+    assert "<KoelFooter" in landing_src
     assert "NFA_FOOTER" in (
-        WEB / "src" / "components" / "marketing" / "chime-footer.tsx"
+        WEB / "src" / "components" / "marketing" / "koel-footer.tsx"
     ).read_text(encoding="utf-8")
 
     page_paths = [
@@ -187,10 +187,10 @@ def test_login_page_a11y_contract() -> None:
     form_src = form.read_text(encoding="utf-8")
 
     assert 'id="main-content"' in page_src
-    assert 'aria-label="Chime home"' in page_src
+    assert 'aria-label="koel home"' in page_src
     assert 'id="login-explainer"' in page_src
     assert 'aria-labelledby="login-explainer"' in page_src
-    assert 'list-disc' in page_src
+    assert 'rounded-full bg-foreground/50' in page_src
     assert "<li>- " not in page_src
 
     assert 'aria-labelledby="login-sign-in-heading"' in form_src
@@ -523,7 +523,7 @@ def test_scenarios_dash_stub_page() -> None:
     assert "requirePageSession" in page_src
     assert "scenariosEnabled" in page_src
     assert 'export const dynamic = "force-dynamic"' in page_src
-    assert 'title: "Scenarios · Chime"' in page_src
+    assert 'title: "Scenarios · koel"' in page_src
     assert "stub only" in page_src
     assert 'id="main-content"' in page_src
     assert 'active="/scenarios"' in page_src
@@ -953,14 +953,17 @@ def test_ardeno_kit_components_exist_and_are_wired() -> None:
             ), f"{name} must not vendor {tok}"
 
     landing = (WEB / "src" / "app" / "page.tsx").read_text(encoding="utf-8")
-    # Option A landing: phone-peek proof + HowItWorks + FAQ (kit still present).
+    # Option A landing: Telegram proof + HowItWorks + Watermelon faq-6 split.
     assert "TelegramProof" in landing
     assert "HowItWorks" in landing
-    assert "FaqSection" in landing
-    assert "ChimeWordmark" in landing
-    assert "ChimeFooter" in landing
+    assert "FaqSplit" in landing or "FaqSection" in landing
+    assert "AnnouncementBar" in landing
+    assert "KoelWordmark" in landing
+    assert "KoelFooter" in landing
     assert (WEB / "src" / "components" / "kit" / "chat-bubble.tsx").is_file()
     assert (WEB / "src" / "components" / "kit" / "steps.tsx").is_file()
+    assert (WEB / "src" / "components" / "kit" / "faq-section.tsx").is_file()
+    assert (WEB / "src" / "components" / "marketing" / "faq-split.tsx").is_file()
     assert (WEB / "src" / "components" / "marketing" / "how-it-works.tsx").is_file()
     assert (WEB / "src" / "components" / "marketing" / "telegram-proof.tsx").is_file()
 

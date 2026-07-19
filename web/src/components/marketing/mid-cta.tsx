@@ -3,7 +3,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** HyperUI CTA rhythm — quiet bordered band, default primary. */
+/**
+ * Watermelon cta-1 rhythm — bordered band, dual actions.
+ * Blur / transform-gpu glow blobs removed (brand fence).
+ */
 export function MidCta({
   telegramHref,
   className,
@@ -16,13 +19,10 @@ export function MidCta({
 
   return (
     <section
-      className={cn(
-        "rounded-xl border border-border/80 bg-card/70 px-6 py-8 sm:px-10 sm:py-10",
-        className,
-      )}
+      className={cn("w-full", className)}
       aria-labelledby="mid-cta-heading"
     >
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <div className="relative isolate flex flex-col items-stretch justify-between gap-8 overflow-hidden rounded-xl border border-border bg-card/70 p-8 shadow-sm md:flex-row md:items-center md:gap-12 md:px-10 md:py-12">
         <div className="max-w-md">
           <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
             Primary surface

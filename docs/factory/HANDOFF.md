@@ -2,7 +2,7 @@
 
 **Updated:** 2026-07-11  
 **Branch:** `cursor/epoch11-drain-cb19`  
-**PR:** https://github.com/Cookie-Cat21/Chime/pull/6  
+**PR:** https://github.com/Cookie-Cat21/chime/pull/6  
 **KPI:** Portfolio Plan A — `factory_score` (not raw commits)
 
 ## Resume

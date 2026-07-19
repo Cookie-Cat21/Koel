@@ -49,12 +49,16 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chime",
+  title: "koel",
   description:
     "Telegram-first CSE alerting — manage watchlists and alert rules.",
   icons: {
-    icon: [{ url: "/brand/chime-mark.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/brand/chime-mark.png" }],
+    icon: [
+      { url: "/brand/koel-mark-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/koel-mark-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/koel-mark.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/brand/koel-mark-180.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

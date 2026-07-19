@@ -1,4 +1,4 @@
-# Pass 1 adversarial audit — Chime Stage A
+# Pass 1 adversarial audit — Quiverly Stage A
 
 **Verdict: Stage A is not done.** Crossing unit tests are solid; production paths still lose alerts, flood users, double-fire under replica race, and fail the latency / ops bars by design.
 

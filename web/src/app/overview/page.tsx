@@ -5,14 +5,21 @@ import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
 import { CakeCherryBanner } from "@/components/kit/cake-cherry-banner";
 import { ChangeBadge } from "@/components/kit/change-badge";
-import { IndexStrip, type IndexStripItem } from "@/components/kit/index-strip";
+import {
+  IndexStrip,
+  type IndexStripBars,
+  type IndexStripItem,
+  type IndexStripTicks,
+} from "@/components/kit/index-strip";
 import { MoversBarList } from "@/components/kit/movers-bar-list";
 import {
   SectorHeatStrip,
   type SectorHeatItem,
 } from "@/components/kit/sector-heat-strip";
+import { NotificationList } from "@/components/kit/notification-list";
 import { ArmedBadge } from "@/components/kit/status-badge";
 import { StatCard } from "@/components/kit/stat-card";
+import { MarketSessionChip } from "@/components/market-session-chip";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
@@ -25,6 +32,10 @@ import {
   queryAppetiteHistory,
   type AppetiteDay,
 } from "@/lib/api/appetite";
+import {
+  normalizeDailyBar,
+  type DailyBarPoint,
+} from "@/lib/api/daily-bars";
 import { getPool } from "@/lib/db";
 import {
   MAX_SECTOR_NAME_LENGTH,
@@ -35,6 +46,7 @@ import {
   cappedAlertThreshold,
   toFiniteNumber,
 } from "@/lib/api/finite-number";
+import { INDEX_CODES } from "@/lib/api/indexes";
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { serverApiGet } from "@/lib/api/server-fetch";
 import { isAlertType, normalizeSymbol } from "@/lib/api/symbol";
@@ -45,7 +57,7 @@ import { alertTypeLabel, formatNumber, formatTs } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Overview · Chime",
+  title: "Overview · koel",
   description:
     "CSE market overview — watchlist, movers, and Telegram-backed alerts.",
 };
@@ -228,6 +240,67 @@ function parseIndexes(body: unknown): IndexStripItem[] {
   return out;
 }
 
+async function loadIndexDailyPath(): Promise<{
+  barsByCode: IndexStripBars;
+  ticksByCode: IndexStripTicks;
+}> {
+  const barsByCode: IndexStripBars = {};
+  const ticksByCode: IndexStripTicks = {};
+  try {
+    const pool = getPool();
+    for (const code of INDEX_CODES) {
+      const barsRes = await pool.query<{
+        trade_date: Date | string;
+        open: number | null;
+        high: number | null;
+        low: number | null;
+        price: number;
+        volume: number | null;
+      }>(
+        `
+        SELECT trade_date, open, high, low, price, volume
+        FROM daily_bars
+        WHERE symbol = $1
+        ORDER BY trade_date DESC
+        LIMIT 260
+        `,
+        [code],
+      );
+      const bars: DailyBarPoint[] = [];
+      for (const row of barsRes.rows) {
+        const b = normalizeDailyBar(row);
+        if (b) bars.push(b);
+      }
+      bars.reverse();
+      if (bars.length > 0) barsByCode[code] = bars;
+
+      const tickRes = await pool.query<{
+        value: number | string | null;
+        ts: Date | string;
+      }>(
+        `
+        SELECT value, ts
+        FROM index_snapshots
+        WHERE code = $1
+        ORDER BY ts DESC
+        LIMIT 240
+        `,
+        [code],
+      );
+      const ticks: { ts: string | null; price: number | null }[] = [];
+      for (const row of [...tickRes.rows].reverse()) {
+        const price = toFiniteNumber(row.value);
+        if (price == null || price <= 0) continue;
+        ticks.push({ ts: toIso(row.ts), price });
+      }
+      if (ticks.length > 0) ticksByCode[code] = ticks;
+    }
+  } catch {
+    // Charts stay empty — strip still shows latest index values.
+  }
+  return { barsByCode, ticksByCode };
+}
+
 function parseSectors(body: unknown): SectorHeatItem[] {
   if (!body || typeof body !== "object" || Array.isArray(body)) return [];
   const raw = (body as { items?: unknown }).items;
@@ -285,6 +358,7 @@ export default async function OverviewPage() {
     historyRes,
     indexesRes,
     sectorsRes,
+    indexCharts,
   ] = await Promise.all([
     serverApiGet("/api/v1/watchlist"),
     serverApiGet("/api/v1/market/movers?direction=up&limit=5"),
@@ -293,6 +367,7 @@ export default async function OverviewPage() {
     serverApiGet("/api/v1/alerts/history?limit=6"),
     serverApiGet("/api/v1/indexes"),
     serverApiGet("/api/v1/sectors"),
+    loadIndexDailyPath(),
   ]);
 
   const watch = parseWatch(await readJson(watchRes));
@@ -323,9 +398,10 @@ export default async function OverviewPage() {
         <PageHeader
           eyebrow="Home"
           title="Overview"
-          description="CSE snapshots from Chime’s poller. Set rules here — Telegram is the cherry that pings you when they fire."
+          description="CSE snapshots from koel’s poller. Set rules here — Telegram is the cherry that pings you when they fire."
           action={
             <div className="flex flex-wrap items-center gap-2">
+              <MarketSessionChip />
               <PriceRefresh lastSnapshotAt={freshestTs} />
               <Button asChild size="sm">
                 <Link href="/alerts">New alert</Link>
@@ -342,11 +418,15 @@ export default async function OverviewPage() {
         <section className="mt-6" aria-labelledby="overview-indexes-heading">
           <h2
             id="overview-indexes-heading"
-            className="sr-only"
+            className="mb-2 text-sm font-medium tracking-wide text-muted-foreground uppercase"
           >
             Market indexes
           </h2>
-          <IndexStrip items={indexes} />
+          <IndexStrip
+            items={indexes}
+            barsByCode={indexCharts.barsByCode}
+            ticksByCode={indexCharts.ticksByCode}
+          />
         </section>
 
         <AppetiteStrip
@@ -539,48 +619,29 @@ export default async function OverviewPage() {
         </div>
 
         <section className="mt-10" aria-labelledby="overview-fires-heading">
-          <div className="flex items-end justify-between gap-3">
-            <h2
-              id="overview-fires-heading"
-              className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
-            >
-              Recent fires
-            </h2>
-            <Link
-              href="/alerts/history"
-              className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Full history
-            </Link>
+          <h2
+            id="overview-fires-heading"
+            className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+          >
+            Recent fires
+          </h2>
+          <div className="mt-4">
+            <NotificationList
+              viewAllHref="/alerts/history"
+              items={fires.map((ev) => ({
+                id: ev.id,
+                title: ev.symbol,
+                subtitle: [
+                  alertTypeLabel(ev.type),
+                  ev.message_text ? ev.message_text.slice(0, 80) : null,
+                ]
+                  .filter(Boolean)
+                  .join(" — "),
+                time: formatTs(ev.fired_at),
+                href: `/symbols/${encodeURIComponent(ev.symbol)}`,
+              }))}
+            />
           </div>
-          {fires.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              No fires recorded yet. When a rule matches, Telegram gets the push
-              and the audit trail shows up here.
-            </p>
-          ) : (
-            <ul className="mt-4 divide-y divide-border/60">
-              {fires.map((ev) => (
-                <li key={ev.id} className="py-3">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <Link
-                      href={`/symbols/${encodeURIComponent(ev.symbol)}`}
-                      className="font-mono text-sm font-medium underline-offset-4 hover:underline"
-                    >
-                      {ev.symbol}
-                    </Link>
-                    <time className="text-xs text-muted-foreground">
-                      {formatTs(ev.fired_at)}
-                    </time>
-                  </div>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {alertTypeLabel(ev.type)}
-                    {ev.message_text ? ` — ${ev.message_text}` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
         <NfaInline className="mt-8" />

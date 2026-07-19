@@ -4,7 +4,7 @@ Paste into a recurring Cursor agent (2–3×/week or continuous):
 
 ---
 
-You maintain Chime's ML research loop. Each run:
+You maintain Quiverly's ML research loop. Each run:
 
 1. Read `docs/factory/EXPERIMENT_BACKLOG.md`, the experiment ledger
    (`docs/experiments/ML_ALWAYS_ON_FORCEFIND.md` and successors),

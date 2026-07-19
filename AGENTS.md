@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Chime — Telegram-first alerting layer for the Colombo Stock Exchange (CSE).
+koel — Telegram-first alerting layer for the Colombo Stock Exchange (CSE).
 Product plan and non-goals live in `CLAUDE.md`; developer commands in `README.md`.
 
 ## Cursor Cloud specific instructions

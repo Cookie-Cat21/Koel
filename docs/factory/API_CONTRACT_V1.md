@@ -1,4 +1,4 @@
-# Chime Dashboard API Contract v1
+# Quiverly Dashboard API Contract v1
 
 **Status:** Frozen (WS-024)  
 **Base path:** `/api/v1`  

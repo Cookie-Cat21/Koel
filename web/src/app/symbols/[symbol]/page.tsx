@@ -24,13 +24,16 @@ import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { OptionalLwcNote } from "@/components/optional-lwc-note";
 import { PageHeader } from "@/components/page-header";
+import { MarketSessionChip } from "@/components/market-session-chip";
 import { PriceRefresh } from "@/components/price-refresh";
 import { ExpandablePriceChart } from "@/components/charts/expandable-price-chart";
 import {
+  dayChangeScopeLabel,
   normalizeDailyBar,
   type ChartRangeKey,
   type DailyBarPoint,
 } from "@/lib/api/daily-bars";
+import { isMarketSessionOpen } from "@/lib/market-session";
 import { finiteSparklinePoints } from "@/lib/sparkline";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,7 +87,7 @@ export async function generateMetadata({
   // Fail closed — never echo hostile / undecodable raw into <title>.
   const symbol = normalizeSymbolParam(raw) ?? "Symbol";
   return {
-    title: `${symbol} · Chime`,
+    title: `${symbol} · koel`,
     description: `Last price and disclosures for ${symbol}.`,
   };
 }
@@ -309,7 +312,7 @@ export default async function SymbolDetailPage({
           title={`Couldn’t load ${symbol}`}
           description={
             <>
-              Chime couldn’t fetch this symbol from Postgres just now. Check
+              koel couldn’t fetch this symbol from Postgres just now. Check
               your connection, then try again — or open it from your{" "}
               <Link href="/watchlist" className="underline underline-offset-4">
                 watchlist
@@ -550,11 +553,16 @@ export default async function SymbolDetailPage({
   }
 
   const sparkPoints = finiteSparklinePoints(snaps.points);
-  const snapshotStale = Boolean(data.last?.ts && isStaleTs(data.last.ts));
+  const marketOpen = isMarketSessionOpen();
+  const marketClosed = !marketOpen;
+  const ageStale = Boolean(data.last?.ts && isStaleTs(data.last.ts));
+  // Age-stale during closed hours is expected quiet — only alarm when open.
+  const snapshotStale = ageStale && marketOpen;
   const qualityNotices = buildDataQualityNotices({
     symbol: data.symbol,
     hasLastPrice: Boolean(data.last),
     snapshotStale,
+    marketClosed: marketClosed && Boolean(data.last),
     sparkPointCount: sparkPoints.length,
     quality: filingQuality,
     metricsLoadFailed: metricsFailed,
@@ -594,6 +602,7 @@ export default async function SymbolDetailPage({
           }
         />
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <MarketSessionChip />
           <PriceRefresh lastSnapshotAt={data.last?.ts ?? null} />
           <WatchButton symbol={data.symbol} watching={isWatching} />
           <Button asChild variant="outline" size="sm">
@@ -618,7 +627,9 @@ export default async function SymbolDetailPage({
         className={`mt-6 overflow-hidden rounded-xl border ${
           snapshotStale
             ? "border-amber-500/40 bg-amber-500/5"
-            : "border-border/70"
+            : marketClosed && data.last
+              ? "border-slate-300/70 bg-slate-500/5"
+              : "border-border/70"
         }`}
       >
         <div className="flex flex-col gap-5 p-5 sm:p-6">
@@ -626,13 +637,19 @@ export default async function SymbolDetailPage({
             <div className="min-w-0">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Last price
-                {snapshotStale ? " · stale" : ""}
+                {snapshotStale
+                  ? " · stale"
+                  : marketClosed && data.last
+                    ? " · market closed"
+                    : ""}
               </p>
               {data.last ? (
                 <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span
                     className={`font-mono text-4xl font-semibold tracking-tight tabular-nums ${
-                      snapshotStale ? "text-muted-foreground" : ""
+                      snapshotStale || marketClosed
+                        ? "text-muted-foreground"
+                        : ""
                     }`}
                   >
                     {formatNumber(data.last.price)}
@@ -640,6 +657,7 @@ export default async function SymbolDetailPage({
                   <SignedChange
                     change={data.last.change}
                     changePct={data.last.change_pct}
+                    asOfTs={data.last.ts}
                   />
                 </div>
               ) : (
@@ -652,7 +670,9 @@ export default async function SymbolDetailPage({
                   As of {formatTs(data.last.ts)} (SLT)
                   {snapshotStale
                     ? " — more than a day old; poller may be paused."
-                    : ""}
+                    : marketClosed
+                      ? " — last print; session closed until next weekday open."
+                      : ""}
                 </p>
               ) : null}
             </div>
@@ -729,7 +749,7 @@ export default async function SymbolDetailPage({
           title="No snapshot yet"
           description={
             <>
-              Chime hasn’t stored a price tick for {data.symbol}. During
+              koel hasn’t stored a price tick for {data.symbol}. During
               market hours (09:30–14:30 SLT, weekdays) the poller writes
               snapshots here. Outside those hours this stays empty until the
               next session. Not financial advice.
@@ -742,16 +762,33 @@ export default async function SymbolDetailPage({
           }
         />
       ) : null}
-      {data.last && isStaleTs(data.last.ts) ? (
+      {data.last && marketClosed ? (
+        <EmptyState
+          className="mt-4"
+          title="Market closed"
+          description={
+            <>
+              CSE cash session is closed (09:30–14:30 SLT, weekdays). Last
+              print was {formatTs(data.last.ts)} (SLT). Fresh ticks resume
+              next session if this symbol is watched. Not financial advice.
+            </>
+          }
+          action={
+            <Button asChild variant="outline" size="sm">
+              <Link href="/watchlist">Back to watchlist</Link>
+            </Button>
+          }
+        />
+      ) : null}
+      {data.last && snapshotStale ? (
         <EmptyState
           className="mt-4"
           title="Snapshot looks stale"
           description={
             <>
               Last tick was {formatTs(data.last.ts)} (SLT) — more than a day
-              ago. If market hours have passed without a refresh, the poller
-              may be paused or this symbol wasn’t watched. Not financial
-              advice.
+              ago while the session is open. The poller may be paused or this
+              symbol wasn’t watched. Not financial advice.
             </>
           }
           action={
@@ -811,7 +848,7 @@ export default async function SymbolDetailPage({
             title="Couldn’t load disclosures"
             description={
               <>
-                Chime couldn’t read stored filings for{" "}
+                koel couldn’t read stored filings for{" "}
                 <code className="font-mono text-xs">{data.symbol}</code> just
                 now. Check your connection, then try again — this is not an
                 empty list.
@@ -923,9 +960,12 @@ function Stat({
 function SignedChange({
   change,
   changePct,
+  asOfTs,
 }: {
   change: number | null;
   changePct: number | null;
+  /** Snapshot stamp — drives today vs prior-session scope label. */
+  asOfTs: string | null;
 }) {
   const direction =
     changePct != null && changePct > 0
@@ -949,6 +989,7 @@ function SignedChange({
       : `${change > 0 ? "+" : ""}${formatNumber(change)}`;
   const pctLabel = changePct == null ? null : formatPct(changePct);
   if (changeLabel == null && pctLabel == null) return null;
+  const scope = dayChangeScopeLabel(asOfTs);
   return (
     <span className={`font-mono text-lg font-medium tabular-nums ${tone}`}>
       <span className="sr-only">
@@ -956,8 +997,15 @@ function SignedChange({
       </span>
       {changeLabel ?? ""}
       {pctLabel ? `${changeLabel != null ? " " : ""}(${pctLabel})` : ""}
-      <span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
-        today
+      <span
+        className="ml-1.5 font-sans text-xs font-normal text-muted-foreground"
+        title={
+          scope === "today"
+            ? "Change vs previous close for today's session"
+            : "Change vs previous close for that session (market may be closed)"
+        }
+      >
+        {scope}
       </span>
     </span>
   );

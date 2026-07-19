@@ -14,7 +14,7 @@
 
 ```
 $ python3 scripts/factory/loop_status.py
-=== Chime Agentic Factory Status ===
+=== Quiverly Agentic Factory Status ===
 ...
 exit 0
 ```

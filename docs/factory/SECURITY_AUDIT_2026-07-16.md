@@ -1,4 +1,4 @@
-# Security audit — Chime (2026-07-16)
+# Security audit — Quiverly (2026-07-16)
 
 **Auditor stance:** senior application security review; assume bugs until disproven.  
 **Stack:** Next.js App Router (`web/`), Neon Postgres, Python poller/bot (`chime/`), Vercel dash, Telegram Bot API, CSE unofficial JSON, Groq AI.  
@@ -53,7 +53,7 @@
 | **Severity** | **Critical** (operational / credential compromise) |
 | **Location** | Conversation history / operator paste (not committed to git at audit time) |
 | **Issue** | Telegram bot token, Neon password, Groq API keys, and session secrets were pasted into agent chat. `.env` is gitignored (good), but chat logs are a leak channel. |
-| **Impact** | Bot takeover (spam/phishing as Chime), Neon data exfil/destruction, AI quota theft, session forgery if `DASH_SESSION_SECRET` reused. |
+| **Impact** | Bot takeover (spam/phishing as Quiverly), Neon data exfil/destruction, AI quota theft, session forgery if `DASH_SESSION_SECRET` reused. |
 | **Fix** | **Rotate all pasted credentials immediately** (BotFather, Neon, Groq, new `DASH_SESSION_SECRET`). Store only in Vercel/GitHub/Cloud Agent secrets. Add incident note in runbook. |
 | **Effort** | Quick (rotation) — do now. |
 
@@ -158,7 +158,7 @@
 | **Severity** | **Medium** if token leaks; **Informational** design |
 | **Location** | `TELEGRAM_BOT_TOKEN`; bot uses PTB polling |
 | **Issue** | Token is crown jewel for outbound messaging. Incoming updates via long-poll are from Telegram API with token — not an open webhook without secret. |
-| **Impact** | Leaked token → message users as Chime. |
+| **Impact** | Leaked token → message users as Quiverly. |
 | **Fix** | Rotate after any paste; restrict who can read Vercel/GitHub secrets; monitor. |
 | **Effort** | Quick. |
 

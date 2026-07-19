@@ -12,7 +12,7 @@
 
 The thin dashboard (`web/`) manages watchlists and alert rules for the same `users` rows the Telegram bot uses. WAVE1_DASH proposed a shared operator secret plus a client-supplied `telegram_id` on every request. That is universal impersonation: anyone with the secret can act as any user. R1_DASH and COMMIT_FACTORY reject that as “auth.”
 
-Identity for Chime is a Telegram user. Production login should prove Telegram identity. Until the Login Widget is wired, v1 needs a **demo** path that still binds a server session to a fixed user — not per-request spoofable headers.
+Identity for Quiverly is a Telegram user. Production login should prove Telegram identity. Until the Login Widget is wired, v1 needs a **demo** path that still binds a server session to a fixed user — not per-request spoofable headers.
 
 ## Decision
 

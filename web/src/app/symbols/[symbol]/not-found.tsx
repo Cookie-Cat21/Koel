@@ -18,7 +18,7 @@ export default function SymbolNotFound() {
           title="Symbol not found"
           description={
             <>
-              Chime only opens symbol pages for CSE tickers the poller has
+              koel only opens symbol pages for CSE tickers the poller has
               already seen.{" "}
               <Link
                 href="/market"
@@ -29,7 +29,7 @@ export default function SymbolNotFound() {
               the market list to pick a known symbol, add it to your watchlist,
               or use{" "}
               <code className="font-mono text-xs">/watch SYMBOL</code> in
-              Telegram — Chime keeps watching in the background. Not financial
+              Telegram — koel keeps watching in the background. Not financial
               advice.
             </>
           }

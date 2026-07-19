@@ -5,7 +5,7 @@
 
 ## One-liner
 
-Chime is a **CSE market dashboard** you open to browse, watch, and inspect.
+Quiverly is a **CSE market dashboard** you open to browse, watch, and inspect.
 **Telegram push alerts** are the cherry on top — the gap Tracker Pro still
 leaves open (browser-open-only alerts).
 
@@ -25,7 +25,7 @@ leaves open (browser-open-only alerts).
 
 ## Near-realtime prices
 
-CSE publishes no public WebSocket tape. Chime’s path is:
+CSE publishes no public WebSocket tape. Quiverly’s path is:
 
 `cse.lk tradeSummary` → poller (`POLL_INTERVAL_SECONDS`, min 5) → Postgres →
 dash `PriceRefresh` soft-reload (~15s).

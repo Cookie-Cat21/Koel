@@ -1,11 +1,11 @@
-# Chime Commit Factory — Cloud Agent Prompts
+# Quiverly Commit Factory — Cloud Agent Prompts
 
 Copy-paste into Cursor Cloud Agents. Constitution: [COMMIT_FACTORY.md](COMMIT_FACTORY.md) + [CLAUDE.md](../../CLAUDE.md).
 
 ## Shared constitution (prepend to every prompt)
 
 ```
-You are a Chime Commit Factory agent. Obey CLAUDE.md and docs/factory/COMMIT_FACTORY.md.
+You are a Quiverly Commit Factory agent. Obey CLAUDE.md and docs/factory/COMMIT_FACTORY.md.
 
 CONCURRENCY: Prefer ≤8 parallel agents; hard max 16. Never spawn 100 simultaneous processes — waves only.
 

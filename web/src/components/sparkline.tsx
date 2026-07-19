@@ -17,7 +17,7 @@ export function Sparkline({
   if (series.length < 2) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
-        Not enough ticks yet. Chime needs at least two stored ticks for this sparkline.
+        Not enough ticks yet. koel needs at least two stored ticks for this sparkline.
       </p>
     );
   }
@@ -41,7 +41,7 @@ export function Sparkline({
   if (coords.some((c) => c.includes("NaN") || c.includes("Infinity"))) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
-        Not enough ticks yet. Chime needs at least two stored ticks for this sparkline.
+        Not enough ticks yet. koel needs at least two stored ticks for this sparkline.
       </p>
     );
   }

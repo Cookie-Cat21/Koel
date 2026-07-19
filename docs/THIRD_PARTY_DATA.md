@@ -49,7 +49,7 @@ Spike (historical research only): `python3 scripts/experiments/lolc_public_feeds
   `https://www.lolcsecurities.lk/api/stock-screener/` · `…/dividend-calendar/dividends_db.csv`
 - ToS / license: **NO-GO for product reuse** —  
   [Terms and Conditions](https://www.lolcsecurities.lk/terms-and-conditions.html) **Use License** allows only a temporary download of materials for **individual and non-business** use, and forbids **commercial use**, **public presentation**, **modify/copy**, and **transfer to another server**. Footer: “All Rights Reserved.”
-- Decision (2026-07-18): **Do not ingest into Chime Postgres, dash, Telegram, or Signal Board** without a written license / permission from LOLC. No prod flags. Spike script stays research-documentation only.
+- Decision (2026-07-18): **Do not ingest into Quiverly Postgres, dash, Telegram, or Signal Board** without a written license / permission from LOLC. No prod flags. Spike script stays research-documentation only.
 - Revisit only if LOLC grants written redistribution rights (then re-run intake checklist from scratch).
 
 ### CDS INFOLINE (monthly market plumbing) — still candidate (thin)

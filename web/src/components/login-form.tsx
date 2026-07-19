@@ -87,7 +87,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
       if (!bounded.ok) {
         setError(
           loginError(
-            "Chime couldn't sign you in (response too large). Try again.",
+            "koel couldn't sign you in (response too large). Try again.",
           ),
         );
         return;
@@ -110,7 +110,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
         ) {
           setError(
             loginError(
-              "Chime couldn't sign you in. Check the Telegram ID and try again.",
+              "koel couldn't sign you in. Check the Telegram ID and try again.",
             ),
           );
           return;
@@ -118,15 +118,15 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
         // Cap + strip controls — hostile error.message must not balloon UI.
         const apiMsg = apiErrorMessage(data, "");
         const detail = apiMsg
-          ? `Chime couldn't sign you in: ${apiMsg}`
-          : `Chime couldn't sign you in (${res.status}). Try again.`;
+          ? `koel couldn't sign you in: ${apiMsg}`
+          : `koel couldn't sign you in (${res.status}). Try again.`;
         setError(loginError(detail));
         return;
       }
       router.push("/overview");
       router.refresh();
     } catch {
-      setError(loginError("Chime couldn't reach the sign-in endpoint. Try again."));
+      setError(loginError("koel couldn't reach the sign-in endpoint. Try again."));
     } finally {
       setPending(false);
     }
@@ -139,7 +139,7 @@ export function LoginForm({ allowlist, defaultTelegramId, demoEnabled }: Props) 
       onSubmit={onSubmit}
       method="post"
       action="/api/v1/auth/demo"
-      className="flex w-full max-w-sm flex-col gap-4"
+      className="flex w-full flex-col gap-4"
       aria-labelledby="login-sign-in-heading"
       noValidate
     >

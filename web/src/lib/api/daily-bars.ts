@@ -169,6 +169,37 @@ export function isColomboSessionToday(
 }
 
 /**
+ * Short label for day-change scope next to last price.
+ *
+ * CSE ``change`` / ``change_pct`` are vs previous close for the snapshot's
+ * session — not necessarily "today" when the market is closed or the tick is
+ * from a prior Colombo calendar day. Returns ``today`` only when the stamp
+ * falls on today's Asia/Colombo date; otherwise a short Colombo date
+ * (e.g. ``Jul 17``) so weekends/stale ticks are not misleading.
+ */
+export function dayChangeScopeLabel(
+  ts: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  if (typeof ts !== "string" || !ts.trim()) return "session";
+  const snapKey = colomboDateKey(ts, now);
+  const todayKey = colomboDateKey(null, now);
+  if (!snapKey) return "session";
+  if (todayKey && snapKey === todayKey) return "today";
+  const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return "session";
+  try {
+    return d.toLocaleDateString("en-LK", {
+      month: "short",
+      day: "numeric",
+      timeZone: "Asia/Colombo",
+    });
+  } catch {
+    return "session";
+  }
+}
+
+/**
  * Cap ascending tick series from the **end** so expand 1D keeps the newest
  * prints (``finiteSparklinePoints`` alone keeps the oldest 200).
  */

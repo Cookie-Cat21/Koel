@@ -67,7 +67,7 @@ Planning numbers for one poller replica at defaults. Not SLOs — capacity / quo
 
 Optional extras per tick (fail-soft): `SECTORS_INGEST=1` → one `POST /allSectors`; disclosure rules → bulk and/or per-symbol announcement calls; PDF enrich → polite `PDF_ENRICH_SLEEP_SECONDS` before each legacy symbol call (outside the poll lock). Soft global gap between CSE HTTP calls: `CSE_MIN_INTERVAL_SECONDS` (default `0` = off; raise if cse.lk rate-limits — applies on the shared `CSEClient`, including bot symbol lookup).
 
-### Brief caps (Chime-side)
+### Brief caps (Quiverly-side)
 
 | Env | Default | Role |
 |---|---|---|
@@ -85,15 +85,15 @@ Leave `AI_BRIEFS_ENABLED=0` until keyed; raising `AI_MAX_BRIEFS_PER_DAY` past fr
 
 ### Free provider API limits (verify in console)
 
-Vendor free-tier RPM/RPD/TPM **drift by model and account** — confirm in [Google AI Studio](https://aistudio.google.com/) / [Groq console](https://console.groq.com/settings/limits) / OpenRouter dashboard before soak. Chime defaults are sized to sit **under** typical free ceilings:
+Vendor free-tier RPM/RPD/TPM **drift by model and account** — confirm in [Google AI Studio](https://aistudio.google.com/) / [Groq console](https://console.groq.com/settings/limits) / OpenRouter dashboard before soak. Quiverly defaults are sized to sit **under** typical free ceilings:
 
-| Provider (`AI_PROVIDER`) | Soft-default model | Free-tier planning envelope (approx.) | Chime fit |
+| Provider (`AI_PROVIDER`) | Soft-default model | Free-tier planning envelope (approx.) | Quiverly fit |
 |---|---|---|---|
 | `gemini` | `gemini-2.0-flash` | Flash-class free rows often ~15 RPM / ~1.5k RPD (project-level; check Quotas) | `50` briefs/day + `0.5`s sleep ≪ RPD; well under RPM |
 | `groq` | `llama-3.3-70b-versatile` | Often ~30 RPM / ~1k RPD / ~12k TPM (org-level) | Daily cap ≪ RPD; sleep keeps bursts off RPM |
-| `openrouter` | `openai/gpt-4o-mini` | Free/route limits vary widely by model | Treat as bursty; keep Chime caps; prefer keyed paid route for soak |
+| `openrouter` | `openai/gpt-4o-mini` | Free/route limits vary widely by model | Treat as bursty; keep Quiverly caps; prefer keyed paid route for soak |
 
-On HTTP 429 the drain fails soft and retries on a later tick — do not disable pacing to “catch up.” Model IDs in `.env.example` may lose free eligibility; swap `AI_MODEL` to a current free Flash/chat row rather than raising Chime caps first.
+On HTTP 429 the drain fails soft and retries on a later tick — do not disable pacing to “catch up.” Model IDs in `.env.example` may lose free eligibility; swap `AI_MODEL` to a current free Flash/chat row rather than raising Quiverly caps first.
 
 ## Advisory locks (poll vs brief claim)
 

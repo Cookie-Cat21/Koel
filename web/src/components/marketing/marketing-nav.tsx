@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ChimeWordmark } from "@/components/brand/chime-brand";
+import { KoelWordmark } from "@/components/brand/koel-brand";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 export function MarketingNav() {
   const pathname = usePathname();
   const onPricing = pathname === "/pricing";
+  const onBlog = pathname === "/blog" || (pathname?.startsWith("/blog/") ?? false);
   const onLegal = pathname?.startsWith("/legal/") ?? false;
 
   return (
@@ -18,10 +19,10 @@ export function MarketingNav() {
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          aria-label="Chime home"
+          aria-label="koel home"
           className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          <ChimeWordmark size="sm" priority />
+          <KoelWordmark size="sm" priority />
         </Link>
         <nav
           aria-label="Marketing"
@@ -45,6 +46,17 @@ export function MarketingNav() {
             )}
           >
             Pricing
+          </Link>
+          <Link
+            href="/blog"
+            aria-current={onBlog ? "page" : undefined}
+            className={cn(
+              "hidden hover:text-foreground sm:inline",
+              onBlog && "font-medium text-foreground underline underline-offset-4",
+              onLegal && "sm:hidden",
+            )}
+          >
+            Blog
           </Link>
           <Button asChild size="sm" variant="outline">
             <Link href="/login">Sign in</Link>

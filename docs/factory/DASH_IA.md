@@ -1,4 +1,4 @@
-# Chime Dashboard — Information Architecture & API Sketch
+# Quiverly Dashboard — Information Architecture & API Sketch
 
 **Lane:** DASH · **Stack:** Next.js + Tailwind + shadcn/ui  
 **Product:** CSE market dash (cake) + Telegram push (cherry) — [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [CLAUDE.md](../../CLAUDE.md)
@@ -31,7 +31,7 @@ App shell: sticky top nav — Overview · Browse · Watchlist · Alerts · Histo
 ## 2. Wireframe notes (bullet layout)
 
 ### `/login`
-- Brand wordmark “Chime” (hero-level, not nav-only); home link labelled `Chime home`
+- Brand wordmark “Quiverly” (hero-level, not nav-only); home link labelled `Quiverly home`
 - One line: manage watchlist & alerts; pushes still go to Telegram
 - Rule explainer list uses `aria-labelledby` the explainer paragraph (no decorative “- ” prefixes)
 - Primary CTA: demo sign-in form (`aria-labelledby` sr-only “Sign in”); Telegram ID field wires help + error via `aria-describedby` / `aria-invalid`; submit `aria-busy` while pending

@@ -213,7 +213,7 @@ Label presence ≫ structured numbers ≫ validator-clean numbers. Even gated-OK
 
 `AAF.N0000` quarterly SOPL text yields Interest Income `2,358,166,994`, Profit for the Period `280,257,691`, Basic EPS `2.26`, Diluted EPS `1.58` — matches a human reading of page text. Validators still flag residual candidate conflicts on some filings.
 
-## Recommendation for Chime
+## Recommendation for Quiverly
 
 1. Still **do not** ship auto EPS/PE/YoY as alert truth.
 2. Offline extract + validators is useful for research / brief enrichment with “verify in filing”.

@@ -1,7 +1,7 @@
-# Chime — Commit Factory Master Plan
+# Quiverly — Commit Factory Master Plan
 
 **Status:** Planning reviewed (Wave R1) — see [review/IMPROVEMENTS.md](review/IMPROVEMENTS.md)  
-**Branch intent:** Quality-gated agentic improvement of Chime only (Ceyfi merge deferred)  
+**Branch intent:** Quality-gated agentic improvement of Quiverly only (Ceyfi merge deferred)  
 **Co-authors:** Human product owner + Cursor Cloud Agents  
 
 ## 0. Constitution (overrides everything)
@@ -11,7 +11,7 @@ Read and obey [CLAUDE.md](../CLAUDE.md). Hard fences:
 - Quality over count. A commit that exists only to inflate history is **rejected**.
 - One concern per commit; disjoint files across concurrent agents.
 - Compliance: NFA framing, polite cse.lk rate limits, never scrape competitors.
-- Dashboard reads **Postgres / Chime API only** — no second unbounded cse.lk client from `web/`.
+- Dashboard reads **Postgres / Quiverly API only** — no second unbounded cse.lk client from `web/`.
 - Concurrency: **8 preferred, hard max 16**. “100 workstreams” = catalog in waves — never 100 simultaneous processes.
 - Convergence: two consecutive passes with zero findings above **minor** → STOP that lane.
 - **Also STOP** if a pass produces only minor fixes with no quality-bar movement (no infinite minor churn).
@@ -124,8 +124,8 @@ Stack when implementing: **Next.js + Tailwind + shadcn/ui** only; free/MIT compo
 | [COMMIT_FACTORY.md](COMMIT_FACTORY.md) | This master plan |
 | [ORCHESTRATOR_PROMPTS.md](ORCHESTRATOR_PROMPTS.md) | Copy-paste Cloud Agent prompts |
 | [METRICS.md](METRICS.md) | Proper-commit taxonomy, scorecards, KPIs |
-| [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) | Multi-repo KPI A; Chime is node 1 |
-| [CHIME_HORIZON.md](CHIME_HORIZON.md) | What Chime is / does / can be; active 2K–3K score band |
+| [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) | Multi-repo KPI A; Quiverly is node 1 |
+| [CHIME_HORIZON.md](CHIME_HORIZON.md) | What Quiverly is / does / can be; active 2K–3K score band |
 | [DASH_COMPONENT_FILTER.md](DASH_COMPONENT_FILTER.md) | Tremor/bookmark kits → fence + license filter |
 | [DASH_IA.md](DASH_IA.md) | Thin dashboard IA + API sketch |
 | [workstreams/INDEX.md](workstreams/INDEX.md) | WS-001…WS-100 catalog |

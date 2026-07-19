@@ -1,9 +1,8 @@
 "use client";
 
-import { TelegramIcon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { Bell } from "lucide-react";
 import { motion } from "motion/react";
+import Image from "next/image";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -29,8 +28,8 @@ const WATCHED_SYMBOLS = [
   { symbol: "LOLC.N0000", top: 62, left: 30, delay: 0.6 },
 ] as const;
 
-/** Chime bento grid — remap of Watermelon UI's Bento 2 block, restyled to Chime tokens. */
-export function ChimeBento({ className }: { className?: string }) {
+/** koel bento grid — remap of Watermelon UI's Bento 2 block, restyled to product tokens. */
+export function KoelBento({ className }: { className?: string }) {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   return (
@@ -121,7 +120,7 @@ export function ChimeBento({ className }: { className?: string }) {
           <motion.div className="relative z-10 flex w-full flex-col gap-3 overflow-hidden">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
               <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">
-                Chime poller
+                koel poller
               </span>
               <div className="flex items-center gap-1.5">
                 <motion.div
@@ -304,10 +303,10 @@ export function ChimeBento({ className }: { className?: string }) {
         onMouseLeave={() => setHoveredCard(null)}
       >
         <div className="relative z-10 flex flex-col items-end gap-2 pb-4">
-          <h3 className="text-xl font-semibold text-foreground">
+          <h3 className="text-xl font-semibold tracking-tight text-foreground">
             Telegram delivery, no tab required.
           </h3>
-          <p className="max-w-sm text-sm text-muted-foreground">
+          <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
             Rules live in the dash. Delivery is Telegram — the ping finds you
             even if the browser is closed.
           </p>
@@ -316,10 +315,10 @@ export function ChimeBento({ className }: { className?: string }) {
         <div className="relative z-10 flex min-h-[200px] w-full flex-1 items-end justify-center overflow-hidden">
           <motion.div
             className="absolute inset-0 z-0"
-            animate={{ opacity: hoveredCard === 4 ? 1 : 0.45 }}
+            animate={{ opacity: hoveredCard === 4 ? 1 : 0.5 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="absolute bottom-0 left-1/2 h-[80px] w-[60%] -translate-x-1/2 rounded-[100%] bg-primary/15 blur-3xl" />
+            <div className="absolute bottom-0 left-1/2 h-[100px] w-[55%] -translate-x-1/2 rounded-[100%] bg-[#2AABEE]/20 blur-3xl" />
           </motion.div>
 
           {/* Connector lines from each watched symbol to the Telegram hub */}
@@ -337,11 +336,11 @@ export function ChimeBento({ className }: { className?: string }) {
                 x2={HUB.left}
                 y2={HUB.top}
                 stroke="currentColor"
-                strokeWidth="0.4"
-                strokeDasharray="1.5 2"
-                className="text-border"
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: hoveredCard === 4 ? 1 : 0.5 }}
+                strokeWidth="0.45"
+                strokeDasharray="1.2 2.2"
+                className="text-[#2AABEE]/35"
+                initial={{ opacity: 0.45 }}
+                animate={{ opacity: hoveredCard === 4 ? 0.9 : 0.45 }}
                 transition={{ duration: 0.6 }}
               />
             ))}
@@ -367,14 +366,14 @@ export function ChimeBento({ className }: { className?: string }) {
                       : { duration: 0.5, ease: "easeOut" },
                 }}
               >
-                <div className="relative z-10 flex items-center justify-center rounded-full border border-border/80 bg-background px-3 py-1.5 shadow-sm">
+                <div className="relative z-10 flex -translate-x-1/2 items-center justify-center rounded-full border border-border/70 bg-background/95 px-3 py-1.5 shadow-sm backdrop-blur-sm">
                   <span className="font-mono text-[10px] font-semibold tracking-tight text-foreground">
                     {item.symbol}
                   </span>
                   <motion.div
-                    className="absolute -top-0.5 -right-0.5 size-2 rounded-full border-[1.5px] border-background bg-primary"
+                    className="absolute -top-0.5 -right-0.5 size-2 rounded-full border-[1.5px] border-background bg-[#2AABEE]"
                     animate={
-                      hoveredCard === 4 ? { scale: [1, 1.2, 1] } : { scale: 1 }
+                      hoveredCard === 4 ? { scale: [1, 1.25, 1] } : { scale: 1 }
                     }
                     transition={
                       hoveredCard === 4
@@ -386,23 +385,35 @@ export function ChimeBento({ className }: { className?: string }) {
               </motion.div>
             ))}
 
-            {/* Telegram hub — where every watched symbol's pings converge */}
+            {/* Telegram hub — Brandfetch mark (telegram.org symbol) */}
             <div
-              className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5"
+              className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
               style={{ top: `${HUB.top}%`, left: `${HUB.left}%` }}
             >
               <motion.div
-                className="relative z-10 flex size-11 items-center justify-center rounded-2xl bg-[#2AABEE] text-white shadow-sm"
-                animate={hoveredCard === 4 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-                transition={{ duration: 1.6, repeat: hoveredCard === 4 ? Infinity : 0 }}
+                className="relative z-10 size-14 overflow-hidden rounded-full shadow-[0_8px_24px_-8px_rgba(42,171,238,0.55)] ring-1 ring-[#2AABEE]/25"
+                animate={
+                  hoveredCard === 4 ? { scale: [1, 1.06, 1] } : { scale: 1 }
+                }
+                transition={{
+                  duration: 1.6,
+                  repeat: hoveredCard === 4 ? Infinity : 0,
+                }}
               >
-                <HugeiconsIcon icon={TelegramIcon} size={22} />
+                <Image
+                  src="/brand/telegram-mark.svg"
+                  alt="Telegram"
+                  width={56}
+                  height={56}
+                  className="size-full object-cover"
+                  priority={false}
+                />
                 <motion.div
-                  className="absolute inset-0 rounded-2xl bg-[#2AABEE]"
-                  initial={{ opacity: 0.5, scale: 1 }}
+                  className="pointer-events-none absolute inset-0 rounded-full bg-[#2AABEE]"
+                  initial={{ opacity: 0.35, scale: 1 }}
                   animate={
                     hoveredCard === 4
-                      ? { opacity: 0, scale: 1.8 }
+                      ? { opacity: 0, scale: 1.85 }
                       : { opacity: 0, scale: 1 }
                   }
                   transition={{
@@ -412,7 +423,7 @@ export function ChimeBento({ className }: { className?: string }) {
                   }}
                 />
               </motion.div>
-              <span className="text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <span className="text-[9px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 Delivered
               </span>
             </div>

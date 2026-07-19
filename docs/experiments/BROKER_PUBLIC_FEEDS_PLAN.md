@@ -15,7 +15,7 @@ Related: [`docs/THIRD_PARTY_DATA.md`](../THIRD_PARTY_DATA.md) · [`docs/factory/
 
 Personal holdings remain unreachable via broker/CDS APIs.
 
-**LOLC StockLens + dividend CSV:** technically rich and intentionally public as website tools, but LOLC’s published **Use License** forbids commercial use, public presentation, copying, and transferring materials to another server. **Operator decision 2026-07-18: do not use in Chime** without written permission. Recorded as Tier E in `THIRD_PARTY_DATA.md`.
+**LOLC StockLens + dividend CSV:** technically rich and intentionally public as website tools, but LOLC’s published **Use License** forbids commercial use, public presentation, copying, and transferring materials to another server. **Operator decision 2026-07-18: do not use in Quiverly** without written permission. Recorded as Tier E in `THIRD_PARTY_DATA.md`.
 
 | Priority | Source | Ship? | Why |
 |---|---|---|---|
@@ -39,7 +39,7 @@ Personal holdings remain unreachable via broker/CDS APIs.
 | Empty rates | Near-complete; ROE empty on ~12/302 |
 | Keys | `Company Tiker`, name, sector, price, mcap, **Foreign Holding%**, 4QT earnings, PE, sector PE, PBV, sector PBV, DY%, DPS, EPS 4QT, NAV, ROE |
 
-**Signal vs cse.lk:** `companyInfoSummery.foreignHoldings` is often null; StockLens has FH% for all 302 (median ~1%, p90 ~37%). Sector-relative PE/PBV is not in Chime today.
+**Signal vs cse.lk:** `companyInfoSummery.foreignHoldings` is often null; StockLens has FH% for all 302 (median ~1%, p90 ~37%). Sector-relative PE/PBV is not in Quiverly today.
 
 **Parse notes:** ticker key is misspelled `Company Tiker`; numerics arrive as strings with `,` and `%` — normalize in adapter.
 
@@ -93,7 +93,7 @@ Defer until LOLC + CDS land; treat as opportunistic PDF watcher if ToS OK.
 On `/symbols/[symbol]`, show PE, PBV, DY, EPS, NAV, ROE, foreign holding %, with **source + as-of** and NFA.
 
 - Complements existing filing_metrics (event extracts) with a **board-level** snapshot.
-- Prices on this feed are secondary — **cse.lk / Chime snapshots remain truth** for last price.
+- Prices on this feed are secondary — **cse.lk / Quiverly snapshots remain truth** for last price.
 
 ### B. Signal Board factors (unlock F-086 + new IDs)
 
@@ -134,7 +134,7 @@ One KPI strip — not a trading terminal.
 | Feed disappears / shape drift | Adapter + probe CI fingerprint; fail-soft; CSE remains price spine |
 | Stale fundamentals marked as live | Persist `source_as_of` / `last_modified`; UI shows as-of |
 | NFA / tip risk (research PDFs, “cheap PE”) | Descriptive factors only; no rating→push tips; FC PDFs deferred |
-| Double price sources confuse users | Never prefer LOLC price over Chime snapshots |
+| Double price sources confuse users | Never prefer LOLC price over Quiverly snapshots |
 | Rate / politeness | ≤1 StockLens pull / 6h; ≤1 dividend CSV / 12h; CDS PDF monthly |
 
 Log intake checklist rows in `THIRD_PARTY_DATA.md` before any flag flip.
@@ -245,7 +245,7 @@ CREATE TABLE dividend_events (
 - Broker/CDS login automation or holdings sync  
 - Replacing cse.lk prices with LOLC prices  
 - Heavy multi-filter quant screener (Master Plan still gates full screener)  
-- Publishing LOLC’s full board as a public Chime API dump  
+- Publishing LOLC’s full board as a public Quiverly API dump  
 - “Top undervalued stocks” / tip language  
 
 ---

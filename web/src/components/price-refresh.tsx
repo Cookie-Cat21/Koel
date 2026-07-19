@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { LiveIndicator } from "@/components/live-indicator";
 import { toIso } from "@/lib/api/time";
+import { isMarketSessionOpen } from "@/lib/market-session";
 
 /** Soft-cap refresh interval — never hammer the dash SSR path. */
 export const MIN_PRICE_REFRESH_MS = 5_000;
@@ -65,13 +66,18 @@ export function PriceRefresh({
   const period = clampInterval(intervalMs);
   const [now, setNow] = useState(() => Date.now());
   const [streamSnapshotAt, setStreamSnapshotAt] = useState<string | null>(null);
+  const [marketOpen, setMarketOpen] = useState(() => isMarketSessionOpen());
 
   useEffect(() => {
     const tick = window.setInterval(() => {
       router.refresh();
       setNow(Date.now());
+      setMarketOpen(isMarketSessionOpen());
     }, period);
-    const age = window.setInterval(() => setNow(Date.now()), 1_000);
+    const age = window.setInterval(() => {
+      setNow(Date.now());
+      setMarketOpen(isMarketSessionOpen());
+    }, 1_000);
     return () => {
       window.clearInterval(tick);
       window.clearInterval(age);
@@ -110,10 +116,29 @@ export function PriceRefresh({
     };
   }, [router]);
 
-  let tone: "ok" | "stale" | "down" = "ok";
+  let tone: "ok" | "stale" | "down" | "closed" = "ok";
   let label = "Refreshing";
   const snapshotAt = newestSnapshotAt(streamSnapshotAt, lastSnapshotAt);
-  if (typeof snapshotAt === "string" && snapshotAt) {
+  if (!marketOpen) {
+    // Outside session hours, aged ticks are expected — calm closed tone.
+    tone = "closed";
+    if (typeof snapshotAt === "string" && snapshotAt) {
+      const t = Date.parse(snapshotAt);
+      if (!Number.isNaN(t)) {
+        const ageSec = Math.floor(Math.max(0, now - t) / 1000);
+        label =
+          ageSec >= 3600
+            ? `Closed · ${Math.floor(ageSec / 3600)}h`
+            : ageSec >= 60
+              ? `Closed · ${Math.floor(ageSec / 60)}m`
+              : "Market closed";
+      } else {
+        label = "Market closed";
+      }
+    } else {
+      label = "Market closed";
+    }
+  } else if (typeof snapshotAt === "string" && snapshotAt) {
     const t = Date.parse(snapshotAt);
     if (!Number.isNaN(t)) {
       const ageMs = Math.max(0, now - t);

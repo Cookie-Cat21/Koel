@@ -15,7 +15,7 @@ import { getPool } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Ownership map · Chime",
+  title: "Ownership map · koel",
   description:
     "Company relationships and equity from public CSE annual filings. Research only — not advice.",
 };

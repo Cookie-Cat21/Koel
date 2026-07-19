@@ -16,7 +16,7 @@ import { getPool } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "People · Chime",
+  title: "People · koel",
   description:
     "CSE directors ranked by linked company market value × role. Open a dossier for seats and co-director network. Not personal net worth.",
 };
@@ -42,7 +42,7 @@ export default async function PeoplePage() {
       <AppNav active="/people" />
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
         <PageHeader
-          eyebrow="Chime · Research"
+          eyebrow="koel · Research"
           title="People"
           description="Official CSE boards (companyProfile) ranked by linked market value × role. Open a dossier for seats, network, and issuer filings. Not personal net worth — and not auto-updated; run directors-backfill to refresh."
           action={

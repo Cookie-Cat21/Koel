@@ -8,7 +8,7 @@
 
 | Request | Response |
 |---|---|
-| “Download all Tremor templates into the repo” | **No vendoring.** Tremor Blocks are MIT and cloneable for reference; dumping full SaaS dashboards into Chime invites trading-terminal creep and fights our brand shell. |
+| “Download all Tremor templates into the repo” | **No vendoring.** Tremor Blocks are MIT and cloneable for reference; dumping full SaaS dashboards into Quiverly invites trading-terminal creep and fights our brand shell. |
 | “Spawn 100 sub-agents across bookmark sites” | **No.** Factory concurrency cap is **8 preferred / 16 hard**. We ran a capped parallel survey instead. |
 | “Copy everything from 21st / Shadcnblocks / Cult Pro / Watermelon Premium” | **No dump-all.** Marketplace/Pro catalogs need **per-item** license checks; Pro = reject. |
 | “Replace thin dash with Tremor Planner/Overview/Dashboard” | **Reject.** Those templates are KPI/chart walls (retention, billing, scenario analysis) — out of fence. |
@@ -18,7 +18,7 @@
 
 ---
 
-## 1. Chime dash today (so we don’t duplicate)
+## 1. Quiverly dash today (so we don’t duplicate)
 
 Already in `web/`:
 
@@ -37,7 +37,7 @@ Source: [blocks.tremor.so/templates](https://blocks.tremor.so/templates) + GitHu
 
 ### Full templates on the marketing page
 
-| Template | Verdict for Chime |
+| Template | Verdict for Quiverly |
 |---|---|
 | Planner / Overview / Dashboard / Insights | **REJECT as wholesale import** — chart/KPI/admin walls |
 | Solar / Database (marketing sites) | **REJECT** — SaaS marketing, not our Telegram-first product |
@@ -46,7 +46,7 @@ Cherry-pick **patterns** from blocks below; do not scaffold a second app from th
 
 ### Block categories (ACCEPT / MAYBE / REJECT)
 
-| Category | ~files | Gate | Use in Chime? |
+| Category | ~files | Gate | Use in Quiverly? |
 |---|---|---|---|
 | `spark-charts` | 6 | **ACCEPT (pattern)** | Study API; prefer keep hand-rolled `sparkline.tsx` unless Tremor Raw spark is thinner |
 | `empty-states` | 10 | **ACCEPT** | Inspiration for watchlist/alerts empties (adapt to existing `EmptyState`) |
@@ -73,7 +73,7 @@ Cherry-pick **patterns** from blocks below; do not scaffold a second app from th
 
 ## 3. Bookmark sites (from your WebDev list) → filter
 
-| Source | License | Bulk OK? | Chime action |
+| Source | License | Bulk OK? | Quiverly action |
 |---|---|---|---|
 | **Tremor Blocks / Raw** | MIT / Apache | Clone yes; vendor selectively | Cherry-pick patterns above; status-monitoring for `/health` brief queue |
 | **HyperUI** | MIT | Yes | Empty/list/badge HTML → adapt to React |
@@ -114,7 +114,7 @@ Prefer **extend shadcn in-tree** over importing Tremor wholesale.
 
 ## 5. How to use Tremor *without* wrecking the product
 
-1. Keep Chime brand shell (`globals.css`, Fraunces/Sora, `AppNav`).  
+1. Keep Quiverly brand shell (`globals.css`, Fraunces/Sora, `AppNav`).  
 2. Copy **one** block at a time into `web/src/components/…`, strip unused chart deps.  
 3. Log in `THIRD_PARTY.md`: name, MIT URL, date.  
 4. Verify: `make factory-verify` / dash smoke.  
@@ -127,4 +127,4 @@ Prefer **extend shadcn in-tree** over importing Tremor wholesale.
 
 ## 6. One-line answer
 
-> Tremor’s templates are free MIT but mostly **wrong shape** for Chime; we inventory and cherry-pick thin patterns (badges, empties, status, forms), extend **shadcn** first, and skip dump-all / 100-agent / Pro / chart-wall imports.
+> Tremor’s templates are free MIT but mostly **wrong shape** for Quiverly; we inventory and cherry-pick thin patterns (badges, empties, status, forms), extend **shadcn** first, and skip dump-all / 100-agent / Pro / chart-wall imports.

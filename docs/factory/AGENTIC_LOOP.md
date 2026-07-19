@@ -1,4 +1,4 @@
-# Chime — Agentic Factory Loop (perpetual)
+# Quiverly — Agentic Factory Loop (perpetual)
 
 **Status:** Active (Portfolio Plan A)  
 **Authority:** [COMMIT_FACTORY.md](COMMIT_FACTORY.md) + [CLAUDE.md](../CLAUDE.md)  

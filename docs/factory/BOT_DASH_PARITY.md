@@ -1,6 +1,6 @@
 # Bot / Dashboard Alert Parity
 
-Chime remains Telegram-first. The dashboard is a thin management surface over
+Quiverly remains Telegram-first. The dashboard is a thin management surface over
 the same Postgres-backed watchlist, rules, and fire history.
 
 | Alert type | Bot command | Dashboard create | Delivery surface | Notes |

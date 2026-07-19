@@ -1,6 +1,6 @@
 # Activity alerts — competitor research notes (2026-07)
 
-Peers that inform Chime's activity alert set (Telegram/WhatsApp-first watchers,
+Peers that inform Quiverly's activity alert set (Telegram/WhatsApp-first watchers,
 not full trading terminals):
 
 | Product | Useful signals we mirrored |
@@ -9,7 +9,7 @@ not full trading terminals):
 | **Stock Alarm** | Volume spike / dip, gap alerts, % move, price crosses |
 | **Stock Alerts / Signa** | Unusual volume, block/big prints, halt-style market notices (US options flow N/A for CSE) |
 
-## What we shipped in Chime
+## What we shipped in Quiverly
 
 | Alert | Bot | Meaning |
 |---|---|---|
@@ -26,7 +26,7 @@ not full trading terminals):
 ## Honest limits
 
 CSE public JSON does **not** label trades as buy vs sell. `volup` / `voldown`
-are **proxies** (volume × price direction), not order-flow attribution. Chime
+are **proxies** (volume × price direction), not order-flow attribution. Quiverly
 does not scrape competitors and does not add a volume screener to the thin dash.
 
 
@@ -37,7 +37,7 @@ Public `POST /api/orderBook` with form `symbol=` returns:
 - `reqOrderBookTotal.totalBids` / `totalAsks` — **aggregate bid vs ask size**
 - `reqOrderBook[]` — depth ladder (public feed currently returns **one bid level**, `buySell=1`)
 
-This is **not** the paid Level-2 product (IAL2MD / RTEMD). Full multi-level depth and trade aggressor tags are still commercial. But public bid/ask **totals** let Chime alert on real book imbalance:
+This is **not** the paid Level-2 product (IAL2MD / RTEMD). Full multi-level depth and trade aggressor tags are still commercial. But public bid/ask **totals** let Quiverly alert on real book imbalance:
 
 | Alert | Bot | Meaning |
 |---|---|---|

@@ -44,7 +44,7 @@ def _poller(*, send: AsyncMock, storage: AsyncMock | None = None) -> Poller:
 def test_format_dead_letter_notify_includes_symbol_attempts_nfa() -> None:
     msg = format_dead_letter_notify("JKH.N0000", 5)
     assert msg == (
-        "Chime could not deliver an alert for JKH.N0000 after 5 tries. Not financial advice."
+        "koel could not deliver an alert for JKH.N0000 after 5 tries. Not financial advice."
     )
     assert "Not financial advice" in msg
 

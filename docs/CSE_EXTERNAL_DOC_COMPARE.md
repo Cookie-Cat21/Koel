@@ -1,15 +1,15 @@
-# External CSE API doc vs Chime probe
+# External CSE API doc vs Quiverly probe
 
 **Compared:** [GH0STH4CKER/Colombo-Stock-Exchange-CSE-API-Documentation](https://github.com/GH0STH4CKER/Colombo-Stock-Exchange-CSE-API-Documentation) (community README + URL list)  
-**Against:** Chime `docs/endpoint_probe_report.md` + live re-probe 2026-07-12  
+**Against:** Quiverly `docs/endpoint_probe_report.md` + live re-probe 2026-07-12  
 **Rule:** Public cse.lk JSON only; do not scrape competitors.
 
 ## Verdict
 
-**We cannot reverse-engineer “from that repo” much better than we already have — Chime’s probe is already deeper.**  
-The GH0STH4CKER list is a useful **checklist of endpoint names**, but it lacks request shapes, failure modes, and several endpoints we already use. Live re-probe did surface **one high-value Chime gap** (`marketStatus`) and a **correction** to our `chartData` note.
+**We cannot reverse-engineer “from that repo” much better than we already have — Quiverly’s probe is already deeper.**  
+The GH0STH4CKER list is a useful **checklist of endpoint names**, but it lacks request shapes, failure modes, and several endpoints we already use. Live re-probe did surface **one high-value Quiverly gap** (`marketStatus`) and a **correction** to our `chartData` note.
 
-| Area | GH0STH4CKER | Chime today | Action |
+| Area | GH0STH4CKER | Quiverly today | Action |
 |---|---|---|---|
 | Per-symbol quote | `companyInfoSummery` (form `symbol`) | Wired in bot | Keep |
 | Bulk prices | `tradeSummary` | Poller primary | Keep — still best |
@@ -29,7 +29,7 @@ The GH0STH4CKER list is a useful **checklist of endpoint names**, but it lacks r
 - Same core names we use: `companyInfoSummery`, `tradeSummary`, `approvedAnnouncement`, indices, sectors.
 - Example for `companyInfoSummery` uses **form data** (correct — JSON body → 400).
 
-## What it misses (Chime already ahead)
+## What it misses (Quiverly already ahead)
 
 - **`getAnnouncementByCompany`** — best watchlist disclosure source (form `symbol` + optional dates).
 - **`daysTrade`**, legacy **`announcements`**, **`notifications`**, category GETs.
@@ -45,7 +45,7 @@ The GH0STH4CKER list is a useful **checklist of endpoint names**, but it lacks r
 {"status":"Market Closed"}
 ```
 
-Works with JSON `{}` or empty form. Chime currently uses static `MARKET_OPEN`/`MARKET_CLOSE` env clocks. Wiring this (with clock fallback) would handle early closes / holidays better without guessing.
+Works with JSON `{}` or empty form. Quiverly currently uses static `MARKET_OPEN`/`MARKET_CLOSE` env clocks. Wiring this (with clock fallback) would handle early closes / holidays better without guessing.
 
 **Suggested:** `CSEClient.fetch_market_status()` → poller `is_market_open` consults API when circuit closed, else falls back to clock.
 
@@ -77,7 +77,7 @@ Returns a **short list** (~10 rows), not all symbols. Unusable as a `tradeSummar
 
 **Yes, slightly — by adopting their checklist + our live method, not by copying their README as truth.**
 
-| Improvement | Impact on Chime | Priority |
+| Improvement | Impact on Quiverly | Priority |
 |---|---|---|
 | Wire `marketStatus` into poller open/close | Fewer false polls / missed half-sessions | **High** |
 | Correct `chartData` docs + sample | Stops future agents trusting “always 400” or using it for symbols | **High** (docs) |

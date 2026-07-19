@@ -1,4 +1,4 @@
-# Chime — Tijori-for-CSE Plan
+# Quiverly — Tijori-for-CSE Plan
 
 **Branch intent:** `cursor/tijori-cse-phase1-e44e`  
 **Updated:** 2026-07-12  

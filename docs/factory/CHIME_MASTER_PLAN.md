@@ -1,4 +1,4 @@
-# Chime Master Plan — Maximum inside the fence
+# Quiverly Master Plan — Maximum inside the fence
 
 **Status:** Active — Waves 1–5 implemented on `cursor/wire-chime-brand-assets-0a71` (2026-07-14). Phased P1–P5 still gated.  
 **Authority:** [CLAUDE.md](../../CLAUDE.md) · [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [FINANCE_DASH_INSPIRATION.md](../brand/FINANCE_DASH_INSPIRATION.md) · [COMMIT_FACTORY.md](COMMIT_FACTORY.md)  
@@ -8,7 +8,7 @@
 
 ## 0. North star
 
-**Chime = the CSE dash you open every day + Telegram push when you’re away.**
+**Quiverly = the CSE dash you open every day + Telegram push when you’re away.**
 
 | Layer | Job |
 |---|---|
@@ -123,7 +123,7 @@ Do **not** start P2+ until Overview/Browse/Symbol feel “daily driver” dense 
 
 ## 3. Explicit never / reject (even at “maximum”)
 
-- Fork AGPL OpenStock into Chime  
+- Fork AGPL OpenStock into Quiverly  
 - Dump Tremor Planner / 21st Financial Dashboard / Cult Pro / React Bits  
 - DaisyUI plugin beside shadcn  
 - Live order book / OMS / “buy now”  

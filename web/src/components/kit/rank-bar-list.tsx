@@ -20,7 +20,7 @@ export type RankBarItem = {
 
 /**
  * Tremor bar-list pattern — proportional bars by max(value).
- * Chime tokens; not a trading terminal.
+ * koel tokens; not a trading terminal.
  */
 export function RankBarList({
   items,

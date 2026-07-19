@@ -2,17 +2,18 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { ChimeWordmark } from "@/components/brand/chime-brand";
-import { FaqSection } from "@/components/kit/faq-section";
-import { ChimeBento } from "@/components/marketing/chime-bento";
+import { KoelWordmark } from "@/components/brand/koel-brand";
+import { AnnouncementBar } from "@/components/marketing/announcement-bar";
+import { KoelBento } from "@/components/marketing/koel-bento";
 import { EndCta } from "@/components/marketing/end-cta";
+import { FaqSplit } from "@/components/marketing/faq-split";
 import { FeatureList } from "@/components/marketing/feature-list";
 import { HeroGridBackdrop } from "@/components/marketing/hero-grid-backdrop";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { MidCta } from "@/components/marketing/mid-cta";
 import { SectionEyebrow } from "@/components/marketing/section-eyebrow";
-import { ChimeFooter } from "@/components/marketing/chime-footer";
+import { KoelFooter } from "@/components/marketing/koel-footer";
 import { TelegramProof } from "@/components/marketing/telegram-proof";
 import { NfaInline } from "@/components/nfa-inline";
 import { Button } from "@/components/ui/button";
@@ -21,33 +22,38 @@ import { verifySessionToken } from "@/lib/auth/session";
 import { telegramBotUrl } from "@/lib/marketing";
 
 export const metadata = {
-  title: "Chime — CSE alerts on Telegram",
+  title: "koel — CSE alerts on Telegram",
   description:
     "Telegram-first Colombo Stock Exchange alerts. Watch symbols, set rules in a thin dash, get pinged when something fires.",
 };
 
 const FAQ = [
   {
-    question: "Is Chime a CSE Tracker Pro clone?",
+    id: "tracker",
+    question: "Is koel a CSE Tracker Pro clone?",
     answer:
-      "No. Chime is Telegram-first CSE alerting with a thin management dash. Portfolio, tax, screener, and heavy TA stay out of scope.",
+      "No. koel is Telegram-first CSE alerting with a thin management dash. Portfolio, tax, screener, and heavy TA stay out of scope.",
   },
   {
+    id: "fires",
     question: "Where do alerts fire?",
     answer:
       "On Telegram. Manage symbols and rules in the dash; when a rule matches, you get the ping even if the browser is closed.",
   },
   {
+    id: "nfa",
     question: "Is this financial advice?",
     answer:
       "No. Prices and disclosures are informational only. Always verify filings and make your own decisions.",
   },
   {
+    id: "types",
     question: "What can I alert on?",
     answer:
       "Price above/below, daily % move, disclosures, activity signals, and (when enabled) EPS / YoY filing metrics.",
   },
   {
+    id: "tab",
     question: "Do I need to keep the dash open?",
     answer:
       "No. The dash is for setup and review. Push delivery is the point — Telegram carries the alert.",
@@ -55,8 +61,8 @@ const FAQ = [
 ];
 
 /**
- * Option A — wide left-rail hero + below-fold full-width proof band.
- * No announcement bar, no in-hero side proof panel.
+ * Option A — wide left-rail hero + below-fold proof band.
+ * Watermelon ports: announcement-8, faq-6, cta-1 (mid/end).
  */
 export default async function HomePage() {
   const cfg = getDashAuthConfig();
@@ -75,6 +81,7 @@ export default async function HomePage() {
 
   return (
     <div className="chime-atmosphere flex min-h-full flex-1 flex-col">
+      <AnnouncementBar />
       <MarketingNav />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
         {/* Hero — fills first viewport; proof stays below the fold */}
@@ -82,11 +89,11 @@ export default async function HomePage() {
           <HeroGridBackdrop />
           <div className="relative max-w-xl lg:max-w-2xl">
             <div className="chime-rise">
-              <ChimeWordmark size="hero" priority />
+              <KoelWordmark size="hero" priority />
             </div>
-            <h1 className="chime-rise chime-rise-delay-1 mt-10 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.08]">
+            <h1 className="chime-rise chime-rise-delay-1 mt-10 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.06]">
               CSE alerts on Telegram.
-              <span className="mt-2 block text-muted-foreground">
+              <span className="mt-2 block font-medium text-muted-foreground">
                 Dash when you need to manage.
               </span>
             </h1>
@@ -174,23 +181,22 @@ export default async function HomePage() {
               A poller that never stops checking, and a bot that never keeps
               you waiting.
             </p>
-            <ChimeBento className="mt-10" />
+            <KoelBento className="mt-10" />
           </section>
 
           <MidCta telegramHref={botUrl} className="mt-20" />
 
-          <FaqSection
+          <FaqSplit
             className="mt-20"
-            eyebrow="FAQ"
-            heading="Before you start"
-            description="Short answers. The dash is daily; Telegram is the push cherry."
-            items={FAQ}
+            badge="FAQ"
+            title="Before you start"
+            faqs={FAQ}
           />
 
           <EndCta telegramHref={botUrl} className="mt-20" />
         </div>
       </main>
-      <ChimeFooter telegramHref={botUrl} />
+      <KoelFooter telegramHref={botUrl} />
     </div>
   );
 }

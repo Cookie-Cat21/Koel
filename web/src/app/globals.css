@@ -49,40 +49,40 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Near-black ink aligned to brand SVG (#1e1e1e); cool light paper — not mist spa. */
+/* Near-black ink aligned to brand SVG (#111); cool paper, monochrome koel. */
 :root {
-  --background: oklch(0.985 0.004 240);
-  --foreground: oklch(0.22 0.01 260);
+  --background: oklch(0.99 0.002 250);
+  --foreground: oklch(0.18 0.008 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.01 260);
+  --card-foreground: oklch(0.18 0.008 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.01 260);
-  --primary: oklch(0.28 0.02 260);
-  --primary-foreground: oklch(0.99 0.002 240);
-  --secondary: oklch(0.95 0.006 240);
-  --secondary-foreground: oklch(0.28 0.015 260);
-  --muted: oklch(0.955 0.005 240);
-  --muted-foreground: oklch(0.5 0.015 250);
-  --accent: oklch(0.94 0.01 240);
-  --accent-foreground: oklch(0.28 0.015 260);
+  --popover-foreground: oklch(0.18 0.008 260);
+  --primary: oklch(0.22 0.01 260);
+  --primary-foreground: oklch(0.99 0.001 250);
+  --secondary: oklch(0.96 0.004 250);
+  --secondary-foreground: oklch(0.22 0.01 260);
+  --muted: oklch(0.965 0.003 250);
+  --muted-foreground: oklch(0.48 0.012 255);
+  --accent: oklch(0.955 0.005 250);
+  --accent-foreground: oklch(0.22 0.01 260);
   --destructive: oklch(0.55 0.18 25);
-  --border: oklch(0.88 0.01 250);
-  --input: oklch(0.92 0.008 250);
-  --ring: oklch(0.45 0.02 260);
-  --chart-1: oklch(0.45 0.04 250);
+  --border: oklch(0.9 0.006 250);
+  --input: oklch(0.93 0.005 250);
+  --ring: oklch(0.4 0.015 260);
+  --chart-1: oklch(0.4 0.03 250);
   --chart-2: oklch(0.55 0.12 145);
   --chart-3: oklch(0.55 0.14 25);
-  --chart-4: oklch(0.5 0.03 260);
+  --chart-4: oklch(0.48 0.025 260);
   --chart-5: oklch(0.7 0.08 85);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.98 0.004 240);
-  --sidebar-foreground: oklch(0.22 0.01 260);
-  --sidebar-primary: oklch(0.28 0.02 260);
-  --sidebar-primary-foreground: oklch(0.99 0.002 240);
-  --sidebar-accent: oklch(0.95 0.006 240);
-  --sidebar-accent-foreground: oklch(0.28 0.015 260);
-  --sidebar-border: oklch(0.88 0.01 250);
-  --sidebar-ring: oklch(0.45 0.02 260);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0.002 250);
+  --sidebar-foreground: oklch(0.18 0.008 260);
+  --sidebar-primary: oklch(0.22 0.01 260);
+  --sidebar-primary-foreground: oklch(0.99 0.001 250);
+  --sidebar-accent: oklch(0.96 0.004 250);
+  --sidebar-accent-foreground: oklch(0.22 0.01 260);
+  --sidebar-border: oklch(0.9 0.006 250);
+  --sidebar-ring: oklch(0.4 0.015 260);
 }
 
 @layer base {
@@ -137,29 +137,29 @@
   transform: translateY(0.75rem);
 }
 
-/* Full-bleed atmospheric plane for brand surfaces — restrained, not mist spa */
+/* Full-bleed atmospheric plane — koel paper: soft wash, light grain */
 .chime-atmosphere {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   background:
     radial-gradient(
-      100% 70% at 10% 0%,
-      oklch(0.94 0.01 250 / 0.7) 0%,
-      transparent 55%
+      90% 60% at 15% 0%,
+      oklch(0.96 0.006 250 / 0.55) 0%,
+      transparent 58%
     ),
     radial-gradient(
-      80% 60% at 100% 20%,
-      oklch(0.93 0.008 240 / 0.5) 0%,
-      transparent 50%
+      70% 50% at 95% 15%,
+      oklch(0.955 0.005 250 / 0.4) 0%,
+      transparent 52%
     ),
     linear-gradient(
       180deg,
-      oklch(0.99 0.003 240) 0%,
-      oklch(0.97 0.005 250) 100%
+      oklch(0.995 0.001 250) 0%,
+      oklch(0.98 0.003 250) 100%
     );
   background-size: 140% 140%, 120% 120%, 100% 100%;
-  animation: chime-drift 28s ease-in-out infinite alternate;
+  animation: chime-drift 32s ease-in-out infinite alternate;
 }
 
 .chime-atmosphere::before {
@@ -167,10 +167,10 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  opacity: 0.35;
+  opacity: 0.22;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
   mix-blend-mode: soft-light;
 }
 

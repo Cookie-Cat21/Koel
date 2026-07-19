@@ -2,8 +2,8 @@
 
 **Question:** Can we reverse-engineer cse.lk better than [GH0STH4CKER’s docs](https://github.com/GH0STH4CKER/Colombo-Stock-Exchange-CSE-API-Documentation) (~8 months stale; last push 2025-11) and publish our own?
 
-**Answer: Yes — we already are ahead inside Chime, and a dedicated docs repo can beat that README by a wide margin.**  
-This is **not** a Chime feature. Chime stays the Telegram alert product; the docs/kit is a **sibling node** (portfolio factory eligible later).
+**Answer: Yes — we already are ahead inside Quiverly, and a dedicated docs repo can beat that README by a wide margin.**  
+This is **not** a Quiverly feature. Quiverly stays the Telegram alert product; the docs/kit is a **sibling node** (portfolio factory eligible later).
 
 **Authority / ethics:** Public `https://www.cse.lk/api/*` only · polite rate limits · no competitor scrape · no auth-abuse tooling · unofficial + NFA framing.
 
@@ -11,11 +11,11 @@ This is **not** a Chime feature. Chime stays the Telegram alert product; the doc
 
 ## 1. Why “better” is already true
 
-| Dimension | GH0STH4CKER (2025) | Chime probe + 2026-07-12 live RE |
+| Dimension | GH0STH4CKER (2025) | Quiverly probe + 2026-07-12 live RE |
 |---|---|---|
 | Form factor | README table + 1 Python snippet + URL list | Full probe report, samples, failure matrix |
 | Request shapes | Partial (`companyInfoSummery` form) | POST-only, form vs JSON, 400/405/204 notes |
-| Watchlist disclosures | Missing `getAnnouncementByCompany` | Documented + wired in Chime |
+| Watchlist disclosures | Missing `getAnnouncementByCompany` | Documented + wired in Quiverly |
 | Day tape | Missing `daysTrade` | Sampled |
 | Charts | Lists `chartData` as if symbol-scoped | Corrected: form works but **symbol ignored**; use `companyChartDataByStock` |
 | Freshness | Last push ~Nov 2025 | Live re-probed Jul 2026 |
@@ -38,7 +38,7 @@ Pulled Next.js chunks from `cse.lk` and live-probed. Beyond GH0STH4CKER’s chec
 | Request apps | `/app/request-aspi`, `…-snp`, `…-status`, `…-summary`, `…-today-sharePrice`, `…-top-gainers`, `…-top-looses`, `…-most-active-trades`, `…-daytrade` |
 | Also | `/user/topic/…` mirrors |
 
-**Docs value:** Real-time market board without inventing polling. **Chime note:** still prefer polite HTTP `tradeSummary` for v1 alerts; WS is for the docs kit / optional future.
+**Docs value:** Real-time market board without inventing polling. **Quiverly note:** still prefer polite HTTP `tradeSummary` for v1 alerts; WS is for the docs kit / optional future.
 
 ### B. Rich HTTP endpoints he doesn’t cover (verified live)
 
@@ -70,13 +70,13 @@ Auth/account endpoints appear in JS (`signInNew`, `verifyOtp`, …) — **docume
 ### Product (sibling repo — suggested name)
 
 **Working title:** `cse-api-docs` / `cse-lk-unofficial`  
-**Not** inside Chime’s app code. Optional later enrollment as factory **node 2**.
+**Not** inside Quiverly’s app code. Optional later enrollment as factory **node 2**.
 
 | Deliverable | Description |
 |---|---|
 | **Docs site** | Static (Next/VitePress/GitHub Pages): endpoint catalog, curl + Python examples |
 | **Probe harness** | Script that hits each endpoint, records status/schema fingerprint, fails CI if drift |
-| **Sample vault** | Truncated JSON fixtures (like Chime `docs/sample_responses/`) |
+| **Sample vault** | Truncated JSON fixtures (like Quiverly `docs/sample_responses/`) |
 | **Field maps** | Tables: response key → meaning → gotchas |
 | **WS guide** | STOMP connect, subscribe, request-app, example frames |
 | **Ethics page** | Unofficial, rate limits, NFA, no scraping competitors, no auth abuse |
@@ -100,13 +100,13 @@ That alone is already **strictly better** than a name-only table.
 ## 4. Build order (sibling project)
 
 1. **Scaffold** repo + MIT/docs license + disclaimer.  
-2. **Import** Chime’s probe report + samples as v0.1 baseline (attribution: derived from public RE + Chime research).  
+2. **Import** Quiverly’s probe report + samples as v0.1 baseline (attribution: derived from public RE + Quiverly research).  
 3. **Add** pages for: `companyProfile`, `news/web`, `events`, `notifications*`, categories, `marketStatus`, STOMP `/api/ws`.  
 4. **Automate** `scripts/probe.py` → refresh samples weekly.  
-5. **Publish** GitHub Pages; link from Chime `RESOURCES.md` as external.  
+5. **Publish** GitHub Pages; link from Quiverly `RESOURCES.md` as external.  
 6. **Optional:** tiny Python client package (`pip install cse-lk`?) — thin wrappers only, same ethics.
 
-Chime consumes improvements by copying verified notes back into `endpoint_probe_report.md` / adapter — one-way sync, not a monorepo merge.
+Quiverly consumes improvements by copying verified notes back into `endpoint_probe_report.md` / adapter — one-way sync, not a monorepo merge.
 
 ---
 
@@ -127,6 +127,6 @@ Chime consumes improvements by copying verified notes back into `endpoint_probe_
 | Can we RE better than him? | **Yes — already deeper; site JS adds WS + companyProfile + news/events.** |
 | Is there more stuff? | **Yes** — especially STOMP topics and company profile aggregate. |
 | Can we release our own docs? | **Yes, as a separate repo/site**, with probe CI so it doesn’t go stale in 8 months. |
-| Does Chime need that repo to work? | **No** — Chime already runs on the subset it needs. Docs are community + portfolio upside. |
+| Does Quiverly need that repo to work? | **No** — Quiverly already runs on the subset it needs. Docs are community + portfolio upside. |
 
 **Next unlock:** create the empty sibling repo under the same org when you want node 2; until then keep extending `docs/endpoint_probe_report.md` here.

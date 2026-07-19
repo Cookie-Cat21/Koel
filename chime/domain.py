@@ -767,7 +767,7 @@ def format_dead_letter_notify(symbol: str, attempts: int) -> str:
     if n < 0 or n > 1_000_000:
         n = 0 if n < 0 else 1_000_000
     return (
-        f"Chime could not deliver an alert for {clean} after {n} tries. "
+        f"koel could not deliver an alert for {clean} after {n} tries. "
         "Not financial advice."
     )
 

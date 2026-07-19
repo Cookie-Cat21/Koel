@@ -1,13 +1,13 @@
-# Chime now → 2K–3K proper commits
+# Quiverly now → 2K–3K proper commits
 
 **Status:** Active near-term plan (supersedes 10K / 50M as *operating* targets)  
 **KPI:** Plan A — `repo_score = min(proper_commits, clusters_closed)` (not raw `git rev-list`)  
 **Baseline:** `lifetime_factory_score` ≈ **148**; Epoch 18 board **CLEAR**; factory at **NO_FUEL** until refill  
-**Band:** grow Chime (and only Chime for now) toward **`repo_score` ∈ [2000, 3000]**
+**Band:** grow Quiverly (and only Quiverly for now) toward **`repo_score` ∈ [2000, 3000]**
 
 ---
 
-## 1. What Chime is right now
+## 1. What Quiverly is right now
 
 **One-liner:** CSE market **dashboard** (cake) + **Telegram push** when rules fire (cherry). See [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) and the full max roadmap [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md).
 
@@ -66,7 +66,7 @@ Stay the CSE equivalent of “Tijori Alerts”: **push that works when nothing i
 | **Dash as remote** | Management remote for the bot — never a trading desk; mobile-first CRUD + symbol truth |
 | **Data asset** | Keep every snapshot/disclosure — future research without changing v1 product shape |
 
-This band alone can feed **most of a 2K–3K Chime `repo_score`** if every commit closes a real cluster (fix, test, ops, dash polish, bot UX) — not docs thrash.
+This band alone can feed **most of a 2K–3K Quiverly `repo_score`** if every commit closes a real cluster (fix, test, ops, dash polish, bot UX) — not docs thrash.
 
 ### B. Needs a human constitution amendment (do not plan as default fuel)
 
@@ -79,11 +79,11 @@ This band alone can feed **most of a 2K–3K Chime `repo_score`** if every commi
 
 ### C. What success looks like (product, not score)
 
-A CSE investor sets alerts once, closes Telegram, and **still gets the ping**. The dash is for setup/inspection. Competitors keep needing an open browser; Chime does not.
+A CSE investor sets alerts once, closes Telegram, and **still gets the ping**. The dash is for setup/inspection. Competitors keep needing an open browser; Quiverly does not.
 
 ---
 
-## 4. 2K–3K plan (Chime-only for now)
+## 4. 2K–3K plan (Quiverly-only for now)
 
 ### Target
 
@@ -97,10 +97,10 @@ Midpoint operating goal: **`portfolio_target = 2500`** (celebrate 2K; stretch st
 
 ### Why this band is honest
 
-- Factory docs already estimate Chime-only proper ceiling at **hundreds → low thousands**.
+- Factory docs already estimate Quiverly-only proper ceiling at **hundreds → low thousands**.
 - Epoch 18 is CLEAR → need **new fence-legal fuel**, not empty commits.
 - 2K–3K ≈ 12–20× current score — hard, but not industrial multi-repo fantasy.
-- Sibling products deferred until this band is hit or Chime truly exhausts fences.
+- Sibling products deferred until this band is hit or Quiverly truly exhausts fences.
 
 ### Fuel map (where ~2K points come from)
 
@@ -140,7 +140,7 @@ Concurrency: prefer 8, hard max 16. One concern per commit. Farming banned.
 |---|---|
 | **500** | Factory loop proven past polish epochs; CORE/DASH fuel flowing |
 | **1,000** | Half-ish to floor; production-auth or bulk-disclosure should be in flight |
-| **2,000** | **Floor hit** — Chime is a serious hardened node |
+| **2,000** | **Floor hit** — Quiverly is a serious hardened node |
 | **2,500** | Operating goal |
 | **3,000** | Stretch ceiling without fence expansion; then STOP or amend constitution |
 
@@ -162,7 +162,7 @@ Concurrency: prefer 8, hard max 16. One concern per commit. Farming banned.
 | H-02 | Re-inventory WS INDEX vs shipped code → true OPEN clusters only | Next factory session |
 | H-03 | `make factory-refill` → Epoch 19 board from true backlog (CORE + dash auth + tests) | Next session |
 | H-04 | Prefer bulk disclosure + Telegram Login + dual-poller proof as first big clusters | Orchestrator |
-| H-05 | Sibling product enrollment | **Deferred** until ≥2K or honest Chime `NO_FUEL` |
+| H-05 | Sibling product enrollment | **Deferred** until ≥2K or honest Quiverly `NO_FUEL` |
 
 ---
 
@@ -170,7 +170,7 @@ Concurrency: prefer 8, hard max 16. One concern per commit. Farming banned.
 
 | Question | Answer |
 |---|---|
-| What is Chime? | CSE Telegram alert watcher (thin dash secondary). |
+| What is Quiverly? | CSE Telegram alert watcher (thin dash secondary). |
 | What does it do? | Watch symbols; fire on price/move/disclosure; push on Telegram. |
 | What can it be? | The default “ping me when CSE moves” tool — reliable, polite, not a terminal. |
-| What are we scoring toward? | **2K–3K proper factory score on Chime**, midpoint **2500**. |
+| What are we scoring toward? | **2K–3K proper factory score on Quiverly**, midpoint **2500**. |

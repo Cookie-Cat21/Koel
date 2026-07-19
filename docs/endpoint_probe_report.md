@@ -48,7 +48,7 @@ Sample: [`sample_responses/companyInfoSummery.json`](sample_responses/companyInf
 
 Returns `{ "reqTradeSummery": [ ... one row per symbol ... ] }` with `symbol`, `price`, `previousClose`, `change`, `percentageChange`, `high`, `low`, `open`, `sharevolume`, `tradevolume`, `turnover`, `lastTradedTime`, `marketCap`.
 
-Recommended for Chime poller: one call → filter to watchlist symbols.
+Recommended for Quiverly poller: one call → filter to watchlist symbols.
 
 Sample: [`sample_responses/tradeSummary.json`](sample_responses/tradeSummary.json)
 
@@ -138,7 +138,7 @@ Samples: [`companyChartDataByStock.json`](sample_responses/companyChartDataBySto
 | Status | `200` |
 | Body | `{}` JSON or empty form |
 
-Response shape: `{ "status": "Market Closed" }` (or open-equivalent string when session is live). Chime currently gates on static `MARKET_OPEN`/`MARKET_CLOSE` clocks — wire this with clock fallback. Cross-check: [CSE_EXTERNAL_DOC_COMPARE.md](CSE_EXTERNAL_DOC_COMPARE.md) · sibling docs plan: [CSE_API_DOCS_PROJECT.md](CSE_API_DOCS_PROJECT.md).
+Response shape: `{ "status": "Market Closed" }` (or open-equivalent string when session is live). Quiverly currently gates on static `MARKET_OPEN`/`MARKET_CLOSE` clocks — wire this with clock fallback. Cross-check: [CSE_EXTERNAL_DOC_COMPARE.md](CSE_EXTERNAL_DOC_COMPARE.md) · sibling docs plan: [CSE_API_DOCS_PROJECT.md](CSE_API_DOCS_PROJECT.md).
 
 Sample: [`sample_responses/marketStatus.json`](sample_responses/marketStatus.json)
 
@@ -162,7 +162,7 @@ Useful fields: `announcementId`, `id`, `createdDate` (epoch ms), `dateOfAnnounce
 
 Sample: [`sample_responses/announcements.json`](sample_responses/announcements.json)
 
-### Per-symbol (recommended for Chime watchlists): `POST /api/getAnnouncementByCompany`
+### Per-symbol (recommended for Quiverly watchlists): `POST /api/getAnnouncementByCompany`
 
 | | |
 |---|---|
@@ -250,7 +250,7 @@ curl -X POST 'https://www.cse.lk/api/getAnnouncementByCompany' \
 
 ---
 
-## Recommended Chime `PriceSnapshot` fields
+## Recommended Quiverly `PriceSnapshot` fields
 
 Map primarily from `tradeSummary.reqTradeSummery[]` (bulk) or `companyInfoSummery.reqSymbolInfo` (per symbol):
 
@@ -272,7 +272,7 @@ Map primarily from `tradeSummary.reqTradeSummery[]` (bulk) or `companyInfoSummer
 
 Store every snapshot; do not discard history.
 
-### Recommended Chime `Disclosure` fields
+### Recommended Quiverly `Disclosure` fields
 
 From `getAnnouncementByCompany` / `approvedAnnouncement`:
 
@@ -322,4 +322,4 @@ Sample: [`sample_responses/orderBook.json`](sample_responses/orderBook.json)
 
 | Endpoint | Notes |
 |---|---|
-| `POST /api/topGainers` | Array of top gainers (screener-adjacent; not used by Chime v1 alerts) |
+| `POST /api/topGainers` | Array of top gainers (screener-adjacent; not used by Quiverly v1 alerts) |
