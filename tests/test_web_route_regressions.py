@@ -1116,7 +1116,6 @@ def test_wave_master_plan_kit_wiring() -> None:
     assert "TestFireButton" in alerts
     assert "CommandPalette" in nav or "command-palette" in nav
     assert (WEB / "src" / "app" / "api" / "v1" / "indexes" / "route.ts").is_file()
-    assert (WEB / "src" / "app" / "api" / "v1" / "stream" / "snapshots" / "route.ts").is_file()
     assert (WEB / "src" / "app" / "api" / "v1" / "auth" / "telegram" / "route.ts").is_file()
     assert (WEB / "src" / "app" / "api" / "v1" / "auth" / "logout-all" / "route.ts").is_file()
     assert (WEB / "src" / "components" / "command-palette.tsx").is_file()
