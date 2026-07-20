@@ -30,5 +30,5 @@ Pack ≤8 OWNED_FILES-disjoint. STOP lane after 2 clean no-lift passes.
 ## Explicitly not next
 
 - Spawn 100 agents
-- Tier B macros (F-091…100) without ToS checklist
+- Tier B macros (F-091…100) without ToS checklist — roadmap unlocked in `MACRO_EXPANSION_MASTER_PLAN.md`; still intake-gated before prod flags
 - Promote forecast until walk-forward hit rate ≥ 0.55

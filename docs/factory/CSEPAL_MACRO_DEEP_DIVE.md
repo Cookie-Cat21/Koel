@@ -2,7 +2,9 @@
 
 **Date:** 2026-07-20  
 **Reference (observe only — do not scrape):** https://csepal.lk/macro  
-**Authority:** [CLAUDE.md](../../CLAUDE.md) · [KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md](KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md) · [GREED_METER_MASTER_PLAN.md](GREED_METER_MASTER_PLAN.md) · [THIRD_PARTY_DATA.md](../THIRD_PARTY_DATA.md) · [FACTOR_INDEX.md](workstreams/FACTOR_INDEX.md)
+**Authority:** [CLAUDE.md](../../CLAUDE.md) · [KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md](KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md) · [GREED_METER_MASTER_PLAN.md](GREED_METER_MASTER_PLAN.md) · [MACRO_EXPANSION_MASTER_PLAN.md](MACRO_EXPANSION_MASTER_PLAN.md) · [THIRD_PARTY_DATA.md](../THIRD_PARTY_DATA.md) · [FACTOR_INDEX.md](workstreams/FACTOR_INDEX.md)
+
+**Follow-on:** Additive Oil / FX / world / food / tourism / news → [MACRO_EXPANSION_MASTER_PLAN.md](MACRO_EXPANSION_MASTER_PLAN.md).
 
 ---
 
@@ -12,7 +14,7 @@ CSEPal’s Macro surface is a **paid market-intel terminal**: Fear & Greed gauge
 
 koel already ships the **honest CSE-native core** of that story as **Market Appetite** (Overview + `/appetite`), plus indexes/sectors/movers and per-symbol book alerts. We are **not** missing a Fear & Greed brand — we are missing a **thin market-tape strip** (foreign net, market-wide book pressure) and **Telegram cherry** on those regimes.
 
-**Do not clone `/macro`.** Steal the *pulse* (one viewport answers “what’s the tape doing?”) and keep koel’s wedge: dash clarity + explainable research + push when the tab is closed.
+**Do not clone `/macro`.** Steal the *pulse* for Overview, keep CSE + Telegram as the core wedge, and put broader macros on a separate **Context** surface when intake clears.
 
 ---
 
@@ -79,9 +81,9 @@ Credits / Lemon Squeezy / local-transfer billing + feature entitlements. Macro i
 | Market-wide order-book gap / pressure | Market Depth Evolution + Pressure pane | Per-symbol `order_book_snapshots` + `bid_heavy`/`ask_heavy` alerts; nightly top-25 accrual | **Partial** — need market aggregate + history UI |
 | Buy/sell pressure (tape) | Explicit series | Proxies only (`volup`/`voldown`); CSE has no aggressor tags | Honest proxy only — don’t fake |
 | CDS domestic/foreign ownership | Charts | Candidate CDS INFOLINE monthly (ToS checklist); LOLC StockLens **banned** | Defer / thin monthly if ToS OK |
-| World markets / oil / FX | Live tiles | Tier B macros F-091…096 **DEFER** until ToS intake | Defer |
-| Food basket / tourism | Full modules | F-097…098 DEFER | Defer (not wedge) |
-| News / social sentiment | Gated | Deferred (`THIRD_PARTY_DATA`) | Defer |
+| World markets / oil / FX | Live tiles | Tier B planned — see Macro Expansion master plan; intake first | Additive `/context` |
+| Food basket / tourism | Full modules | DCS / SLTDA candidates logged in `THIRD_PARTY_DATA` | Additive `/context` |
+| News / social sentiment | Gated | Disclosure-first; external link-out after ToS | Additive, careful |
 | Valuation regime (mkt PE/PB) | Charts | Sparse NAV/ROE extract still Phase C | Later, after fundamentals densify |
 | Volume-profile intelligence (HHI, kurtosis…) | Charts | Not productized | Research/ML only unless proven |
 | Shareholder / crossings intel | Paid locks | Ownership graph exists (different job) | Don’t clone; deepen ownership map |
@@ -163,17 +165,20 @@ Still banned on this page: world markets wall, food basket, tourism heatmap, new
 | F-075 mkt breadth | OPEN / Appetite lineage | Fold Appetite components into `symbol_scores` context chip |
 | F-028 sector rotation breadth | OPEN | After M1 data stable |
 | Foreign-flow session factor | not numbered | Add only as **descriptive** component once M0 history ≥60d |
-| F-091…100 external macro | DEFER | Unchanged — ToS gate |
+| F-091…100 external macro | PLANNED (intake-gated) | See Macro Expansion master plan |
 
-### Phase M5 — Explicit defer list (revisit only with intake)
+### Phase M5 — Broader macros (moved to master plan)
+
+Product unlock: build as **additive Context**, not Overview clutter.  
+Full phases, sources, and “beat CSEPal” moves → [MACRO_EXPANSION_MASTER_PLAN.md](MACRO_EXPANSION_MASTER_PLAN.md).
 
 | CSEPal module | koel stance |
 |---|---|
-| World Markets tiles | Defer (Tier B/D) |
-| Crude / gold / FX cards | Defer (F-091/095) |
-| Food prices basket | Out of wedge |
-| Tourist arrivals | Out of wedge (unless CBSL/SLTDA ToS-clean **and** product asks) |
-| News Insights / media sentiment | Defer |
+| World Markets tiles | P4 research panel (≤5 tiles, delayed banner) |
+| Crude / gold / FX cards | P2 — EIA oil + CBSL FX after intake |
+| Food prices basket | P3 — DCS staple **pressure index**, not SKU farm |
+| Tourist arrivals | P3 — SLTDA Excel + Hotels/Travel sector bridge |
+| News Insights / media sentiment | P5 — CSE disclosures first; no social-feed clone |
 | Market Depth Evolution (L2 stacks) | Reject on public API; revisit only with licensed CSE depth feed |
 | CDS ownership charts | Thin monthly CDS INFOLINE candidate only |
 | Shareholder search / crossings paid tools | Don’t clone; keep ownership graph / people map |
@@ -225,10 +230,10 @@ Fail if Overview grows a second scroll of chart tabs, or if we ship “Fear & Gr
 4. **M2.1** Appetite band Telegram alert (reuses shipped score).  
 5. **M2.2** foreign-flow alert once history is non-trivial.  
 6. **M3** charts on `/appetite` only if M1 feels cramped.  
-7. Everything in **M5** stays parked.
+7. **M5 / Context macros** — follow [MACRO_EXPANSION_MASTER_PLAN.md](MACRO_EXPANSION_MASTER_PLAN.md) after P1 tape pulse.
 
 ---
 
 ## 8. One-liner for the team
 
-CSEPal Macro is a **subscription intel terminal**; koel should answer the same daily question with a **three-signal tape pulse** (Appetite · Foreign · Book) and **Telegram when it flips** — using data we already accrue — not by rebuilding their tab farm.
+CSEPal Macro is a **subscription intel terminal**; koel answers the daily CSE question with a **tape pulse + Telegram**, then adds official FX/oil/food/tourism on `/context` — not by rebuilding their tab farm.

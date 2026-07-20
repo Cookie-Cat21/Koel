@@ -153,20 +153,23 @@
 | F-089 | Issue age (years listed) | companyInfo | age_yrs | quote | OPEN | OPEN | `chime/adapters/` |
 | F-090 | Single-name event risk score | notices+disc | event_risk | same | OPEN | OPEN | `chime/signals/` |
 
-## Bucket 10 — External macro (F-091…100) — DEFER
+## Bucket 10 — External macro (F-091…100) — PLANNED (intake-gated)
+
+Roadmap: [`MACRO_EXPANSION_MASTER_PLAN.md`](../MACRO_EXPANSION_MASTER_PLAN.md).  
+Status stays intake-blocked until each row in [`THIRD_PARTY_DATA.md`](../../THIRD_PARTY_DATA.md) is checked off.
 
 | ID | Hypothesis | Source | Feature | Leakage | Kill | Status | OWNED |
 |---|---|---|---|---|---|---|---|
-| F-091 | USD/LKR move | ToS-clean FX | fx_ret | as_of | ToS | **DEFER** | `docs/THIRD_PARTY_DATA.md` |
-| F-092 | CBSL policy rate change | official | rate_chg | as_of | ToS | **DEFER** | same |
-| F-093 | Inflation print surprise | official | cpi_surp | as_of | ToS | **DEFER** | same |
+| F-091 | USD/LKR move | CBSL FX | fx_ret | as_of | ToS | **PLANNED** | `docs/THIRD_PARTY_DATA.md` |
+| F-092 | CBSL policy rate change | official | rate_chg | as_of | ToS | **PLANNED** | same |
+| F-093 | Inflation print surprise | DCS CCPI | cpi_surp | as_of | ToS | **PLANNED** | same |
 | F-094 | Sovereign CDS / yields | ToS-clean | yld | as_of | ToS | **DEFER** | same |
-| F-095 | Oil price (energy sector tilt) | ToS-clean | oil | as_of | ToS | **DEFER** | same |
-| F-096 | Global EM equity factor | ToS-clean | em | as_of | ToS | **DEFER** | same |
-| F-097 | Remittance / tourism proxies | official | rem | as_of | ToS | **DEFER** | same |
+| F-095 | Oil price (energy sector tilt) | EIA | oil | as_of | ToS | **PLANNED** | same |
+| F-096 | Global EM equity factor | research panel | em | as_of | ToS | **PLANNED** | same |
+| F-097 | Remittance / tourism proxies | SLTDA | rem | as_of | ToS | **PLANNED** | same |
 | F-098 | Rainfall / agri (plantation) | official | rain | as_of | ToS | **DEFER** | same |
 | F-099 | Power tariff news | official | tariff | as_of | ToS | **DEFER** | same |
-| F-100 | Macro composite regime | Tier B blend | regime | as_of | ToS | **DEFER** | same |
+| F-100 | Macro composite regime | Tier B blend | regime | as_of | ToS | **PLANNED** | same |
 
 ---
 

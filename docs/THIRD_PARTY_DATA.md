@@ -37,6 +37,74 @@ This file tracks **external market / macro feeds** considered for Signal Board f
 
 **No Tier B+ adapters shipped yet** — Signal Board v0 uses Tier A only.
 
+Product roadmap for additive macros (FX / oil / food / tourism / world / news):  
+[`docs/factory/MACRO_EXPANSION_MASTER_PLAN.md`](factory/MACRO_EXPANSION_MASTER_PLAN.md).  
+Do **not** flip prod flags until the matching intake row below is completed.
+
+## Tier B candidate intake — research log (2026-07-20)
+
+Probe notes only. **Not license clearance.** Complete the full checklist before `*_ENABLED=1`.
+
+### CBSL FX (F-091) — candidate
+
+- [ ] Source: [Daily indicative exchange rates](https://www.cbsl.gov.lk/en/rates-and-indicators/exchange-rates) · tool `https://www.cbsl.gov.lk/cbsl_custom/exrates/exrates.php` (HTTP 200 in probe) + spreadsheet downloads on same hub
+- [ ] ToS / license: official public statistics; confirm redistribution into Postgres + attribution wording
+- [ ] Auth: none (HTML/spreadsheet)
+- [ ] Rate limit: ≤1 pull / business day after publish; backoff on 5xx
+- [ ] Schema: `macro_series` (`source=cbsl_fx`, `series_id=USD_LKR` …)
+- [ ] Flag: `CBSL_FX_ENABLED` default `0`
+- [ ] Fail-soft: hide FX chips; CSE tape pulse unaffected
+- [ ] NFA: “USD/LKR as of …” never “rupee cheap → buy”
+- **Note:** Frankfurter/ECB API is fine for USD↔EUR/INR/SGD cross-checks but **does not publish LKR** (confirmed 2026-07-20) — CBSL remains LKR truth.
+
+### EIA oil (F-095) — candidate
+
+- [ ] Source: [EIA Open Data API](https://www.eia.gov/opendata/) — Brent / WTI spot series
+- [ ] ToS / license: US government works generally **public domain**; [Copyrights & Reuse](https://www.eia.gov/about/copyrights_reuse.cfm) requires acknowledgment; register free API key; obey API ToS / rate limits
+- [ ] Auth: `EIA_API_KEY`
+- [ ] Rate limit: polite daily pull; respect EIA throttles
+- [ ] Schema: `macro_series` (`source=eia_oil`, `series_id=BRENT_SPOT` / `WTI_SPOT`)
+- [ ] Flag: `EIA_OIL_ENABLED` default `0`
+- [ ] Fail-soft: hide oil chip
+- [ ] NFA: descriptive Δ% only; optional energy-sector bridge chip
+
+### DCS food / CPI (F-093 / food pressure) — candidate
+
+- [ ] Source: [DCS Weekly Retail Prices dashboard](https://www.statistics.gov.lk/DashBoard/Prices/) (HTTP 200) · monthly [CCPI](https://www.statistics.gov.lk/InflationAndPrices/StaticalInformation/MonthlyCCPI) · optional [CBSL Daily Price Report](https://www.cbsl.gov.lk/statistics/economic-indicators/price-report)
+- [ ] ToS / license: DCS copyright notice on dashboard (“All Rights Reserved”) — **confirm redistribution** before any scrape/parse; prefer published bulletins/spreadsheets if clearer
+- [ ] Auth: none
+- [ ] Rate limit: weekly (retail) / monthly (CCPI)
+- [ ] Schema: `macro_series` + small staple basket → food pressure score in `macro_snapshots_daily`
+- [ ] Flag: `DCS_FOOD_ENABLED` default `0`
+- [ ] Fail-soft: hide Food module on `/context`
+- [ ] NFA: staples pressure, not “inflation trade”
+
+### SLTDA tourism (F-097) — candidate
+
+- [ ] Source: [Tourist arrivals from all countries](https://www.sltda.gov.lk/en/tourist-arrivals-from-all-countries) Excel/PDF (portal HTTP 200; files listed through 2026-05 in probe)
+- [ ] ToS / license: official stats publication; attribute SLTDA; confirm Excel reuse
+- [ ] Auth: none (file download)
+- [ ] Rate limit: monthly (weekly report optional later)
+- [ ] Schema: `macro_series` / tourism monthly table
+- [ ] Flag: `SLTDA_TOURISM_ENABLED` default `0`
+- [ ] Fail-soft: hide Tourism module
+- [ ] NFA: arrivals YoY + Hotels/Travel sector link only
+- **Note:** World Bank `ST.INT.ARVL` API responds but recent annual values were **null** in probe — do not use as dash truth.
+
+### World indexes (F-096) — research panel only
+
+- [ ] Source: TBD ToS-clean EOD (avoid brittle bot-gated scrapers; Stooq challenged in probe)
+- [ ] ToS / license: treat like Tier D* until cleared; banner “research / delayed”
+- [ ] Flag: `WORLD_INDEX_RESEARCH_ENABLED` default `0`
+- [ ] Never label as CSE official
+
+### External news / social sentiment — deferred
+
+- [ ] Prefer in-house CSE disclosures/notices + existing Gemini brief flags
+- [ ] No full-text scrape of EconomyNext / Daily FT / Ada Derana without written license
+- [ ] Link-out / RSS only after per-publisher ToS row
+- [ ] Skip CSEPal-style social-feed clone
+
 ## Broker / CDS public feeds — decision log (2026-07-18)
 
 Plan: [`docs/experiments/BROKER_PUBLIC_FEEDS_PLAN.md`](experiments/BROKER_PUBLIC_FEEDS_PLAN.md).  
