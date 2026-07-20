@@ -18,13 +18,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     AnnouncementRow,
     LegacyAnnouncementRow,
     announcement_to_disclosure,
     legacy_pdf_urls_by_id,
 )
-from chime.notify import SendResult, _retry_delay_seconds, send_message
+from koel.notify import SendResult, _retry_delay_seconds, send_message
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +36,7 @@ def test_retry_delay_rejects_bool_soft_accept() -> None:
     assert _retry_delay_seconds(2.5) == pytest.approx(2.5)
     assert _retry_delay_seconds(timedelta(seconds=3)) == pytest.approx(3.0)
 
-    src = (ROOT / "chime" / "notify.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "notify.py").read_text(encoding="utf-8")
     chunk = src.split("def _retry_delay_seconds")[1].split("async def send_message")[0]
     assert "isinstance(retry_after, bool)" in chunk
     assert "float(retry_after)" in chunk
@@ -58,7 +58,7 @@ async def test_send_message_rejects_bool_chat_id_and_non_str_text() -> None:
     assert await send_message(bot, 9, "hi") == SendResult.OK
     bot.send_message.assert_awaited_once()
 
-    src = (ROOT / "chime" / "notify.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "notify.py").read_text(encoding="utf-8")
     chunk = src.split("async def send_message")[1]
     assert "isinstance(chat_id, bool)" in chunk
     assert "isinstance(text, str)" in chunk
@@ -83,7 +83,7 @@ def test_announcement_to_disclosure_rejects_bool_external_id() -> None:
     assert disc.external_id == "42"
     assert "True" not in disc.url
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("def announcement_to_disclosure")[1].split(
         "def normalize_company_name"
     )[0]
@@ -106,7 +106,7 @@ def test_legacy_pdf_urls_rejects_bool_announcement_id() -> None:
     assert "True" not in out
     assert "99" in out
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("def legacy_pdf_urls_by_id")[1].split("def _retryable")[0]
     assert "isinstance(raw_id, bool)" in chunk
     assert "str(raw_id)" in chunk

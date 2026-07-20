@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from chime.domain import AlertRule, AlertType, Disclosure
-from chime.rules import evaluate_disclosure_rules
+from koel.domain import AlertRule, AlertType, Disclosure
+from koel.rules import evaluate_disclosure_rules
 from tests.test_storage_unit import _Conn, _store
 
 

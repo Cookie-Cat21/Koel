@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.provider import GeminiBriefProvider, make_brief_provider
+from koel.briefs import BriefSettings
+from koel.briefs.provider import GeminiBriefProvider, make_brief_provider
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,14 +42,14 @@ def test_make_brief_provider_rejects_non_string_provider() -> None:
     provider = make_brief_provider(cfg)
     assert isinstance(provider, GeminiBriefProvider)
 
-    src = (ROOT / "chime" / "briefs" / "provider.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "provider.py").read_text(encoding="utf-8")
     # Factory soft-defaults non-string provider via _build_single_provider.
     assert "def _build_single_provider" in src
     assert "isinstance(settings.provider, str)" in src
 
 
 def test_fetch_disclosures_bulk_symbol_isinstance_guards() -> None:
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("async def _fetch_disclosures_bulk")[1].split("async def ")[0]
     assert "isinstance(s, str)" in chunk
     assert "isinstance(symbol, str)" in chunk
@@ -58,7 +58,7 @@ def test_fetch_disclosures_bulk_symbol_isinstance_guards() -> None:
 
 
 def test_pdf_extract_piece_isinstance_guard() -> None:
-    src = (ROOT / "chime" / "briefs" / "extract.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "extract.py").read_text(encoding="utf-8")
     # First extract_text call site in extract_pdf_text
     chunk = src.split("piece = page.extract_text()", 1)[1].split("remaining =", 1)[0]
     assert "isinstance(piece, str)" in chunk
@@ -70,7 +70,7 @@ async def test_fetch_disclosures_bulk_skips_non_string_symbols() -> None:
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
-    from chime.poller import Poller
+    from koel.poller import Poller
 
     poller = object.__new__(Poller)
     poller.cse = SimpleNamespace(

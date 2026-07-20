@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from chime.briefs.local_fill import build_local_brief
+from koel.briefs.local_fill import build_local_brief
 
 
 def test_local_brief_includes_nfa_and_metrics() -> None:

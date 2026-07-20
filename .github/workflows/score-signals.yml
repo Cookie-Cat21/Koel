@@ -57,7 +57,7 @@ jobs:
       - name: Migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m chime migrate
+        run: python -m koel migrate
 
       - name: Score Signal Board
         env:
@@ -68,7 +68,7 @@ jobs:
           LIMIT="${{ github.event.inputs.limit || '0' }}"
           AS_OF="${{ github.event.inputs.as_of || '' }}"
           if [ -n "$AS_OF" ]; then
-            python -m chime score-signals --limit "$LIMIT" --as-of "$AS_OF"
+            python -m koel score-signals --limit "$LIMIT" --as-of "$AS_OF"
           else
-            python -m chime score-signals --limit "$LIMIT"
+            python -m koel score-signals --limit "$LIMIT"
           fi

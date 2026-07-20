@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from types import MappingProxyType
 
-from chime.adapters.cse import allowed_cdn_pdf_url, allowed_filing_url
-from chime.briefs.extract import _header_media_type, _header_value
+from koel.adapters.cse import allowed_cdn_pdf_url, allowed_filing_url
+from koel.briefs.extract import _header_media_type, _header_value
 
 
 def test_path_segment_decode_rejects_invalid_utf8_percent() -> None:

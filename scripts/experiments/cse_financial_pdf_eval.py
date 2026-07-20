@@ -28,7 +28,7 @@ OUT_DIR = REPO / "docs" / "experiments"
 PDF_DIR = Path("/tmp/cse-financial-pdfs")
 TARGET_PDFS = 100
 SLEEP_S = 0.35
-UA = "Mozilla/5.0 (compatible; ChimeBot/0.1; financial-pdf-eval)"
+UA = "Mozilla/5.0 (compatible; KoelBot/0.1; financial-pdf-eval)"
 
 # Heuristic metric detectors (not ground-truth — measures "can we find candidates")
 METRIC_PATTERNS: dict[str, re.Pattern[str]] = {
@@ -357,7 +357,7 @@ Sample: **{summary['n']}** PDFs from `POST /api/financials` (annual + quarterly)
 
     md += f"""
 
-## Interpretation for Chime
+## Interpretation for Koel
 
 - This spike measures **whether text/tables are machine-readable enough to attempt calcs**, not whether computed EPS/PE would be correct.
 - Open-source US tools that look strong usually lean on **XBRL** (`edgartools`). CSE public archives are **PDFs**, so expect FinTable-style parsers to need heavy per-issuer tweaking.

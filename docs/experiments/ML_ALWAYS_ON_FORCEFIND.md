@@ -63,10 +63,10 @@ Also: lean on **HPE (~90% when speaking)** while always-on crawls.
 ## Commands
 
 ```bash
-python3 -m chime ml-always-on                 # baseline scoreboard
-python3 -m chime ml-always-on --events        # vs baseline
-python3 -m chime ml-always-on --sector-rs
-python3 -m chime disclosures-backfill --force --limit 0
+python3 -m koel ml-always-on                 # baseline scoreboard
+python3 -m koel ml-always-on --events        # vs baseline
+python3 -m koel ml-always-on --sector-rs
+python3 -m koel disclosures-backfill --force --limit 0
 ```
 
 Research only — not financial advice.

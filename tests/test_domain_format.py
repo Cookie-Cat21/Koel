@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from chime.domain import (
+from koel.domain import (
     AlertEvent,
     AlertType,
     disclaimer,

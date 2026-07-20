@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.cse import CDN_BASE
-from chime.briefs import BriefSettings
-from chime.briefs.extract import CdnPdfPermanentError
-from chime.briefs.worker import claim_pending_briefs
-from chime.domain import (
+from koel.adapters.cse import CDN_BASE
+from koel.briefs import BriefSettings
+from koel.briefs.extract import CdnPdfPermanentError
+from koel.briefs.worker import claim_pending_briefs
+from koel.domain import (
     AlertEvent,
     AlertType,
     disclaimer,
@@ -116,7 +116,7 @@ async def test_claim_pending_briefs_oversized_pdf_marks_failed() -> None:
     provider.summarize = AsyncMock(return_value="should not run")
 
     with patch(
-        "chime.briefs.worker.fetch_cdn_pdf",
+        "koel.briefs.worker.fetch_cdn_pdf",
         AsyncMock(side_effect=CdnPdfPermanentError("CDN PDF too large")),
     ):
         n = await claim_pending_briefs(
@@ -156,7 +156,7 @@ async def test_claim_pending_briefs_redirect_marks_failed() -> None:
     provider.summarize = AsyncMock(return_value="nope")
 
     with patch(
-        "chime.briefs.worker.fetch_cdn_pdf",
+        "koel.briefs.worker.fetch_cdn_pdf",
         AsyncMock(side_effect=CdnPdfPermanentError("CDN PDF redirect rejected")),
     ):
         await claim_pending_briefs(

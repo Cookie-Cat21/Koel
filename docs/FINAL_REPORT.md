@@ -29,7 +29,7 @@ Product plan: [CLAUDE.md](../CLAUDE.md). Endpoint probe: [endpoint_probe_report.
 
 | # | Bar | Score | Proof |
 |---|---|---|---|
-| 1 | Alert correctness (crossing) | **pass** | `pytest` unit tests for above/below/gap/move/disclosure filters; `chime.rules` 100% cov |
+| 1 | Alert correctness (crossing) | **pass** | `pytest` unit tests for above/below/gap/move/disclosure filters; `koel.rules` 100% cov |
 | 2 | Zero dup / zero loss | **pass** | Claim-before-disarm; crossing-stable `event_key`; session lock held on one pooled connection until unlock (`tests/test_advisory_lock.py` when `DATABASE_URL` set) |
 | 3 | Latency | **partial** | `alert_latency_ms` logs **claim→send**. CSE print→Telegram is **poll-interval bounded** (default 60s + jitter) — **not** p95&lt;5s end-to-end. README documents this. |
 | 4 | Resilience | **pass** | Circuit open / junk tradeSummary row / disclosure HTTP errors covered in tests |
@@ -40,15 +40,15 @@ Product plan: [CLAUDE.md](../CLAUDE.md). Endpoint probe: [endpoint_probe_report.
 ### Proof commands (this environment, 2026-07-11)
 
 ```text
-$ python3 -m ruff check chime tests
+$ python3 -m ruff check koel tests
 All checks passed!
 
-$ python3 -m mypy chime
+$ python3 -m mypy koel
 Success: no issues found in 15 source files
 
-$ python3 -m pytest -o addopts='-q --cov=chime.rules --cov-report=term-missing --cov-fail-under=85'
+$ python3 -m pytest -o addopts='-q --cov=koel.rules --cov-report=term-missing --cov-fail-under=85'
 55 passed, 3 skipped in ~1.5s
-chime/rules.py  77 stmts  0 miss  100%
+koel/rules.py  77 stmts  0 miss  100%
 ```
 
 Skipped tests: integration paths that need `DATABASE_URL` (incl. advisory-lock dual-holder). With Neon/Postgres set, `tests/test_advisory_lock.py` exercises real `pg_try_advisory_lock` across two `Storage` instances.
@@ -72,8 +72,8 @@ Skipped tests: integration paths that need `DATABASE_URL` (incl. advisory-lock d
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env   # TELEGRAM_BOT_TOKEN + DATABASE_URL
-python -m chime migrate
-python -m chime both   # or: bot | poller | tick --force
+python -m koel migrate
+python -m koel both   # or: bot | poller | tick --force
 ```
 
 Health: `http://127.0.0.1:8080/health` (override `HEALTH_HOST` / `HEALTH_PORT`).

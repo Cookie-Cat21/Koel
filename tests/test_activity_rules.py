@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from chime.domain import (
+from koel.domain import (
     AlertRule,
     AlertType,
     BigPrint,
@@ -12,7 +12,7 @@ from chime.domain import (
     PreviousPriceState,
     PriceSnapshot,
 )
-from chime.rules import (
+from koel.rules import (
     evaluate_big_print_rules,
     evaluate_notice_rules,
     evaluate_price_rules,

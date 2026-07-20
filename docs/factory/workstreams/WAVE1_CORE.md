@@ -1,6 +1,6 @@
 # Wave 1 — CORE lane workstreams (WS-001 … WS-020)
 
-**Lane:** CORE (`chime/`, `db/`, `tests/` — non-UI)  
+**Lane:** CORE (`koel/`, `db/`, `tests/` — non-UI)  
 **Source:** Stage A baseline in [FINAL_REPORT.md](../../FINAL_REPORT.md), deferred backlog, Pass 1–4 audits, and current spine code.  
 **Fence:** No portfolio / screener / TA / payments. Planning only — no product implementation in this file’s PR wave.
 

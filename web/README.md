@@ -22,7 +22,7 @@ Open [http://localhost:3000/login](http://localhost:3000/login).
 | `DATABASE_URL` | Postgres (shared with bot) |
 | `DASH_DEMO_AUTH=1` | Opt-in demo login |
 | `DASH_DEMO_TELEGRAM_IDS` | Comma-separated allowlist |
-| `DASH_SESSION_SECRET` | Non-empty HMAC key for `chime_session` cookie |
+| `DASH_SESSION_SECRET` | Non-empty HMAC key for `koel_session` cookie |
 | `DASH_DEFAULT_TELEGRAM_ID` | Optional default on `/login` (must be allowlisted) |
 
 ## Scripts
@@ -34,15 +34,15 @@ Open [http://localhost:3000/login](http://localhost:3000/login).
 ## Auth (v1 demo)
 
 `POST /api/v1/auth/demo` with `{ "telegram_id": number }` mints a signed
-HttpOnly `chime_session` cookie bound to `users.id`, plus CSRF material
-(`chime_csrf` + `csrf_token` in JSON). Login is CSRF-exempt; all other
+HttpOnly `koel_session` cookie bound to `users.id`, plus CSRF material
+(`koel_csrf` + `csrf_token` in JSON). Login is CSRF-exempt; all other
 mutations (including `POST /api/v1/auth/logout`) require matching
 `X-CSRF-Token`. See `docs/adr/001-dash-auth.md`.
 
 ## CSRF (dash mutations)
 
 Double-submit cookie: login (and optional `GET /me` refresh) sets
-non-HttpOnly `chime_csrf`. Every other mutating `/api/v1/*` call must send
+non-HttpOnly `koel_csrf`. Every other mutating `/api/v1/*` call must send
 the same value as `X-CSRF-Token` (UI uses `apiMutate` in
 `src/lib/api/client-fetch.ts`). Session is validated **before** CSRF —
 no/invalid session → `401 unauthorized` even if CSRF is also wrong; never

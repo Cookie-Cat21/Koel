@@ -10,12 +10,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from chime.domain import AlertType
-from chime.rules import evaluate_disclosure_rules, evaluate_price_rules, filter_fireable
+from koel.domain import AlertType
+from koel.rules import evaluate_disclosure_rules, evaluate_price_rules, filter_fireable
 from tests.conftest import make_disclosure, make_previous, make_rule, make_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
-RULES_SRC = (ROOT / "chime" / "rules.py").read_text(encoding="utf-8")
+RULES_SRC = (ROOT / "koel" / "rules.py").read_text(encoding="utf-8")
 
 _CREATED = datetime(2026, 7, 11, 12, 0, 0, tzinfo=UTC)
 _TRADE_TS = datetime(2026, 7, 11, 5, 0, 0, tzinfo=UTC)  # ~10:30 SLT

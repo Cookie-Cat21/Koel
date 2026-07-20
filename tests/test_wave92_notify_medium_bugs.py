@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from chime.circuit import CircuitBreaker, CircuitState
+from koel.circuit import CircuitBreaker, CircuitState
 
 
 @pytest.mark.asyncio

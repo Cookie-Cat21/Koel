@@ -14,7 +14,7 @@ start the datastore/services themselves.
 | Service | Language / runtime | Run (dev) | Notes |
 |---|---|---|---|
 | Postgres 16 | apt package (not Docker here) | `sudo pg_ctlcluster 16 main start` | Shared DB for backend + dashboard. |
-| Backend (`chime`) | Python 3.12 | `python3 -m chime {bot,poller,both,tick}` | `bot`/`poller`/`both`/`tick` require `TELEGRAM_BOT_TOKEN`; `migrate` does not. |
+| Backend (`koel`) | Python 3.12 | `python3 -m koel {bot,poller,both,tick}` | `bot`/`poller`/`both`/`tick` require `TELEGRAM_BOT_TOKEN`; `migrate` does not. |
 | Dashboard (`web/`) | Node 22 / Next.js 16 | `cd web && npm run dev` (`:3000`) | Postgres-only; never calls cse.lk. |
 
 ### Postgres (no Docker in this VM)
@@ -25,22 +25,22 @@ script — start it each session and (re)create the role/db if missing:
 
 ```bash
 sudo pg_ctlcluster 16 main start
-sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='chime'" | grep -q 1 \
-  || sudo -u postgres psql -c "CREATE ROLE chime LOGIN PASSWORD 'chime';"
-sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='chime'" | grep -q 1 \
-  || sudo -u postgres psql -c "CREATE DATABASE chime OWNER chime;"
+sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='koel'" | grep -q 1 \
+  || sudo -u postgres psql -c "CREATE ROLE koel LOGIN PASSWORD 'koel';"
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='koel'" | grep -q 1 \
+  || sudo -u postgres psql -c "CREATE DATABASE koel OWNER koel;"
 ```
 
-`DATABASE_URL=postgresql://chime:chime@localhost:5432/chime` (the repo default). Copy
+`DATABASE_URL=postgresql://koel:koel@localhost:5432/koel` (the repo default). Copy
 `.env.example` → `.env` for the backend; the `.env` default `DATABASE_URL` already matches.
-Apply migrations with `python3 -m chime.migrate` (idempotent).
+Apply migrations with `python3 -m koel.migrate` (idempotent).
 
 > **Injected `DATABASE_URL` secret overrides local Postgres.** This VM ships with
 > Cloud Agent secrets in the OS env (`env | grep DASH_`), including a **Neon**
 > `DATABASE_URL` (`…neon.tech/neondb`) plus a real `DASH_SESSION_SECRET`,
 > `DASH_DEMO_TELEGRAM_IDS`, `DASH_DEFAULT_TELEGRAM_ID`, and `TELEGRAM_BOT_TOKEN`.
 > That injected Neon DB is already migrated + richly seeded, and both the backend
-> (`python3 -m chime …` without an explicit `DATABASE_URL`) and the dashboard
+> (`python3 -m koel …` without an explicit `DATABASE_URL`) and the dashboard
 > (Next.js does **not** let `.env.local` override an existing `process.env` var)
 > will talk to Neon, **not** the local cluster above. So: the local-Postgres setup
 > is optional; to force local instead, pass `DATABASE_URL=…localhost…` inline on
@@ -55,13 +55,13 @@ Apply migrations with `python3 -m chime.migrate` (idempotent).
   only `python3` exists on this VM.
 - pip installs need `--break-system-packages` (system Python is externally managed); scripts
   land in `~/.local/bin`, which is not on `PATH` by default (invoke tools by module, e.g.
-  `python3 -m chime ...`, or add that dir to `PATH`).
+  `python3 -m koel ...`, or add that dir to `PATH`).
 - Running `pytest` with `DATABASE_URL` set writes fixture rows into that database; it does not
   fully clean up. Point tests at a throwaway DB, or `TRUNCATE ... RESTART IDENTITY CASCADE`
   before demos so the DB is pristine.
 - `tick`/`bot`/`poller`/`both` require `TELEGRAM_BOT_TOKEN` even to start. For a poll-only
   smoke that never sends Telegram (no matching alert rules), a placeholder token works:
-  `TELEGRAM_BOT_TOKEN=000:placeholder python3 -m chime tick --force`.
+  `TELEGRAM_BOT_TOKEN=000:placeholder python3 -m koel tick --force`.
 - The poller only persists `price_snapshots` for symbols that are on someone's watchlist.
   Poll a symbol you actually want by adding it to `watchlist_items` first.
 - The dashboard's add-symbol input rejects symbols missing from the `stocks` table

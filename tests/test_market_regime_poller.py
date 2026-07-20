@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.domain import MARKET_SYMBOL, AlertEvent, AlertRule, AlertType
-from chime.poller import Poller
+from koel.domain import MARKET_SYMBOL, AlertEvent, AlertRule, AlertType
+from koel.poller import Poller
 
 
 def _rule(alert_type: AlertType, threshold: float, rule_id: int) -> AlertRule:

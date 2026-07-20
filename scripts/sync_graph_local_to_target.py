@@ -5,7 +5,7 @@ Used to densify production Neon after local seed/drain produced richer edges
 and director seats. Disclosure FKs are cleared (IDs do not transfer).
 
 Env:
-  SOURCE_DATABASE_URL  default postgresql://chime:chime@localhost:5432/chime
+  SOURCE_DATABASE_URL  default postgresql://koel:koel@localhost:5432/koel
   DATABASE_URL         target (required) — typically Neon production
 """
 
@@ -330,7 +330,7 @@ def sync_people(src: psycopg.Connection, dst: psycopg.Connection) -> None:
 def main() -> int:
     source = os.environ.get(
         "SOURCE_DATABASE_URL",
-        "postgresql://chime:chime@localhost:5432/chime",
+        "postgresql://koel:koel@localhost:5432/koel",
     )
     target = os.environ.get("DATABASE_URL")
     if not target:

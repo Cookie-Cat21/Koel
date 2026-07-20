@@ -2,7 +2,7 @@
 
 **Status:** Plan only — not started  
 **Date:** 2026-07-18  
-**Authority:** [CLAUDE.md](../../CLAUDE.md) · [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md) · [THIRD_PARTY_DATA.md](../THIRD_PARTY_DATA.md) · [CSE_PATH_HISTORY_PROBE.md](../experiments/CSE_PATH_HISTORY_PROBE.md) · [HYBRID_YAHOO_CSE_BARS.md](../experiments/HYBRID_YAHOO_CSE_BARS.md) · Factor catalog [FACTOR_INDEX.md](workstreams/FACTOR_INDEX.md) (F-028, F-075)  
+**Authority:** [CLAUDE.md](../../CLAUDE.md) · [KOEL_MASTER_PLAN.md](KOEL_MASTER_PLAN.md) · [THIRD_PARTY_DATA.md](../THIRD_PARTY_DATA.md) · [CSE_PATH_HISTORY_PROBE.md](../experiments/CSE_PATH_HISTORY_PROBE.md) · [HYBRID_YAHOO_CSE_BARS.md](../experiments/HYBRID_YAHOO_CSE_BARS.md) · Factor catalog [FACTOR_INDEX.md](workstreams/FACTOR_INDEX.md) (F-028, F-075)  
 **UI inspiration (pattern-copy only):** Tremor · shadcn Charts · shadcnblocks bullet · Magic UI NumberTicker · Ardeno bookmark set
 
 ---
@@ -92,7 +92,7 @@ market_appetite_intraday (
 )  -- optional; prune to current session
 ```
 
-CLI: `python3 -m chime appetite-backfill` (CSE 1y) · `appetite-backfill --hybrid` (research, flag).  
+CLI: `python3 -m koel appetite-backfill` (CSE 1y) · `appetite-backfill --hybrid` (research, flag).  
 Poller/tick: recompute intraday stub; finalize row at session close.
 
 ---
@@ -220,15 +220,15 @@ Once daily scores exist, these product surfaces unlock:
 
 ```bash
 # CSE spine for Phase 1
-python3 -m chime path-backfill --force --limit 0
-python3 -m chime aspi-backfill --force
-python3 -m chime market-summary-backfill --force   # accrue; repeat over days
+python3 -m koel path-backfill --force --limit 0
+python3 -m koel aspi-backfill --force
+python3 -m koel market-summary-backfill --force   # accrue; repeat over days
 # later:
-python3 -m chime appetite-backfill --force
+python3 -m koel appetite-backfill --force
 
 # Research-only Phase 3
-HYBRID_BACKFILL_ENABLED=1 python3 -m chime hybrid-backfill --force --limit 0
-APPETITE_HYBRID_HISTORY=1 python3 -m chime appetite-backfill --hybrid --force
+HYBRID_BACKFILL_ENABLED=1 python3 -m koel hybrid-backfill --force --limit 0
+APPETITE_HYBRID_HISTORY=1 python3 -m koel appetite-backfill --hybrid --force
 ```
 
 Verify:

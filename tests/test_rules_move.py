@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from chime.domain import AlertEvent, AlertType
-from chime.rules import evaluate_price_rules, filter_fireable
+from koel.domain import AlertEvent, AlertType
+from koel.rules import evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 _COLOMBO = ZoneInfo("Asia/Colombo")

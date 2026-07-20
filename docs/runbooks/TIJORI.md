@@ -9,11 +9,11 @@ Import/`migrate --help` smoke (no live CSE): `make tijori-smoke`.
 No extra env. Poller already persists full `tradeSummary` into `stocks` + `price_snapshots` (watchlist empty still OK).
 
 ```bash
-python -m chime migrate
+python -m koel migrate
 # Seed browse once (ignores market hours), or leave poller/both running:
-make tick                 # → python -m chime tick --force
+make tick                 # → python -m koel tick --force
 # SECTORS_INGEST=1 make tick   # optional sector board for GET /api/v1/sectors
-# python -m chime poller  # or: both
+# python -m koel poller  # or: both
 # dash → /market (session); data = Postgres only
 ```
 
@@ -23,7 +23,7 @@ Top movers rows use one symbol+**Watch** link to `/symbols/[symbol]` (accessible
 
 ## AI briefs (`AI_BRIEFS_ENABLED`)
 
-Default **off**. Stub in `chime/briefs/`; no LLM until explicitly enabled.
+Default **off**. Stub in `koel/briefs/`; no LLM until explicitly enabled.
 
 ```bash
 AI_BRIEFS_ENABLED=0          # leave off in prod until Phase 2
@@ -105,10 +105,10 @@ Backfill helpers for PDF enrich + filing metrics + AI briefs when the market-hou
 poller is idle. Same CSE JSON + CDN path as the poller — **not** competitor scrapes.
 
 ```bash
-python -m chime migrate
-python -m chime drain-pdfs --limit 30          # watched symbols missing pdf_url
-python -m chime drain-metrics --limit 30       # needs FINANCIAL_METRICS_ENABLED=1
-python -m chime drain-briefs --limit 10        # needs AI_BRIEFS_ENABLED=1 + keys
+python -m koel migrate
+python -m koel drain-pdfs --limit 30          # watched symbols missing pdf_url
+python -m koel drain-metrics --limit 30       # needs FINANCIAL_METRICS_ENABLED=1
+python -m koel drain-briefs --limit 10        # needs AI_BRIEFS_ENABLED=1 + keys
 # --all-symbols  → include non-watchlist rows (pdfs/metrics only)
 ```
 
@@ -124,7 +124,7 @@ After alert claim, the poller fire-and-forgets legacy `POST /announcements` → 
 PDF_ENRICH_SLEEP_SECONDS=0.5   # default; set 0 to disable; raise if CSE rate-limits
 ```
 
-Wired in `chime/config.py` → `Settings.pdf_enrich_sleep_seconds` (float; negative values clamp to 0).
+Wired in `koel/config.py` → `Settings.pdf_enrich_sleep_seconds` (float; negative values clamp to 0).
 
 ## CSE soft pacing (`CSE_MIN_INTERVAL_SECONDS`)
 
@@ -134,7 +134,7 @@ Adapter-level soft gap between consecutive cse.lk HTTP calls on one `CSEClient` 
 CSE_MIN_INTERVAL_SECONDS=0     # default; e.g. 0.2 if CSE starts 429/blocking
 ```
 
-Wired in `chime/config.py` → `Settings.cse_min_interval_seconds` → `CSEClient(min_interval_seconds=…)`. Also covered by tick spacing (`POLL_INTERVAL_SECONDS` + jitter) and sequential disclosure HTTP (natural spacing under the poll lock — avoid long sleeps under the advisory lock).
+Wired in `koel/config.py` → `Settings.cse_min_interval_seconds` → `CSEClient(min_interval_seconds=…)`. Also covered by tick spacing (`POLL_INTERVAL_SECONDS` + jitter) and sequential disclosure HTTP (natural spacing under the poll lock — avoid long sleeps under the advisory lock).
 
 ## Snapshot retention (`SNAPSHOT_RETENTION_DAYS`)
 
@@ -145,7 +145,7 @@ SNAPSHOT_RETENTION_DAYS=0    # default — keep all board history
 # SNAPSHOT_RETENTION_DAYS=14 # trim unwatched browse history
 ```
 
-Wired in `chime/config.py` → `Settings.snapshot_retention_days`.
+Wired in `koel/config.py` → `Settings.snapshot_retention_days`.
 
 ## Sector ingest (`SECTORS_INGEST`)
 
@@ -156,7 +156,7 @@ SECTORS_INGEST=0             # default — skip
 # SECTORS_INGEST=1 make tick # seed sector board once
 ```
 
-Wired in `chime/config.py` → `Settings.sectors_ingest`. See `tests/test_sectors_ingest.py`.
+Wired in `koel/config.py` → `Settings.sectors_ingest`. See `tests/test_sectors_ingest.py`.
 
 ## Bulk disclosure feed (`DISCLOSURE_BULK_FEED`)
 

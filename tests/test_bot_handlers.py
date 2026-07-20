@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import cmd_cancel, cmd_unwatch
-from chime.domain import disclaimer
+from koel.bot import cmd_cancel, cmd_unwatch
+from koel.domain import disclaimer
 
 
 def _make_update_context(

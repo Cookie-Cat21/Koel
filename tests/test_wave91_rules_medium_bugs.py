@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from chime.domain import AlertType, PreviousPriceState, PriceSnapshot
-from chime.rules import evaluate_price_rules, filter_fireable
+from koel.domain import AlertType, PreviousPriceState, PriceSnapshot
+from koel.rules import evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,5 +75,5 @@ def test_bool_price_state_fails_closed_not_one_point_baseline() -> None:
     )
     assert events == []
 
-    src = (ROOT / "chime" / "domain.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "domain.py").read_text(encoding="utf-8")
     assert "isinstance(value, bool)" in src

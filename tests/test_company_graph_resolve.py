@@ -1,6 +1,6 @@
 """Fail-closed name → symbol resolution for company graph."""
 
-from chime.graph.resolve import (
+from koel.graph.resolve import (
     build_suffix_map,
     maps_from_stock_pairs,
     resolve_company_name,

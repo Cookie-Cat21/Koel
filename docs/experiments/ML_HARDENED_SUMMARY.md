@@ -43,8 +43,8 @@ Fold hit rates stay ≥0.52 on **7–8/8** folds for the 1d classifiers (not a o
 ## How to re-run
 
 ```bash
-python3 -m chime path-backfill --force --limit 0   # if daily_bars empty
-python3 -m chime ml-harden --horizons 1,5
+python3 -m koel path-backfill --force --limit 0   # if daily_bars empty
+python3 -m koel ml-harden --horizons 1,5
 ```
 
 Research only — not financial advice.

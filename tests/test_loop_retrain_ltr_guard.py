@@ -1,6 +1,6 @@
 """Loop B must not demote LTR/vol champions on hit-rate alone."""
 
-from chime.ml.loop_retrain import _is_ltr_vol_champion_algo
+from koel.ml.loop_retrain import _is_ltr_vol_champion_algo
 
 
 def test_ltr_vol_champion_algo_guard() -> None:

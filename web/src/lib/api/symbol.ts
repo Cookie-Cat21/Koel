@@ -1,4 +1,4 @@
-/** Same regex as chime.bot.SYMBOL_RE — invalid → 400 invalid_symbol. */
+/** Same regex as koel.bot.SYMBOL_RE — invalid → 400 invalid_symbol. */
 export const SYMBOL_RE = /^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$/;
 
 /**
@@ -35,7 +35,7 @@ export function normalizeSymbolParam(raw: unknown): string | null {
   return normalizeSymbol(decoded);
 }
 
-/** Full bot parity — every AlertType in chime.domain. */
+/** Full bot parity — every AlertType in koel.domain. */
 export const ALERT_TYPES = [
   "price_above",
   "price_below",

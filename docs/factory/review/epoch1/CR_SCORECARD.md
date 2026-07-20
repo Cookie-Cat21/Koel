@@ -20,12 +20,12 @@ Do **not** CONVERGE_EPOCH1. Same-pass fixup closed WS-009 and WS-068 for real; W
 
 | # | Bar | Score | One-line evidence |
 |---|---|---|---|
-| 1 | Alert correctness | **partial** | Price crossing/gap/re-arm/missing-prev covered (`tests/test_crossing.py`, `chime.rules` 100%); disclosure `dateOfAnnouncement` → UTC midnight skew still false+/false− vs rule `created_at` (ADV MEDIUM WS-001). |
+| 1 | Alert correctness | **partial** | Price crossing/gap/re-arm/missing-prev covered (`tests/test_crossing.py`, `koel.rules` 100%); disclosure `dateOfAnnouncement` → UTC midnight skew still false+/false− vs rule `created_at` (ADV MEDIUM WS-001). |
 | 2 | Zero dup / zero loss | **partial** | Claim-before-disarm + session advisory lock + `event_key` uniqueness stand; RetryAfter still sleeps **per message** (cap 30s) under held lock; `_retry_unsent` unbounded (WS-006/090 open). |
-| 3 | Latency | **partial** | `alert_latency_ms` logs claim→send (`chime/poller.py`); CSE→TG honestly poll-interval-bounded; no dash TTFB (N/A until `web/`). |
+| 3 | Latency | **partial** | `alert_latency_ms` logs claim→send (`koel/poller.py`); CSE→TG honestly poll-interval-bounded; no dash TTFB (N/A until `web/`). |
 | 4 | Resilience | **pass** | Price circuit-open / disclosure per-symbol `continue` never kill `run_once`; WS-017 re-raise proven; `tests/test_poller_resilience.py` + circuit tests. |
 | 5 | Ops | **pass** | structlog, `/health` 200/503, env secrets, Makefile + compose Postgres + CI migrate/pytest (`WS-041/042/048`); SIGTERM still aspirational mid-tick (ADV MEDIUM). |
-| 6 | Code quality | **pass** | Re-verify: `ruff` clean, `mypy` clean, `77 passed, 3 skipped`, `chime.rules` 100% (≥85%); tip verify SHA not rebound in pass report (process minor). |
+| 6 | Code quality | **pass** | Re-verify: `ruff` clean, `mypy` clean, `77 passed, 3 skipped`, `koel.rules` 100% (≥85%); tip verify SHA not rebound in pass report (process minor). |
 | 7 | Bot UX | **partial** | One-round-trip cmds + kind errors + orphan `/unwatch` honesty fixed (`cmd_unwatch` + `test_unwatch_orphan_rules_honest_message`); `/start` is 3 content lines / 5 with blanks — WS-014 ≤3-line budget still backlog. |
 | 8 | Dash UX | **fail** | No `web/` UI; Epoch 1 correctly froze ADR + `API_CONTRACT_V1` only — bar unmet until WS-025+. |
 
@@ -55,15 +55,15 @@ Do **not** CONVERGE_EPOCH1. Same-pass fixup closed WS-009 and WS-068 for real; W
 ## Verify (this CR)
 
 ```text
-$ python3 -m ruff check chime tests
+$ python3 -m ruff check koel tests
 All checks passed!
 
-$ python3 -m mypy chime
+$ python3 -m mypy koel
 Success: no issues found in 15 source files
 
 $ python3 -m pytest tests/ --tb=line
 77 passed, 3 skipped, 6 warnings in ~1.4s
-chime.rules 100% (cov-fail-under=85)
+koel.rules 100% (cov-fail-under=85)
 ```
 
 Skipped: DB-backed paths without `DATABASE_URL` in this run (CI integration job covers migrate+DB when Postgres service is up).

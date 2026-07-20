@@ -1,8 +1,8 @@
 # koel Edge vs CSEPal — Master Plan + 30-Loop Agentic Strategy
 
 **Status:** Active planning (2026-07-19)  
-**Live:** https://koel-cse.vercel.app  
-**Authority:** [CLAUDE.md](../../CLAUDE.md) · [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md) · [ARDENO_UI_MASTER_PLAN.md](ARDENO_UI_MASTER_PLAN.md) · [UI_PATTERN_MINING_2026-07-19.md](UI_PATTERN_MINING_2026-07-19.md)  
+**Live:** https://chime-cse.vercel.app  
+**Authority:** [CLAUDE.md](../../CLAUDE.md) · [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [KOEL_MASTER_PLAN.md](KOEL_MASTER_PLAN.md) · [ARDENO_UI_MASTER_PLAN.md](ARDENO_UI_MASTER_PLAN.md) · [UI_PATTERN_MINING_2026-07-19.md](UI_PATTERN_MINING_2026-07-19.md)  
 **Competitor reference:** CSEPal dense screener (observed UI only — **do not scrape**)
 
 ---
@@ -196,7 +196,7 @@ Still banned: 20-filter builder, Best P/E top-10 casino boards as product core.
 | **Scout** | Visit 1 bookmark site; propose ≤3 patterns with license |
 | **Builder** | Implement one hypothesis |
 | **Critic** | Rubric + adversarial; may force revert |
-| **Verifier** | CI + live koel-cse.vercel.app smoke |
+| **Verifier** | CI + live chime-cse.vercel.app smoke |
 
 Orchestrator keeps a running “lowest axis” pointer so loops do not over-optimize vanity UI.
 
@@ -232,12 +232,12 @@ Orchestrator keeps a running “lowest axis” pointer so loops do not over-opti
 
 | Doc | Role |
 |---|---|
-| `CHIME_MASTER_PLAN.md` | Fence-max cake/cherry waves — still authoritative |
+| `KOEL_MASTER_PLAN.md` | Fence-max cake/cherry waves — still authoritative |
 | `ARDENO_UI_MASTER_PLAN.md` | Kit reject list + prior 10 UI loops |
 | `UI_PATTERN_MINING_2026-07-19.md` | Raw bookmark crawl notes |
 | **This doc** | Competitive strategy vs CSEPal + **30-loop execution program** |
 
-Phased Tracker unlocks in CHIME_MASTER_PLAN §G still apply: light screener only after cake+cherry green.
+Phased Tracker unlocks in KOEL_MASTER_PLAN §G still apply: light screener only after cake+cherry green.
 
 ---
 

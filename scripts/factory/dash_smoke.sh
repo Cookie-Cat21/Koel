@@ -3,7 +3,7 @@
 # wave6 browse session gates (/market, /api/v1/symbols|movers|sectors).
 #
 # Mutate happy path (POST/DELETE watchlist|alerts) needs a signed
-# chime_session cookie + matching X-CSRF-Token (ADR 001). This smoke does
+# koel_session cookie + matching X-CSRF-Token (ADR 001). This smoke does
 # NOT mint a session: CI runs with DASH_DEMO_AUTH=0 and no DB user seed.
 # Instead it asserts unauthenticated mutate is rejected (401/503), proving
 # the gate is live. Full mutate: enable demo auth, POST /api/v1/auth/demo,
@@ -49,7 +49,7 @@ if [[ -z "${BASE}" ]]; then
       DASH_DEMO_TELEGRAM_IDS="${DASH_DEMO_TELEGRAM_IDS:-}" \
       DATABASE_URL="${DATABASE_URL:-}" \
       npx next start -H 127.0.0.1 -p "${PORT}"
-  ) >"${TMPDIR:-/tmp}/chime-dash-smoke.log" 2>&1 &
+  ) >"${TMPDIR:-/tmp}/koel-dash-smoke.log" 2>&1 &
   STARTED_PID=$!
 
   for _ in $(seq 1 60); do
@@ -58,7 +58,7 @@ if [[ -z "${BASE}" ]]; then
     fi
     if ! kill -0 "${STARTED_PID}" 2>/dev/null; then
       echo "dash_smoke: next exited early; log:"
-      cat "${TMPDIR:-/tmp}/chime-dash-smoke.log" || true
+      cat "${TMPDIR:-/tmp}/koel-dash-smoke.log" || true
       exit 1
     fi
     sleep 0.5
@@ -67,42 +67,42 @@ fi
 
 echo "dash_smoke: BASE=${BASE}"
 
-login_code="$(curl -sS -o /tmp/chime-dash-login.body -w '%{http_code}' "${BASE}/login")"
+login_code="$(curl -sS -o /tmp/koel-dash-login.body -w '%{http_code}' "${BASE}/login")"
 if [[ "${login_code}" != "200" ]]; then
   echo "dash_smoke: FAIL GET /login → ${login_code}"
   exit 1
 fi
-if ! grep -qi "koel" /tmp/chime-dash-login.body; then
+if ! grep -qi "koel" /tmp/koel-dash-login.body; then
   echo "dash_smoke: FAIL /login body missing koel brand"
   exit 1
 fi
 echo "dash_smoke: OK GET /login → 200"
 
-health_code="$(curl -sS -o /tmp/chime-dash-health.body -w '%{http_code}' "${BASE}/api/v1/health" || true)"
+health_code="$(curl -sS -o /tmp/koel-dash-health.body -w '%{http_code}' "${BASE}/api/v1/health" || true)"
 if [[ "${health_code}" == "200" || "${health_code}" == "401" || "${health_code}" == "403" || "${health_code}" == "503" ]]; then
   echo "dash_smoke: OK GET /api/v1/health → ${health_code}"
 else
   # Health may not exist yet (E2-D04). Accept demo-auth disabled on POST /auth/demo.
-  demo_code="$(curl -sS -o /tmp/chime-dash-demo.body -w '%{http_code}' \
+  demo_code="$(curl -sS -o /tmp/koel-dash-demo.body -w '%{http_code}' \
     -X POST "${BASE}/api/v1/auth/demo" \
     -H 'Content-Type: application/json' \
     -d '{"telegram_id":1}')"
-  if [[ "${demo_code}" == "403" ]] && grep -q 'demo_auth_disabled' /tmp/chime-dash-demo.body; then
+  if [[ "${demo_code}" == "403" ]] && grep -q 'demo_auth_disabled' /tmp/koel-dash-demo.body; then
     echo "dash_smoke: OK POST /api/v1/auth/demo → 403 demo_auth_disabled (health=${health_code})"
   elif [[ "${demo_code}" == "403" ]]; then
     # Allowlist / disabled variants still prove the route is alive.
     echo "dash_smoke: OK POST /api/v1/auth/demo → 403 (health=${health_code})"
-    cat /tmp/chime-dash-demo.body
+    cat /tmp/koel-dash-demo.body
   else
     echo "dash_smoke: FAIL health=${health_code} demo=${demo_code}"
-    cat /tmp/chime-dash-demo.body || true
+    cat /tmp/koel-dash-demo.body || true
     exit 1
   fi
 fi
 
 # Mutate without session must fail closed (session required; CSRF checked after).
 # 401 = no/invalid session; 503 = DASH_SESSION_SECRET unset (fail-closed).
-mutate_code="$(curl -sS -o /tmp/chime-dash-mutate.body -w '%{http_code}' \
+mutate_code="$(curl -sS -o /tmp/koel-dash-mutate.body -w '%{http_code}' \
   -X POST "${BASE}/api/v1/watchlist" \
   -H 'Content-Type: application/json' \
   -d '{"symbol":"JKH.N0000"}' || true)"
@@ -110,7 +110,7 @@ if [[ "${mutate_code}" == "401" || "${mutate_code}" == "503" ]]; then
   echo "dash_smoke: OK POST /api/v1/watchlist (no session) → ${mutate_code} (mutate needs session+CSRF)"
 else
   echo "dash_smoke: FAIL unauthenticated mutate → ${mutate_code} (expected 401 or 503)"
-  cat /tmp/chime-dash-mutate.body || true
+  cat /tmp/koel-dash-mutate.body || true
   exit 1
 fi
 
@@ -132,13 +132,13 @@ for path in \
   "/api/v1/symbols" \
   "/api/v1/market/movers" \
   "/api/v1/sectors"; do
-  code="$(curl -sS -o "/tmp/chime-dash-browse.body" -w '%{http_code}' \
+  code="$(curl -sS -o "/tmp/koel-dash-browse.body" -w '%{http_code}' \
     "${BASE}${path}" || true)"
   if [[ "${code}" == "401" || "${code}" == "503" ]]; then
     echo "dash_smoke: OK GET ${path} (no session) → ${code}"
   else
     echo "dash_smoke: FAIL GET ${path} → ${code} (expected 401 or 503)"
-    cat /tmp/chime-dash-browse.body || true
+    cat /tmp/koel-dash-browse.body || true
     exit 1
   fi
 done

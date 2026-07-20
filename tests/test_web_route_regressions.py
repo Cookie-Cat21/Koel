@@ -28,7 +28,7 @@ FORBIDDEN_RUNTIME_TOKENS = (
     "www.cse.lk",
     "CSE_BASE_URL",
     "CSEClient",
-    "chime.adapters.cse",
+    "koel.adapters.cse",
     "companyInfoSummery",
     "chartData",
     "dailyMarketSummery",

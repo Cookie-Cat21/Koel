@@ -12,12 +12,12 @@ push stays primary. Full product plan: [CLAUDE.md](CLAUDE.md). Tijori plan:
 [docs/endpoint_probe_report.md](docs/endpoint_probe_report.md).
 
 
-## Rebrand note
+## Naming
 
-The **product name** is **koel** (wordmark: lowercase `koel`; mark: capital **K**).
-The internal Python package, CLI (`python -m chime`), Postgres role/database name,
-env vars, and this repository’s historical codename remain **`chime`** for now —
-only user-facing product surfaces were renamed in the koel rebrand.
+Product, Python package, CLI (`python -m koel`), local Postgres role/db, and
+dash session cookies (`koel_session` / `koel_csrf`) are all **koel**.
+(Older installs that still use a `chime` Postgres role can keep pointing
+`DATABASE_URL` at it — only the default compose credentials changed.)
 
 ## Setup
 
@@ -29,13 +29,13 @@ pip install -e ".[dev]"
 #   pip install -e ".[briefs]"
 #   # or combined: pip install -e ".[dev,briefs]"
 cp .env.example .env   # fill TELEGRAM_BOT_TOKEN + DATABASE_URL
-python -m chime migrate
-python -m chime both   # or: bot | poller | tick --force
+python -m koel migrate
+python -m koel both   # or: bot | poller | tick --force
 ```
 
 ## Local Postgres
 
-`docker-compose.yml` runs Postgres 16 (`chime` / `chime` / db `chime` on `:5432`).
+`docker-compose.yml` runs Postgres 16 (`koel` / `koel` / db `koel` on `:5432`).
 Optional profile **`web`** builds the Next.js dash (`make up-web` → `:3000`).
 
 ```bash
@@ -51,12 +51,12 @@ Point `DATABASE_URL` at it (see `.env.example`).
 
 | Command | What it does |
 |---|---|
-| `python -m chime migrate` | Apply SQL migrations in `db/migrations/` |
-| `python -m chime bot` | Telegram bot only |
-| `python -m chime poller` | Market-hours poller + rule engine only |
-| `python -m chime both` | Bot + poller in one process |
-| `python -m chime tick --force` | One poll cycle (ignores market hours); seeds `/market` browse |
-| `make tick` | Same as `python -m chime tick --force` |
+| `python -m koel migrate` | Apply SQL migrations in `db/migrations/` |
+| `python -m koel bot` | Telegram bot only |
+| `python -m koel poller` | Market-hours poller + rule engine only |
+| `python -m koel both` | Bot + poller in one process |
+| `python -m koel tick --force` | One poll cycle (ignores market hours); seeds `/market` browse |
+| `make tick` | Same as `python -m koel tick --force` |
 
 Bot and `both` start Telegram long-polling with `drop_pending_updates=True`, so
 queued messages from downtime are discarded on restart (avoids replaying stale
@@ -104,7 +104,7 @@ Returns JSON liveness / last-tick status (`200` ok, `503` degraded).
 ## Layout
 
 ```
-chime/                  Python package
+koel/                  Python package
   adapters/             cse.lk HTTP adapter
   poller.py             market-hours polling loop
   rules.py              alert rule engine
@@ -145,16 +145,16 @@ Local demo auth (ADR 001) — Postgres only; never calls cse.lk from `web/`.
 ```bash
 # 1) Backend DB (same as bot/poller)
 make up && make migrate
-cp .env.example .env   # DATABASE_URL=postgresql://chime:chime@localhost:5432/chime
+cp .env.example .env   # DATABASE_URL=postgresql://koel:koel@localhost:5432/koel
 
 # 2) Seed /market browse (one forced CSE poll → stocks + price_snapshots)
-make tick   # or: python -m chime tick --force
+make tick   # or: python -m koel tick --force
 
 # 3) Dashboard
 cd web
 cp .env.example .env.local
 # Required:
-#   DATABASE_URL=postgresql://chime:chime@localhost:5432/chime
+#   DATABASE_URL=postgresql://koel:koel@localhost:5432/koel
 #   DASH_DEMO_AUTH=1
 #   DASH_DEMO_TELEGRAM_IDS=123456789   # allowlist; must match a users.telegram_id
 #   DASH_SESSION_SECRET=<long random>
@@ -166,7 +166,7 @@ npm run dev
 
 Empty `/market` ⇒ no snapshots yet — run `make tick` (or leave `poller`/`both`
 running). Open [http://localhost:3000/login](http://localhost:3000/login). Demo
-sign-in posts `{ "telegram_id": <allowlisted id> }` → HttpOnly `chime_session` +
+sign-in posts `{ "telegram_id": <allowlisted id> }` → HttpOnly `koel_session` +
 CSRF. Mutations need matching `X-CSRF-Token`. Details:
 [web/README.md](web/README.md), [docs/adr/001-dash-auth.md](docs/adr/001-dash-auth.md),
 [docs/runbooks/TIJORI.md](docs/runbooks/TIJORI.md).

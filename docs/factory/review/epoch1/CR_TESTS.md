@@ -34,7 +34,7 @@
 | No `price_poll_ok` / `disclosure_poll_ok` asserts on circuit-open | `last_tick_ok=False` alone can pass while leg flags stay stale/`True` |
 | Lock-skip does not assert unlock-on-success path elsewhere | Degraded ticks never assert `advisory_unlock` awaited — lock leak in `finally` would not fail these tests |
 | Disclosure degradation only in `test_poller_resilience` | Split coverage; WS-077 file cannot regress-lock the honesty claim alone |
-| No wiring through `chime.health.HealthState` / status code | Ops reads JSON `status`/`lock_held_skip`/`last_error`; flags-only unit tests miss response shape regressions |
+| No wiring through `koel.health.HealthState` / status code | Ops reads JSON `status`/`lock_held_skip`/`last_error`; flags-only unit tests miss response shape regressions |
 
 Disclosure-leg → `disclosure_poll_ok is False` + `last_tick_ok is False` **does** exist in resilience (`test_poller_survives_junk_then_ok`) — real pin, wrong home, still no health JSON.
 

@@ -1,10 +1,10 @@
-# Ardeno UI Elements → Chime
+# Ardeno UI Elements → Koel
 
-Catalog of the bookmark folder vs what Chime will actually ship.
+Catalog of the bookmark folder vs what Koel will actually ship.
 **Authority:** `docs/factory/DASH_COMPONENT_FILTER.md` (no dump-all, no Pro, shadcn-first).  
 **Marketing site plan:** `docs/factory/MARKETING_SITE_MASTER_PLAN.md` (Waves 1–4: densify `/`, pricing stub, light blog).
 
-| Bookmark | Source | Chime action |
+| Bookmark | Source | Koel action |
 |---|---|---|
 | WebDev | web.dev | Inspiration only (a11y) |
 | Better Design Tips | better-design.com | Optional later theme study |
@@ -23,7 +23,7 @@ Catalog of the bookmark folder vs what Chime will actually ship.
 | Cult UI Hero Panels | cult-ui MIT | Study structure only — no shader hero |
 | Watermelon UI | registry MIT | Thin tables later if needed |
 
-## Shipped in this pass (from Ceyfi ports, Chime tokens)
+## Shipped in this pass (from Ceyfi ports, Koel tokens)
 - `components/kit/chat-bubble.tsx` — Telegram proof on landing
 - `components/kit/steps.tsx` — how it works
 - `components/kit/stat-card.tsx` — health KPIs

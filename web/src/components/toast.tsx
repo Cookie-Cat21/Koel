@@ -135,7 +135,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role={item.tone === "error" ? "alert" : "status"}
             className={cn(
-              "pointer-events-auto chime-rise w-full max-w-sm rounded-lg border px-4 py-3 text-sm shadow-sm backdrop-blur-sm",
+              "pointer-events-auto koel-rise w-full max-w-sm rounded-lg border px-4 py-3 text-sm shadow-sm backdrop-blur-sm",
               item.tone === "error" &&
                 "border-destructive/30 bg-background/95 text-destructive",
               item.tone === "success" &&

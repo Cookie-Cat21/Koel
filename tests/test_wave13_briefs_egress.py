@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import pytest
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     CDN_BASE,
     FILING_URL_MAX,
     allowed_cdn_pdf_url,
     allowed_filing_url,
 )
-from chime.bot import format_brief_lookup_reply
-from chime.domain import (
+from koel.bot import format_brief_lookup_reply
+from koel.domain import (
     TELEGRAM_SAFE_MAX,
     AlertEvent,
     AlertType,

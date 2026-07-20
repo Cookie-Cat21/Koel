@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from chime.scenarios import (
+from koel.scenarios import (
     GuardrailViolation,
     ScenarioSettings,
     assert_safe_scenario_output,
@@ -38,7 +38,7 @@ def test_scenarios_enabled_respects_explicit_settings() -> None:
 
 
 def test_nfa_suffix_matches_domain_disclaimer() -> None:
-    from chime.domain import disclaimer
+    from koel.domain import disclaimer
 
     assert nfa_suffix() == disclaimer()
     assert "Not financial advice" in nfa_suffix()

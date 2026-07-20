@@ -14,7 +14,7 @@
 | **id** | WS-041 |
 | **title** | GitHub Actions CI for ruff, mypy, and pytest |
 | **why** | Factory quality bar requires proof on every PR; today checks only run locally. Pass 1 OPS in COMMIT_FACTORY is exactly this. |
-| **acceptance criterion** | On `push`/`pull_request` to the default branch, a workflow runs `ruff check`, `mypy chime`, and `pytest` (using `pyproject.toml` addopts / cov-fail-under=85) and fails the job on any non-zero exit. |
+| **acceptance criterion** | On `push`/`pull_request` to the default branch, a workflow runs `ruff check`, `mypy koel`, and `pytest` (using `pyproject.toml` addopts / cov-fail-under=85) and fails the job on any non-zero exit. |
 | **commits 1–5** | 1. Add `.github/workflows/ci.yml` skeleton (checkout, setup-python 3.11). 2. Cache pip + install `.[dev]`. 3. Add ruff + mypy steps. 4. Add pytest step (no Postgres service yet). 5. Document CI badge / “CI” section pointer in README (one short paragraph). |
 | **deps** | None (first OPS wave item). |
 | **risk** | Low — path filters / wrong Python version could flake; pin `actions/setup-python` major. |
@@ -29,7 +29,7 @@
 | **title** | docker-compose service for ephemeral local Postgres |
 | **why** | README assumes `DATABASE_URL`; without compose, contributors need external Neon/Supabase just to migrate and run advisory-lock tests. |
 | **acceptance criterion** | `docker compose up -d` starts Postgres 16 (or 15+) exposing a documented port; `.env.example` documents a matching `DATABASE_URL`; data volume is named and gitignored if bind-mounted. |
-| **commits 1–5** | 1. Add `docker-compose.yml` with `postgres` service + healthcheck. 2. Add named volume + sane defaults (user/db/password `chime`). 3. Align `.env.example` `DATABASE_URL` with compose. 4. Add short “Local Postgres” subsection to README. 5. Add `.dockerignore` if an app Dockerfile is not yet present (compose-only is fine). |
+| **commits 1–5** | 1. Add `docker-compose.yml` with `postgres` service + healthcheck. 2. Add named volume + sane defaults (user/db/password `koel`). 3. Align `.env.example` `DATABASE_URL` with compose. 4. Add short “Local Postgres” subsection to README. 5. Add `.dockerignore` if an app Dockerfile is not yet present (compose-only is fine). |
 | **deps** | None (pairs with WS-054 for one-command). |
 | **risk** | Low — port 5432 conflicts on contributor machines; document `ports` override. |
 
@@ -42,7 +42,7 @@
 | **id** | WS-043 |
 | **title** | Idempotent seed/demo data for local and CI smoke |
 | **why** | Empty DB blocks manual `/health` + rule-engine demos; factory needs a fixed symbol set without hitting cse.lk for every DX path. |
-| **acceptance criterion** | A documented command (e.g. `python -m chime seed` or `scripts/seed_demo.py`) inserts deterministic stocks, one demo user (fake telegram_id), watchlist rows, and inactive sample alert_rules; re-run is idempotent (no duplicate key failures). |
+| **acceptance criterion** | A documented command (e.g. `python -m koel seed` or `scripts/seed_demo.py`) inserts deterministic stocks, one demo user (fake telegram_id), watchlist rows, and inactive sample alert_rules; re-run is idempotent (no duplicate key failures). |
 | **commits 1–5** | 1. Add seed SQL or Python module under `db/` or `scripts/` (OPS-owned). 2. Wire CLI entry or script README usage. 3. Seed only non-secret fake telegram_ids; never real tokens. 4. Add pytest that seed is idempotent when `DATABASE_URL` set (skip otherwise). 5. Link seed from README + CONTRIBUTING (when present). |
 | **deps** | WS-042 (local DB); migrate path already exists. |
 | **risk** | Medium — must not invent production schema changes; stay within existing tables from `001_initial.sql`. |
@@ -56,7 +56,7 @@
 | **id** | WS-044 |
 | **title** | Publish pytest coverage artifact / summary in CI |
 | **why** | `cov-fail-under=85` already gates locally; CI should surface term-missing and retain an artifact so regressions are reviewable without re-running. |
-| **acceptance criterion** | CI pytest step emits coverage (term + XML or HTML); job uploads `coverage.xml` or `htmlcov/` as a workflow artifact; job still fails if coverage &lt; 85% on `chime.rules`. |
+| **acceptance criterion** | CI pytest step emits coverage (term + XML or HTML); job uploads `coverage.xml` or `htmlcov/` as a workflow artifact; job still fails if coverage &lt; 85% on `koel.rules`. |
 | **commits 1–5** | 1. Extend pytest CI step with `--cov-report=xml` (keep fail-under). 2. `actions/upload-artifact` for coverage. 3. Optional PR comment or job summary with coverage %. 4. Ensure `.gitignore` still ignores `htmlcov/` / `.coverage`. 5. Note coverage gate in release checklist (WS-045). |
 | **deps** | WS-041. |
 | **risk** | Low — artifact retention defaults; avoid third-party coverage SaaS unless free and logged in THIRD_PARTY.md. |
@@ -112,7 +112,7 @@
 | **id** | WS-048 |
 | **title** | CI job: apply migrations on service-container Postgres |
 | **why** | Migrations are CLI-only today; broken SQL would only fail on a human’s DB. Ephemeral migrate is the OPS gate for schema commits. |
-| **acceptance criterion** | CI starts `postgres` service, sets `DATABASE_URL`, runs `python -m chime migrate` successfully; job fails on migrate error. |
+| **acceptance criterion** | CI starts `postgres` service, sets `DATABASE_URL`, runs `python -m koel migrate` successfully; job fails on migrate error. |
 | **commits 1–5** | 1. Add Postgres service to workflow (image + health). 2. Export `DATABASE_URL` for job env. 3. Run migrate step after install. 4. Optionally run seed (WS-043) after migrate. 5. Document “migrate CI” in RELEASE_CHECKLIST. |
 | **deps** | WS-041; WS-043 optional for seed step. |
 | **risk** | Low — service container startup time; use health-cmd wait. |
@@ -182,9 +182,9 @@
 | **id** | WS-053 |
 | **title** | CLI/script probe for `/health` JSON |
 | **why** | README documents `http://127.0.0.1:8080/health`; release and compose need a one-shot probe that interprets 200 vs 503 without curl folklore. |
-| **acceptance criterion** | `scripts/probe_health.py` (or `python -m chime healthcheck`) GETs `$HEALTH_HOST:$HEALTH_PORT/health`, prints status JSON, exits 0 on 200 and non-zero on 503/connection error; documented in README. |
+| **acceptance criterion** | `scripts/probe_health.py` (or `python -m koel healthcheck`) GETs `$HEALTH_HOST:$HEALTH_PORT/health`, prints status JSON, exits 0 on 200 and non-zero on 503/connection error; documented in README. |
 | **commits 1–5** | 1. Add probe script using httpx/stdlib. 2. Support env overrides for host/port. 3. Exit codes documented. 4. Tiny unit test with mocked response. 5. Wire into make/just `health` target (WS-054/055). |
-| **deps** | Existing `chime/health.py` contract; WS-054 for DX target. |
+| **deps** | Existing `koel/health.py` contract; WS-054 for DX target. |
 | **risk** | Low — do not change health payload semantics beyond reading them. |
 
 ---

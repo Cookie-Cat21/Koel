@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from chime.adapters.cse import LegacyAnnouncementRow
-from chime.config import Settings
-from chime.poller import PendingPdfEnrich, Poller
+from koel.adapters.cse import LegacyAnnouncementRow
+from koel.config import Settings
+from koel.poller import PendingPdfEnrich, Poller
 
 
 def _settings(**kwargs: object) -> Settings:
@@ -42,7 +42,7 @@ def _poller(
 async def test_drain_briefs_safe_logs_when_processed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
     monkeypatch.setattr(poller_mod, "claim_pending_briefs", AsyncMock(return_value=3))
@@ -55,7 +55,7 @@ async def test_drain_briefs_safe_logs_when_processed(
 async def test_drain_briefs_safe_fail_soft_on_worker_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
     monkeypatch.setattr(
@@ -72,7 +72,7 @@ async def test_drain_briefs_safe_fail_soft_on_worker_error(
 async def test_drain_briefs_safe_rethrows_cancelled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
 
@@ -86,7 +86,7 @@ async def test_drain_briefs_safe_rethrows_cancelled(
 
 @pytest.mark.asyncio
 async def test_enrich_disclosure_pdfs_safe_fail_soft_on_batch_error() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
     poller._enrich_disclosure_pdfs = AsyncMock(  # type: ignore[method-assign]
@@ -171,7 +171,7 @@ async def test_enrich_skips_when_external_id_missing_from_pdf_map() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_fail_soft_when_set_pdf_url_raises() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     storage = AsyncMock()
     storage.set_disclosure_pdf_url = AsyncMock(side_effect=RuntimeError("db down"))

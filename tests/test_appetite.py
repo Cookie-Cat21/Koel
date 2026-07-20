@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.appetite import (
+from koel.appetite import (
     backfill_appetite,
     band_for_score,
     build_day_result,
@@ -24,7 +24,7 @@ from chime.appetite import (
     map_participation_z_score,
     turnover_zscore,
 )
-from chime.domain import PriceSnapshot
+from koel.domain import PriceSnapshot
 
 
 def test_band_for_score_boundaries() -> None:

@@ -1,11 +1,11 @@
-# Thin DX entrypoint for Chime local ops.
+# Thin DX entrypoint for Koel local ops.
 PYTHON ?= python3
 WAVE_REPORT ?= docs/factory/passes/TIJORI_WAVE_REPORT.md
 
 .PHONY: help install lint typecheck test test-unit migrate tick up-db down-db up down up-web down-web factory-status factory-verify factory-scoreboard factory-refill factory-wave portfolio-sum tijori-smoke tijori-report
 
 help:
-	@echo "Chime local targets:"
+	@echo "Koel local targets:"
 	@echo "  make install     Install package + dev deps"
 	@echo "  make lint        Run ruff"
 	@echo "  make typecheck   Run mypy"
@@ -33,7 +33,7 @@ lint:
 	ruff check .
 
 typecheck:
-	mypy chime
+	mypy koel
 
 test:
 	pytest
@@ -43,11 +43,11 @@ test-unit:
 
 migrate:
 	@docker compose up -d --wait 2>/dev/null || true
-	$(PYTHON) -m chime.migrate
+	$(PYTHON) -m koel.migrate
 
 # One forced poll: persists tradeSummary → stocks + price_snapshots for dash /market.
 tick:
-	$(PYTHON) -m chime tick --force
+	$(PYTHON) -m koel tick --force
 
 up-db:
 	docker compose up -d --wait

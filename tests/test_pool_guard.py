@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from chime.storage import Storage
+from koel.storage import Storage
 
 
 def test_max_size_below_two_rejected() -> None:

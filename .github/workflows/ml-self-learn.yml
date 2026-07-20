@@ -86,7 +86,7 @@ jobs:
       - name: Migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m chime migrate
+        run: python -m koel migrate
 
       - name: Score due forecast outcomes
         id: score
@@ -94,7 +94,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           set -o pipefail
-          python -m chime ml-score-outcomes 2>&1 | tee /tmp/ml-score-outcomes.log
+          python -m koel ml-score-outcomes 2>&1 | tee /tmp/ml-score-outcomes.log
           echo "log<<EOF" >> "$GITHUB_OUTPUT"
           tail -n 5 /tmp/ml-score-outcomes.log >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
@@ -107,7 +107,7 @@ jobs:
           CSE_MIN_INTERVAL_SECONDS: "0.2"
         run: |
           set -o pipefail
-          python -m chime ml-loop-nightly --force 2>&1 | tee /tmp/ml-loop-nightly.log
+          python -m koel ml-loop-nightly --force 2>&1 | tee /tmp/ml-loop-nightly.log
           echo "log<<EOF" >> "$GITHUB_OUTPUT"
           tail -n 20 /tmp/ml-loop-nightly.log >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
@@ -132,7 +132,7 @@ jobs:
             echo "ml-loop-retrain: skip (run_retrain=$RUN_RETRAIN)"
             exit 0
           fi
-          python -m chime ml-loop-retrain --force 2>&1 | tee /tmp/ml-loop-retrain.log
+          python -m koel ml-loop-retrain --force 2>&1 | tee /tmp/ml-loop-retrain.log
 
       - name: LTR+vol ship (evaluate + optional promote + forecasts)
         id: ltr
@@ -149,7 +149,7 @@ jobs:
             echo "ml-ltr-ship: skip (run_ltr_ship=$RUN_LTR_SHIP)"
             exit 0
           fi
-          python -m chime ml-ltr-ship 2>&1 | tee /tmp/ml-ltr-ship.log
+          python -m koel ml-ltr-ship 2>&1 | tee /tmp/ml-ltr-ship.log
 
       - name: Unified forecast emit (optional)
         id: forecast
@@ -176,7 +176,7 @@ jobs:
             echo "ml-forecast-unified: skip (LTR ship already writes forecasts)"
             exit 0
           fi
-          python -m chime ml-forecast-unified --mode "$FORECAST_MODE" 2>&1 \
+          python -m koel ml-forecast-unified --mode "$FORECAST_MODE" 2>&1 \
             | tee /tmp/ml-forecast-unified.log
 
       - name: Collect logs into workspace

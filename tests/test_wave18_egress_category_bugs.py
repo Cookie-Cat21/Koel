@@ -14,8 +14,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import cmd_alert, parse_alert_args
-from chime.domain import (
+from koel.bot import cmd_alert, parse_alert_args
+from koel.domain import (
     DISCLOSURE_CATEGORY_MAX,
     TELEGRAM_SAFE_MAX,
     AlertRule,
@@ -86,9 +86,9 @@ async def test_cmd_alert_confirm_clamps_hostile_category_under_telegram_limit() 
     context.args = ["JKH.N0000", "disclosure", "Financial"]
 
     with (
-        patch("chime.bot._rate_limited", AsyncMock(return_value=False)),
+        patch("koel.bot._rate_limited", AsyncMock(return_value=False)),
         patch(
-            "chime.bot._lookup_symbol",
+            "koel.bot._lookup_symbol",
             AsyncMock(return_value=("ok", MagicMock(name="JKH"))),
         ),
     ):

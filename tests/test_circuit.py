@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from chime.circuit import CircuitBreaker, CircuitOpenError, CircuitState
+from koel.circuit import CircuitBreaker, CircuitOpenError, CircuitState
 
 
 def test_opens_after_fail_max_failures() -> None:

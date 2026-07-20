@@ -6,8 +6,8 @@ Daily-move fallback must use previous price + previous close when CSE omits
 
 from __future__ import annotations
 
-from chime.domain import AlertType
-from chime.rules import evaluate_price_rules, filter_fireable
+from koel.domain import AlertType
+from koel.rules import evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 

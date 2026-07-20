@@ -4,8 +4,8 @@
 
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 
-export const SESSION_COOKIE = "chime_session";
-export const CSRF_COOKIE = "chime_csrf";
+export const SESSION_COOKIE = "koel_session";
+export const CSRF_COOKIE = "koel_csrf";
 export const SESSION_TTL_SECONDS = 12 * 60 * 60; // 12h
 
 /**

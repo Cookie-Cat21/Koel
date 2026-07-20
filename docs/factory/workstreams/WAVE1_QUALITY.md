@@ -1,8 +1,8 @@
 # Wave 1 — Quality / Test Lane (WS-061 … WS-080)
 
 **Lane:** QUALITY (tests, harnesses, coverage proof — no product features)  
-**Baseline:** Stage A `tests/` (12 modules, ~55 pytest cases; `chime.rules` 100% under `--cov=chime.rules`; bot handlers, dual-poller kill, and module coverage outside `rules.py` largely unproven)  
-**Inputs:** [FINAL_REPORT.md](../../FINAL_REPORT.md) deferred list, [PASS2_AUDIT.md](../../PASS2_AUDIT.md) #5/#11/#12 + dual-poller residue, [PASS1_AUDIT.md](../../PASS1_AUDIT.md) latency/junk/crossing bars, `chime/rules.py` crossing + `created_at` filter  
+**Baseline:** Stage A `tests/` (12 modules, ~55 pytest cases; `koel.rules` 100% under `--cov=koel.rules`; bot handlers, dual-poller kill, and module coverage outside `rules.py` largely unproven)  
+**Inputs:** [FINAL_REPORT.md](../../FINAL_REPORT.md) deferred list, [PASS2_AUDIT.md](../../PASS2_AUDIT.md) #5/#11/#12 + dual-poller residue, [PASS1_AUDIT.md](../../PASS1_AUDIT.md) latency/junk/crossing bars, `koel/rules.py` crossing + `created_at` filter  
 
 Each workstream is planning-only. Commits listed are the intended implementation sequence when this wave executes — not done in the planning PR.
 
@@ -15,8 +15,8 @@ Each workstream is planning-only. Commits listed are the intended implementation
 | **id** | WS-061 |
 | **title** | Catalog coverage gaps vs bars 1–7 |
 | **why** | Stage A proves `rules.py` heavily and leaves bot handlers, health, config/market hours, notify, and dual-poller kill paths under-tested (PASS2 #12; FINAL_REPORT deferred “automated dual-poller kill test”). Without an inventory, later WS duplicate or miss critical paths. |
-| **acceptance criterion** | `docs/factory/TEST_GAP_MATRIX.md` exists: every `chime/*.py` (+ `adapters/`) mapped to existing `tests/test_*.py` or `UNCOVERED`; each quality bar row cites ≥1 gap or `covered`. Matrix checked into repo; no production code change. |
-| **commits 1–5** | 1. Draft matrix skeleton from `chime/` file list. 2. Fill from `pytest --collect-only` + grep of test imports. 3. Map deferred FINAL_REPORT items → proposed WS ids. 4. Mark CI-skipped (`DATABASE_URL`) vs always-on. 5. Link matrix from this file’s index table. |
+| **acceptance criterion** | `docs/factory/TEST_GAP_MATRIX.md` exists: every `koel/*.py` (+ `adapters/`) mapped to existing `tests/test_*.py` or `UNCOVERED`; each quality bar row cites ≥1 gap or `covered`. Matrix checked into repo; no production code change. |
+| **commits 1–5** | 1. Draft matrix skeleton from `koel/` file list. 2. Fill from `pytest --collect-only` + grep of test imports. 3. Map deferred FINAL_REPORT items → proposed WS ids. 4. Mark CI-skipped (`DATABASE_URL`) vs always-on. 5. Link matrix from this file’s index table. |
 | **deps** | None (first QUALITY catalog commit) |
 | **risk** | Low — doc-only; stale if code moves without refresh |
 
@@ -140,8 +140,8 @@ Each workstream is planning-only. Commits listed are the intended implementation
 |---|---|
 | **id** | WS-070 |
 | **title** | Broaden pytest-cov to critical packages |
-| **why** | FINAL_REPORT quality bar only fails under `--cov=chime.rules`. Bot, poller, adapters, storage branches can regress at 0% measured coverage. |
-| **acceptance criterion** | `pyproject.toml` / CI addopts cover at least `chime.rules`, `chime.bot` (parse+handlers once WS-067/068 land), `chime.adapters`, `chime.circuit` with documented fail-under thresholds (rules ≥85 kept; others start modest e.g. ≥60 and ratchet). `pytest` report shows no silent drop; term-missing reviewed for intentional excludes. |
+| **why** | FINAL_REPORT quality bar only fails under `--cov=koel.rules`. Bot, poller, adapters, storage branches can regress at 0% measured coverage. |
+| **acceptance criterion** | `pyproject.toml` / CI addopts cover at least `koel.rules`, `koel.bot` (parse+handlers once WS-067/068 land), `koel.adapters`, `koel.circuit` with documented fail-under thresholds (rules ≥85 kept; others start modest e.g. ≥60 and ratchet). `pytest` report shows no silent drop; term-missing reviewed for intentional excludes. |
 | **commits 1–5** | 1. Measure current % per module (commit report snippet in docs). 2. Expand `--cov=` list. 3. Set initial fail-under. 4. Fill cheapest gaps blocking gate. 5. Document ratchet plan in TEST_GAP_MATRIX. |
 | **deps** | WS-067, WS-069 (to make bot/adapter numbers honest) |
 | **risk** | Medium — too-high threshold blocks unrelated CORE work; start modest |

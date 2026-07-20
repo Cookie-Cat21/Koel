@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.circuit import CircuitBreaker, CircuitOpenError, CircuitState
-from chime.health import (
+from koel.circuit import CircuitBreaker, CircuitOpenError, CircuitState
+from koel.health import (
     HealthState,
     brief_queue_health_hint,
     pdf_enrich_hint_from_poller,

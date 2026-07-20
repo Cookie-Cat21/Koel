@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from chime.domain import AlertType
-from chime.rules import crossed_above, crossed_below, evaluate_price_rules, filter_fireable
+from koel.domain import AlertType
+from koel.rules import crossed_above, crossed_below, evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 

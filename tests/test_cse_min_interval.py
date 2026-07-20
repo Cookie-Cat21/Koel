@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from chime.adapters.cse import CSEClient
-from chime.config import Settings
+from koel.adapters.cse import CSEClient
+from koel.config import Settings
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def test_cse_min_interval_default_off(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -56,7 +56,7 @@ async def test_pace_sleeps_between_requests_not_before_first(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -75,7 +75,7 @@ async def test_pace_sleeps_between_requests_not_before_first(
 @pytest.mark.asyncio
 async def test_pace_disabled_when_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -93,14 +93,14 @@ async def test_pace_skips_sleep_when_gap_already_elapsed(
 ) -> None:
     """If wall time since last call already exceeds min interval, no sleep."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     clock = {"t": 100.0}
 
     def _mono() -> float:
         return clock["t"]
 
-    monkeypatch.setattr("chime.adapters.cse.time.monotonic", _mono)
+    monkeypatch.setattr("koel.adapters.cse.time.monotonic", _mono)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -120,7 +120,7 @@ async def test_pace_lock_serializes_concurrent_callers(
 ) -> None:
     """Two concurrent _request calls still honor min interval (one sleep)."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -140,7 +140,7 @@ async def test_pace_three_concurrent_callers_two_sleeps(
 ) -> None:
     """N concurrent _request calls → N-1 sleeps (first is free)."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -161,7 +161,7 @@ async def test_pace_concurrent_after_prior_request(
 ) -> None:
     """After one paced call, two concurrent callers each sleep the full gap."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -187,7 +187,7 @@ async def test_pace_concurrent_zero_interval_no_sleep(
 ) -> None:
     """Concurrent callers with pacing off never sleep (early return)."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", sleep_mock)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())
@@ -215,8 +215,8 @@ async def test_pace_concurrent_advances_last_request_under_lock(
         sleeps.append(seconds)
         clock["t"] += seconds
 
-    monkeypatch.setattr("chime.adapters.cse.time.monotonic", _mono)
-    monkeypatch.setattr("chime.adapters.cse.asyncio.sleep", _sleep)
+    monkeypatch.setattr("koel.adapters.cse.time.monotonic", _mono)
+    monkeypatch.setattr("koel.adapters.cse.asyncio.sleep", _sleep)
 
     http = AsyncMock()
     http.request = AsyncMock(return_value=_ok_response())

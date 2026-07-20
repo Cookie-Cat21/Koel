@@ -15,7 +15,7 @@
 | Waves completed | **100** (`wave` / `waveN` / `wN` through w100) |
 | This status push | **w100** (soft ~100 quality-gated horizon close) |
 | Commits ahead of `main` | **326+** |
-| `chime` unit coverage | ✅ **100%** (wave 16 milestone — keep `--cov-fail-under=100`) |
+| `koel` unit coverage | ✅ **100%** (wave 16 milestone — keep `--cov-fail-under=100`) |
 | Horizon | ✅ **COMPLETE** — soft ~100 quality-gated horizon closed at w100 |
 | Recent verify | ✅ **VERIFY_OK** + **100% cov** through `c02c65ea` |
 | Adversarial (w83) | **CLEAN** — PG claim/lock/health/count soft-accept hunting exhausted |
@@ -29,7 +29,7 @@
 
 ## Coverage
 
-Wave 16 closed the package coverage ratchet: full-package `pytest --cov=chime` at **100%**. Further improve-loops were harden/ops/integration — not cov gap-fill. Keep the coverage target at **100%**.
+Wave 16 closed the package coverage ratchet: full-package `pytest --cov=koel` at **100%**. Further improve-loops were harden/ops/integration — not cov gap-fill. Keep the coverage target at **100%**.
 
 ---
 

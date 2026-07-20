@@ -9,8 +9,8 @@ import httpx
 import pytest
 from structlog.testing import capture_logs
 
-from chime.adapters.cse import CSEClient
-from chime.circuit import CircuitOpenError
+from koel.adapters.cse import CSEClient
+from koel.circuit import CircuitOpenError
 
 
 @pytest.mark.asyncio

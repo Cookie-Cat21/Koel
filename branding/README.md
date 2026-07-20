@@ -2,7 +2,7 @@
 
 Product name: **koel** (lowercase). Wordmark: lowercase **koel**. Mark: capital **K**.
 
-Source design: [Canva — Chime rebrand to Koel](https://canva.link/mofjxofiv0cyhh8)
+Source design: [Canva — Koel rebrand to Koel](https://canva.link/mofjxofiv0cyhh8)
 (`branding/canva/` holds downloaded page previews).
 
 | File | Use |

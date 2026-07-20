@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 import pytest
 
-from chime.briefs.extract import CdnPdfPermanentError, fetch_cdn_pdf
+from koel.briefs.extract import CdnPdfPermanentError, fetch_cdn_pdf
 
 CDN_PDF = "https://cdn.cse.lk/uploadAnnounceFiles/x.pdf"
 

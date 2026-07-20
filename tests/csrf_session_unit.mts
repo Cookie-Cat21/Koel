@@ -37,6 +37,8 @@ async function bodyOf(
 
 async function main(): Promise<void> {
   process.env.DASH_SESSION_SECRET = SECRET;
+  // Skip dash_sessions revoke lookup — this harness has no Postgres.
+  process.env.DASH_SESSION_REVOKE_CHECK = "0";
 
   // --- csrfTokensMatch (exported helper) ---
   assert(csrfTokensMatch("same-token", "same-token") === true, "match equal");
@@ -54,9 +56,9 @@ async function main(): Promise<void> {
   {
     const req = new NextRequest("http://127.0.0.1/api/v1/auth/logout", {
       method: "POST",
-      headers: { cookie: `chime_session=${session}` },
+      headers: { cookie: `koel_session=${session}` },
     });
-    const gated = requireSessionAndCsrf(req);
+    const gated = await requireSessionAndCsrf(req);
     assert(!gated.ok, "logout without CSRF must fail");
     assert(gated.response.status === 400, `expected 400 got ${gated.response.status}`);
     const body = await bodyOf(gated.response);
@@ -67,9 +69,9 @@ async function main(): Promise<void> {
   {
     const req = new NextRequest("http://127.0.0.1/api/v1/auth/logout", {
       method: "POST",
-      headers: { cookie: `chime_session=${session}; chime_csrf=${csrf}` },
+      headers: { cookie: `koel_session=${session}; koel_csrf=${csrf}` },
     });
-    const gated = requireSessionAndCsrf(req);
+    const gated = await requireSessionAndCsrf(req);
     assert(!gated.ok, "logout without header must fail");
     assert(gated.response.status === 400, `expected 400 got ${gated.response.status}`);
     const body = await bodyOf(gated.response);
@@ -81,11 +83,11 @@ async function main(): Promise<void> {
     const req = new NextRequest("http://127.0.0.1/api/v1/auth/logout", {
       method: "POST",
       headers: {
-        cookie: `chime_session=${session}; chime_csrf=${csrf}`,
+        cookie: `koel_session=${session}; koel_csrf=${csrf}`,
         "x-csrf-token": otherCsrf,
       },
     });
-    const gated = requireSessionAndCsrf(req);
+    const gated = await requireSessionAndCsrf(req);
     assert(!gated.ok, "header≠cookie CSRF must fail");
     assert(gated.response.status === 400, `expected 400 got ${gated.response.status}`);
     const body = await bodyOf(gated.response);
@@ -98,7 +100,7 @@ async function main(): Promise<void> {
       method: "POST",
       headers: { "content-type": "application/json" },
     });
-    const gated = requireSessionAndCsrf(req);
+    const gated = await requireSessionAndCsrf(req);
     assert(!gated.ok, "mutate without session must fail");
     assert(gated.response.status === 401, `expected 401 got ${gated.response.status}`);
     const body = await bodyOf(gated.response);
@@ -111,11 +113,11 @@ async function main(): Promise<void> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        cookie: `chime_csrf=${csrf}`,
+        cookie: `koel_csrf=${csrf}`,
         "x-csrf-token": otherCsrf,
       },
     });
-    const gated = requireSessionAndCsrf(req);
+    const gated = await requireSessionAndCsrf(req);
     assert(!gated.ok, "no session must fail even with CSRF material");
     assert(
       gated.response.status === 401,
@@ -133,11 +135,11 @@ async function main(): Promise<void> {
     const req = new NextRequest("http://127.0.0.1/api/v1/auth/logout", {
       method: "POST",
       headers: {
-        cookie: `chime_session=${session}; chime_csrf=${csrf}`,
+        cookie: `koel_session=${session}; koel_csrf=${csrf}`,
         "x-csrf-token": csrf,
       },
     });
-    const gated = requireSessionAndCsrf(req);
+    const gated = await requireSessionAndCsrf(req);
     assert(gated.ok, "matching CSRF must pass");
     assert(gated.session.user_id === 42, "user_id from session");
   }
@@ -147,7 +149,7 @@ async function main(): Promise<void> {
     const req = new NextRequest("http://127.0.0.1/api/v1/auth/logout", {
       method: "POST",
       headers: {
-        cookie: `chime_session=${session}; chime_csrf=${csrf}`,
+        cookie: `koel_session=${session}; koel_csrf=${csrf}`,
         "x-csrf-token": csrf,
       },
     });
@@ -157,8 +159,8 @@ async function main(): Promise<void> {
     assert(body.ok === true, "logout body ok");
     const clearedSession = res.cookies.get(SESSION_COOKIE);
     const clearedCsrf = res.cookies.get(CSRF_COOKIE);
-    assert(clearedSession !== undefined, "Set-Cookie chime_session present");
-    assert(clearedCsrf !== undefined, "Set-Cookie chime_csrf present");
+    assert(clearedSession !== undefined, "Set-Cookie koel_session present");
+    assert(clearedCsrf !== undefined, "Set-Cookie koel_csrf present");
     assert(clearedSession.value === "", `session cookie cleared, got ${clearedSession.value}`);
     assert(clearedCsrf.value === "", `csrf cookie cleared, got ${clearedCsrf.value}`);
   }

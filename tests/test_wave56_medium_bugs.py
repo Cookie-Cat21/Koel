@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from chime.briefs import build_brief_prompt
-from chime.domain import (
+from koel.briefs import build_brief_prompt
+from koel.domain import (
     BRIEF_BODY_MAX,
     resolve_positive_int_cap,
     sanitize_brief_body,
@@ -46,7 +46,7 @@ def test_sanitize_brief_body_max_len_fail_closed() -> None:
     assert sanitize_brief_body("ok", max_len=None) == ELL  # type: ignore[arg-type]
     assert sanitize_brief_body("hello", max_len=3) == "he" + ELL
     assert sanitize_brief_body(123) is None  # type: ignore[arg-type]
-    src = (ROOT / "chime" / "domain.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "domain.py").read_text(encoding="utf-8")
     assert "resolve_positive_int_cap" in src
     assert "cap = max(1, int(max_len))" not in src
     huge = "Z" * (BRIEF_BODY_MAX + 10)
@@ -72,17 +72,17 @@ def test_truncate_title_and_prompt_fail_closed() -> None:
 
 
 def test_fetch_cdn_pdf_and_provider_use_resolve_cap() -> None:
-    extract = (ROOT / "chime" / "briefs" / "extract.py").read_text(
+    extract = (ROOT / "koel" / "briefs" / "extract.py").read_text(
         encoding="utf-8"
     )
     assert "resolve_positive_int_cap" in extract
     assert "cap = max(1, int(max_bytes))" not in extract
-    provider = (ROOT / "chime" / "briefs" / "provider.py").read_text(
+    provider = (ROOT / "koel" / "briefs" / "provider.py").read_text(
         encoding="utf-8"
     )
     assert "resolve_positive_int_cap" in provider
     assert "max(1, int(self._settings.max_input_chars))" not in provider
-    init = (ROOT / "chime" / "briefs" / "__init__.py").read_text(encoding="utf-8")
+    init = (ROOT / "koel" / "briefs" / "__init__.py").read_text(encoding="utf-8")
     assert "resolve_positive_int_cap" in init
     assert "cap = max(1, int(max_chars))" not in init
 

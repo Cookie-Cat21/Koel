@@ -30,7 +30,7 @@
 
 ### 1. HIGH — Frozen `API_CONTRACT_V1` still mandates deactivate-then-insert; storage no longer does
 
-**Where:** `docs/factory/API_CONTRACT_V1.md` (WS-024 / `4b5ef5b`) vs `chime/storage.py` `create_alert_rule` (`2751414`)
+**Where:** `docs/factory/API_CONTRACT_V1.md` (WS-024 / `4b5ef5b`) vs `koel/storage.py` `create_alert_rule` (`2751414`)
 
 **Evidence:**
 
@@ -45,7 +45,7 @@
 
 ### 2. MEDIUM — `notify.send_message` still couples Telegram flood sleep to poller advisory-lock hold
 
-**Where:** `chime/notify.py`, `chime/poller.py` `run_once` / `_retry_unsent`, `chime/storage.py` `try_advisory_lock` / `advisory_unlock`
+**Where:** `koel/notify.py`, `koel/poller.py` `run_once` / `_retry_unsent`, `koel/storage.py` `try_advisory_lock` / `advisory_unlock`
 
 **Evidence:**
 
@@ -61,7 +61,7 @@
 
 ### 3. MEDIUM — Poller evaluates only `watched_symbols()`; active rules can become dead storage
 
-**Where:** `chime/poller.py` `_poll_prices` / `_poll_disclosures`; `chime/bot.py` `cmd_unwatch`; `chime/storage.py` `watched_symbols` / `active_rules_for_symbols` / `remove_watch` / `deactivate_rules_for_symbol`
+**Where:** `koel/poller.py` `_poll_prices` / `_poll_disclosures`; `koel/bot.py` `cmd_unwatch`; `koel/storage.py` `watched_symbols` / `active_rules_for_symbols` / `remove_watch` / `deactivate_rules_for_symbol`
 
 **Evidence:**
 
@@ -103,12 +103,12 @@
 | Surface | Command |
 |---|---|
 | Makefile + CI | `ruff check .` |
-| `EPOCH1_PASS.md` verify block | `ruff check chime tests` |
-| mypy / pytest | Aligned: `mypy chime`, `pytest` (pyproject `addopts` cov gate) |
+| `EPOCH1_PASS.md` verify block | `ruff check koel tests` |
+| mypy / pytest | Aligned: `mypy koel`, `pytest` (pyproject `addopts` cov gate) |
 
-**Impact:** Proof snippet ≠ what CI/Make run. Unlikely to hide failures today (both cover `chime`+`tests`); trains agents to copy the weaker scoped command.
+**Impact:** Proof snippet ≠ what CI/Make run. Unlikely to hide failures today (both cover `koel`+`tests`); trains agents to copy the weaker scoped command.
 
-**Also:** README documents `pip install` + `python -m chime …` but not `make` / `docker compose` added in `03beeff`. Compose credentials match `.env.example` and CI (`chime`/`chime`/`chime`) — **PASS** on that sub-check. Migrate entrypoints: Makefile/CI `python -m chime.migrate`; README `python -m chime migrate` — both valid; not a break.
+**Also:** README documents `pip install` + `python -m koel …` but not `make` / `docker compose` added in `03beeff`. Compose credentials match `.env.example` and CI (`koel`/`koel`/`koel`) — **PASS** on that sub-check. Migrate entrypoints: Makefile/CI `python -m koel.migrate`; README `python -m koel migrate` — both valid; not a break.
 
 ---
 
@@ -127,7 +127,7 @@ Not contradictory behavior by themselves; noise for agents grepping “the” sn
 
 ### 8. LOW — `bot`-only process: health server never updated; README overclaims
 
-**Where:** `chime/__main__.py` `_run_bot`; `README.md` health section
+**Where:** `koel/__main__.py` `_run_bot`; `README.md` health section
 
 **Evidence:** `_run_bot` starts `HealthState` + HTTP server but never calls `health.update`. Defaults stay `ok=True` with empty details. README: when `bot`, `poller`, or `both` is running, `/health` returns “liveness / last-tick status”. Tick fields only exist for `poller`/`both`.
 

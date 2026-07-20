@@ -17,9 +17,9 @@ PROPER COMMIT (all required):
 5. Adversarial reviewer did not refute with a concrete failure — or fix landed same pass.
 
 VERIFY (attach proof; fail = no commit claim):
-  python3 -m ruff check chime tests
-  python3 -m mypy chime
-  python3 -m pytest -o addopts='-q --cov=chime.rules --cov-report=term-missing --cov-fail-under=85'
+  python3 -m ruff check koel tests
+  python3 -m mypy koel
+  python3 -m pytest -o addopts='-q --cov=koel.rules --cov-report=term-missing --cov-fail-under=85'
 Dash smoke (DASH lane only, when web/ exists): npm test / lint / build as documented in web/.
 
 BAN LIST — never:
@@ -45,7 +45,7 @@ VERIFY proof must include `git rev-parse HEAD` from the verify moment.
 factory_score = min(proper_commits, clusters_closed). Raw commit count is not a KPI.
 DASH: no second unbounded cse.lk client from web/; Postgres/API only. Auth must be server-side session (no client-supplied telegram_id impersonation).
 
-LANES: CORE=chime/,db/,tests/ (non-UI) | DASH=web/ + dash API | OPS=.github/, Docker, DX, factory docs.
+LANES: CORE=koel/,db/,tests/ (non-UI) | DASH=web/ + dash API | OPS=.github/, Docker, DX, factory docs.
 Parallelize within a lane; never conflict files across agents in one wave.
 PR: one long-lived factory PR per epoch; reports in docs/factory/.
 Co-authored-by trailer only if human opts in.
@@ -200,7 +200,7 @@ DO:
 
 Design: follow repo frontend rules when present — one job per section; avoid dashboard clutter and purple-glow AI slop; no cards unless interaction needs a container.
 
-DO NOT: touch chime/ poller/rules except listed API; scrape competitors; expand to full brokerage UI.
+DO NOT: touch koel/ poller/rules except listed API; scrape competitors; expand to full brokerage UI.
 ```
 
 ---

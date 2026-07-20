@@ -14,7 +14,7 @@ From `docs/PASS2_AUDIT.md`:
 
 ```
 ruff / mypy → clean
-pytest → 58+ passed, chime.rules 100%
+pytest → 58+ passed, koel.rules 100%
 test_advisory_lock_blocks_second_holder → pass (Neon)
 ```
 

@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     cmd_alert,
     cmd_brief,
     cmd_cancel,
@@ -23,7 +23,7 @@ from chime.bot import (
     cmd_watch,
     reset_cmd_rate_limits,
 )
-from chime.domain import AlertRule, AlertType, PriceSnapshot, disclaimer
+from koel.domain import AlertRule, AlertType, PriceSnapshot, disclaimer
 
 
 @pytest.fixture(autouse=True)
@@ -224,7 +224,7 @@ async def test_catalog_all_bot_command_responses(capsys: pytest.CaptureFixture[s
     )
 
     # Print catalog for humans when run with -s
-    print("\n===== CHIME BOT COMMAND RESPONSE CATALOG =====\n")
+    print("\n===== KOEL BOT COMMAND RESPONSE CATALOG =====\n")
     for cmd, reply in catalog:
         print(f">>> {cmd}")
         print(reply)

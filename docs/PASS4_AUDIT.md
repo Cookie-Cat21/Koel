@@ -2,7 +2,7 @@
 
 **Verdict: CONVERGE**
 
-Re-reviewed `chime/` against Pass 1–2 fixes and Pass 3 residual notes. Verified:
+Re-reviewed `koel/` against Pass 1–2 fixes and Pass 3 residual notes. Verified:
 
 - Session advisory lock holds `_lock_cm` / `_lock_conn` until unlock; `run_once` unlocks in `finally`; `close()` unlocks; lock-skip sets `last_tick_ok=False` / `poll_lock_held`.
 - Claim-before-disarm order intact; crossing-stable `event_key`; disclosure `created_at` filter + null `createdDate` → epoch fail-closed.

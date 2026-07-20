@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertType
-from chime.poller import Poller
+from koel.config import Settings
+from koel.domain import AlertType
+from koel.poller import Poller
 from tests.conftest import make_disclosure, make_rule
 
 
@@ -27,7 +27,7 @@ async def test_disclosure_upsert_failure_does_not_abort_later_alerts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """One bad disclosure row must not suppress later valid disclosure alerts."""
-    monkeypatch.setenv("CHIME_DELIVERY_OK_LEDGER", "")
+    monkeypatch.setenv("KOEL_DELIVERY_OK_LEDGER", "")
     rule = make_rule(
         type=AlertType.DISCLOSURE,
         threshold=None,

@@ -1,7 +1,7 @@
 # Hybrid Yahoo + CSE daily bars
 
 **Table:** `hybrid_daily_bars` (migration `022`)  
-**CLI:** `python3 -m chime hybrid-backfill --force [--limit N]`  
+**CLI:** `python3 -m koel hybrid-backfill --force [--limit N]`  
 **Flag:** `HYBRID_BACKFILL_ENABLED` (default `0`)
 
 ## What it is
@@ -28,16 +28,16 @@ Ticker map: `JKH.N0000` → `JKH-N0000.CM`
 
 ```bash
 pip install -e ".[hybrid]"   # yfinance + pandas
-python3 -m chime.migrate
+python3 -m koel.migrate
 # Needs CSE path first:
-python3 -m chime path-backfill --force --limit 50
-python3 -m chime hybrid-backfill --force --limit 50
+python3 -m koel path-backfill --force --limit 50
+python3 -m koel hybrid-backfill --force --limit 50
 ```
 
 ML load:
 
 ```python
-from chime.ml.dataset import load_symbol_bars
+from koel.ml.dataset import load_symbol_bars
 series = await load_symbol_bars(storage, hybrid=True)
 ```
 

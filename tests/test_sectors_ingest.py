@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.adapters.cse import CSEClient, SectorRow, sector_row_to_snapshot
-from chime.config import Settings
-from chime.domain import SectorSnapshot
-from chime.poller import Poller
+from koel.adapters.cse import CSEClient, SectorRow, sector_row_to_snapshot
+from koel.config import Settings
+from koel.domain import SectorSnapshot
+from koel.poller import Poller
 
 
 def _settings(*, sectors_ingest: bool = False) -> Settings:
@@ -24,7 +24,7 @@ def _settings(*, sectors_ingest: bool = False) -> Settings:
 
 def test_sectors_ingest_env_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
-    monkeypatch.setenv("DATABASE_URL", "postgresql://chime:chime@localhost:5432/chime")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://koel:koel@localhost:5432/koel")
     monkeypatch.delenv("SECTORS_INGEST", raising=False)
     assert Settings.from_env().sectors_ingest is False
     monkeypatch.setenv("SECTORS_INGEST", "1")

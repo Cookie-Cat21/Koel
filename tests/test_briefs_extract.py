@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from chime.briefs import BriefSettings, build_brief_prompt
-from chime.briefs.extract import CdnPdfPermanentError, extract_pdf_text, fetch_cdn_pdf
-from chime.briefs.worker import claim_pending_briefs
+from koel.briefs import BriefSettings, build_brief_prompt
+from koel.briefs.extract import CdnPdfPermanentError, extract_pdf_text, fetch_cdn_pdf
+from koel.briefs.worker import claim_pending_briefs
 
 
 def _tiny_pdf_bytes(text: str = "Hello Brief") -> bytes:
@@ -287,7 +287,7 @@ async def test_fetch_cdn_pdf_permanent_http_status() -> None:
 
 def test_extract_pdf_text_caps_pages(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("pypdf")
-    from chime.briefs import extract as extract_mod
+    from koel.briefs import extract as extract_mod
 
     class _Page:
         def __init__(self, text: str) -> None:
@@ -327,7 +327,7 @@ def test_extract_pdf_text_skips_blank_pages() -> None:
 def test_extract_pdf_text_caps_chars_mid_page(monkeypatch: pytest.MonkeyPatch) -> None:
     """Soft char cap truncates mid-page and stops (pdf_extract_char_cap)."""
     pytest.importorskip("pypdf")
-    from chime.briefs import extract as extract_mod
+    from koel.briefs import extract as extract_mod
 
     class _Page:
         def __init__(self, text: str) -> None:
@@ -352,7 +352,7 @@ def test_extract_pdf_text_stops_when_char_budget_exhausted(
 ) -> None:
     """Exact fill on page N → remaining<=0 break before page N+1."""
     pytest.importorskip("pypdf")
-    from chime.briefs import extract as extract_mod
+    from koel.briefs import extract as extract_mod
 
     class _Page:
         def __init__(self, text: str) -> None:
@@ -394,7 +394,7 @@ async def test_claim_pending_briefs_skips_pdf_fetch_without_url() -> None:
     provider.summarize = AsyncMock(return_value="AGM set for August.")
 
     fetch = AsyncMock()
-    with patch("chime.briefs.worker.fetch_cdn_pdf", fetch):
+    with patch("koel.briefs.worker.fetch_cdn_pdf", fetch):
         n = await claim_pending_briefs(
             storage,
             settings=_enabled_settings(),

@@ -18,11 +18,11 @@
 
 ## Fix
 
-`chime/adapters/cse.py`: isinstance-guard status (raise on invalid), CT
+`koel/adapters/cse.py`: isinstance-guard status (raise on invalid), CT
 string-guard, ctor rejects bool/non-finite interval, `_retryable` status
 narrow. Pin: `tests/test_wave89_medium_bugs.py`.
 
 ## Gate
 
-`DATABASE_URL= pytest -m 'not integration' --cov=chime --cov-fail-under=100`
+`DATABASE_URL= pytest -m 'not integration' --cov=koel --cov-fail-under=100`
 green (100% stmts / 0 miss).

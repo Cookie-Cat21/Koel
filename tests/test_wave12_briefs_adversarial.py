@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.cse import CDN_BASE
-from chime.briefs import BriefSettings
-from chime.briefs.extract import CdnPdfPermanentError
-from chime.briefs.worker import claim_pending_briefs
-from chime.domain import (
+from koel.adapters.cse import CDN_BASE
+from koel.briefs import BriefSettings
+from koel.briefs.extract import CdnPdfPermanentError
+from koel.briefs.worker import claim_pending_briefs
+from koel.domain import (
     BRIEF_BODY_MAX,
     AlertEvent,
     AlertType,
@@ -141,7 +141,7 @@ async def test_claim_pending_briefs_cdn_403_marks_failed() -> None:
     provider.summarize = AsyncMock(return_value="nope")
 
     with patch(
-        "chime.briefs.worker.fetch_cdn_pdf",
+        "koel.briefs.worker.fetch_cdn_pdf",
         AsyncMock(side_effect=CdnPdfPermanentError("CDN PDF permanent HTTP 403")),
     ):
         await claim_pending_briefs(

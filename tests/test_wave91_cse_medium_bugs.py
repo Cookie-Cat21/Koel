@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     AnnouncementRow,
     CSEClient,
     LegacyAnnouncementRow,
@@ -63,7 +63,7 @@ def test_cse_row_models_reject_bool_numeric_coercion(
 
 
 def test_cse_numeric_bool_source_pin() -> None:
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     assert "field_validator" in src
     assert "isinstance(value, bool)" in src
     assert "boolean is not a valid CSE numeric value" in src

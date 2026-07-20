@@ -1,4 +1,4 @@
-"""Wave14: cover remaining chime.__main__ branches (health helpers + runtime loops)."""
+"""Wave14: cover remaining koel.__main__ branches (health helpers + runtime loops)."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime import __main__ as main_mod
-from chime.health import HealthState
-from chime.notify import SendResult
+from koel import __main__ as main_mod
+from koel.health import HealthState
+from koel.notify import SendResult
 
 
 def _fake_settings() -> MagicMock:
@@ -281,20 +281,20 @@ def test_main_tick_send_wrapper(
 def test_module_main_guard_invokes_main(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["chime", "migrate"])
+    monkeypatch.setattr(sys, "argv", ["koel", "migrate"])
     monkeypatch.setattr(
-        "chime.config.Settings.from_env",
+        "koel.config.Settings.from_env",
         lambda **_: MagicMock(database_url="postgresql://unit"),
     )
-    monkeypatch.setattr("chime.migrate.apply_migrations", lambda url: [])
-    monkeypatch.setattr("chime.logging_setup.configure_logging", lambda *a, **k: None)
+    monkeypatch.setattr("koel.migrate.apply_migrations", lambda url: [])
+    monkeypatch.setattr("koel.logging_setup.configure_logging", lambda *a, **k: None)
 
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore",
-            message=r".*chime\.__main__.*sys\.modules.*",
+            message=r".*koel\.__main__.*sys\.modules.*",
             category=RuntimeWarning,
         )
-        runpy.run_module("chime", run_name="__main__")
+        runpy.run_module("koel", run_name="__main__")
     out = capsys.readouterr().out
     assert "Applied: (none)" in out

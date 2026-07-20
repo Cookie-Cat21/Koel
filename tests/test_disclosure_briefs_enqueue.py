@@ -7,9 +7,9 @@ from unittest.mock import patch
 
 import pytest
 
-from chime.briefs import BriefSettings, BriefStatus
-from chime.briefs.worker import enqueue_or_skip_brief
-from chime.domain import Disclosure
+from koel.briefs import BriefSettings, BriefStatus
+from koel.briefs.worker import enqueue_or_skip_brief
+from koel.domain import Disclosure
 from tests.test_storage_unit import _Conn, _store
 
 
@@ -59,7 +59,7 @@ async def test_enqueue_disclosure_brief_accepts_skipped() -> None:
 async def test_upsert_new_disclosure_enqueues_skipped_when_briefs_disabled() -> None:
     conn = _Conn([None, {"id": 11, "inserted": True}, None])
     store = _store(conn)
-    with patch("chime.briefs.briefs_enabled", return_value=False):
+    with patch("koel.briefs.briefs_enabled", return_value=False):
         out = await store.upsert_disclosure(_disc())
     assert out.id == 11
     brief_sql = [s for s in conn.sql if "disclosure_briefs" in s]
@@ -71,7 +71,7 @@ async def test_upsert_new_disclosure_enqueues_skipped_when_briefs_disabled() -> 
 async def test_upsert_new_disclosure_enqueues_pending_when_briefs_enabled() -> None:
     conn = _Conn([None, {"id": 12, "inserted": True}, None])
     store = _store(conn)
-    with patch("chime.briefs.briefs_enabled", return_value=True):
+    with patch("koel.briefs.briefs_enabled", return_value=True):
         out = await store.upsert_disclosure(_disc(external_id="ann-brief-2"))
     assert out.id == 12
     assert conn.params[-1] == (12, "pending")

@@ -23,7 +23,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 
 | ID | Item | Status | Notes |
 |---|---|---|---|
-| E2-O01 | Expand cov gate beyond rules (`--cov=chime` with floors) | DONE | `--cov=chime --cov-fail-under=60` (measured ~63% unit; 70/85 not yet achievable) |
+| E2-O01 | Expand cov gate beyond rules (`--cov=koel` with floors) | DONE | `--cov=koel --cov-fail-under=60` (measured ~63% unit; 70/85 not yet achievable) |
 | E2-O02 | Storage pool `max_size >= 2` guard when advisory lock used | DONE | `Storage.__init__` raises ValueError if `max_size < 2`; `tests/test_pool_guard.py` |
 | E2-O03 | Factory verify script + loop_status in CI or make | DONE | |
 
@@ -32,7 +32,7 @@ Each DONE needs: commit SHA + verify proof in pass report.
 | ID | Item | Status | Notes |
 |---|---|---|---|
 | E2-D01 | `web/` Next.js + Tailwind + shadcn scaffold | DONE | `2934773` Next 16 App Router + Tailwind v4 + shadcn (radix) |
-| E2-D02 | Demo session auth per ADR 001 | DONE | `2934773` `POST /api/v1/auth/demo`, `/login`, signed HttpOnly `chime_session` |
+| E2-D02 | Demo session auth per ADR 001 | DONE | `2934773` `POST /api/v1/auth/demo`, `/login`, signed HttpOnly `koel_session` |
 | E2-D03 | CSRF bootstrap; logout requires CSRF | DONE | `c518fa6` CSRF helpers; `POST /auth/logout` requires `X-CSRF-Token`; login exempt |
 | E2-D04 | Read APIs: watchlist, alerts, fires, health (Postgres only) | DONE | `c518fa6` GET watchlist, alerts, alerts/history, health (+ me); Postgres only |
 | E2-D05 | Brand-first shell page (no fake trading terminal) | DONE | `e3df622` brand home/login/watchlist; Fraunces+Sora; teal mist |

@@ -6,13 +6,13 @@
 
 ```bash
 # Evaluate OOS, promote if GO_LTR+VOL gates pass, write forecast_points
-python3 -m chime ml-ltr-ship
+python3 -m koel ml-ltr-ship
 
 # Serve (default when ML_LTR_SERVE=1)
 export ML_LTR_SERVE=1
-python3 -m chime ml-forecast-unified --mode hpe_with_ltr_fallback
+python3 -m koel ml-forecast-unified --mode hpe_with_ltr_fallback
 # or selective LTR-only:
-python3 -m chime ml-forecast-unified --mode gated_ltr
+python3 -m koel ml-forecast-unified --mode gated_ltr
 ```
 
 ## OOS (purged panel, this ship)

@@ -13,11 +13,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from chime.adapters.cse import CDN_BASE, LegacyAnnouncementRow, legacy_pdf_urls_by_id
-from chime.briefs import BriefStatus
-from chime.config import Settings
-from chime.domain import AlertType, Disclosure, PreviousPriceState, PriceSnapshot
-from chime.poller import PendingPdfEnrich, Poller
+from koel.adapters.cse import CDN_BASE, LegacyAnnouncementRow, legacy_pdf_urls_by_id
+from koel.briefs import BriefStatus
+from koel.config import Settings
+from koel.domain import AlertType, Disclosure, PreviousPriceState, PriceSnapshot
+from koel.poller import PendingPdfEnrich, Poller
 from tests.conftest import make_disclosure, make_rule
 from tests.test_legacy_pdf_enrich import _legacy_fixture
 from tests.test_storage_unit import _Conn, _store
@@ -53,7 +53,7 @@ async def test_new_disclosure_enqueues_skipped_then_pdf_enrich_sets_url() -> Non
     )
     store = _store(conn)
 
-    with patch("chime.briefs.briefs_enabled", return_value=False):
+    with patch("koel.briefs.briefs_enabled", return_value=False):
         stored = await store.upsert_disclosure(_disc())
 
     assert stored.id == 55
@@ -87,12 +87,12 @@ async def test_pdf_enrich_preserves_skipped_brief_and_existing_row_idempotent() 
     )
     store = _store(conn)
 
-    with patch("chime.briefs.briefs_enabled", return_value=False):
+    with patch("koel.briefs.briefs_enabled", return_value=False):
         first = await store.upsert_disclosure(_disc())
     assert first.pdf_url is None
     assert await store.set_disclosure_pdf_url(55, pdf) is True
 
-    with patch("chime.briefs.briefs_enabled", return_value=False):
+    with patch("koel.briefs.briefs_enabled", return_value=False):
         again = await store.upsert_disclosure(_disc(title="ESOS (updated)"))
 
     assert again.id == 55
@@ -106,7 +106,7 @@ async def test_poller_enrich_sets_pdf_url_without_brief_reenqueue(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Poller path: new disclosure (no pdf_url) → enrich sets CDN url; no brief API."""
-    monkeypatch.setattr("chime.poller.asyncio.sleep", AsyncMock())
+    monkeypatch.setattr("koel.poller.asyncio.sleep", AsyncMock())
 
     published = datetime(2026, 7, 11, 8, 0, 0, tzinfo=UTC)
     disc_rule = make_rule(

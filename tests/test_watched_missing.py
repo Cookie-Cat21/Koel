@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.__main__ import _refresh_both_health
-from chime.config import Settings
-from chime.domain import PriceSnapshot
-from chime.health import HealthState
-from chime.poller import Poller
+from koel.__main__ import _refresh_both_health
+from koel.config import Settings
+from koel.domain import PriceSnapshot
+from koel.health import HealthState
+from koel.poller import Poller
 
 
 def _settings() -> Settings:
@@ -39,7 +39,7 @@ async def test_watched_missing_sets_price_ok_false(capsys: pytest.CaptureFixture
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000", "COMB.N0000", "SAMP.N0000"])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
     storage.persist_market_snapshots = AsyncMock(side_effect=_persist_with_ids)
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
     storage.claim_unsent_batch = AsyncMock(return_value=[])
@@ -71,7 +71,7 @@ async def test_all_watched_present_clears_missing() -> None:
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000", "COMB.N0000"])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
     storage.persist_market_snapshots = AsyncMock(side_effect=_persist_with_ids)
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
     storage.claim_unsent_batch = AsyncMock(return_value=[])
@@ -126,7 +126,7 @@ async def test_poll_prices_missing_still_evaluates_present() -> None:
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000", "COMB.N0000"])
     storage.active_rules_for_symbols = AsyncMock(return_value=[])
     storage.persist_market_snapshots = AsyncMock(side_effect=_persist_with_ids)
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from chime.ml.outcomes import _add_trading_days, _nth_session_after
+from koel.ml.outcomes import _add_trading_days, _nth_session_after
 
 
 def test_nth_session_after_on_calendar() -> None:

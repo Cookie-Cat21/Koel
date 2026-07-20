@@ -1,4 +1,4 @@
-# Chime dashboard (Next.js) — compose profile `web` (E8-O01).
+# Koel dashboard (Next.js) — compose profile `web` (E8-O01).
 # Build: docker compose --profile web build
 # Run:   docker compose --profile web up -d
 

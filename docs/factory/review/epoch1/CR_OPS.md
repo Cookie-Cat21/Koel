@@ -12,7 +12,7 @@
 
 **CONDITIONAL PASS — scaffolding is real and mostly correct; fix Python-version drift and Make/DX naming before treating OPS Epoch 1 as “boring.”**
 
-CI has a unit job (ruff/mypy/pytest with DB forced off) and an integration job (Postgres 16 service → migrate → pytest). Compose healthcheck and `.env.example` `DATABASE_URL` match `chime`/`chime`/`chime`. No production secret is committed in these four files.
+CI has a unit job (ruff/mypy/pytest with DB forced off) and an integration job (Postgres 16 service → migrate → pytest). Compose healthcheck and `.env.example` `DATABASE_URL` match `koel`/`koel`/`koel`. No production secret is committed in these four files.
 
 Residual risk is contract drift and proof softness: CI runs **3.12** while `pyproject.toml` tools target **3.11**; Make ships `up-db`/`down-db` with no `help` (not the thin `up`/`down` surface R1/WS-054 named); WS-042’s README “Local Postgres” blurb was never landed though the WS is marked closed; integration does not assert that DB skips actually lifted.
 
@@ -33,21 +33,21 @@ Residual risk is contract drift and proof softness: CI runs **3.12** while `pypr
 
 | # | Finding | Evidence | Why it matters |
 |---|---|---|---|
-| 5 | **`make test` does not mirror CI unit isolation** | CI unit job forces `DATABASE_URL: ""` so DB tests skip. Makefile `test:` is bare `pytest`. Copying `.env.example` → `.env` makes `load_dotenv` (via `chime.migrate` import in DB tests) see a URL; `skipif` lifts; without `up-db`, those tests **fail** (connection refused), not skip. | Deterministic local footgun after the documented `cp .env.example .env` path. Not CI flake, but Make `test` is a worse unit entrypoint than the workflow. |
-| 6 | **Compose healthcheck is correct but thin** | `docker-compose.yml`: `pg_isready -U chime -d chime`, interval 5s, timeout 5s, retries 10. Matches `POSTGRES_USER`/`POSTGRES_DB`. No `start_period`. | Credentials/command are right — not a bug. Missing `start_period` only means early `pg_isready` failures consume retries; usually fine for `postgres:16`, slightly less forgiving on slow hosts. |
-| 7 | **`.env.example` omits several `Settings` knobs** | Example documents token, `DATABASE_URL`, CSE URL, poll/log/health/circuit. `chime/config.py` also reads `HTTP_TIMEOUT_SECONDS`, `MARKET_TZ`, `MARKET_OPEN`, `MARKET_CLOSE` (defaults exist). | Not secret leakage; incomplete operator surface. Fine for v1 if intentional; do not claim `.env.example` is the full settings catalog. |
-| 8 | **Unit + integration both run the full suite** | Both jobs: `pytest` (pyproject `addopts` cov gate on `chime.rules`). Integration re-runs all unit tests after migrate. | Correctness OK; waste and longer flake surface. Prefer markers later (`not requires_db` vs full) — QUALITY WS-079 / OPS WS-056 territory. |
+| 5 | **`make test` does not mirror CI unit isolation** | CI unit job forces `DATABASE_URL: ""` so DB tests skip. Makefile `test:` is bare `pytest`. Copying `.env.example` → `.env` makes `load_dotenv` (via `koel.migrate` import in DB tests) see a URL; `skipif` lifts; without `up-db`, those tests **fail** (connection refused), not skip. | Deterministic local footgun after the documented `cp .env.example .env` path. Not CI flake, but Make `test` is a worse unit entrypoint than the workflow. |
+| 6 | **Compose healthcheck is correct but thin** | `docker-compose.yml`: `pg_isready -U koel -d koel`, interval 5s, timeout 5s, retries 10. Matches `POSTGRES_USER`/`POSTGRES_DB`. No `start_period`. | Credentials/command are right — not a bug. Missing `start_period` only means early `pg_isready` failures consume retries; usually fine for `postgres:16`, slightly less forgiving on slow hosts. |
+| 7 | **`.env.example` omits several `Settings` knobs** | Example documents token, `DATABASE_URL`, CSE URL, poll/log/health/circuit. `koel/config.py` also reads `HTTP_TIMEOUT_SECONDS`, `MARKET_TZ`, `MARKET_OPEN`, `MARKET_CLOSE` (defaults exist). | Not secret leakage; incomplete operator surface. Fine for v1 if intentional; do not claim `.env.example` is the full settings catalog. |
+| 8 | **Unit + integration both run the full suite** | Both jobs: `pytest` (pyproject `addopts` cov gate on `koel.rules`). Integration re-runs all unit tests after migrate. | Correctness OK; waste and longer flake surface. Prefer markers later (`not requires_db` vs full) — QUALITY WS-079 / OPS WS-056 territory. |
 | 9 | **`on: push` + `on: pull_request` without branch filter** | Every push and every PR event runs both jobs (duplicate on branch-push PRs in-repo). | Noise/cost, not incorrect gates. |
 
 ### P3 — Checked clear / do not “fix” as bugs
 
 | # | Check | Result |
 |---|---|---|
-| 10 | **Secret leakage in scoped files** | **None.** `TELEGRAM_BOT_TOKEN=` empty. `.gitignore` ignores `.env` / `.env.*` with `!.env.example`. Compose/CI/`DATABASE_URL` use ephemeral local password `chime` by design (WAVE WS-042). Do not treat that as a leaked production secret. |
-| 11 | **Compose ↔ `.env.example` URL** | **Aligned:** `postgresql://chime:chime@localhost:5432/chime` ↔ user/password/db `chime`, port `5432:5432`, named volume `chime_pgdata` (not a bind mount — gitignore clause N/A). |
-| 12 | **CI migrate entrypoint** | `python -m chime.migrate` is valid (`chime/migrate.py` `__main__`). Equivalent in effect to `python -m chime migrate` / Makefile `$(PYTHON) -m chime.migrate`. Not a functional defect. |
+| 10 | **Secret leakage in scoped files** | **None.** `TELEGRAM_BOT_TOKEN=` empty. `.gitignore` ignores `.env` / `.env.*` with `!.env.example`. Compose/CI/`DATABASE_URL` use ephemeral local password `koel` by design (WAVE WS-042). Do not treat that as a leaked production secret. |
+| 11 | **Compose ↔ `.env.example` URL** | **Aligned:** `postgresql://koel:koel@localhost:5432/koel` ↔ user/password/db `koel`, port `5432:5432`, named volume `koel_pgdata` (not a bind mount — gitignore clause N/A). |
+| 12 | **CI migrate entrypoint** | `python -m koel.migrate` is valid (`koel/migrate.py` `__main__`). Equivalent in effect to `python -m koel migrate` / Makefile `$(PYTHON) -m koel.migrate`. Not a functional defect. |
 | 13 | **Unit job empty `DATABASE_URL`** | `DATABASE_URL: ""` → `.strip()` falsy → `skipif` holds. `load_dotenv` does not override an existing empty env var. Correct skip wiring. |
-| 14 | **GHA Postgres health wait** | Service `options` `--health-cmd "pg_isready -U chime -d chime"` with retries — standard, matches compose. No evidence of a systematic ready-race in the workflow definition. |
+| 14 | **GHA Postgres health wait** | Service `options` `--health-cmd "pg_isready -U koel -d koel"` with retries — standard, matches compose. No evidence of a systematic ready-race in the workflow definition. |
 | 15 | **Integration test isolation (flake)** | DB tests use distinct telegram IDs / symbols; CI Postgres is ephemeral per job. No sleep-based waits in the workflow. **No accurate flake bug found** in these four files beyond the soft “skips can still be green” proof gap (#2). |
 
 ---
@@ -57,9 +57,9 @@ Residual risk is contract drift and proof softness: CI runs **3.12** while `pypr
 | Check | Verdict | Notes |
 |---|---|---|
 | CI correctness | **Mostly yes** | Two-job shape, migrate before DB pytest, ruff/mypy/pytest present. Gaps: Python 3.12 drift (#1), no skip-lift proof (#2), duplicate push/PR (#9). |
-| Secret leakage | **Pass** | Empty bot token; local `chime` password only; `.env` gitignored. |
+| Secret leakage | **Pass** | Empty bot token; local `koel` password only; `.env` gitignored. |
 | Flaky integration | **No hard flake found** | Soft proof gap if skips return (#2); compose/CI healthchecks aligned (#6/#14). |
-| Compose healthcheck | **Pass** | `pg_isready -U chime -d chime` correct; optional `start_period` only. |
+| Compose healthcheck | **Pass** | `pg_isready -U koel -d koel` correct; optional `start_period` only. |
 | Makefile targets wrong | **Names/incomplete, not broken recipes** | `up-db`/`down-db` work; wrong vocabulary vs R1/WS-054; no `help`; `test` ≠ CI unit isolation (#3/#5). |
 | pyproject mismatch | **Yes — version contract** | CI 3.12 vs mypy/ruff 3.11 / WAVE 3.11 (#1). Install extra `.[dev]` matches Makefile/CI. |
 
@@ -71,7 +71,7 @@ Residual risk is contract drift and proof softness: CI runs **3.12** while `pypr
 - Integration: Postgres 16 + health-cmd + job-level `DATABASE_URL` + migrate step + pytest.
 - Compose DB-only (no premature app service) matches R1_OPS cut list.
 - `.env.example` keeps `TELEGRAM_BOT_TOKEN` blank.
-- Make wraps the same tools CI uses (`ruff`, `mypy chime`, `pytest`, editable `.[dev]`).
+- Make wraps the same tools CI uses (`ruff`, `mypy koel`, `pytest`, editable `.[dev]`).
 
 ---
 

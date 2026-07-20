@@ -2,7 +2,7 @@
 
 /**
  * Optional Apache lightweight-charts shell (S1).
- * Enabled only when NEXT_PUBLIC_CHIME_LWC=1 — otherwise unused.
+ * Enabled only when NEXT_PUBLIC_KOEL_LWC=1 — otherwise unused.
  * Does not load TradingView-owned data; points come from koel Postgres.
  */
 export function OptionalLwcNote({ enabled }: { enabled: boolean }) {

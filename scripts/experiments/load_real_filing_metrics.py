@@ -12,7 +12,7 @@ For each symbol: fetch financials, build a synthetic ``disclosures`` row per
 statement PDF (FK required by ``filing_metrics``), download the PDF with
 browser-like headers (cdn.cse.lk 403s on the bare httpx default UA), then run
 the *production* extract + YoY compare pipeline
-(``chime.metrics.worker.process_disclosure_metrics``) against the bytes —
+(``koel.metrics.worker.process_disclosure_metrics``) against the bytes —
 same code path the poller uses. Rules are not evaluated (no Telegram sends).
 
 Usage:
@@ -35,11 +35,11 @@ import httpx
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
-from chime.adapters.cse import allowed_cdn_pdf_url  # noqa: E402
-from chime.domain import Disclosure  # noqa: E402
-from chime.metrics import MetricsSettings  # noqa: E402
-from chime.metrics.worker import process_disclosure_metrics  # noqa: E402
-from chime.storage import Storage  # noqa: E402
+from koel.adapters.cse import allowed_cdn_pdf_url  # noqa: E402
+from koel.domain import Disclosure  # noqa: E402
+from koel.metrics import MetricsSettings  # noqa: E402
+from koel.metrics.worker import process_disclosure_metrics  # noqa: E402
+from koel.storage import Storage  # noqa: E402
 
 DEFAULT_SYMBOLS = [
     "JKH.N0000",
@@ -63,7 +63,7 @@ SLEEP_BETWEEN_HTTP_S = 0.4
 SLEEP_BETWEEN_SYMBOLS_S = 0.6
 PDF_MAX_BYTES = 32_000_000  # annual reports run large (image-heavy); quarterlies are small
 
-UA = "Mozilla/5.0 (compatible; ChimeBot/0.1; filing-metrics-backfill)"
+UA = "Mozilla/5.0 (compatible; KoelBot/0.1; filing-metrics-backfill)"
 BROWSER_HEADERS = {
     "User-Agent": UA,
     "Origin": "https://www.cse.lk",

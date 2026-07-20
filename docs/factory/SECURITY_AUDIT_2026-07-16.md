@@ -1,8 +1,8 @@
 # Security audit — Quiverly (2026-07-16)
 
 **Auditor stance:** senior application security review; assume bugs until disproven.  
-**Stack:** Next.js App Router (`web/`), Neon Postgres, Python poller/bot (`chime/`), Vercel dash, Telegram Bot API, CSE unofficial JSON, Groq AI.  
-**Auth:** HMAC-signed HttpOnly `chime_session` + CSRF double-submit; demo allowlist login and optional Telegram Login Widget.  
+**Stack:** Next.js App Router (`web/`), Neon Postgres, Python poller/bot (`koel/`), Vercel dash, Telegram Bot API, CSE unofficial JSON, Groq AI.  
+**Auth:** HMAC-signed HttpOnly `koel_session` + CSRF double-submit; demo allowlist login and optional Telegram Login Widget.  
 **Not in scope today:** PayHere / payments (not implemented). No Supabase RLS (app-layer Postgres).
 
 ---
@@ -101,7 +101,7 @@
 | | |
 |---|---|
 | **Severity** | **Medium** (legal/ops) / **Low** (direct appsec) |
-| **Location** | `chime/adapters/cse.py`, poller, `load_real_filing_metrics.py` |
+| **Location** | `koel/adapters/cse.py`, poller, `load_real_filing_metrics.py` |
 | **Issue** | Relies on undocumented cse.lk JSON; no contractual SLA; IP ban / shape change risk. Scraped/fetched data is trusted into DB then shown as “metrics.” |
 | **Impact** | Service outage; wrong numbers if PDF extract fails open (mitigated by `extract_ok`); possible ToS conflict. |
 | **Fix** | Keep adapter isolation; never claim official CSE affiliation; validate extracts; rate-limit; document risk in terms. |
@@ -111,7 +111,7 @@
 | | |
 |---|---|
 | **Severity** | **Medium** |
-| **Location** | `chime/briefs/` (`BRIEF_SYSTEM_INSTRUCTION`, delimiter neutralization) |
+| **Location** | `koel/briefs/` (`BRIEF_SYSTEM_INSTRUCTION`, delimiter neutralization) |
 | **Issue** | PDF text is untrusted. Delimiters are neutralized and system prompt instructs ignore — good — but model can still emit misleading “facts” or attempt instruction escape. Dash renders brief as text (React escapes — good). |
 | **Impact** | Phishing-like brief content in Telegram/dash; reputational/compliance harm (“AI said buy”). |
 | **Fix** | Keep NFA suffix; length caps; optional allowlist of numeric claims vs extract; don’t auto-push briefs to Telegram until reviewed for high-risk users. |

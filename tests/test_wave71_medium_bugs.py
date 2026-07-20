@@ -15,9 +15,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.adapters.cse import CDN_BASE
-from chime.briefs.worker import _notify_brief_followups, _title_only_input_text
-from chime.domain import format_brief_followup
+from koel.adapters.cse import CDN_BASE
+from koel.briefs.worker import _notify_brief_followups, _title_only_input_text
+from koel.domain import format_brief_followup
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +36,7 @@ def test_format_brief_followup_rejects_non_string_url() -> None:
     ok = format_brief_followup(symbol="JKH.N0000", brief="Ready.", url=ok_url)
     assert ok_url in ok
 
-    src = (ROOT / "chime" / "domain.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "domain.py").read_text(encoding="utf-8")
     bf = src.split("def format_brief_followup")[1].split("def as_dict")[0]
     assert "isinstance(url, str)" in bf
     assert "if isinstance(url, str) and url.strip():" in bf
@@ -52,7 +52,7 @@ def test_title_only_input_rejects_non_string_fields() -> None:
         == "JKH.N0000: AGM"
     )
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     title = src.split("def _title_only_input_text")[1].split(
         "async def _input_text_for_row"
     )[0]
@@ -97,7 +97,7 @@ async def test_notify_brief_followups_rejects_non_string_row_fields() -> None:
     )
     storage.claim_brief_followups.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     chunk = src.split("async def _notify_brief_followups")[1].split(
         "async def _promote_skipped_if_needed"
     )[0]

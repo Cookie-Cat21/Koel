@@ -1,7 +1,7 @@
 # R1 — Adversarial review: WAVE1_CORE
 
 **Reviewed:** [WAVE1_CORE.md](../workstreams/WAVE1_CORE.md)  
-**Against:** [COMMIT_FACTORY.md](../COMMIT_FACTORY.md), [METRICS.md](../METRICS.md), [FINAL_REPORT.md](../../FINAL_REPORT.md), `chime/poller.py`, `chime/rules.py`, plus adapter/bot/CLI spot-checks  
+**Against:** [COMMIT_FACTORY.md](../COMMIT_FACTORY.md), [METRICS.md](../METRICS.md), [FINAL_REPORT.md](../../FINAL_REPORT.md), `koel/poller.py`, `koel/rules.py`, plus adapter/bot/CLI spot-checks  
 **Date:** 2026-07-11  
 **Verdict:** **needs rework**
 

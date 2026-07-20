@@ -1,6 +1,6 @@
 """Unit tests for people / role extract heuristics."""
 
-from chime.extractors.people_pdf import (
+from koel.extractors.people_pdf import (
     _roles_from_blob,
     map_role,
     normalize_person_name,

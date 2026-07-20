@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, call
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertEvent, AlertType, format_dead_letter_notify
-from chime.notify import SendResult
-from chime.poller import MAX_DEFERRED_ATTEMPTS, MAX_SEND_ATTEMPTS, Poller
+from koel.config import Settings
+from koel.domain import AlertEvent, AlertType, format_dead_letter_notify
+from koel.notify import SendResult
+from koel.poller import MAX_DEFERRED_ATTEMPTS, MAX_SEND_ATTEMPTS, Poller
 from tests.conftest import claim_unsent_deque
 
 

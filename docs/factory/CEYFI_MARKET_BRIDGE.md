@@ -6,16 +6,16 @@
 ## Ceyfi side
 
 - Backend: `GET /api/market/{overview,watchlist,alerts,fires,fires/{id}}`
-- Without `CHIME_API_BASE`: deterministic mocks per demo persona
-- With `CHIME_API_BASE=https://…chime`: proxies Quiverly after `POST /api/v1/auth/demo`
+- Without `KOEL_API_BASE`: deterministic mocks per demo persona
+- With `KOEL_API_BASE=https://…koel`: proxies Quiverly after `POST /api/v1/auth/demo`
 - Frontend: `/market`, `/market/watchlist`, `/market/alerts`, `/market/alerts/[id]`
 - Alert detail shows **cash context** from Ceyfi `financial-snapshot` + NFA; broker CTA disabled until Phase 4
 
 Env (Ceyfi backend):
 
 ```bash
-CHIME_API_BASE=http://localhost:3000   # optional
-CHIME_DEMO_TELEGRAM_ID=123456789       # must be on Quiverly DASH_DEMO_TELEGRAM_IDS
+KOEL_API_BASE=http://localhost:3000   # optional
+KOEL_DEMO_TELEGRAM_ID=123456789       # must be on Quiverly DASH_DEMO_TELEGRAM_IDS
 ```
 
 ## Quiverly side

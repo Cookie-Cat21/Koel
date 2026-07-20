@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertType, PreviousPriceState, PriceSnapshot
-from chime.poller import Poller
+from koel.config import Settings
+from koel.domain import AlertType, PreviousPriceState, PriceSnapshot
+from koel.poller import Poller
 from tests.conftest import make_rule
 
 

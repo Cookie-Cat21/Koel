@@ -54,13 +54,13 @@ function installDbPool(
   mode: "ok" | "throw" = "ok",
   totalCount?: number,
 ): CapturedQuery[] {
-  process.env.DATABASE_URL = "postgres://unit.test/chime";
+  process.env.DATABASE_URL = "postgres://unit.test/koel";
   const captured: CapturedQuery[] = [];
-  (globalThis as typeof globalThis & { __chimePgPool?: unknown }).__chimePgPool = {
+  (globalThis as typeof globalThis & { __koelPgPool?: unknown }).__koelPgPool = {
     query: async (sql: string, params: unknown[] = []) => {
       captured.push({ sql, params });
       if (mode === "throw") {
-        throw new Error("postgres://secret-user:secret-pass@db.internal/chime boom");
+        throw new Error("postgres://secret-user:secret-pass@db.internal/koel boom");
       }
       assert(
         sql.includes("INNER JOIN LATERAL"),
@@ -218,7 +218,7 @@ async function testSessionRequired(): Promise<void> {
 async function testGetDoesNotRequireCsrf(): Promise<void> {
   installDbPool();
   process.env.DASH_SESSION_SECRET = SECRET;
-  // Session cookie only — no X-CSRF-Token / chime_csrf. Safe GET must succeed.
+  // Session cookie only — no X-CSRF-Token / koel_csrf. Safe GET must succeed.
   const res = await symbolsGet(makeRequest("limit=1"));
   assert(res.status === 200, `GET without CSRF must 200, got ${res.status}`);
   const body = await readBody(res);
@@ -373,6 +373,7 @@ async function testFiniteNumberEgress(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  process.env.DASH_SESSION_REVOKE_CHECK = "0";
   await testDefaultLimitAndSort();
   await testLimitClampToMax200();
   await testInvalidLimitFallsBackToDefault();

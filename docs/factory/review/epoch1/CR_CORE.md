@@ -1,7 +1,7 @@
 # CR_CORE — Epoch 1 adversarial code review (CORE)
 
 **Reviewer role:** Adversarial CORE CR (implementation, not catalog)  
-**Scope:** `chime/rules.py`, `chime/adapters/cse.py`, `tests/test_disclosure_rules.py`, `tests/test_adapters_normalize.py`  
+**Scope:** `koel/rules.py`, `koel/adapters/cse.py`, `tests/test_disclosure_rules.py`, `tests/test_adapters_normalize.py`  
 **Also checked:** `tests/test_adapters_circuit.py` (WS-017 companion), sample payloads under `docs/sample_responses/`  
 **Closing commit under review:** `2c2e18f` (`fix(core): disclosure created_at fail-closed; date parse; circuit-open`)  
 **Date:** 2026-07-11  
@@ -41,7 +41,7 @@ Prior epoch adversarial HIGHs (WS-083 / WS-009 / WS-068) live outside this CR’
 
 #### M1 — `dateOfAnnouncement` stamped as UTC midnight skews the backfill gate
 
-**Where:** `chime/adapters/cse.py:136-148` (`_parse_date_of_announcement`), used at `204-206`
+**Where:** `koel/adapters/cse.py:136-148` (`_parse_date_of_announcement`), used at `204-206`
 
 **What shipped:** `strptime(...).replace(tzinfo=UTC)` → date-only at **00:00:00 UTC**. Docstring admits “UTC midnight.” Sample CSE strings are Colombo-facing calendar dates (`"30 Jun 2026"` in `docs/sample_responses/getAnnouncementByCompany.json`).
 
@@ -65,7 +65,7 @@ Prior epoch adversarial HIGHs (WS-083 / WS-009 / WS-068) live outside this CR’
 
 #### M2 — Sample semantics: `dateOfAnnouncement` is not portal publish day
 
-**Where:** `chime/adapters/cse.py:199-206` fallback; evidence in `docs/sample_responses/getAnnouncementByCompany.json`
+**Where:** `koel/adapters/cse.py:199-206` fallback; evidence in `docs/sample_responses/getAnnouncementByCompany.json`
 
 **Fact (not invented):** One sample row has `dateOfAnnouncement: "26 Jun 2026"` with `createdDate: 1782801386000` → `2026-06-30 06:36:26 UTC` / `12:06 SLT`. The string lags the portal `createdDate` by **four calendar days**.
 
@@ -84,7 +84,7 @@ So even a “correctly parsed” DOA string can under-date a real portal appeara
 
 #### M3 — WS-017 adapter re-raise is proven; poller disclosure×circuit pairing is not
 
-**Where:** `chime/adapters/cse.py:307-317` (`_guarded`), `414-415`, `427-428`; tests in `tests/test_adapters_circuit.py:14-32`
+**Where:** `koel/adapters/cse.py:307-317` (`_guarded`), `414-415`, `427-428`; tests in `tests/test_adapters_circuit.py:14-32`
 
 **What is solid:** Pre-`2c2e18f` code swallowed `CircuitOpenError` → `[]` on both announcement fetches. That is gone. Unit tests open the breaker (`fail_max=1` + `record_failure`) and assert `pytest.raises(CircuitOpenError)`.
 
@@ -98,7 +98,7 @@ So even a “correctly parsed” DOA string can under-date a real portal appeara
 
 #### m1 — Declared DOA formats untested beyond `"30 Jun 2026"`
 
-**Where:** `chime/adapters/cse.py:129-133`; tests `tests/test_adapters_normalize.py:91-125`
+**Where:** `koel/adapters/cse.py:129-133`; tests `tests/test_adapters_normalize.py:91-125`
 
 Code lists `%d %B %Y` (`"30 June 2026"`) and `%Y-%m-%d`. Suite only exercises `%d %b %Y`, `None`, and `"not-a-date"`. Empty/whitespace strings take the epoch path in code (`140-142`) with no test.
 
@@ -108,7 +108,7 @@ Code lists `%d %B %Y` (`"30 June 2026"`) and `%Y-%m-%d`. Suite only exercises `%
 
 #### m2 — Naive→UTC assumption is unstated product contract
 
-**Where:** `chime/rules.py:21-25` (`_as_utc_aware`); tests `tests/test_disclosure_rules.py:117-138`
+**Where:** `koel/rules.py:21-25` (`_as_utc_aware`); tests `tests/test_disclosure_rules.py:117-138`
 
 Naive inputs get `replace(tzinfo=UTC)`. That prevents `TypeError` (WS-002 AC met) and is consistent **if** every naive value is already UTC wall time. A naive Colombo-local `created_at` from a misconfigured driver / `fromisoformat` without offset would be shifted five hours thirty minutes in the gate.
 
@@ -126,7 +126,7 @@ Adapter tests lock `1970-01-01` for undated rows. `evaluate_disclosure_rules` wi
 
 #### m4 — `_ms_to_dt(None) → now()` footgun remains
 
-**Where:** `chime/adapters/cse.py:123-126`
+**Where:** `koel/adapters/cse.py:123-126`
 
 Announcement path no longer calls `_ms_to_dt(None)` (`createdDate is not None` guard). Helper still returns wall-clock now on `None`. Any future caller that passes null ms reintroduces the PASS2 flood. Prefer raising or returning epoch inside `_ms_to_dt`.
 
@@ -134,7 +134,7 @@ Announcement path no longer calls `_ms_to_dt(None)` (`createdDate is not None` g
 
 #### m5 — `createdDate=0` prefers epoch over a parseable DOA
 
-**Where:** `chime/adapters/cse.py:201-206`
+**Where:** `koel/adapters/cse.py:201-206`
 
 `if row.createdDate is not None` treats `0` as present → `1970-01-01`, ignoring `dateOfAnnouncement="30 Jun 2026"`. No CSE sample uses `0`; if the API ever sends `0` as a null sentinel, result is silent miss (fail-closed), not flood. Document or treat `<=0` as missing.
 

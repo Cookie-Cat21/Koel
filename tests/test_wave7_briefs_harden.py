@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.worker import claim_pending_briefs
-from chime.domain import format_brief_followup
-from chime.notify import SendResult
+from koel.briefs import BriefSettings
+from koel.briefs.worker import claim_pending_briefs
+from koel.domain import format_brief_followup
+from koel.notify import SendResult
 from tests.test_storage_unit import _Conn, _store
 
 
@@ -243,7 +243,7 @@ async def test_claim_pending_briefs_closes_owned_provider() -> None:
     owned.summarize = AsyncMock(return_value="ok")
     owned.aclose = AsyncMock()
 
-    with patch("chime.briefs.worker.make_brief_provider", return_value=owned):
+    with patch("koel.briefs.worker.make_brief_provider", return_value=owned):
         n = await claim_pending_briefs(
             storage,
             settings=_enabled_settings(provider="groq", pdf_grace_seconds=0),

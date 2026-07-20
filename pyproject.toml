@@ -1,5 +1,5 @@
 [project]
-name = "chime"
+name = "koel"
 version = "0.1.0"
 description = "Telegram-first alerting layer for the Colombo Stock Exchange (CSE)"
 requires-python = ">=3.11"
@@ -40,22 +40,22 @@ macro = [
 ]
 
 [project.scripts]
-chime = "chime.__main__:main"
+koel = "koel.__main__:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["chime*"]
+include = ["koel*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-# Package-wide gate (was chime.rules-only @ 85). Floor tracks current unit
+# Package-wide gate (was koel.rules-only @ 85). Floor tracks current unit
 # coverage (~70–73% with DATABASE_URL=); ratchet up as storage/backfill paths
 # regain tests rather than blocking merges on an obsolete 85 target.
-addopts = "-q --cov=chime --cov-report=term-missing --cov-fail-under=70"
+addopts = "-q --cov=koel --cov-report=term-missing --cov-fail-under=70"
 markers = [
     "integration: requires DATABASE_URL / real Postgres (skipped in unit CI)",
     "slow: optional slow harness (excluded from default local loops when selected)",
@@ -64,18 +64,18 @@ markers = [
 [tool.coverage.run]
 omit = [
     # Research CLI / eval helpers promoted beside the typed financial_pdf surface.
-    "chime/extractors/cse_pdf_core.py",
+    "koel/extractors/cse_pdf_core.py",
     # Offline ML experiment (optional [ml] extra) — not runtime bot/dash path.
-    "chime/ml/*",
+    "koel/ml/*",
     # Optional Yahoo+CSE research panel CLI (optional [hybrid] extra).
-    "chime/hybrid_backfill.py",
+    "koel/hybrid_backfill.py",
     # Ownership/people graph workers + PDF extractors (unit-tested separately;
     # Postgres upsert surface lives in storage and dilutes the package floor).
-    "chime/graph/*",
-    "chime/extractors/company_graph_pdf.py",
-    "chime/extractors/people_pdf.py",
-    "chime/extractors/cse_directors.py",
-    "chime/extractors/person_aliases.py",
+    "koel/graph/*",
+    "koel/extractors/company_graph_pdf.py",
+    "koel/extractors/people_pdf.py",
+    "koel/extractors/cse_directors.py",
+    "koel/extractors/person_aliases.py",
 ]
 
 [tool.ruff]
@@ -94,7 +94,7 @@ python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
-packages = ["chime"]
+packages = ["koel"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -110,15 +110,15 @@ module = [
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["chime.ml.*"]
+module = ["koel.ml.*"]
 ignore_errors = true
 
 # Optional Yahoo+CSE research panel (optional [hybrid] extra).
 [[tool.mypy.overrides]]
-module = ["chime.hybrid_backfill"]
+module = ["koel.hybrid_backfill"]
 ignore_errors = true
 
 # Research-grade PDF core (CLI + eval helpers); typed surface is financial_pdf.py.
 [[tool.mypy.overrides]]
-module = ["chime.extractors.cse_pdf_core"]
+module = ["koel.extractors.cse_pdf_core"]
 ignore_errors = true

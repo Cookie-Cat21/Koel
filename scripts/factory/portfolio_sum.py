@@ -7,7 +7,7 @@ repo's scoreboard and applies:
     repo_score(r) = min(proper_commits(r), clusters_closed(r))
     portfolio_score = Σ repo_score(r)
 
-v1: only the local ``chime`` node is enrolled (same checkout). Remote
+v1: only the local ``koel`` node is enrolled (same checkout). Remote
 nodes can be added later; missing score files print 0 for that node.
 """
 
@@ -41,9 +41,9 @@ def load_nodes(path: Path) -> list[dict]:
 
 
 def resolve_score_file(node: dict) -> Path:
-    """Chime node: score_file is relative to this repo root."""
+    """Koel node: score_file is relative to this repo root."""
     rel = node.get("score_file") or "docs/factory/SCOREBOARD.json"
-    # Local-only stub: always resolve under the Chime checkout that owns
+    # Local-only stub: always resolve under the Koel checkout that owns
     # PORTFOLIO_NODES.json (multi-repo paths deferred).
     return (ROOT / rel).resolve()
 

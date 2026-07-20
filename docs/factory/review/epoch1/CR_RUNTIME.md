@@ -1,7 +1,7 @@
 # CR_RUNTIME — Epoch 1 code review (poller / storage / bot / notify / `__main__`)
 
 **Reviewer role:** Runtime CR (accurate only; no speculative endpoints)  
-**Scope:** `chime/poller.py`, `chime/storage.py`, `chime/bot.py`, `chime/notify.py`, `chime/__main__.py`  
+**Scope:** `koel/poller.py`, `koel/storage.py`, `koel/bot.py`, `koel/notify.py`, `koel/__main__.py`  
 **Date:** 2026-07-11  
 **Context:** Post Epoch1 fixup commits (`8e39270`, `2751414`). Checks claimed closes for disclosure scope, advisory lock, alert-create idempotency, orphan `/unwatch`, RetryAfter 30s cap, `tick --force`, `both` SIGTERM, races, connection leaks.
 
@@ -51,7 +51,7 @@ Remaining issues are real but secondary: claim/disarm intent mismatch on send fa
 | 7 | **`create_alert_rule` UniqueViolation path can still raise if the winner is deactivated before re-fetch** | After `UniqueViolation` + `rollback`, `_fetch_active_rule` → `None` → `raise`. | Narrow window: concurrent `/cancel` (or unwatch deactivate) between loser UniqueViolation and re-fetch. User sees an error instead of “recreate”. No parallel DB test exists for the happy concurrent path either. |
 | 8 | **Orphan disclosure rules are invisible to the poller** | `watched_symbols()` drives both price and disclosure legs; disclosure rules without a watchlist row are never fetched. | `/unwatch` now deactivates rules, so bot path is consistent. Manual SQL / future API that deletes watch without deactivate leaves silent undead rules. |
 | 9 | **Retry bare resend drops `disable_web_page_preview=False`** | First `send_message` passes the kwarg; RetryAfter retry calls `bot.send_message(chat_id=..., text=...)` only. | Behavioral inconsistency on preview; low severity. |
-| 10 | **CLI help still calls `tick` “one forced poll”** | `argparse` choices help: `tick (one forced poll)`; actual force is `--force`. | Ops footgun: `python -m chime tick` outside hours exits with `Fired 0` and looks like a no-op bug. |
+| 10 | **CLI help still calls `tick` “one forced poll”** | `argparse` choices help: `tick (one forced poll)`; actual force is `--force`. | Ops footgun: `python -m koel tick` outside hours exits with `Fired 0` and looks like a no-op bug. |
 
 ### P3 — Minor / hygiene
 

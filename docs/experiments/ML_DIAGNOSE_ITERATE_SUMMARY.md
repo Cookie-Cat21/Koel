@@ -68,8 +68,8 @@ Getting **all companies** to a **70–75% average** on that metric needs **new i
 ## Commands
 
 ```bash
-python3 -m chime ml-diagnose
-python3 -m chime ml-iterate
+python3 -m koel ml-diagnose
+python3 -m koel ml-iterate
 ```
 
 Research only — not financial advice.

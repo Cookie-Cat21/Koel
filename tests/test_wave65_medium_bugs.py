@@ -13,12 +13,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     allowed_cdn_pdf_url,
     allowed_filing_url,
     resolve_pdf_url,
 )
-from chime.domain import format_brief_followup, format_dead_letter_notify
+from koel.domain import format_brief_followup, format_dead_letter_notify
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
@@ -38,7 +38,7 @@ def test_filing_url_helpers_reject_non_strings() -> None:
     ok_ann = "https://www.cse.lk/announcements#1"
     assert allowed_filing_url(ok_ann) == ok_ann
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     assert src.count("if not isinstance(url, str):") >= 2
     assert "if not isinstance(file_path, str):" in src
 
@@ -52,7 +52,7 @@ def test_notify_formatters_reject_non_string_symbol() -> None:
     assert "Filing brief ready" in follow
     assert "Ready" in follow
 
-    src = (ROOT / "chime" / "domain.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "domain.py").read_text(encoding="utf-8")
     dl = src.split("def format_dead_letter_notify")[1].split(
         "def format_brief_followup"
     )[0]

@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from chime.adapters.cse import CDN_BASE
-from chime.briefs import BriefSettings, build_brief_prompt
-from chime.briefs.provider import GeminiBriefProvider
-from chime.briefs.worker import claim_pending_briefs
+from koel.adapters.cse import CDN_BASE
+from koel.briefs import BriefSettings, build_brief_prompt
+from koel.briefs.provider import GeminiBriefProvider
+from koel.briefs.worker import claim_pending_briefs
 from tests.test_storage_unit import _Conn, _store
 
 
@@ -112,7 +112,7 @@ async def test_claim_pending_briefs_cdn_fetch_fail_requeues_not_failed() -> None
     provider = AsyncMock()
     provider.summarize = AsyncMock(return_value="should not run")
 
-    with patch("chime.briefs.worker.fetch_cdn_pdf", AsyncMock(return_value=None)):
+    with patch("koel.briefs.worker.fetch_cdn_pdf", AsyncMock(return_value=None)):
         n = await claim_pending_briefs(
             storage,
             settings=_enabled_settings(),

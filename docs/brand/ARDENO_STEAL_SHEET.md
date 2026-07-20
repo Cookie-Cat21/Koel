@@ -1,7 +1,7 @@
-# Ardeno steal sheet — Dinaya (site) + Ceyfi (dash) → Chime
+# Ardeno steal sheet — Dinaya (site) + Ceyfi (dash) → Koel
 
 **Date:** 2026-07-14  
-**Brand assets:** `branding/` + `web/public/brand/` (PR #14) — lowercase geometric `chime` wordmark + `C` mark.
+**Brand assets:** `branding/` + `web/public/brand/` (PR #14) — lowercase geometric `koel` wordmark + `C` mark.
 
 ## Dinaya (website) — steal
 - Wordmark as **asset lockup**, not CSS text (`Logo.tsx` pattern)
@@ -12,21 +12,21 @@
 - Semantic status colors (pending amber / fired emerald) — not decorative purple
 
 ## Ceyfi (dashboard) — steal
-- `CeyfiMark` / `CeyfiLogoIcon` two-tier brand API → `ChimeMark` / `ChimeWordmark`
+- `CeyfiMark` / `CeyfiLogoIcon` two-tier brand API → `KoelMark` / `KoelWordmark`
 - Sticky topbar `bg-background/80 backdrop-blur` (already close)
 - `PageHeader` (eyebrow + title + description + action) — ported without green orbs
 - `LiveIndicator` for `/health` poller state
 - Login: hero mark/wordmark + form card + NFA footer; theme toggle optional later
-- Do **not** port sidebar / wallet / loan domain chrome (Chime stays top-nav)
+- Do **not** port sidebar / wallet / loan domain chrome (Koel stays top-nav)
 
-## Chime application
+## Koel application
 | Surface | Treatment |
 |---|---|
-| Nav | Wordmark image → `/brand/chime-logo.svg` |
-| Login / home hero | Large wordmark; keep `aria-label="Chime home"` |
-| Favicon | `/brand/chime-mark.svg` |
+| Nav | Wordmark image → `/brand/koel-logo.svg` |
+| Login / home hero | Large wordmark; keep `aria-label="Koel home"` |
+| Favicon | `/brand/koel-mark.svg` |
 | Health | `LiveIndicator` next to status |
 | Pages | Optional `PageHeader` with Dinaya-style eyebrow |
 
 ## Non-goals
-Copying Dinaya cobalt/violet or Ceyfi green palettes wholesale — Chime keeps its own tokens, aligned to near-black `#1e1e1e` ink from the logo.
+Copying Dinaya cobalt/violet or Ceyfi green palettes wholesale — Koel keeps its own tokens, aligned to near-black `#1e1e1e` ink from the logo.

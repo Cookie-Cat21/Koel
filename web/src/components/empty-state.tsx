@@ -63,12 +63,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "chime-rise mt-8 overflow-hidden rounded-xl border border-border/70",
+        "koel-rise mt-8 overflow-hidden rounded-xl border border-border/70",
         className,
       )}
       role="status"
     >
-      <div className="chime-atmosphere px-5 py-10 sm:px-8 sm:py-12">
+      <div className="koel-atmosphere px-5 py-10 sm:px-8 sm:py-12">
         <p className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           {safeTitle}
         </p>

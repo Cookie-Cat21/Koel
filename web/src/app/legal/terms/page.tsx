@@ -11,7 +11,7 @@ export const metadata = {
 export default function TermsPage() {
   const botUrl = telegramBotUrl();
   return (
-    <div className="chime-atmosphere flex min-h-full flex-1 flex-col">
+    <div className="koel-atmosphere flex min-h-full flex-1 flex-col">
       <MarketingNav />
       <main
         id="main-content"

@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from telegram.error import RetryAfter
 
-from chime.config import Settings
-from chime.notify import send_message
-from chime.poller import Poller
+from koel.config import Settings
+from koel.notify import send_message
+from koel.poller import Poller
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def test_market_tz_blank_falls_back_to_default(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -39,7 +39,7 @@ async def test_send_message_cancelled_on_retry_attempt_propagates() -> None:
     bot.send_message = AsyncMock(side_effect=[RetryAfter(1), asyncio.CancelledError()])
 
     with (
-        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock),
+        patch("koel.notify.asyncio.sleep", new_callable=AsyncMock),
         pytest.raises(asyncio.CancelledError),
     ):
         await send_message(bot, chat_id=1001, text="hello")

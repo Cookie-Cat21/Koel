@@ -1,4 +1,4 @@
-"""E5-C02: Unit coverage for chime.migrate and chime.__main__ dispatch paths."""
+"""E5-C02: Unit coverage for koel.migrate and koel.__main__ dispatch paths."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime import __main__ as main_mod
-from chime.health import HealthState
-from chime.migrate import apply_migrations
-from chime.migrate import main as migrate_main
-from chime.poller import Poller
+from koel import __main__ as main_mod
+from koel.health import HealthState
+from koel.migrate import apply_migrations
+from koel.migrate import main as migrate_main
+from koel.poller import Poller
 
 # --- migrate: pure unit (no DATABASE_URL) ---------------------------------
 
@@ -65,7 +65,7 @@ def test_apply_migrations_skips_already_applied(tmp_path: Path) -> None:
     (tmp_path / "002_b.sql").write_text("SELECT 2;", encoding="utf-8")
     conn = _FakeConn(already={"001_a.sql"})
 
-    with patch("chime.migrate.psycopg.connect", return_value=conn):
+    with patch("koel.migrate.psycopg.connect", return_value=conn):
         applied = apply_migrations("postgresql://fake", directory=tmp_path)
 
     assert applied == ["002_b.sql"]
@@ -78,7 +78,7 @@ def test_apply_migrations_applies_all_when_empty(tmp_path: Path) -> None:
     (tmp_path / "002_b.sql").write_text("SELECT 2;", encoding="utf-8")
     conn = _FakeConn()
 
-    with patch("chime.migrate.psycopg.connect", return_value=conn):
+    with patch("koel.migrate.psycopg.connect", return_value=conn):
         applied = apply_migrations("postgresql://fake", directory=tmp_path)
 
     assert applied == ["001_a.sql", "002_b.sql"]
@@ -89,7 +89,7 @@ def test_apply_migrations_noop_when_all_applied(tmp_path: Path) -> None:
     (tmp_path / "001_a.sql").write_text("SELECT 1;", encoding="utf-8")
     conn = _FakeConn(already={"001_a.sql"})
 
-    with patch("chime.migrate.psycopg.connect", return_value=conn):
+    with patch("koel.migrate.psycopg.connect", return_value=conn):
         applied = apply_migrations("postgresql://fake", directory=tmp_path)
 
     assert applied == []
@@ -100,11 +100,11 @@ def test_migrate_main_prints_applied(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(
-        "chime.migrate.Settings.from_env",
+        "koel.migrate.Settings.from_env",
         lambda **_: MagicMock(database_url="postgresql://unit"),
     )
-    monkeypatch.setattr("chime.migrate.apply_migrations", lambda url: ["001_initial.sql"])
-    monkeypatch.setattr("chime.migrate.configure_logging", lambda: None)
+    monkeypatch.setattr("koel.migrate.apply_migrations", lambda url: ["001_initial.sql"])
+    monkeypatch.setattr("koel.migrate.configure_logging", lambda: None)
 
     assert migrate_main([]) == 0
     out = capsys.readouterr().out
@@ -115,11 +115,11 @@ def test_migrate_main_prints_no_pending(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(
-        "chime.migrate.Settings.from_env",
+        "koel.migrate.Settings.from_env",
         lambda **_: MagicMock(database_url="postgresql://unit"),
     )
-    monkeypatch.setattr("chime.migrate.apply_migrations", lambda url: [])
-    monkeypatch.setattr("chime.migrate.configure_logging", lambda: None)
+    monkeypatch.setattr("koel.migrate.apply_migrations", lambda url: [])
+    monkeypatch.setattr("koel.migrate.configure_logging", lambda: None)
 
     assert migrate_main(["--database-url", "postgresql://cli"]) == 0
     out = capsys.readouterr().out
@@ -129,9 +129,9 @@ def test_migrate_main_prints_no_pending(
 def test_migrate_main_uses_cli_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[str] = []
 
-    monkeypatch.setattr("chime.migrate.configure_logging", lambda: None)
+    monkeypatch.setattr("koel.migrate.configure_logging", lambda: None)
     monkeypatch.setattr(
-        "chime.migrate.apply_migrations",
+        "koel.migrate.apply_migrations",
         lambda url: seen.append(url) or [],
     )
 

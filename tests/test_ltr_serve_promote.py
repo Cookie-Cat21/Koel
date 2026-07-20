@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from chime.ml.ltr_serve import LtrOosMetrics, _passes_ltr_promotion
+from koel.ml.ltr_serve import LtrOosMetrics, _passes_ltr_promotion
 
 
 def _m(

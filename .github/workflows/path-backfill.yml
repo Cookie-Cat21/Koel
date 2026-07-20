@@ -47,7 +47,7 @@ jobs:
       - name: Migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m chime migrate
+        run: python -m koel migrate
       - name: Path backfill
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -55,4 +55,4 @@ jobs:
           PATH_BACKFILL_ENABLED: "1"
         run: |
           LIMIT="${{ github.event.inputs.limit || '50' }}"
-          python -m chime path-backfill --force --limit "$LIMIT"
+          python -m koel path-backfill --force --limit "$LIMIT"

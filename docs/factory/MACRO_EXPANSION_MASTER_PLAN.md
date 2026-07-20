@@ -134,7 +134,7 @@ Postgres
   ├─ macro_snapshots_daily (trade_date, payload jsonb)  -- denormalized dash row
   └─ existing market_daily_summary / appetite / order_book_*
 
-chime jobs
+koel jobs
   └─ macro-tick (cron; outside CSE hours OK)
 
 web/

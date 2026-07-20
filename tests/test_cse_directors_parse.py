@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from chime.extractors.cse_directors import (
+from koel.extractors.cse_directors import (
     merge_cse_board,
     parse_cse_person_name,
     roles_from_cse_text,
@@ -94,7 +94,7 @@ def test_merge_jkh_board_shape() -> None:
 
 
 def test_dhammika_perera_display_alias() -> None:
-    from chime.extractors.cse_directors import parse_cse_director_row
+    from koel.extractors.cse_directors import parse_cse_director_row
 
     seat = parse_cse_director_row(
         {

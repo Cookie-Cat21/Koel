@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from chime.storage import Storage
+from koel.storage import Storage
 
 
 class _FakeCM:

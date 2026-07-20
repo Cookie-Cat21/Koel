@@ -15,7 +15,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
   1. Lock stays held on whatever backend first acquired it.
   2. Later `try_advisory_lock` on a *different* pool member → `false` → `poll_skipped_lock_held` → **missed polls** (default `max_size=4`).
   3. Dual-poller “single leader” claim in Pass 1 is **false**; coordination is broken. Crossing-stable `event_key` still dedupes same-minute/same-price races *if* two cycles both run, but intermittent lock-skip starves alerts and `_retry_unsent`.
-- **Where:** `chime/storage.py:388–399`, `chime/poller.py:77–100`; pool default `max_size=4` in `Storage.__init__`.  
+- **Where:** `koel/storage.py:388–399`, `koel/poller.py:77–100`; pool default `max_size=4` in `Storage.__init__`.  
 - **Fix:** Hold **one** connection for lock → entire `run_once` work → unlock (or a dedicated long-lived lock connection). Alternatively `pg_try_advisory_lock` + unlock on that same checkout only. Do not acquire session locks across pool checkout boundaries.  
 - **Acceptance:** With `max_size≥2`, run 20 consecutive `run_once(force=True)` → zero `poll_skipped_lock_held` when sole poller; two concurrent pollers → exactly one cycle executes per tick window; `pg_locks` shows no orphaned advisory lock after unlock.  
 - **Effort:** S  
@@ -25,7 +25,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** high  
 - **Score:** 12  
 - **Failure scenario:** After finding #1, most cycles early-return at `poll_skipped_lock_held` **before** the `try`/`finally` that updates `last_tick_at` / `last_tick_ok`. Health keeps the last successful tick (`ok=True`). Ops sees `/health` 200 while price/disclosure polling has stopped.  
-- **Where:** `chime/poller.py:77–80` (early return), `88–100` (status only updated when lock held); `chime/health.py`; `__main__` / `run_poller_forever` health loops.  
+- **Where:** `koel/poller.py:77–80` (early return), `88–100` (status only updated when lock held); `koel/health.py`; `__main__` / `run_poller_forever` health loops.  
 - **Fix:** On lock skip, set `last_tick_ok=False` (or `degraded` + `last_error=lock_held`) and refresh `last_tick_at`; or fix #1 so skips only happen for a true second replica.  
 - **Acceptance:** Force stuck session lock → `/health` 503 with explicit lock/skip error within one health refresh interval.  
 - **Effort:** S (status) / S (root-cause #1)  
@@ -35,7 +35,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 6  
 - **Failure scenario:** Prices fetch OK; every `fetch_announcements_for_symbol` fails (or circuit returns `[]` after open). `disclosure_poll_ok=False` is stored in health details, but `last_tick_ok = price_ok if symbols else True` and `health.ok = db_ok and last_tick_ok` → still **200**. Disclosure alerts freeze while ops trusts green.  
-- **Where:** `chime/poller.py:91–93`, `164–200`; health consumers in `__main__.py` / `run_poller_forever`.  
+- **Where:** `koel/poller.py:91–93`, `164–200`; health consumers in `__main__.py` / `run_poller_forever`.  
 - **Fix:** Treat non-empty watchlist + `not disc_ok` as degraded (503) or require both legs OK when disclosure rules exist.  
 - **Acceptance:** Watchlist + forced disclosure failures + OK prices → `/health` 503 (or documented `degraded` that fails the probe).  
 - **Effort:** S  
@@ -45,7 +45,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 6  
 - **Failure scenario:** Pass 1 filter `published_at <= rule.created_at` works when CSE supplies epoch `createdDate` (samples do). `_ms_to_dt(None)` returns `datetime.now(UTC)`. Any historical row with null `createdDate` is stamped “just now”, compares **after** `rule.created_at`, and fires on first insert — backfill flood for those rows. `dateOfAnnouncement` is ignored.  
-- **Where:** `chime/adapters/cse.py:123–126`, `187`; `chime/rules.py:200–201`.  
+- **Where:** `koel/adapters/cse.py:123–126`, `187`; `koel/rules.py:200–201`.  
 - **Fix:** Prefer `dateOfAnnouncement` when `createdDate` missing; if still unknown, seed/insert without notifying (or skip fire). Never use wall-clock now as `published_at` for alert gating.  
 - **Acceptance:** Fixture row with `createdDate=null` + old `dateOfAnnouncement` (or neither) + disclosure rule → zero Telegram; dated new row → one send.  
 - **Effort:** S  
@@ -55,7 +55,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 4  
 - **Failure scenario:** `if rule.created_at is not None and disclosure.published_at <= rule.created_at` — when `created_at` is missing, **all** new inserts fire. Schema/`create_alert_rule` normally supply `TIMESTAMPTZ`, so production load path is OK; any code path or test-like construction without `created_at` floods. Separately, naive vs aware `published_at`/`created_at` raises `TypeError` (verified) and aborts the disclosure loop for that cycle (outer `run_once` except → tick fail). Unlikely with psycopg timestamptz + adapter UTC, but the compare is unguarded.  
-- **Where:** `chime/rules.py:200–201`; `chime/domain.py` `created_at: datetime | None = None`; `_row_to_rule`.  
+- **Where:** `koel/rules.py:200–201`; `koel/domain.py` `created_at: datetime | None = None`; `_row_to_rule`.  
 - **Fix:** Fail-closed: `created_at is None` → do not fire; normalize both sides to UTC aware before compare.  
 - **Acceptance:** Rule with `created_at=None` + any disclosure → zero events; mixed naive/aware inputs → no exception, correct skip/fire.  
 - **Effort:** S  
@@ -64,7 +64,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 4  
 - **Failure scenario:** Claim succeeds, send fails → `_claim_and_send` returns False → **armed stays True** (intentional). Later `_retry_unsent` marks `message_sent=True` but **never** `set_rule_armed(False)`. Crossing-vs-previous still prevents sticky re-fire (see Refuted #A), so this is not a user-visible duplicate under normal snapshots. It does weaken the armed safety net against missing/reordered snapshot history (armed was meant to suppress a second fire without a clean rearm).  
-- **Where:** `chime/poller.py:146–153`, `202–214`, `216–222`.  
+- **Where:** `koel/poller.py:146–153`, `202–214`, `216–222`.  
 - **Fix:** On successful retry, disarm if the claimed event was a price above/below rule (join `alert_rules` / store type on log), or disarm in `_claim_and_send` after claim regardless of send (Pass 1 audit’s alternate), keeping retry for delivery only.  
 - **Acceptance:** Flaky send then retry success → rule `armed=False` until price rearm; no sticky duplicate; one Telegram.  
 - **Effort:** S  
@@ -73,7 +73,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 4  
 - **Failure scenario:** `deactivate_rules_for_symbol` always runs; if `remove_watch` returns false, reply is only “wasn't on your watchlist” — user not told alerts were cancelled. Edge case after manual DB edits / partial state; normal `/alert` always `add_watch`s first.  
-- **Where:** `chime/bot.py:126–134`.  
+- **Where:** `koel/bot.py:126–134`.  
 - **Fix:** Always report deactivated count; if neither watch nor rules, then “wasn't watching.”  
 - **Acceptance:** Orphan active rules + `/unwatch SYMBOL` → rules inactive + honest reply.  
 - **Effort:** S  
@@ -83,7 +83,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 3  
 - **Failure scenario:** User blocks bot / permanent TelegramError → every successful lock cycle retries up to 50 unsent forever; noise and API burn. Worsens if #1 causes irregular cycles.  
-- **Where:** `chime/poller.py:216–222`, `chime/storage.py:428–444`.  
+- **Where:** `koel/poller.py:216–222`, `koel/storage.py:428–444`.  
 - **Fix:** attempts / `next_retry_at` / dead-letter after N.  
 - **Acceptance:** Permanent failure stops after N; new alerts still send.  
 - **Effort:** M  
@@ -92,7 +92,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium  
 - **Score:** 4  
 - **Failure scenario:** Double-tap hits partial unique index `idx_alert_rules_unique_active`; no catch in `create_alert_rule` / bot.  
-- **Where:** `db/migrations/001_initial.sql:79–81`, `chime/storage.py:271–289`, `chime/bot.py` `cmd_alert`.  
+- **Where:** `db/migrations/001_initial.sql:79–81`, `koel/storage.py:271–289`, `koel/bot.py` `cmd_alert`.  
 - **Fix:** Catch unique violation → return existing active rule.  
 - **Acceptance:** Parallel identical creates → one active row, both replies success.  
 - **Effort:** S  
@@ -101,7 +101,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** medium / minor  
 - **Score:** 4 / 2  
 - **Failure scenario:** `_run_both` `while True` without signal handlers (unlike `run_poller_forever`). `tick` uses `force=args.force or True` — `--force` dead; hours never respected.  
-- **Where:** `chime/__main__.py:57–72`, `172`.  
+- **Where:** `koel/__main__.py:57–72`, `172`.  
 - **Acceptance:** SIGTERM stops `both` cleanly; `tick` without `--force` outside hours skips work.  
 - **Effort:** S  
 
@@ -109,7 +109,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** minor  
 - **Score:** 2  
 - **Failure scenario:** Price crosses above, disarms, dips below and re-crosses **within the same UTC minute at the same print price** → identical `event_key` → claim conflict → silent miss until minute or price changes. Rare at 60s poll; intentional dual-poller tradeoff.  
-- **Where:** `chime/rules.py:33–44`.  
+- **Where:** `koel/rules.py:33–44`.  
 - **Fix:** Include armed-generation / rearm sequence, or omit price and use crossing id.  
 - **Acceptance:** Synthetic same-minute re-cross after rearm delivers exactly one new alert.  
 - **Effort:** S  
@@ -118,7 +118,7 @@ Ranking key: **score ≈ severity × user impact ÷ effort**. Severity: critical
 - **Severity:** minor  
 - **Score:** 1  
 - **Failure scenario:** Regressions in bot/storage wiring go unnoticed (handlers exist and look correct).  
-- **Where:** `chime/bot.py`; `tests/` (no matches for cancel/unwatch).  
+- **Where:** `koel/bot.py`; `tests/` (no matches for cancel/unwatch).  
 - **Acceptance:** Unit/integration: cancel → inactive; unwatch → owner rules inactive while other user’s remain.  
 - **Effort:** S  
 

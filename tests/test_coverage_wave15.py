@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     BAD_SYMBOL_HINT,
     _env_cmd_rate_per_minute,
     _rate_limited,
@@ -25,10 +25,10 @@ from chime.bot import (
     on_error,
     reset_cmd_rate_limits,
 )
-from chime.briefs.extract import extract_pdf_text
-from chime.briefs.provider import _extract_openai_chat_text
-from chime.config import Settings
-from chime.notify import _retry_delay_seconds
+from koel.briefs.extract import extract_pdf_text
+from koel.briefs.provider import _extract_openai_chat_text
+from koel.config import Settings
+from koel.notify import _retry_delay_seconds
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +38,7 @@ def _clear_rate_limits() -> None:
     reset_cmd_rate_limits()
 
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def _make_update_context(
@@ -126,7 +126,7 @@ def test_extract_openai_chat_text_string_parts_in_list() -> None:
 
 def test_extract_pdf_text_char_cap_truncates_page(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("pypdf")
-    from chime.briefs import extract as extract_mod
+    from koel.briefs import extract as extract_mod
 
     class _Page:
         def __init__(self, text: str) -> None:
@@ -151,7 +151,7 @@ def test_extract_pdf_text_char_cap_stops_on_exact_fill(
 ) -> None:
     """After a page fills the budget exactly, remaining<=0 breaks before more text."""
     pytest.importorskip("pypdf")
-    from chime.briefs import extract as extract_mod
+    from koel.briefs import extract as extract_mod
 
     class _Page:
         def __init__(self, text: str) -> None:
@@ -203,7 +203,7 @@ def test_build_application_reads_cmd_rate_from_env(monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("BOT_CMD_RATE_PER_MINUTE", "9")
     storage = MagicMock()
     cse = MagicMock()
-    with patch("chime.bot.Application") as App:
+    with patch("koel.bot.Application") as App:
         builder = MagicMock()
         App.builder.return_value = builder
         builder.token.return_value = builder
@@ -289,7 +289,7 @@ async def test_cmd_unwatch_usage_and_bad_symbol() -> None:
 async def test_on_error_logs_exception() -> None:
     context = MagicMock()
     context.error = RuntimeError("boom")
-    with patch("chime.bot.log") as log:
+    with patch("koel.bot.log") as log:
         await on_error(update={"message": "x"}, context=context)
     log.exception.assert_called_once()
     kwargs = log.exception.call_args.kwargs

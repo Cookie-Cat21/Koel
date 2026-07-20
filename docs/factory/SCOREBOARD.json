@@ -1,5 +1,5 @@
 {
-  "aspiration": "chime_repo_score_2k_3k",
+  "aspiration": "koel_repo_score_2k_3k",
   "portfolio_target": 2500,
   "portfolio_target_floor": 2000,
   "portfolio_target_stretch": 3000,
@@ -18,8 +18,8 @@
   "epoch3_done": 10,
   "open_board": "docs/factory/EPOCH18_BOARD.md",
   "loop_spec": "docs/factory/AGENTIC_LOOP.md",
-  "scale_plan": "docs/factory/CHIME_HORIZON.md",
-  "note": "Active band repo_score 2K-3K midpoint 2500 (CHIME_HORIZON.md); raw git KPI rejected; score=148; Epoch18 CLEAR",
+  "scale_plan": "docs/factory/KOEL_HORIZON.md",
+  "note": "Active band repo_score 2K-3K midpoint 2500 (KOEL_HORIZON.md); raw git KPI rejected; score=148; Epoch18 CLEAR",
   "epoch4_done": 9,
   "epoch5_done": 7,
   "epoch6_done": 8,

@@ -40,7 +40,7 @@ Universe: **273** symbols · **64,400** daily bars · ~2025-07-17 → 2026-07-16
 ```bash
 pip install -e ".[ml]"
 export ML_FORECAST_ENABLED=1
-python3 -m chime ml-forecast --force          # or score-signals with flag on
+python3 -m koel ml-forecast --force          # or score-signals with flag on
 ```
 
 Dash: open a symbol → **Show forecast** (NFA: research estimate, not advice).
@@ -55,7 +55,7 @@ See [ML_HARDENED_SUMMARY.md](ML_HARDENED_SUMMARY.md) and
 - Confidence gate: panel HGB **~66% hit on ~22% of samples** at \|P−0.5\|≥0.15
 
 ```bash
-python3 -m chime ml-harden --horizons 1,5
+python3 -m koel ml-harden --horizons 1,5
 ```
 
 ## Caveats

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.__main__ import _refresh_bot_health, _refresh_both_health
-from chime.health import HealthState, brief_queue_health_hint
+from koel.__main__ import _refresh_bot_health, _refresh_both_health
+from koel.health import HealthState, brief_queue_health_hint
 
 
 def _healthy_poller() -> MagicMock:

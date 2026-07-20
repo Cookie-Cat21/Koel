@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from structlog.testing import capture_logs
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     ANNOUNCEMENTS_PAGE,
     AnnouncementRow,
     CSEClient,

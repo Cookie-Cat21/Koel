@@ -21,10 +21,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import _cmd_rate_limit, format_brief_lookup_reply
-from chime.domain import AlertType
-from chime.poller import Poller
-from chime.storage import Storage, _row_to_rule, _row_to_snapshot
+from koel.bot import _cmd_rate_limit, format_brief_lookup_reply
+from koel.domain import AlertType
+from koel.poller import Poller
+from koel.storage import Storage, _row_to_rule, _row_to_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,7 +39,7 @@ def test_cmd_rate_limit_rejects_non_int_bot_data() -> None:
     context.application.bot_data = {"cmd_rate_per_minute": -3}
     assert _cmd_rate_limit(context) == 20
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     chunk = src.split("def _cmd_rate_limit")[1].split("async def _rate_limited")[0]
     assert "isinstance(raw, bool)" in chunk
     assert "isinstance(raw, int)" in chunk
@@ -56,7 +56,7 @@ def test_format_brief_lookup_rejects_non_string_url() -> None:
     assert "Margins steady." in msg
     assert "cdn.cse.lk" not in msg
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     chunk = src.split("def format_brief_lookup_reply")[1].split("async def cmd_brief")[0]
     assert "isinstance(url, str)" in chunk
 
@@ -67,11 +67,11 @@ def test_delivery_ok_ledger_rejects_non_string_database_url() -> None:
     assert poller._delivery_ok_ledger_path_from_env() is None
     poller.settings = SimpleNamespace(database_url="")
     assert poller._delivery_ok_ledger_path_from_env() is None
-    poller.settings = SimpleNamespace(database_url="postgresql://localhost/chime")
+    poller.settings = SimpleNamespace(database_url="postgresql://localhost/koel")
     path = poller._delivery_ok_ledger_path_from_env()
     assert path is not None and path.name.startswith("delivery-ok-")
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("def _delivery_ok_ledger_path_from_env")[1].split(
         "def _load_delivery_ok_ledger"
     )[0]
@@ -115,7 +115,7 @@ async def test_get_latest_ready_brief_rejects_non_string_pg_fields() -> None:
     assert out["url"] is None
     assert out["external_id"] is None
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def get_latest_ready_brief")[1].split(
         "async def insert_disclosure_if_new"
     )[0]
@@ -171,7 +171,7 @@ def test_row_to_rule_and_snapshot_fail_closed() -> None:
     )
     assert snap is not None and snap.symbol == "JKH.N0000"
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     assert "-> AlertRule | None" in src
     assert "isinstance(raw_type, str)" in src.split("def _row_to_rule")[1]
     assert "isinstance(raw_sym, str)" in src.split("def _row_to_snapshot")[1]

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.briefs import BriefSettings, briefs_enabled
-from chime.briefs.provider import (
+from koel.briefs import BriefSettings, briefs_enabled
+from koel.briefs.provider import (
     BriefsDisabledError,
     FailoverBriefProvider,
     _is_transient_provider_error,

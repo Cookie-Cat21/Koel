@@ -1,7 +1,7 @@
 # Forecast confidence + unified serve
 
 **Shipped:** migration `018_forecast_confidence.sql`, API fields, sparkline badge,  
-`python3 -m chime ml-forecast-unified --mode hpe_with_fallback`.
+`python3 -m koel ml-forecast-unified --mode hpe_with_fallback`.
 
 ## Modes
 

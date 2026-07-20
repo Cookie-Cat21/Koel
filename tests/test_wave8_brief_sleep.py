@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.worker import claim_pending_briefs
+from koel.briefs import BriefSettings
+from koel.briefs.worker import claim_pending_briefs
 
 
 def _enabled_settings(**kwargs: Any) -> BriefSettings:
@@ -50,7 +50,7 @@ async def test_claim_pending_briefs_sleeps_between_llm_calls(
 ) -> None:
     """Inter-brief pacing: sleep between LLM calls, not before the first."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.briefs.worker.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.briefs.worker.asyncio.sleep", sleep_mock)
 
     storage = MagicMock()
     storage.count_briefs_today = AsyncMock(return_value=0)
@@ -83,7 +83,7 @@ async def test_claim_pending_briefs_no_sleep_when_zero(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.briefs.worker.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.briefs.worker.asyncio.sleep", sleep_mock)
 
     storage = MagicMock()
     storage.count_briefs_today = AsyncMock(return_value=0)
@@ -113,7 +113,7 @@ async def test_claim_pending_briefs_no_sleep_for_single_row(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.briefs.worker.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.briefs.worker.asyncio.sleep", sleep_mock)
 
     storage = MagicMock()
     storage.count_briefs_today = AsyncMock(return_value=0)

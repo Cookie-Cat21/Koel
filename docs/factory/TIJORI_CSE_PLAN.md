@@ -29,14 +29,14 @@ Competitive gap in CSE: Tracker Pro owns portfolio; InvestNow/Rovana own analysi
 
 1. **Market-wide persist** — every poll stores all `tradeSummary` rows into `stocks` + `price_snapshots`; rule eval stays watchlist-scoped. Fetch even when watchlist empty (browse needs data).
 2. **Thin browse** — `GET /api/v1/symbols` + `/market` page (Symbols · name · last · change_pct). Not a screener / OHLC board.
-3. **Filing-brief schema + worker stub** — `disclosures.pdf_url`, `disclosure_briefs` table; `chime/briefs/` with provider interface; `AI_BRIEFS_ENABLED=0` default.
+3. **Filing-brief schema + worker stub** — `disclosures.pdf_url`, `disclosure_briefs` table; `koel/briefs/` with provider interface; `AI_BRIEFS_ENABLED=0` default.
 4. **Tests** — poller market persist, API list shape, briefs disabled-by-default, web still never calls cse.lk.
 5. **Docs** — this plan + contract/IA amendments.
 
 ### Phase 2 — Tijori core (mostly landed; live LLM still flag-gated)
 
 1. ✅ **Done** — Legacy `POST /announcements` enricher → resolve `filePath` → `cdn.cse.lk` PDF URL (SSRF/rate hardened).
-2. ✅ **Done** — PDF fetch + text extract (size/rate capped; `chime/briefs/extract.py`).
+2. ✅ **Done** — PDF fetch + text extract (size/rate capped; `koel/briefs/extract.py`).
 3. ◐ **Partial** — Free-tier LLM brief (Gemini Flash provider wired) on **new** disclosures only; default `AI_BRIEFS_ENABLED=0` until keyed/enabled in prod.
 4. ✅ **Done** — Append brief to Telegram disclosure alert when ready, or follow-up: primary alert attaches a ready brief at claim time; if the brief becomes ready later, `claim_pending_briefs` notifies via durable `claim_brief_followups` (`brief_followup:{rule}:{external_id}` in `alert_log`) only when a primary disclosure alert already fired without that brief (fail-soft; always NFA-suffixed; no ready-before-alert double send).
 5. ✅ **Done** — Dash symbol page / disclosures API shows brief when `status=ready` (egress-sanitized).
@@ -156,7 +156,7 @@ User can: browse CSE symbols in dash → watch → set disclosure alert → get 
 - [x] Batch market snapshot persist + health/dedupe harden
 - [x] `GET /api/v1/symbols` + `/market` Browse (session-only GET; CSRF docs)
 - [x] Market browse harden (`q`/LIKE, a11y, fence)
-- [x] `pdf_url` + `disclosure_briefs` schema; `chime/briefs/` stub (`AI_BRIEFS_ENABLED=0`)
+- [x] `pdf_url` + `disclosure_briefs` schema; `koel/briefs/` stub (`AI_BRIEFS_ENABLED=0`)
 - [x] Enqueue `disclosure_briefs` rows on new disclosures
 - [x] Legacy `POST /announcements` → CDN `pdf_url` enrichment (Phase 2 #1 start)
 - [x] Tests: market persist / browse / symbols CSRF regression
@@ -174,7 +174,7 @@ User can: browse CSE symbols in dash → watch → set disclosure alert → get 
 
 ### Wave 3 — Gemini stub + Telegram attach
 
-- [x] Gemini brief provider stub (`chime/briefs/provider.py`)
+- [x] Gemini brief provider stub (`koel/briefs/provider.py`)
 - [x] Attach ready brief to disclosure Telegram push
 - [x] Health brief-queue hint
 - [x] Harden disclosure brief/pdf egress against XSS (dash)
@@ -186,7 +186,7 @@ User can: browse CSE symbols in dash → watch → set disclosure alert → get 
 - [x] Env example parity for Tijori flags
 - [x] Thin `GET /api/v1/market/movers` + `/market` top-movers strip
 - [x] Poller shutdown-safe briefs push
-- [x] PDF text extract for briefs (`chime/briefs/extract.py` + worker drain)
+- [x] PDF text extract for briefs (`koel/briefs/extract.py` + worker drain)
 - [x] Brief follow-up Telegram when ready after alert (`claim_pending_briefs(..., notify=)`)
 - [x] Wire brief-ready notify through worker; provider harden (timeouts / empty candidates)
 - [x] Post-wave consistency pass

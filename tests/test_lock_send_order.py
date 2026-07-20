@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertType, PreviousPriceState, PriceSnapshot
-from chime.notify import SendResult
-from chime.poller import PendingSend, Poller
+from koel.config import Settings
+from koel.domain import AlertType, PreviousPriceState, PriceSnapshot
+from koel.notify import SendResult
+from koel.poller import PendingSend, Poller
 from tests.conftest import claim_unsent_deque, make_disclosure, make_rule
 
 
@@ -247,7 +247,7 @@ async def test_disclosure_fetch_all_then_claim_no_sleep_under_lock(
         if lock_held["value"]:
             sleep_while_locked += 1
 
-    monkeypatch.setattr("chime.poller.asyncio.sleep", tracking_sleep)
+    monkeypatch.setattr("koel.poller.asyncio.sleep", tracking_sleep)
 
     async def send(chat_id: int, text: str) -> SendResult:
         assert lock_held["value"] is False, "disclosure send while lock held"

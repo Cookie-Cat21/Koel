@@ -47,7 +47,7 @@ jobs:
       - name: Migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m chime migrate
+        run: python -m koel migrate
       - name: Sector backfill
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -55,10 +55,10 @@ jobs:
           SECTOR_BACKFILL_ENABLED: "1"
         run: |
           LIMIT="${{ github.event.inputs.sector_limit || '80' }}"
-          python -m chime sector-backfill --force --limit "$LIMIT"
+          python -m koel sector-backfill --force --limit "$LIMIT"
       - name: Notices backfill
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CSE_MIN_INTERVAL_SECONDS: "0.25"
           NOTICES_BACKFILL_ENABLED: "1"
-        run: python -m chime notices-backfill --force
+        run: python -m koel notices-backfill --force

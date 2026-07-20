@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.cse import AnnouncementRow, LegacyAnnouncementRow
-from chime.config import Settings
-from chime.domain import AlertEvent, AlertType
-from chime.health import HealthState
-from chime.poller import PendingPdfEnrich, PendingSend, Poller, run_poller_forever
+from koel.adapters.cse import AnnouncementRow, LegacyAnnouncementRow
+from koel.config import Settings
+from koel.domain import AlertEvent, AlertType
+from koel.health import HealthState
+from koel.poller import PendingPdfEnrich, PendingSend, Poller, run_poller_forever
 
 
 def _settings(**kwargs: object) -> Settings:
@@ -106,7 +106,7 @@ async def test_fetch_disclosures_bulk_skips_null_disclosure_rows() -> None:
 async def test_drain_briefs_safe_silent_when_zero_processed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
     monkeypatch.setattr(poller_mod, "claim_pending_briefs", AsyncMock(return_value=0))
@@ -129,7 +129,7 @@ async def test_enrich_disclosure_pdfs_skips_when_set_url_returns_false() -> None
         ]
     )
     poller = _poller(storage=storage, cse=cse)
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     with patch.object(poller_mod.log, "info") as info:
         await poller._enrich_disclosure_pdfs(
@@ -226,7 +226,7 @@ async def test_retry_unsent_stops_after_max_claims() -> None:
     storage.claim_unsent_batch = AsyncMock(return_value=[row])
     poller = _poller(storage=storage)
     poller._deliver_one = AsyncMock()  # type: ignore[method-assign]
-    with patch("chime.poller.RETRY_UNSENT_MAX", 3):
+    with patch("koel.poller.RETRY_UNSENT_MAX", 3):
         await poller._retry_unsent()
     assert storage.claim_unsent_batch.await_count == 3
     assert poller._deliver_one.await_count == 3
@@ -241,7 +241,7 @@ async def test_scheduled_tick_does_not_clear_replaced_tick_task() -> None:
     async def swap_tick(_delay: float = 0) -> None:
         poller._tick_task = replaced  # type: ignore[assignment]
 
-    with patch("chime.poller.asyncio.sleep", swap_tick):
+    with patch("koel.poller.asyncio.sleep", swap_tick):
         await poller._scheduled_tick()
     assert poller._tick_task is replaced
 
@@ -300,9 +300,9 @@ async def test_run_poller_forever_health_loop_while_exit_branch(
             return None
         return await real_wait_for(aw, timeout=timeout)  # type: ignore[arg-type]
 
-    monkeypatch.setattr("chime.poller.asyncio.Event", CaptureEvent)
-    monkeypatch.setattr("chime.poller.asyncio.create_task", tracking_create)
-    monkeypatch.setattr("chime.poller.asyncio.wait_for", fast_wait_for)
+    monkeypatch.setattr("koel.poller.asyncio.Event", CaptureEvent)
+    monkeypatch.setattr("koel.poller.asyncio.create_task", tracking_create)
+    monkeypatch.setattr("koel.poller.asyncio.wait_for", fast_wait_for)
 
     with (
         patch.object(Poller, "start_scheduler", return_value=MagicMock()),
@@ -349,7 +349,7 @@ async def test_run_poller_forever_health_non_callable_circuits_and_empty_brief_q
     async def empty_brief_queue(**_kwargs: object) -> dict[str, object]:
         return {}
 
-    monkeypatch.setattr("chime.poller.brief_queue_health_hint", empty_brief_queue)
+    monkeypatch.setattr("koel.poller.brief_queue_health_hint", empty_brief_queue)
 
     with (
         patch.object(Poller, "start_scheduler", return_value=MagicMock()),

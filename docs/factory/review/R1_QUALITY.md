@@ -1,7 +1,7 @@
 # R1 — Adversarial review: QUALITY / test workstreams
 
 **Scope:** `WAVE1_QUALITY.md` (WS-061…WS-080) vs current `tests/` + Stage A reports.  
-**Baseline suite (accurate):** 11 test modules, **58** collected cases (`pytest --collect-only`); default run ≈ **55 pass / 3 skip** without `DATABASE_URL` (skips: `test_advisory_lock`, 2× `test_poller_integration`). `chime.rules` gated ≥85% / measured 100%.  
+**Baseline suite (accurate):** 11 test modules, **58** collected cases (`pytest --collect-only`); default run ≈ **55 pass / 3 skip** without `DATABASE_URL` (skips: `test_advisory_lock`, 2× `test_poller_integration`). `koel.rules` gated ≥85% / measured 100%.  
 **Verdict:** Directionally useful on **real gaps** (bot handlers, health honesty pins, dual-poller claim, same-minute tradeoff lock). Inflated by Hypothesis theater on already-table-tested `rules.py`, process/doc WS that farm commit count, and several WS that **reinvent** `test_idempotency`, `test_domain_format`, move/crossing tables, and thin market-hours coverage. Cut/merge before Pass 1; do **not** broaden cov-fail gates yet.
 
 ---
@@ -31,7 +31,7 @@ Higher = fix the plan first (severity × impact ÷ effort).
 | 4 | **Narrow WS-076** to poller-path residuals only (armed state after send fail / retry disarm doc) — drop re-simulating claim/retry | Covered by `test_idempotency` + `test_kill_restart_no_double_send`. |
 | 5 | **Shrink WS-073** to missing boundaries only (09:29, exact 14:30 close policy, `force=True`, Fri UTC→Sat SLT) — do not rebuild market-hours suite | `test_market_hours_weekday_boundaries` already covers open, after-close, Saturday; `is_market_open` already extracted. |
 | 6 | **Shrink WS-069** to **list-level** junk parse (2 good + 1 null-price → 2 snaps) — drop epoch/null-id that already pass | `test_announcement_with_no_ids_returns_none` + epoch-on-missing-`createdDate` already in adapters tests. |
-| 7 | **Defer WS-070** until after handler + junk-list tests; keep sole fail-under on `chime.rules` | Premature gate blocks CORE/OPS for vanity %. |
+| 7 | **Defer WS-070** until after handler + junk-list tests; keep sole fail-under on `koel.rules` | Premature gate blocks CORE/OPS for vanity %. |
 | 8 | **Defer or delete WS-071** (mutation thought-experiment doc) | Doc-only mutant scorecards do not move bars 1–7; if kept, one commit max, no CI mutmut. |
 | 9 | **Defer WS-072** latency harness | FINAL_REPORT + README already honest on claim→send vs poll-interval; harness risks false-green SLO theater (plan itself warns). |
 | 10 | **Make WS-061 optional parallel** — must not gate handler/health WS | Inventory is fine; inventing `TEST_GAP_MATRIX` before filling real gaps is process padding. |
@@ -65,11 +65,11 @@ Not reinvented (genuine gaps): **WS-067, WS-068, WS-075, WS-077** (lock/disclosu
 
 | Proposal | Why premature |
 |---|---|
-| `--cov=chime.bot` fail-under (even ≥60) before WS-067/068 | Handlers untested → gate fails or forces meaningless import-only coverage. |
-| `--cov=chime.adapters` fail-under before list-junk test | Current adapters tests hit normalize helpers only; HTTP fetch / per-row skip loop largely unmeasured — ratchet after WS-069 narrows. |
-| Multi-package fail-under “ratchet plan” in same wave as first handler tests | Constitution: proof > ceremony. One gate (`chime.rules` ≥85) already green; expanding mid-wave fights CORE file owners on `pyproject.toml`. |
-| Including `chime.poller` / `chime.storage` in fail-under | Heavy I/O branches; integration skips without DB → noisy CI; belongs Wave 2+ after markers (WS-079) + Neon job exist. |
-| `chime.circuit` fail-under | **Least premature** of the set (`test_circuit.py` is strong) — still unnecessary Wave 1 work; optional measure-only snippet, no fail-under yet. |
+| `--cov=koel.bot` fail-under (even ≥60) before WS-067/068 | Handlers untested → gate fails or forces meaningless import-only coverage. |
+| `--cov=koel.adapters` fail-under before list-junk test | Current adapters tests hit normalize helpers only; HTTP fetch / per-row skip loop largely unmeasured — ratchet after WS-069 narrows. |
+| Multi-package fail-under “ratchet plan” in same wave as first handler tests | Constitution: proof > ceremony. One gate (`koel.rules` ≥85) already green; expanding mid-wave fights CORE file owners on `pyproject.toml`. |
+| Including `koel.poller` / `koel.storage` in fail-under | Heavy I/O branches; integration skips without DB → noisy CI; belongs Wave 2+ after markers (WS-079) + Neon job exist. |
+| `koel.circuit` fail-under | **Least premature** of the set (`test_circuit.py` is strong) — still unnecessary Wave 1 work; optional measure-only snippet, no fail-under yet. |
 
 **Pass 1 rule:** measure-only report OK; **no new `--cov-fail-under` packages** until handler + health + dual-eval tests land and percentages stabilize.
 

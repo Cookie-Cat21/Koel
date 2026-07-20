@@ -739,7 +739,7 @@ export default async function SymbolDetailPage({
               </p>
             )}
             <OptionalLwcNote
-              enabled={process.env.NEXT_PUBLIC_CHIME_LWC === "1"}
+              enabled={process.env.NEXT_PUBLIC_KOEL_LWC === "1"}
             />
           </div>
         </div>

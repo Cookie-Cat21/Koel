@@ -7,10 +7,10 @@ import socket
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from chime.config import migrations_dir
-from chime.domain import AlertEvent, AlertType, as_dict
-from chime.health import HealthState, start_health_server
-from chime.logging_setup import configure_logging, get_logger
+from koel.config import migrations_dir
+from koel.domain import AlertEvent, AlertType, as_dict
+from koel.health import HealthState, start_health_server
+from koel.logging_setup import configure_logging, get_logger
 
 
 def test_migrations_dir_points_at_sql() -> None:
@@ -38,7 +38,7 @@ def test_as_dict_dumps_alert_event() -> None:
 
 def test_configure_logging_and_get_logger() -> None:
     configure_logging("WARNING")
-    log = get_logger("chime.test_cov")
+    log = get_logger("koel.test_cov")
     log.warning("cov_pin", ok=True)
 
 

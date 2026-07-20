@@ -18,10 +18,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.worker import _promote_skipped_if_needed, claim_pending_briefs
-from chime.domain import AlertEvent, AlertType
-from chime.storage import Storage
+from koel.briefs import BriefSettings
+from koel.briefs.worker import _promote_skipped_if_needed, claim_pending_briefs
+from koel.domain import AlertEvent, AlertType
+from koel.storage import Storage
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -136,7 +136,7 @@ async def test_claim_pending_briefs_rejects_bool_used_and_cap() -> None:
     )
     storage.claim_pending_briefs.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     impl = src.split("async def claim_pending_briefs(\n    storage:")[1]
     assert "brief_drain_used_poisoned" in impl
     assert "brief_drain_cap_poisoned" in impl
@@ -152,7 +152,7 @@ async def test_storage_claim_pending_rejects_bool_cap() -> None:
     assert await store.claim_pending_briefs(limit=3, max_briefs_per_day=True) == []
     assert conn.sql == []  # rejected before advisory lock / COUNT
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def claim_pending_briefs(\n        self,")[1].split(
         "async def claim_brief_followups"
     )[0]
@@ -228,7 +228,7 @@ async def test_promote_skipped_rejects_bool_hours() -> None:
     )
     storage.promote_recent_skipped_briefs.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     chunk = src.split("async def _promote_skipped_if_needed")[1].split(
         "async def _sweep_brief_followups"
     )[0]

@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from chime.config import Settings
-from chime.notify import SendResult
-from chime.poller import Poller
+from koel.config import Settings
+from koel.notify import SendResult
+from koel.poller import Poller
 from tests.conftest import claim_unsent_deque
 
 
@@ -40,7 +40,7 @@ async def test_outside_hours_still_retries_unsent() -> None:
     send = AsyncMock(return_value=SendResult.OK)
 
     poller = Poller(_settings(), storage, AsyncMock(), send)
-    with patch("chime.poller.is_market_open", return_value=False):
+    with patch("koel.poller.is_market_open", return_value=False):
         events = await poller.run_once(force=False)
 
     assert events == []
@@ -73,7 +73,7 @@ async def test_outside_hours_unsent_drain_attempts_delivery_on_failure() -> None
     send = AsyncMock(return_value=SendResult.FAILED)
 
     poller = Poller(_settings(), storage, AsyncMock(), send)
-    with patch("chime.poller.is_market_open", return_value=False):
+    with patch("koel.poller.is_market_open", return_value=False):
         events = await poller.run_once(force=False)
 
     assert events == []
@@ -105,7 +105,7 @@ async def test_same_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     send = AsyncMock(return_value=SendResult.OK)
 
     poller = Poller(_settings(), storage, AsyncMock(), send)
-    from chime.poller import PendingSend
+    from koel.poller import PendingSend
 
     await poller._deliver_one(
         PendingSend(
@@ -146,7 +146,7 @@ async def test_cross_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     send = AsyncMock(return_value=SendResult.OK)
 
     poller = Poller(_settings(), storage, AsyncMock(), send)
-    from chime.poller import PendingSend
+    from koel.poller import PendingSend
 
     await poller._deliver_one(
         PendingSend(
@@ -162,6 +162,6 @@ async def test_cross_tick_skips_retry_after_telegram_ok_mark_fail() -> None:
     send.reset_mock()
 
     # Simulate next tick off-hours drain — must not re-send id 66.
-    with patch("chime.poller.is_market_open", return_value=False):
+    with patch("koel.poller.is_market_open", return_value=False):
         await poller.run_once(force=False)
     send.assert_not_awaited()

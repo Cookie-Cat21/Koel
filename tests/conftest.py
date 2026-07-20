@@ -1,4 +1,4 @@
-"""Shared fixtures and builders for Chime unit tests."""
+"""Shared fixtures and builders for Koel unit tests."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.domain import (
+from koel.domain import (
     AlertRule,
     AlertType,
     Disclosure,

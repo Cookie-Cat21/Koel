@@ -21,14 +21,14 @@ from unittest.mock import patch
 
 import pytest
 
-from chime.adapters.cse import _parse_date_of_announcement
-from chime.briefs import BriefSettings
-from chime.briefs.provider import GeminiBriefProvider
-from chime.config import Settings
-from chime.domain import AlertRule, AlertType, Disclosure
-from chime.poller import _symbol_from_alert_message, parse_hhmm
-from chime.rules import _disclosure_category_matches, evaluate_disclosure_rules
-from chime.scenarios.guardrails import (
+from koel.adapters.cse import _parse_date_of_announcement
+from koel.briefs import BriefSettings
+from koel.briefs.provider import GeminiBriefProvider
+from koel.config import Settings
+from koel.domain import AlertRule, AlertType, Disclosure
+from koel.poller import _symbol_from_alert_message, parse_hhmm
+from koel.rules import _disclosure_category_matches, evaluate_disclosure_rules
+from koel.scenarios.guardrails import (
     GuardrailViolation,
     assert_safe_scenario_output,
     contains_buy_sell_language,
@@ -42,17 +42,17 @@ def test_settings_env_helpers_reject_non_string_getenv(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
-    monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/chime")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/koel")
 
     def _hostile(name: str, default: str | None = None) -> object:
         if name == "TELEGRAM_BOT_TOKEN":
             return "tok"
         if name == "DATABASE_URL":
-            return "postgresql://localhost/chime"
+            return "postgresql://localhost/koel"
         # Non-string mocks — must not throw on .strip / .upper mid Settings.
         return 123
 
-    with patch("chime.config.os.getenv", side_effect=_hostile):
+    with patch("koel.config.os.getenv", side_effect=_hostile):
         settings = Settings.from_env(require_token=True)
     assert settings.poll_interval_seconds == 15.0
     assert settings.log_level == "INFO"
@@ -60,7 +60,7 @@ def test_settings_env_helpers_reject_non_string_getenv(
     assert settings.sectors_ingest is False
     assert settings.cse_base_url == "https://www.cse.lk/api"
 
-    src = (ROOT / "chime" / "config.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "config.py").read_text(encoding="utf-8")
     assert "isinstance(raw, str)" in src
     assert "def _env_str" in src
 
@@ -75,7 +75,7 @@ def test_symbol_from_alert_message_and_parse_hhmm_reject_non_strings() -> None:
             parse_hhmm(bad)
     assert parse_hhmm("09:30") == time(9, 30)
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     assert "isinstance(message, str)" in src
     assert "isinstance(value, str)" in src.split("def parse_hhmm")[1].split(
         "def is_market_open"
@@ -90,7 +90,7 @@ def test_scenario_guardrails_reject_non_strings() -> None:
     assert contains_buy_sell_language("Margins steady.") is False
     assert assert_safe_scenario_output("Margins steady.") == "Margins steady."
 
-    src = (ROOT / "chime" / "scenarios" / "guardrails.py").read_text(
+    src = (ROOT / "koel" / "scenarios" / "guardrails.py").read_text(
         encoding="utf-8"
     )
     assert src.count("isinstance(text, str)") >= 2
@@ -161,7 +161,7 @@ def test_disclosure_category_and_external_id_isinstance_guards() -> None:
     bad = _disclosure(external_id=999)
     assert evaluate_disclosure_rules(disclosure=bad, rules=[_rule()]) == []
 
-    src = (ROOT / "chime" / "rules.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "rules.py").read_text(encoding="utf-8")
     assert "isinstance(rule.category, str)" in src
     assert "isinstance(disclosure.external_id, str)" in src
 
@@ -175,7 +175,7 @@ def test_brief_sanitize_user_text_rejects_non_strings() -> None:
     out = provider._sanitize_user_text("hello filing")
     assert "<<<FILING>>>" in out and "hello filing" in out
 
-    src = (ROOT / "chime" / "briefs" / "provider.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "provider.py").read_text(encoding="utf-8")
     chunk = src.split("def _sanitize_user_text")[1].split("class GeminiBriefProvider")[0]
     assert "isinstance(text, str)" in chunk
 
@@ -186,6 +186,6 @@ def test_parse_date_of_announcement_rejects_non_strings() -> None:
     assert _parse_date_of_announcement(None) is None
     assert _parse_date_of_announcement("30 Jun 2026") is not None
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     body = src.split("def _parse_date_of_announcement")[1].split("\ndef ")[0]
     assert "isinstance(value, str)" in body

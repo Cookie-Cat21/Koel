@@ -7,18 +7,18 @@
 
 ## Scope
 
-Re-probed `chime/` for new medium+ soft-accepts and alert correctness bugs after
+Re-probed `koel/` for new medium+ soft-accepts and alert correctness bugs after
 the Wave 91-98 hardening lane:
 
-- `chime.rules`: price above/below crossing, rearm, daily-move fallback,
+- `koel.rules`: price above/below crossing, rearm, daily-move fallback,
   disclosure created-at gating, category matching, and event-key idempotency.
-- `chime.poller`: price/disclosure evaluation, claim+disarm, retry backlog,
+- `koel.poller`: price/disclosure evaluation, claim+disarm, retry backlog,
   delivery leases, dead-letter behavior, bulk disclosure attribution, and
   persisted-disclosure failure handling in the local W98 diff.
-- `chime.storage`: active-rule reads, previous-state reads, alert claims,
+- `koel.storage`: active-rule reads, previous-state reads, alert claims,
   unsent claims, row mappers, disclosure upsert watermarks, and brief follow-up
   claims.
-- `chime.bot`, `chime.notify`, `chime.adapters.cse`, and `chime.briefs`: command
+- `koel.bot`, `koel.notify`, `koel.adapters.cse`, and `koel.briefs`: command
   parsing, threshold/category acceptance, Telegram send boundaries, CSE payload
   normalization, URL egress guards, and brief worker row handling.
 

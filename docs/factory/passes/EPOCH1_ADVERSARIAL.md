@@ -19,7 +19,7 @@
 
 **WAVE1 criterion (verbatim intent):** Pass only if burst sends back off **globally** (or queue) without unbounded advisory-lock hold, and unsent retry is **bounded**; fail if one storm stalls the poller or multiplies Telegram calls without a ceiling.
 
-**What shipped:** `chime/notify.py` is unchanged Stage A behavior — per-message `RetryAfter` → `asyncio.sleep(retry_after + 0.5)` → one bare retry. No global backoff, no send queue, no unsent ceiling. `_retry_unsent` still walks every `message_sent=false` row each tick.
+**What shipped:** `koel/notify.py` is unchanged Stage A behavior — per-message `RetryAfter` → `asyncio.sleep(retry_after + 0.5)` → one bare retry. No global backoff, no send queue, no unsent ceiling. `_retry_unsent` still walks every `message_sent=false` row each tick.
 
 **Concrete failure:** Market-open gap claims 20 alerts; Telegram returns `RetryAfter(30)` on each. `run_once` holds `pg_try_advisory_lock` for the whole tick (`Poller.run_once` finally unlocks only after prices + disclosures + `_retry_unsent`). Wall time ≈ 20 × 30.5s while lock is held → dual-poller skip storms (`lock_held_skip`), delayed crosses, retry amplification next tick. Nested RetryAfter on the single retry path still returns `False` and leaves `message_sent=false` forever-retrying.
 

@@ -4,13 +4,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: chime
-      POSTGRES_PASSWORD: chime
-      POSTGRES_DB: chime
+      POSTGRES_USER: koel
+      POSTGRES_PASSWORD: koel
+      POSTGRES_DB: koel
     volumes:
-      - chime_pgdata:/var/lib/postgresql/data
+      - koel_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chime -d chime"]
+      test: ["CMD-SHELL", "pg_isready -U koel -d koel"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -24,7 +24,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://chime:chime@postgres:5432/chime
+      DATABASE_URL: postgresql://koel:koel@postgres:5432/koel
       DASH_SESSION_SECRET: ${DASH_SESSION_SECRET:-dev-compose-change-me}
       DASH_DEMO_AUTH: ${DASH_DEMO_AUTH:-0}
       DASH_DEMO_TELEGRAM_IDS: ${DASH_DEMO_TELEGRAM_IDS:-}
@@ -36,4 +36,4 @@ services:
         condition: service_healthy
 
 volumes:
-  chime_pgdata:
+  koel_pgdata:

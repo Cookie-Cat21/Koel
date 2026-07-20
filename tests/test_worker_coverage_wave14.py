@@ -7,14 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.cse import CDN_BASE
-from chime.briefs import BriefSettings
-from chime.briefs.worker import (
+from koel.adapters.cse import CDN_BASE
+from koel.briefs import BriefSettings
+from koel.briefs.worker import (
     _notify_brief_followups,
     _title_only_input_text,
     claim_pending_briefs,
 )
-from chime.notify import SendResult
+from koel.notify import SendResult
 
 
 def _enabled_settings(**kwargs: Any) -> BriefSettings:
@@ -71,8 +71,8 @@ async def test_empty_pdf_extract_falls_back_to_title() -> None:
     provider.summarize = AsyncMock(return_value="title brief")
 
     with (
-        patch("chime.briefs.worker.fetch_cdn_pdf", AsyncMock(return_value=b"%PDF-empty")),
-        patch("chime.briefs.worker.extract_pdf_text", return_value=""),
+        patch("koel.briefs.worker.fetch_cdn_pdf", AsyncMock(return_value=b"%PDF-empty")),
+        patch("koel.briefs.worker.extract_pdf_text", return_value=""),
     ):
         n = await claim_pending_briefs(
             storage,
@@ -321,7 +321,7 @@ async def test_cdn_transient_without_requeue_marks_failed() -> None:
     provider = AsyncMock()
     provider.summarize = AsyncMock(return_value="should not run")
 
-    with patch("chime.briefs.worker.fetch_cdn_pdf", AsyncMock(return_value=None)):
+    with patch("koel.briefs.worker.fetch_cdn_pdf", AsyncMock(return_value=None)):
         n = await claim_pending_briefs(
             storage,
             settings=_enabled_settings(),

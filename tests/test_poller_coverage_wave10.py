@@ -1,4 +1,4 @@
-"""Wave10: unit coverage push for chime.poller missing / fail-soft branches."""
+"""Wave10: unit coverage push for koel.poller missing / fail-soft branches."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.cse import AnnouncementRow
-from chime.config import Settings
-from chime.domain import AlertEvent, AlertType, PreviousPriceState, PriceSnapshot
-from chime.health import HealthState
-from chime.notify import SendResult
-from chime.poller import (
+from koel.adapters.cse import AnnouncementRow
+from koel.config import Settings
+from koel.domain import AlertEvent, AlertType, PreviousPriceState, PriceSnapshot
+from koel.health import HealthState
+from koel.notify import SendResult
+from koel.poller import (
     DELIVERY_OK_LEDGER_ENV,
     PendingSend,
     Poller,
@@ -74,7 +74,7 @@ def _pending(
 
 @pytest.mark.asyncio
 async def test_await_background_tasks_logs_exceptions() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
 
@@ -94,7 +94,7 @@ async def test_await_background_tasks_logs_exceptions() -> None:
 
 @pytest.mark.asyncio
 async def test_run_once_logs_poll_deliver_failed() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     storage = AsyncMock()
     storage.try_advisory_lock = AsyncMock(return_value=True)
@@ -112,7 +112,7 @@ async def test_run_once_logs_poll_deliver_failed() -> None:
 
 @pytest.mark.asyncio
 async def test_retry_unsent_with_lock_logs_offhours_failure() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
     poller._retry_unsent = AsyncMock(side_effect=RuntimeError("retry boom"))  # type: ignore[method-assign]
@@ -142,7 +142,7 @@ def test_load_delivery_ok_ledger_noop_when_path_none(
 def test_load_delivery_ok_ledger_handles_read_errors_and_bad_lines(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     ledger = tmp_path / "ok.jsonl"
     ledger.write_text(
@@ -206,7 +206,7 @@ async def test_durably_remember_and_forget_without_ledger_path(
 async def test_durably_remember_and_forget_log_write_failures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     # Point ledger at a directory so open("a") fails.
     blocked = tmp_path / "blocked_dir"
@@ -232,7 +232,7 @@ async def test_durably_remember_and_forget_log_write_failures(
 
 @pytest.mark.asyncio
 async def test_poll_prices_general_exception_clears_missing() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     storage = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
@@ -370,7 +370,7 @@ async def test_start_scheduler_registers_job() -> None:
 
 @pytest.mark.asyncio
 async def test_shutdown_background_timeout_when_budget_already_spent() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
 
@@ -380,7 +380,7 @@ async def test_shutdown_background_timeout_when_budget_already_spent() -> None:
     task = asyncio.create_task(never())
     poller._pdf_enrich_tasks.add(task)
     with (
-        patch("chime.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0),
+        patch("koel.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0),
         patch.object(poller_mod.log, "warning") as warning,
     ):
         await poller._drain_background_on_shutdown()
@@ -397,7 +397,7 @@ async def test_shutdown_background_timeout_when_budget_already_spent() -> None:
 
 @pytest.mark.asyncio
 async def test_shutdown_logs_tick_and_background_errors() -> None:
-    import chime.poller as poller_mod
+    import koel.poller as poller_mod
 
     poller = _poller()
 
@@ -474,7 +474,7 @@ async def test_run_poller_forever_without_health_exits_on_stop() -> None:
             events.append(self)
 
     with (
-        patch("chime.poller.asyncio.Event", CaptureEvent),
+        patch("koel.poller.asyncio.Event", CaptureEvent),
         patch.object(Poller, "start_scheduler", return_value=MagicMock()),
         patch.object(Poller, "shutdown", new_callable=AsyncMock) as shutdown,
     ):

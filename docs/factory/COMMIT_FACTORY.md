@@ -21,7 +21,7 @@ Read and obey [CLAUDE.md](../CLAUDE.md). Hard fences:
 
 | Decision | Choice |
 |---|---|
-| Dashboard | **Unlock denser CSE dash** (Overview / Browse / Watchlist / Alerts / Symbol / Health) per [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md). Portfolio/tax/heavy screener/TA = phased unlocks only after cake+cherry are excellent. |
+| Dashboard | **Unlock denser CSE dash** (Overview / Browse / Watchlist / Alerts / Symbol / Health) per [KOEL_MASTER_PLAN.md](KOEL_MASTER_PLAN.md). Portfolio/tax/heavy screener/TA = phased unlocks only after cake+cherry are excellent. |
 | Dash data path | Postgres-backed API; CSE traffic stays in poller/bot adapters |
 | Auth (v1) | Server-side session after verified identity — **not** client-supplied `telegram_id` + shared secret alone |
 | PR style | One long-lived factory PR per epoch; pass reports in `docs/factory/` |
@@ -71,7 +71,7 @@ Co-authored-by: <name> <email>
 
 | Lane | Path ownership | Goal |
 |---|---|---|
-| **CORE** | `chime/`, `db/`, `tests/` (non-UI) | Alert spine excellence |
+| **CORE** | `koel/`, `db/`, `tests/` (non-UI) | Alert spine excellence |
 | **DASH** | `web/` (new), dash API surface | Thin management dashboard |
 | **OPS** | `.github/`, Docker, DX scripts, factory docs | CI, local one-command, observability |
 
@@ -125,7 +125,7 @@ Stack when implementing: **Next.js + Tailwind + shadcn/ui** only; free/MIT compo
 | [ORCHESTRATOR_PROMPTS.md](ORCHESTRATOR_PROMPTS.md) | Copy-paste Cloud Agent prompts |
 | [METRICS.md](METRICS.md) | Proper-commit taxonomy, scorecards, KPIs |
 | [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) | Multi-repo KPI A; Quiverly is node 1 |
-| [CHIME_HORIZON.md](CHIME_HORIZON.md) | What Quiverly is / does / can be; active 2K–3K score band |
+| [KOEL_HORIZON.md](KOEL_HORIZON.md) | What Quiverly is / does / can be; active 2K–3K score band |
 | [DASH_COMPONENT_FILTER.md](DASH_COMPONENT_FILTER.md) | Tremor/bookmark kits → fence + license filter |
 | [DASH_IA.md](DASH_IA.md) | Thin dashboard IA + API sketch |
 | [workstreams/INDEX.md](workstreams/INDEX.md) | WS-001…WS-100 catalog |

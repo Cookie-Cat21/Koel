@@ -10,10 +10,10 @@ from unittest.mock import patch
 
 import pytest
 
-import chime.migrate  # noqa: F401 — ensure module is cached before runpy swap
-from chime.config import Settings, migrations_dir
+import koel.migrate  # noqa: F401 — ensure module is cached before runpy swap
+from koel.config import Settings, migrations_dir
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -85,30 +85,30 @@ class _FakeConn:
 def test_migrate_module_dunder_main_exits_zero(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Execute chime.migrate as __main__ so sys.exit(main()) is covered.
+    """Execute koel.migrate as __main__ so sys.exit(main()) is covered.
 
     runpy reloads the module, so patch psycopg (shared) + env rather than
-    attributes on the pre-imported chime.migrate module object. Restore the
+    attributes on the pre-imported koel.migrate module object. Restore the
     original module in sys.modules afterward so other tests' imported
     ``main`` still resolves against a patchable module.
     """
     monkeypatch.setenv("DATABASE_URL", "postgresql://unit")
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
-    monkeypatch.setattr(sys, "argv", ["chime.migrate"])
+    monkeypatch.setattr(sys, "argv", ["koel.migrate"])
 
     already = {p.name for p in migrations_dir().glob("*.sql") if p.is_file()}
     conn = _FakeConn(already=already)
-    original = sys.modules["chime.migrate"]
+    original = sys.modules["koel.migrate"]
 
     try:
-        sys.modules.pop("chime.migrate", None)
+        sys.modules.pop("koel.migrate", None)
         with (
             patch("psycopg.connect", return_value=conn),
             pytest.raises(SystemExit) as excinfo,
         ):
-            runpy.run_module("chime.migrate", run_name="__main__", alter_sys=True)
+            runpy.run_module("koel.migrate", run_name="__main__", alter_sys=True)
     finally:
-        sys.modules["chime.migrate"] = original
+        sys.modules["koel.migrate"] = original
 
     assert excinfo.value.code == 0
     assert "No pending migrations." in capsys.readouterr().out

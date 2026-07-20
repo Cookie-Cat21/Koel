@@ -37,5 +37,5 @@ Continue only for new product-priority medium+ fuel. Do not continue wave loops 
 
 - Live LLM briefs are still flag/key gated (`AI_BRIEFS_ENABLED=0` default; provider key required).
 - Phase 3 scenario AI remains stub-only (`AI_SCENARIOS_ENABLED=0`).
-- `chime` unit coverage target remains **100%**.
+- `koel` unit coverage target remains **100%**.
 - v1 scope remains Telegram-first alerting plus the thin management dashboard; portfolio/P&L/tax/screener/TA/payments/native app remain out of scope.
