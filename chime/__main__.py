@@ -360,6 +360,7 @@ def main(argv: list[str] | None = None) -> None:
             "ml-loop-retrain",
             "ml-loop-research",
             "market-summary-backfill",
+            "macro-tick",
         ],
         help=(
             "bot | poller | both | migrate | tick | "
@@ -369,7 +370,7 @@ def main(argv: list[str] | None = None) -> None:
             "score-signals | eval-signals | "
             "sector-backfill | notices-backfill | disclosures-backfill | "
             "financials-backfill | aspi-backfill | appetite-backfill | "
-            "market-summary-backfill | "
+            "market-summary-backfill | macro-tick | "
             "ml-experiment | "
             "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
             "ml-iterate | ml-precision90 | ml-hpe | ml-forecast-unified | "
@@ -1595,6 +1596,26 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_mkt())
+        return
+
+    if args.command == "macro-tick":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+
+        async def _macro() -> None:
+            from chime.macro_ingest import run_macro_tick
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                result = await run_macro_tick(
+                    storage, settings, force=args.force
+                )
+                print(f"macro-tick: {result}")
+            finally:
+                await storage.close()
+
+        asyncio.run(_macro())
         return
 
     if args.command == "appetite-backfill":

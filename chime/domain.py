@@ -50,6 +50,12 @@ class AlertType(StrEnum):
     REV_YOY_BELOW = "rev_yoy_below"
     PROFIT_YOY_ABOVE = "profit_yoy_above"
     PROFIT_YOY_BELOW = "profit_yoy_below"
+    # Market-wide regime alerts (symbol = MARKET).
+    APPETITE_BAND = "appetite_band"
+    FOREIGN_FLOW = "foreign_flow"
+    BOOK_PRESSURE = "book_pressure"
+    USDLKR_MOVE = "usdlkr_move"
+    OIL_MOVE = "oil_move"
 
 
 # Alert types that need a positive numeric threshold.
@@ -74,6 +80,23 @@ THRESHOLD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.REV_YOY_BELOW,
         AlertType.PROFIT_YOY_ABOVE,
         AlertType.PROFIT_YOY_BELOW,
+        AlertType.APPETITE_BAND,
+        AlertType.FOREIGN_FLOW,
+        AlertType.BOOK_PRESSURE,
+        AlertType.USDLKR_MOVE,
+        AlertType.OIL_MOVE,
+    }
+)
+
+# Synthetic MARKET symbol only (no per-stock CSE lookup).
+MARKET_REGIME_ALERT_TYPES: frozenset[AlertType] = frozenset(
+    {
+        AlertType.HALT,
+        AlertType.APPETITE_BAND,
+        AlertType.FOREIGN_FLOW,
+        AlertType.BOOK_PRESSURE,
+        AlertType.USDLKR_MOVE,
+        AlertType.OIL_MOVE,
     }
 )
 

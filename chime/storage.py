@@ -1302,6 +1302,72 @@ class Storage:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    async def upsert_macro_series(self, rows: list[dict[str, Any]]) -> int:
+        """Upsert macro_series points. Returns rows attempted."""
+        if not rows:
+            return 0
+        n = 0
+        async with self._pool.connection() as conn:
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                source = row.get("source")
+                series_id = row.get("series_id")
+                ts = row.get("ts")
+                value = row.get("value")
+                if not isinstance(source, str) or not source.strip():
+                    continue
+                if not isinstance(series_id, str) or not series_id.strip():
+                    continue
+                if not isinstance(ts, datetime):
+                    continue
+                if isinstance(value, bool) or not isinstance(value, int | float):
+                    continue
+                if not math.isfinite(float(value)):
+                    continue
+                unit = row.get("unit")
+                if unit is not None and not isinstance(unit, str):
+                    unit = None
+                as_of = row.get("as_of_date")
+                if not isinstance(as_of, date):
+                    as_of = None
+                attribution = row.get("attribution")
+                if not isinstance(attribution, str):
+                    attribution = ""
+                raw_hash = row.get("raw_hash")
+                if raw_hash is not None and not isinstance(raw_hash, str):
+                    raw_hash = None
+                await conn.execute(
+                    """
+                    INSERT INTO macro_series (
+                        source, series_id, ts, value, unit, as_of_date,
+                        attribution, raw_hash
+                    ) VALUES (
+                        %(source)s, %(series_id)s, %(ts)s, %(value)s, %(unit)s,
+                        %(as_of_date)s, %(attribution)s, %(raw_hash)s
+                    )
+                    ON CONFLICT (source, series_id, ts) DO UPDATE SET
+                        value = EXCLUDED.value,
+                        unit = EXCLUDED.unit,
+                        as_of_date = EXCLUDED.as_of_date,
+                        attribution = EXCLUDED.attribution,
+                        raw_hash = EXCLUDED.raw_hash,
+                        ingested_at = now()
+                    """,
+                    {
+                        "source": source.strip(),
+                        "series_id": series_id.strip(),
+                        "ts": ts,
+                        "value": float(value),
+                        "unit": unit,
+                        "as_of_date": as_of,
+                        "attribution": attribution,
+                        "raw_hash": raw_hash,
+                    },
+                )
+                n += 1
+        return n
+
     async def list_symbols_missing_sector(self) -> list[str]:
         """Symbols with daily bars (or any stock) missing a sector label."""
         async with self._pool.connection() as conn:

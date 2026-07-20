@@ -60,6 +60,11 @@ export const ALERT_TYPES = [
   "rev_yoy_below",
   "profit_yoy_above",
   "profit_yoy_below",
+  "appetite_band",
+  "foreign_flow",
+  "book_pressure",
+  "usdlkr_move",
+  "oil_move",
 ] as const;
 
 /** Alert types that require a positive numeric threshold (parity Python). */
@@ -83,6 +88,11 @@ export const THRESHOLD_ALERT_TYPES = [
   "rev_yoy_below",
   "profit_yoy_above",
   "profit_yoy_below",
+  "appetite_band",
+  "foreign_flow",
+  "book_pressure",
+  "usdlkr_move",
+  "oil_move",
 ] as const;
 
 /** Notice-style alerts with no threshold (bid/ask need thresholds — not here). */

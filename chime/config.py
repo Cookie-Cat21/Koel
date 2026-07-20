@@ -186,6 +186,12 @@ class Settings:
     # ML_LTR_SERVE=1 — prefer LTR+vol unified modes (gated_ltr /
     # hpe_with_ltr_fallback) for ops serve after ship.
     ml_ltr_serve: bool = False
+    # Tier B macro adapters (default off — see docs/THIRD_PARTY_DATA.md).
+    cbsl_fx_enabled: bool = False
+    eia_oil_enabled: bool = False
+    sltda_tourism_enabled: bool = False
+    dcs_food_enabled: bool = False
+    macro_context_enabled: bool = False
 
     @classmethod
     def from_env(cls, *, require_token: bool = True) -> Settings:
@@ -215,6 +221,11 @@ class Settings:
         ml_hpe_raw = _env_str("ML_HPE_ENABLED", "0")
         ml_loop_raw = _env_str("ML_LOOP_ENABLED", "0")
         ml_ltr_raw = _env_str("ML_LTR_SERVE", "0")
+        cbsl_fx_raw = _env_str("CBSL_FX_ENABLED", "0")
+        eia_oil_raw = _env_str("EIA_OIL_ENABLED", "0")
+        sltda_raw = _env_str("SLTDA_TOURISM_ENABLED", "0")
+        dcs_food_raw = _env_str("DCS_FOOD_ENABLED", "0")
+        macro_ctx_raw = _env_str("MACRO_CONTEXT_ENABLED", "0")
         path_period = _int("PATH_BACKFILL_PERIOD", 5)
         if path_period not in {2, 3, 4, 5}:
             path_period = 5
@@ -275,6 +286,11 @@ class Settings:
             ml_hpe_enabled=ml_hpe_raw.strip() == "1",
             ml_loop_enabled=ml_loop_raw.strip() == "1",
             ml_ltr_serve=ml_ltr_raw.strip() == "1",
+            cbsl_fx_enabled=cbsl_fx_raw.strip() == "1",
+            eia_oil_enabled=eia_oil_raw.strip() == "1",
+            sltda_tourism_enabled=sltda_raw.strip() == "1",
+            dcs_food_enabled=dcs_food_raw.strip() == "1",
+            macro_context_enabled=macro_ctx_raw.strip() == "1",
         )
 
 

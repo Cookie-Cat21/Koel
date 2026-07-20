@@ -160,6 +160,16 @@ export function alertTypeLabel(type: unknown): string {
       return "Profit YoY above";
     case "profit_yoy_below":
       return "Profit YoY below";
+    case "appetite_band":
+      return "Market Appetite";
+    case "foreign_flow":
+      return "Foreign flow";
+    case "book_pressure":
+      return "Book pressure";
+    case "usdlkr_move":
+      return "USD/LKR move";
+    case "oil_move":
+      return "Oil move";
     default:
       // Fail closed — never echo unknown / hostile type strings into the UI.
       return "Unknown";
@@ -216,6 +226,16 @@ export function alertTypeBotHint(type: unknown): string {
       return "/alert SYMBOL profit yoy above PCT";
     case "profit_yoy_below":
       return "/alert SYMBOL profit yoy below PCT";
+    case "appetite_band":
+      return "/alert MARKET appetite SCORE";
+    case "foreign_flow":
+      return "/alert MARKET foreign AMOUNT";
+    case "book_pressure":
+      return "/alert MARKET book PCT";
+    case "usdlkr_move":
+      return "/alert MARKET usdlkr PCT";
+    case "oil_move":
+      return "/alert MARKET oil PCT";
     default:
       return "";
   }

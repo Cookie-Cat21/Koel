@@ -14,6 +14,7 @@ const links = [
   { href: "/overview", label: "Overview" },
   { href: "/market", label: "Browse" },
   { href: "/appetite", label: "Appetite" },
+  { href: "/context", label: "Context" },
   { href: "/signals", label: "Signals" },
   { href: "/people", label: "People" },
   { href: "/graph", label: "Graph" },

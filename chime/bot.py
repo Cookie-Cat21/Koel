@@ -22,6 +22,7 @@ from chime.briefs import briefs_enabled
 from chime.domain import (
     _CTRL_RE,
     BRIEF_BODY_MAX,
+    MARKET_REGIME_ALERT_TYPES,
     MARKET_SYMBOL,
     MAX_ALERT_THRESHOLD,
     NOTICE_ALERT_TYPES,
@@ -68,6 +69,11 @@ ALERT_USAGE = (
     "/alert SYMBOL buyin\n"
     "/alert SYMBOL noncompliance\n"
     "/alert MARKET halt\n"
+    "/alert MARKET appetite SCORE\n"
+    "/alert MARKET foreign AMOUNT\n"
+    "/alert MARKET book PCT\n"
+    "/alert MARKET usdlkr PCT\n"
+    "/alert MARKET oil PCT\n"
     "/alert SYMBOL bidheavy MULTIPLIER\n"
     "/alert SYMBOL askheavy MULTIPLIER\n"
     "Example: /alert JKH.N0000 volume 5\n"
@@ -399,6 +405,34 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                 f"Example: /alert JKH.N0000 {kind}\n{ALERT_USAGE}"
             )
         return ParsedAlert(notice_kinds[kind], None), None
+
+    # MARKET tape / context regime alerts (symbol must be MARKET).
+    regime_kinds = {
+        "appetite": AlertType.APPETITE_BAND,
+        "foreign": AlertType.FOREIGN_FLOW,
+        "book": AlertType.BOOK_PRESSURE,
+        "usdlkr": AlertType.USDLKR_MOVE,
+        "oil": AlertType.OIL_MOVE,
+    }
+    if kind in regime_kinds:
+        if len(args) < 3:
+            return None, (
+                f"Almost — need a number after {kind}. "
+                f"Example: /alert MARKET {kind} 10\n{ALERT_USAGE}"
+            )
+        if len(args) > 3:
+            return None, (
+                f"Unexpected extra text after {kind}. "
+                f"Example: /alert MARKET {kind} 10\n{ALERT_USAGE}"
+            )
+        threshold = _parse_threshold_token(args[2])
+        if threshold is None:
+            return None, (
+                "Threshold must be a positive finite number. "
+                f"Example: /alert MARKET {kind} 10\n{ALERT_USAGE}"
+            )
+        return ParsedAlert(regime_kinds[kind], threshold), None
+
     return None, (f"I didn't catch that alert type.\n{ALERT_USAGE}")
 
 
@@ -531,8 +565,11 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     threshold = parsed.threshold
     category = parsed.category
 
-    # Market-wide halt notices use synthetic MARKET stock (seeded in migrations).
-    if alert_type == AlertType.HALT and symbol == MARKET_SYMBOL:
+    # Market-wide halt + tape/context regime alerts use synthetic MARKET stock.
+    if alert_type in MARKET_REGIME_ALERT_TYPES and symbol == MARKET_SYMBOL:
+        if alert_type != AlertType.HALT and threshold is None:
+            await update.effective_message.reply_text(ALERT_USAGE)
+            return
         user_id = await _user_id(storage, update)
         assert user_id is not None
         await storage.upsert_stock(
@@ -541,11 +578,26 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         rule = await storage.create_alert_rule(
             user_id, symbol, alert_type, threshold, category=category
         )
-        await update.effective_message.reply_text(
-            _clamp_telegram_message(
-                f"Alert #{rule.id} set: market halt/notice alerts.\n{disclaimer()}"
+        if alert_type == AlertType.HALT:
+            msg = f"Alert #{rule.id} set: market halt/notice alerts.\n{disclaimer()}"
+        else:
+            thr_s = (
+                f"{threshold:g}"
+                if threshold is not None and math.isfinite(threshold)
+                else "?"
             )
-        )
+            labels = {
+                AlertType.APPETITE_BAND: f"Appetite score ≥ {thr_s}",
+                AlertType.FOREIGN_FLOW: f"|foreign net| ≥ {thr_s} LKR",
+                AlertType.BOOK_PRESSURE: f"|book imbalance| ≥ {thr_s}%",
+                AlertType.USDLKR_MOVE: f"|USD/LKR day move| ≥ {thr_s}%",
+                AlertType.OIL_MOVE: f"|Brent day move| ≥ {thr_s}%",
+            }
+            msg = (
+                f"Alert #{rule.id} set: MARKET {labels.get(alert_type, alert_type.value)}.\n"
+                f"{disclaimer()}"
+            )
+        await update.effective_message.reply_text(_clamp_telegram_message(msg))
         return
 
     status, info = await _lookup_symbol(cse, symbol)

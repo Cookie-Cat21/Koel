@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { AppetiteStrip } from "@/components/appetite/appetite-strip";
 import { AppNav } from "@/components/app-nav";
+import { TapePulseStrip } from "@/components/tape/tape-pulse-strip";
 import { EmptyState } from "@/components/empty-state";
 import { CakeCherryBanner } from "@/components/kit/cake-cherry-banner";
 import { ChangeBadge } from "@/components/kit/change-badge";
@@ -36,6 +36,7 @@ import {
   queryAppetiteHistory,
   type AppetiteDay,
 } from "@/lib/api/appetite";
+import { queryTapePulse } from "@/lib/api/tape";
 import {
   normalizeDailyBar,
   type DailyBarPoint,
@@ -63,7 +64,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Overview · koel",
   description:
-    "CSE market overview — watchlist, movers, and Telegram-backed alerts.",
+    "CSE market overview — tape pulse, watchlist, movers, and Telegram-backed alerts.",
 };
 
 type WatchItem = {
@@ -379,14 +380,21 @@ function parseSectors(body: unknown): SectorHeatItem[] {
 export default async function OverviewPage() {
   await requirePageSession();
 
+  const pool = getPool();
   let appetiteHistory: AppetiteDay[] = [];
   try {
-    appetiteHistory = await queryAppetiteHistory(getPool(), {
+    appetiteHistory = await queryAppetiteHistory(pool, {
       limit: 90,
       source: "cse",
     });
   } catch {
     appetiteHistory = [];
+  }
+  let tape: Awaited<ReturnType<typeof queryTapePulse>> | null = null;
+  try {
+    tape = await queryTapePulse(pool);
+  } catch {
+    tape = null;
   }
   const appetiteLatest = headlineDay(appetiteHistory);
   const appetiteDelta1 = deltaVs(
@@ -482,11 +490,23 @@ export default async function OverviewPage() {
           />
         </section>
 
-        <AppetiteStrip
+        <TapePulseStrip
           className="mt-4"
-          latest={appetiteLatest}
-          historyAsc={appetiteHistory}
-          delta1={appetiteDelta1}
+          appetiteLatest={appetiteLatest}
+          appetiteHistory={appetiteHistory}
+          appetiteDelta1={appetiteDelta1}
+          foreign={tape?.foreign ?? null}
+          foreignHistory={tape?.foreign_history ?? []}
+          foreignDelta={tape?.foreign_delta ?? null}
+          book={
+            tape?.book ?? {
+              imbalance_pct: null,
+              bid_share_pct: null,
+              sample_n: 0,
+              as_of: null,
+              label: "unknown",
+            }
+          }
         />
 
         {sectors.length > 0 ? (
