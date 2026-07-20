@@ -472,7 +472,7 @@ export function ExpandablePriceChart({
             type="button"
             ref={triggerRef}
             data-testid="expand-chart"
-            className="absolute top-2 right-2 z-10 inline-flex size-7 items-center justify-center rounded-md border border-border/70 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border hover:text-foreground"
+            className="absolute top-2 left-2 z-10 inline-flex size-7 items-center justify-center rounded-md border border-border/70 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border hover:text-foreground"
             onClick={() => setOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={open}

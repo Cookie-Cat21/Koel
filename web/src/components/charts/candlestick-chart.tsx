@@ -172,7 +172,8 @@ export function CandlestickChart({
     !closeCandles && priceMax < 3 && preFlat / bars.length >= 0.4;
 
   const padL = fitWidth ? (minimal ? 6 : 8) : 14;
-  const padR = fitWidth ? (minimal ? 46 : 52) : 56;
+  // ASPI-scale labels need ~56–62px; too-tight padR clips "23,199.57".
+  const padR = fitWidth ? (minimal ? 58 : 52) : 56;
   // Tighter chrome so the OHLC band owns the frame (especially hero).
   // minimal keeps extra top pad so the high label isn't clipped by the card.
   const padT = fitWidth ? (minimal ? 16 : 10) : 20;
