@@ -124,22 +124,27 @@ export async function loadUpcomingDividendEvents({
       LIMIT $3`,
     [days, watchUserId, cappedLimit],
   );
-  return result.rows.flatMap((row) => {
+  // Dedupe natural (symbol, d_xd, dps) — sync + manual upsert can double rows.
+  const seen = new Set<string>();
+  const out: UpcomingDividendEvent[] = [];
+  for (const row of result.rows) {
     const mapped = mapDividendEvent(row);
-    if (!mapped || !mapped.d_xd) return [];
-    return [
-      {
-        id: mapped.id,
-        symbol: mapped.symbol,
-        d_xd: mapped.d_xd,
-        d_pay: mapped.d_pay,
-        dps: mapped.dps,
-        kind: mapped.kind,
-        title: mapped.title,
-        dates_tbd: mapped.dates_tbd,
-      },
-    ];
-  });
+    if (!mapped || !mapped.d_xd) continue;
+    const key = `${mapped.symbol}|${mapped.d_xd}|${mapped.dps ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      id: mapped.id,
+      symbol: mapped.symbol,
+      d_xd: mapped.d_xd,
+      d_pay: mapped.d_pay,
+      dps: mapped.dps,
+      kind: mapped.kind,
+      title: mapped.title,
+      dates_tbd: mapped.dates_tbd,
+    });
+  }
+  return out;
 }
 
 export async function loadDividendEventsForSymbol(

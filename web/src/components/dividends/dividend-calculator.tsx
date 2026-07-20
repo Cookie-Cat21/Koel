@@ -22,8 +22,10 @@ import {
 import { normalizeSymbol } from "@/lib/api/symbol";
 import {
   estimateDividend,
+  formatDividendDate,
   MAX_DIVIDEND_DPS,
   MAX_DIVIDEND_SHARES,
+  shortDividendTitle,
 } from "@/lib/dividends";
 import { formatNumber, formatPct, formatTs } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -169,12 +171,16 @@ export function DividendCalculator({
         );
         const bits: string[] = [];
         if (event.dps != null) bits.push(`DPS ${formatNumber(event.dps)} LKR`);
-        if (event.d_pay) bits.push(`Pay ${event.d_pay}`);
+        if (event.d_pay) bits.push(`Pay ${formatDividendDate(event.d_pay)}`);
         if (event.dates_tbd) bits.push("Dates TBD");
         return {
           id: `${row.payload.symbol}-event-${event.id}`,
-          at: event.d_xd ? `XD ${event.d_xd}` : event.d_ann,
-          title: `${row.payload.symbol} · ${event.title ?? "Dividend event"}`,
+          at: event.d_xd
+            ? `XD ${formatDividendDate(event.d_xd)}`
+            : event.d_ann
+              ? formatDividendDate(event.d_ann)
+              : null,
+          title: `${row.payload.symbol} · ${shortDividendTitle(event.title)}`,
           href: linkedDisclosure?.pdf_url || linkedDisclosure?.url || null,
           external: Boolean(linkedDisclosure?.pdf_url || linkedDisclosure?.url),
           badge: event.kind,
@@ -194,7 +200,7 @@ export function DividendCalculator({
       return {
         id: `${row.payload.symbol}-disclosure-${item.id}`,
         at: item.published_at ? formatTs(item.published_at) : null,
-        title: `${row.payload.symbol} · ${item.title}`,
+        title: `${row.payload.symbol} · ${shortDividendTitle(item.title)}`,
         href: item.pdf_url || item.url,
         external: true,
         badge: item.category,

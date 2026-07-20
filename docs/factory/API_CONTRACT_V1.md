@@ -611,6 +611,35 @@ absent; `dates_tbd` is true when CSE labelled dates to be notified.
 
 Errors: `400 invalid_symbol` · `404 not_found` · `503 degraded`.
 
+### `GET /api/v1/dividends/upcoming`
+
+Session required. Upcoming XD rows from `dividend_events` (Colombo calendar).
+
+Query: `horizon` (default `14`, max `90`) · `watchlist=1` to filter to the
+session user’s watchlist.
+
+**Response** `200`
+
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "symbol": "JKH.N0000",
+      "d_xd": "2026-07-22",
+      "d_pay": "2026-08-01",
+      "dps": 2.0,
+      "kind": "final",
+      "title": "Final Dividend FY2025/26",
+      "dates_tbd": false
+    }
+  ]
+}
+```
+
+Alert types (bot + dash): `xd_soon` (per-symbol, threshold = days ahead) and
+`xd_digest` (MARKET, weekly watchlist digest, threshold = horizon days).
+
 ---
 
 ## Sectors (optional ingest)

@@ -68,7 +68,10 @@ import {
   loadSymbolPageMetrics,
   loadSymbolPageStock,
 } from "@/lib/db/symbol-page-data";
-import { estimateDividendYieldPct } from "@/lib/dividends";
+import {
+  estimateDividendYieldPct,
+  formatDividendDate,
+} from "@/lib/dividends";
 import {
   formatCompactNumber,
   formatNumber,
@@ -1065,12 +1068,18 @@ function DividendYieldStrip({
       </span>
       {xd ? (
         <span className="text-xs text-muted-foreground">
-          XD <span className="font-mono tabular-nums text-foreground">{xd}</span>
+          XD{" "}
+          <span className="font-mono tabular-nums text-foreground">
+            {formatDividendDate(xd)}
+          </span>
         </span>
       ) : null}
       {pay ? (
         <span className="text-xs text-muted-foreground">
-          Pay <span className="font-mono tabular-nums text-foreground">{pay}</span>
+          Pay{" "}
+          <span className="font-mono tabular-nums text-foreground">
+            {formatDividendDate(pay)}
+          </span>
         </span>
       ) : null}
       <Link
@@ -1078,6 +1087,12 @@ function DividendYieldStrip({
         className="text-xs text-muted-foreground underline-offset-4 hover:underline"
       >
         Calculator
+      </Link>
+      <Link
+        href={`/alerts?symbol=${encodeURIComponent(symbol)}&type=xd_soon`}
+        className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+      >
+        XD alert
       </Link>
     </div>
   );

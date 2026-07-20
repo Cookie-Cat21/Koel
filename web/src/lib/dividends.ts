@@ -14,6 +14,43 @@ export const MAX_DIVIDEND_DPS = 1_000_000;
 /** Cap absolute cash / yield display magnitudes. */
 export const MAX_DIVIDEND_CASH = 1e15;
 
+/** Short UI title — drop Rate/XD/Payment boilerplate from seeded titles. */
+export function shortDividendTitle(
+  title: string | null | undefined,
+  fallback = "Dividend",
+): string {
+  if (typeof title !== "string" || !title.trim()) return fallback;
+  let t = title.trim();
+  // Cut at first Rate/XD/Payment clause.
+  t = t.split(/\bRate of Dividend\b/i)[0] ?? t;
+  t = t.split(/\bXD\s*:/i)[0] ?? t;
+  t = t.split(/\bPayment\s*:/i)[0] ?? t;
+  t = t.replace(/[·|—–-]+\s*$/g, "").replace(/\s+/g, " ").trim();
+  if (!t) return fallback;
+  return t.length > 72 ? `${t.slice(0, 71).trimEnd()}…` : t;
+}
+
+/** Format YYYY-MM-DD for dash (Asia/Colombo medium date). */
+export function formatDividendDate(isoDate: string | null | undefined): string {
+  if (typeof isoDate !== "string") return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
+  if (!m) return "—";
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!y || mo < 1 || mo > 12 || d < 1 || d > 31) return "—";
+  try {
+    return new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-LK", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  } catch {
+    return isoDate;
+  }
+}
+
 const DIVIDEND_HINT_RE =
   /\bdividends?\b|\bcash\s*div(?:idend)?\b|\binterim\s+div|\bfinal\s+div/i;
 
