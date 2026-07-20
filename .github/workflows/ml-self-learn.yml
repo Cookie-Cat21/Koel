@@ -1,6 +1,6 @@
 # ML self-improving loop — score outcomes, nightly adapt, optional retrain/LTR ship.
 # Requires repo secret: DATABASE_URL (Neon/Postgres). Optional: ML_LTR_SERVE=1 via vars.
-# Kill switch: set vars.ML_SELF_LEARN=0 to skip scheduled runs (dispatch still works).
+# Daily after CSE close. Optional pause: vars.KOEL_DAILY_OPS=0.
 #
 # Does not scrape competitors — CSE JSON endpoints + Postgres only.
 # Research metrics only — not financial advice.
@@ -41,8 +41,8 @@ on:
           - gated
           - always_on
   schedule:
-    # Weekdays ~16:00 Asia/Colombo (10:30 UTC) — after CSE close (14:30 SLT).
-    - cron: "30 10 * * 1-5"
+    # Daily ~16:00 Asia/Colombo (10:30 UTC) — after CSE close (14:30 SLT).
+    - cron: "30 10 * * *"
 
 concurrency:
   group: ml-self-learn
@@ -52,10 +52,10 @@ jobs:
   self-learn:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    # Scheduled runs honor kill switch; manual dispatch always allowed.
+    # Optional pause: vars.KOEL_DAILY_OPS=0. Dispatch always allowed.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.ML_SELF_LEARN != '0'
+      vars.KOEL_DAILY_OPS != '0'
     steps:
       - uses: actions/checkout@v4
 

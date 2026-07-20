@@ -9,6 +9,7 @@ from koel.adapters.macro_cbsl import fetch_cbsl_fx_rows
 from koel.adapters.macro_eia import fetch_eia_oil_rows
 from koel.adapters.macro_food import fetch_food_pressure_rows
 from koel.adapters.macro_tourism import fetch_tourism_rows
+from koel.adapters.macro_world import fetch_world_index_rows
 from koel.config import Settings
 from koel.storage import Storage
 
@@ -31,6 +32,7 @@ async def run_macro_tick(
         "eia_oil": 0,
         "cbsl_tourism": 0,
         "cbsl_ccpi": 0,
+        "world_indexes": 0,
         "skipped": [],
     }
 
@@ -38,6 +40,7 @@ async def run_macro_tick(
     pull_oil = settings.eia_oil_enabled or force
     pull_tourism = settings.sltda_tourism_enabled or force
     pull_food = settings.dcs_food_enabled or force
+    pull_world = settings.world_index_research_enabled or force
 
     if pull_fx:
         try:
@@ -82,5 +85,16 @@ async def run_macro_tick(
             result["skipped"].append("cbsl_ccpi_error")
     else:
         result["skipped"].append("dcs_food_disabled")
+
+    if pull_world:
+        try:
+            rows = await fetch_world_index_rows(max_points=90)
+            n = await storage.upsert_macro_series(rows)
+            result["world_indexes"] = n
+        except Exception:
+            log.exception("macro_tick: world_indexes failed")
+            result["skipped"].append("world_indexes_error")
+    else:
+        result["skipped"].append("world_indexes_disabled")
 
     return result

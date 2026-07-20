@@ -1,6 +1,6 @@
 # Optional CSE daily path backfill — seeds daily_bars for charts / Signal Board.
 # Requires repo secret: DATABASE_URL.
-# Kill switch: vars.PATH_BACKFILL=0 skips scheduled runs (dispatch still works).
+# Daily polite top-up (limit 40 on schedule). Optional pause: vars.KOEL_DAILY_OPS=0.
 #
 # Polite CSE JSON only — not financial advice.
 
@@ -12,10 +12,10 @@ on:
       limit:
         description: Max symbols (0 = all board symbols with ids)
         required: false
-        default: "50"
+        default: "40"
   schedule:
-    # Sundays ~02:00 Asia/Colombo (20:30 UTC Sat) — off-hours board top-up.
-    - cron: "30 20 * * 6"
+    # Daily ~02:00 Asia/Colombo (20:30 UTC previous day) — off-hours board top-up.
+    - cron: "30 20 * * *"
 
 concurrency:
   group: path-backfill
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 120
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.PATH_BACKFILL != '0'
+      vars.KOEL_DAILY_OPS != '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,5 +54,5 @@ jobs:
           CSE_MIN_INTERVAL_SECONDS: "0.25"
           PATH_BACKFILL_ENABLED: "1"
         run: |
-          LIMIT="${{ github.event.inputs.limit || '50' }}"
+          LIMIT="${{ github.event.inputs.limit || '40' }}"
           python -m koel path-backfill --force --limit "$LIMIT"

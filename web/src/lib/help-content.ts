@@ -429,7 +429,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What are the sector bridge links?",
         answer:
-          "Shortcuts into Browse search (`/market?q=…`) for related CSE names. Discovery helpers only — not “names to buy.” World markets / news terminals are deferred; koel stays disclosure-first on the CSE path.",
+          "Shortcuts into Browse search (`/market?q=…`) for related CSE names. Discovery helpers only — not “names to buy.” World tiles are research / delayed (FRED + Yahoo, ≤5). News on Context is disclosure-first from CSE filings + notices — no social-feed clone.",
       },
     ],
   },

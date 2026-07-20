@@ -59,6 +59,14 @@ export function isDemoMacroAttribution(attribution: string | null | undefined): 
   return /demo\s*seed/i.test(attribution);
 }
 
+/** True when attribution marks research / delayed (not CSE official). */
+export function isResearchMacroAttribution(
+  attribution: string | null | undefined,
+): boolean {
+  if (typeof attribution !== "string") return false;
+  return /research\s*\/\s*delayed|not\s+cse\s+official/i.test(attribution);
+}
+
 export async function queryMacroSeries(
   pool: Pool,
   seriesId: string,
@@ -103,6 +111,11 @@ export type ContextBundle = {
   wti: MacroSeriesCard;
   tourism_arrivals: MacroSeriesCard;
   food_pressure: MacroSeriesCard;
+  world_spx: MacroSeriesCard;
+  world_ftse: MacroSeriesCard;
+  world_nikkei: MacroSeriesCard;
+  world_nsei: MacroSeriesCard;
+  world_vix: MacroSeriesCard;
 };
 
 export async function queryContextBundle(pool: Pool): Promise<ContextBundle> {
@@ -113,6 +126,11 @@ export async function queryContextBundle(pool: Pool): Promise<ContextBundle> {
     wti,
     tourism_arrivals,
     food_pressure,
+    world_spx,
+    world_ftse,
+    world_nikkei,
+    world_nsei,
+    world_vix,
   ] = await Promise.all([
     queryMacroSeries(pool, "USD_LKR", 120),
     queryMacroSeries(pool, "EUR_LKR", 120),
@@ -120,6 +138,23 @@ export async function queryContextBundle(pool: Pool): Promise<ContextBundle> {
     queryMacroSeries(pool, "WTI_SPOT", 120),
     queryMacroSeries(pool, "TOURISM_ARRIVALS", 36),
     queryMacroSeries(pool, "FOOD_PRESSURE", 52),
+    queryMacroSeries(pool, "WORLD_SPX", 90),
+    queryMacroSeries(pool, "WORLD_FTSE", 90),
+    queryMacroSeries(pool, "WORLD_NIKKEI", 90),
+    queryMacroSeries(pool, "WORLD_NSEI", 90),
+    queryMacroSeries(pool, "WORLD_VIX", 90),
   ]);
-  return { usd_lkr, eur_lkr, brent, wti, tourism_arrivals, food_pressure };
+  return {
+    usd_lkr,
+    eur_lkr,
+    brent,
+    wti,
+    tourism_arrivals,
+    food_pressure,
+    world_spx,
+    world_ftse,
+    world_nikkei,
+    world_nsei,
+    world_vix,
+  };
 }

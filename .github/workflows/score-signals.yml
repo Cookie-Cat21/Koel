@@ -2,7 +2,7 @@
 # so the dash can show leaderboard rank Δ vs the prior as_of day.
 #
 # Requires repo secret: DATABASE_URL.
-# Kill switch: vars.SCORE_SIGNALS=0 skips scheduled runs (dispatch still works).
+# Daily after CSE close. Optional pause: vars.KOEL_DAILY_OPS=0.
 #
 # Research scores only — not financial advice. Postgres + CSE path bars only.
 
@@ -20,8 +20,8 @@ on:
         required: false
         default: "0"
   schedule:
-    # Weekdays ~16:45 Asia/Colombo (11:15 UTC) — after CSE close (14:30 SLT).
-    - cron: "15 11 * * 1-5"
+    # Daily ~16:45 Asia/Colombo (11:15 UTC) — after CSE close (14:30 SLT).
+    - cron: "15 11 * * *"
 
 concurrency:
   group: score-signals
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 90
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.SCORE_SIGNALS != '0'
+      vars.KOEL_DAILY_OPS != '0'
     steps:
       - uses: actions/checkout@v4
 

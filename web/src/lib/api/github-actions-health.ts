@@ -11,7 +11,7 @@ export const HEALTH_GITHUB_REPO_DEFAULT = "ArdenoStudio/Koel";
 /** Public Actions API can be slow from Vercel; keep fail-soft but give it room. */
 export const HEALTH_CI_FETCH_TIMEOUT_MS = 8000;
 /** Enough slots for CI + drain + ML + backfill workflows on Health. */
-export const HEALTH_CI_RUNS_MAX = 12;
+export const HEALTH_CI_RUNS_MAX = 14;
 export const HEALTH_CI_STRING_MAX = 96;
 
 /**
@@ -22,6 +22,7 @@ export const HEALTH_CI_WORKFLOW_FILES = [
   "ci.yml",
   "pdf-metrics-drain.yml",
   "macro-tick.yml",
+  "market-tick.yml",
   "score-signals.yml",
   "ml-self-learn.yml",
   "path-backfill.yml",

@@ -1,10 +1,10 @@
 # Tier B macro ingest → Postgres ``macro_series`` (Context tiles).
 # Requires repo secret: DATABASE_URL.
 # Optional: EIA_API_KEY (v2 API). Without it, oil uses EIA PET bulk zip (no key).
-# Kill switches: vars.CBSL_FX_ENABLED / vars.EIA_OIL_ENABLED /
-# vars.SLTDA_TOURISM_ENABLED / vars.DCS_FOOD_ENABLED set to 0 skip that feed.
-# Tourism = CBSL earnings sheet (SLTDA survey inputs). Food = CBSL CCPI sheet
-# (DCS source). Direct SLTDA/DCS scrapes stay off — see docs/THIRD_PARTY_DATA.md.
+#
+# Daily ~08:15 SLT. Whole-job kill: vars.MACRO_TICK=0.
+# Per-feed pause: set CBSL_FX_ENABLED / EIA_OIL_ENABLED / SLTDA_TOURISM_ENABLED /
+# DCS_FOOD_ENABLED / WORLD_INDEX_RESEARCH_ENABLED repo var to 0.
 #
 # Research context only — not financial advice.
 
@@ -13,7 +13,7 @@ name: macro-tick
 on:
   workflow_dispatch:
   schedule:
-    # Daily ~08:15 Asia/Colombo (02:45 UTC) — after CBSL sheet / EIA prior session.
+    # Daily ~08:15 Asia/Colombo (02:45 UTC).
     - cron: "45 2 * * *"
 
 concurrency:
@@ -24,9 +24,10 @@ jobs:
   tick:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Schedule always runs unless MACRO_TICK=0 or KOEL_DAILY_OPS=0.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.MACRO_TICK != '0'
+      (vars.MACRO_TICK != '0' && vars.KOEL_DAILY_OPS != '0')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -47,14 +48,14 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python -m koel migrate
-      - name: Macro tick (CBSL FX + EIA oil + tourism + CCPI)
+      - name: Macro tick (FX + oil + tourism + CCPI + world)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
-          # Live Context feeds. Whole job kill switch: vars.MACRO_TICK=0.
-          # Per-feed pause: set the matching repo var to 0.
+          # Unset / anything other than 0 → enabled. Explicit 0 pauses that feed.
           CBSL_FX_ENABLED: ${{ vars.CBSL_FX_ENABLED != '0' && '1' || '0' }}
           EIA_OIL_ENABLED: ${{ vars.EIA_OIL_ENABLED != '0' && '1' || '0' }}
           SLTDA_TOURISM_ENABLED: ${{ vars.SLTDA_TOURISM_ENABLED != '0' && '1' || '0' }}
           DCS_FOOD_ENABLED: ${{ vars.DCS_FOOD_ENABLED != '0' && '1' || '0' }}
+          WORLD_INDEX_RESEARCH_ENABLED: ${{ vars.WORLD_INDEX_RESEARCH_ENABLED != '0' && '1' || '0' }}
         run: python -m koel macro-tick --force

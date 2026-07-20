@@ -191,6 +191,7 @@ class Settings:
     eia_oil_enabled: bool = False
     sltda_tourism_enabled: bool = False
     dcs_food_enabled: bool = False
+    world_index_research_enabled: bool = False
     macro_context_enabled: bool = False
 
     @classmethod
@@ -225,6 +226,7 @@ class Settings:
         eia_oil_raw = _env_str("EIA_OIL_ENABLED", "0")
         sltda_raw = _env_str("SLTDA_TOURISM_ENABLED", "0")
         dcs_food_raw = _env_str("DCS_FOOD_ENABLED", "0")
+        world_idx_raw = _env_str("WORLD_INDEX_RESEARCH_ENABLED", "0")
         macro_ctx_raw = _env_str("MACRO_CONTEXT_ENABLED", "0")
         path_period = _int("PATH_BACKFILL_PERIOD", 5)
         if path_period not in {2, 3, 4, 5}:
@@ -290,6 +292,7 @@ class Settings:
             eia_oil_enabled=eia_oil_raw.strip() == "1",
             sltda_tourism_enabled=sltda_raw.strip() == "1",
             dcs_food_enabled=dcs_food_raw.strip() == "1",
+            world_index_research_enabled=world_idx_raw.strip() == "1",
             macro_context_enabled=macro_ctx_raw.strip() == "1",
         )
 

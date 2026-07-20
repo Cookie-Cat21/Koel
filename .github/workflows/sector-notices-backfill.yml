@@ -1,6 +1,6 @@
 # Optional sector labels + market notices seed for Signal Board factors.
 # Requires repo secret: DATABASE_URL.
-# Kill switch: vars.SECTOR_NOTICES_BACKFILL=0 skips scheduled runs.
+# Daily sector labels + notices. Optional pause: vars.KOEL_DAILY_OPS=0.
 #
 # CSE JSON only — not financial advice.
 
@@ -12,10 +12,10 @@ on:
       sector_limit:
         description: Max symbols for sector-backfill (0 = all missing)
         required: false
-        default: "80"
+        default: "40"
   schedule:
-    # Wednesdays ~03:00 Asia/Colombo (21:30 UTC Tue).
-    - cron: "30 21 * * 2"
+    # Daily ~03:00 Asia/Colombo (21:30 UTC previous day).
+    - cron: "30 21 * * *"
 
 concurrency:
   group: sector-notices-backfill
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 90
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.SECTOR_NOTICES_BACKFILL != '0'
+      vars.KOEL_DAILY_OPS != '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,7 +54,7 @@ jobs:
           CSE_MIN_INTERVAL_SECONDS: "0.25"
           SECTOR_BACKFILL_ENABLED: "1"
         run: |
-          LIMIT="${{ github.event.inputs.sector_limit || '80' }}"
+          LIMIT="${{ github.event.inputs.sector_limit || '40' }}"
           python -m koel sector-backfill --force --limit "$LIMIT"
       - name: Notices backfill
         env:
