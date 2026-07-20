@@ -852,9 +852,11 @@ def evaluate_xd_soon_rules(
     out: list[AlertEvent] = []
     claimed = fired_keys or set()
     base = today if isinstance(today, date_cls) else colombo_today()
+    # Pure eval: mute checks use Colombo midnight of the evaluation day — no wall clock.
+    as_of = datetime(base.year, base.month, base.day, tzinfo=_COLOMBO)
 
     for rule in rules:
-        if _rule_inactive_or_muted(rule, as_of=datetime.now(UTC)):
+        if _rule_inactive_or_muted(rule, as_of=as_of):
             continue
         if rule.type != AlertType.XD_SOON:
             continue
@@ -915,9 +917,10 @@ def evaluate_xd_digest_rules(
     claimed = fired_keys or set()
     base = today if isinstance(today, date_cls) else colombo_today()
     week = iso_week_key(base)
+    as_of = datetime(base.year, base.month, base.day, tzinfo=_COLOMBO)
 
     for rule in rules:
-        if _rule_inactive_or_muted(rule, as_of=datetime.now(UTC)):
+        if _rule_inactive_or_muted(rule, as_of=as_of):
             continue
         if rule.type != AlertType.XD_DIGEST:
             continue
@@ -940,10 +943,16 @@ def evaluate_xd_digest_rules(
         if not hits:
             continue
         # Cap digest length for Telegram.
+        def _xd_sort_key(row: Any) -> date_cls:
+            xd = getattr(row, "d_xd", None)
+            return xd if isinstance(xd, date_cls) else date_cls.min
+
         bits: list[str] = []
-        for row in sorted(hits, key=lambda r: r.d_xd)[:12]:
+        for row in sorted(hits, key=_xd_sort_key)[:12]:
             sym = getattr(row, "symbol", "?")
-            xd = row.d_xd
+            xd = getattr(row, "d_xd", None)
+            if not isinstance(xd, date_cls):
+                continue
             dps = getattr(row, "dps", None)
             dps_bit = f" DPS {dps:g}" if isinstance(dps, (int, float)) else ""
             bits.append(f"{sym} XD {xd.isoformat()}{dps_bit}")

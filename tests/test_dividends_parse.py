@@ -139,3 +139,25 @@ def test_evaluate_xd_digest_week_key() -> None:
     assert len(events) == 1
     assert "XD this week" in events[0].trigger
     assert events[0].event_key.startswith("xddigest:2:")
+
+
+def test_hints_hash_and_iso_week() -> None:
+    from koel.dividends import DividendHints, hints_raw_hash, iso_week_key
+
+    h = DividendHints(dps=1.0, d_xd=date(2026, 7, 22), dates_tbd=False)
+    digest = hints_raw_hash("JKH.N0000", "Final", h)
+    assert len(digest) == 32
+    assert iso_week_key(date(2026, 7, 20)).startswith("2026-W")
+
+
+def test_parse_alert_xd_rejects_huge_horizon() -> None:
+    parsed, err = parse_alert_args(["JKH.N0000", "xd", "120"])
+    assert parsed is None
+    assert err is not None
+    assert "1–90" in err or "1-90" in err
+
+
+def test_parse_numeric_dmy_and_iso() -> None:
+    assert parse_cse_date("01.08.2026") == date(2026, 8, 1)
+    assert parse_cse_date("") is None
+    assert parse_cse_date(None) is None  # type: ignore[arg-type]
