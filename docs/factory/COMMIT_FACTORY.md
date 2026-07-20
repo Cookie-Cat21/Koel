@@ -132,6 +132,7 @@ Stack when implementing: **Next.js + Tailwind + shadcn/ui** only; free/MIT compo
 | [workstreams/WAVE*.md](workstreams/) | Per-wave planning outputs |
 | [../CLAUDE.md](../CLAUDE.md) | Product constitution |
 | [../FINAL_REPORT.md](../FINAL_REPORT.md) | Stage A baseline |
+| [REDDIT_CSE_COMPETITIVE_INTEL.md](REDDIT_CSE_COMPETITIVE_INTEL.md) · [REDDIT_OPPORTUNITY_BACKLOG.md](REDDIT_OPPORTUNITY_BACKLOG.md) | Reddit/CSE competitive intel + fence-mapped opportunity backlog |
 
 ## 9. First implementation epoch (after plan merges)
 
