@@ -111,7 +111,7 @@
 }
 
 /* Skip link: off-screen until focused (E6-D02) */
-.chime-skip-link {
+.koel-skip-link {
   position: absolute;
   left: 1rem;
   top: 0;
@@ -127,18 +127,18 @@
   transition: transform 0.15s ease;
 }
 
-.chime-skip-link:focus {
+.koel-skip-link:focus {
   transform: translateY(0.75rem);
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
-.chime-skip-link:focus-visible {
+.koel-skip-link:focus-visible {
   transform: translateY(0.75rem);
 }
 
 /* Full-bleed atmospheric plane — koel paper: soft wash, light grain */
-.chime-atmosphere {
+.koel-atmosphere {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -159,10 +159,10 @@
       oklch(0.98 0.003 250) 100%
     );
   background-size: 140% 140%, 120% 120%, 100% 100%;
-  animation: chime-drift 32s ease-in-out infinite alternate;
+  animation: koel-drift 32s ease-in-out infinite alternate;
 }
 
-.chime-atmosphere::before {
+.koel-atmosphere::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -174,7 +174,7 @@
   mix-blend-mode: soft-light;
 }
 
-@keyframes chime-drift {
+@keyframes koel-drift {
   from {
     background-position: 0% 20%, 100% 0%, 0% 0%;
   }
@@ -183,7 +183,7 @@
   }
 }
 
-@keyframes chime-rise {
+@keyframes koel-rise {
   from {
     opacity: 0;
     transform: translateY(0.85rem);
@@ -194,36 +194,36 @@
   }
 }
 
-.chime-rise {
-  animation: chime-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+.koel-rise {
+  animation: koel-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.chime-rise-delay-1 {
+.koel-rise-delay-1 {
   animation-delay: 0.12s;
 }
 
-.chime-rise-delay-2 {
+.koel-rise-delay-2 {
   animation-delay: 0.24s;
 }
 
-.chime-rise-delay-3 {
+.koel-rise-delay-3 {
   animation-delay: 0.36s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chime-atmosphere {
+  .koel-atmosphere {
     animation: none;
     background-size: 100% 100%, 100% 100%, 100% 100%;
   }
-  .chime-rise,
-  .chime-rise-delay-1,
-  .chime-rise-delay-2,
-  .chime-rise-delay-3 {
+  .koel-rise,
+  .koel-rise-delay-1,
+  .koel-rise-delay-2,
+  .koel-rise-delay-3 {
     animation: none;
     opacity: 1;
     transform: none;
   }
-  .chime-skip-link {
+  .koel-skip-link {
     transition: none;
   }
   /* Shell chrome: nav hamburger, buttons, skeleton pulse, hover lifts */

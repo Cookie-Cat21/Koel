@@ -35,7 +35,7 @@ CDS_MONTHLY_URL = (
     "publications-downloads/cds-monthly-reports/"
 )
 
-UA = "ChimeResearch/1.0 (+https://github.com/Cookie-Cat21/Chime; educational; polite)"
+UA = "KoelResearch/1.0 (+https://github.com/Cookie-Cat21/Koel; educational; polite)"
 
 
 def _get(url: str, timeout: float = 30.0) -> tuple[int, bytes, dict[str, str]]:

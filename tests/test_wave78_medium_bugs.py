@@ -19,10 +19,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.worker import _promote_skipped_if_needed
-from chime.domain import Disclosure, PriceSnapshot
-from chime.storage import Storage
+from koel.briefs import BriefSettings
+from koel.briefs.worker import _promote_skipped_if_needed
+from koel.domain import Disclosure, PriceSnapshot
+from koel.storage import Storage
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -138,19 +138,19 @@ async def test_promote_skipped_rejects_bool_count() -> None:
         model="gemini-2.0-flash",
         skipped_promote_hours=24,
     )
-    with patch("chime.briefs.worker.log") as log:
+    with patch("koel.briefs.worker.log") as log:
         await _promote_skipped_if_needed(storage, cfg=settings)
         log.info.assert_not_called()
 
     storage.promote_recent_skipped_briefs = AsyncMock(return_value=3)
-    with patch("chime.briefs.worker.log") as log:
+    with patch("koel.briefs.worker.log") as log:
         await _promote_skipped_if_needed(storage, cfg=settings)
         log.info.assert_called_once()
         assert log.info.call_args.kwargs["count"] == 3
 
 
 def test_storage_brief_claim_lookup_isinstance_pins() -> None:
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     claim = src.split("async def claim_brief_followups")[1].split(
         "async def mark_brief_ready"
     )[0]
@@ -169,7 +169,7 @@ def test_storage_brief_claim_lookup_isinstance_pins() -> None:
 
 
 def test_get_latest_ready_brief_field_isinstance_pins() -> None:
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def get_latest_ready_brief")[1].split(
         "async def insert_disclosure_if_new"
     )[0]
@@ -185,7 +185,7 @@ def test_get_latest_ready_brief_field_isinstance_pins() -> None:
 
 
 def test_row_to_rule_and_snapshot_isinstance_pins() -> None:
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     rule = src.split("def _row_to_rule")[1]
     assert "isinstance(raw_type, str)" in rule
     assert "isinstance(raw_sym, str)" in rule
@@ -198,7 +198,7 @@ def test_row_to_rule_and_snapshot_isinstance_pins() -> None:
 
 
 def test_cse_sector_and_symbol_info_isinstance_pins() -> None:
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     sector = src.split("def sector_row_to_snapshot")[1].split(
         "def symbol_info_to_snapshot"
     )[0]
@@ -212,7 +212,7 @@ def test_cse_sector_and_symbol_info_isinstance_pins() -> None:
 
 
 def test_brief_settings_model_raw_isinstance_pin() -> None:
-    src = (ROOT / "chime" / "briefs" / "__init__.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "__init__.py").read_text(encoding="utf-8")
     chunk = src.split("def from_env")[1].split("def briefs_enabled")[0]
     assert "isinstance(model_raw, str)" in chunk
     assert "isinstance(provider_raw, str)" in chunk

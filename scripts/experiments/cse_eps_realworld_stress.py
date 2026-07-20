@@ -35,7 +35,7 @@ REPO = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO / "docs" / "experiments"
 PDF_DIR = Path("/tmp/cse-financial-pdfs")
 SLEEP_S = 0.35
-UA = "Mozilla/5.0 (compatible; ChimeBot/0.1; eps-realworld-stress)"
+UA = "Mozilla/5.0 (compatible; KoelBot/0.1; eps-realworld-stress)"
 
 ACC = SourceFileLoader(
     "cse_acc",

@@ -11,8 +11,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
-from chime.domain import AlertType, format_alert_message
-from chime.rules import evaluate_price_rules, filter_fireable
+from koel.domain import AlertType, format_alert_message
+from koel.rules import evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 from tests.test_idempotency import FakeAlertLog
 

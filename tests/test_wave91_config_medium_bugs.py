@@ -1,6 +1,6 @@
 """Wave91: config/migrate/__main__ CLI args fail closed.
 
-1. ``chime.migrate --database-url ""`` must not silently fall back to
+1. ``koel.migrate --database-url ""`` must not silently fall back to
    ``DATABASE_URL`` (an explicit blank target could migrate the wrong DB).
 2. Top-level ``--force`` is only meaningful for ``tick``; other commands must
    reject it instead of no-op soft-accepting operator intent.
@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from chime import __main__ as main_mod
-from chime.migrate import main as migrate_main
+from koel import __main__ as main_mod
+from koel.migrate import main as migrate_main
 
 
 def test_migrate_cli_rejects_blank_database_url_before_env_fallback(
@@ -21,11 +21,11 @@ def test_migrate_cli_rejects_blank_database_url_before_env_fallback(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(
-        "chime.migrate.Settings.from_env",
+        "koel.migrate.Settings.from_env",
         lambda **_: pytest.fail("blank CLI database URL must not fall back to env"),
     )
     monkeypatch.setattr(
-        "chime.migrate.apply_migrations",
+        "koel.migrate.apply_migrations",
         lambda _url: pytest.fail("blank CLI database URL must not apply migrations"),
     )
 
@@ -40,13 +40,13 @@ def test_migrate_cli_strips_explicit_database_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seen: list[str] = []
-    monkeypatch.setattr("chime.migrate.configure_logging", lambda: None)
+    monkeypatch.setattr("koel.migrate.configure_logging", lambda: None)
     monkeypatch.setattr(
-        "chime.migrate.Settings.from_env",
+        "koel.migrate.Settings.from_env",
         lambda **_: pytest.fail("explicit CLI database URL must not read env"),
     )
     monkeypatch.setattr(
-        "chime.migrate.apply_migrations",
+        "koel.migrate.apply_migrations",
         lambda url: seen.append(url) or [],
     )
 

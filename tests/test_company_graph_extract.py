@@ -1,6 +1,6 @@
 """Unit tests for equity / relation extract heuristics."""
 
-from chime.extractors.company_graph_pdf import (
+from koel.extractors.company_graph_pdf import (
     GraphExtractResult,
     _clean_name,
     _parse_num,

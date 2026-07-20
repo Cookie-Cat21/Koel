@@ -66,7 +66,7 @@ When a lane CLEAN×2:
 | Path | Role |
 |---|---|
 | [PORTFOLIO_PLAN.md](PORTFOLIO_PLAN.md) | KPI A + multi-hour / multi-repo plan |
-| [CHIME_HORIZON.md](CHIME_HORIZON.md) | Product now/next + active 2K–3K band |
+| [KOEL_HORIZON.md](KOEL_HORIZON.md) | Product now/next + active 2K–3K band |
 | [LONG_RUN_OPS.md](LONG_RUN_OPS.md) | Session heartbeat |
 | [HANDOFF.md](HANDOFF.md) | Cross-session resume |
 | `EPOCH*_BOARD.md` | Pre-seeded fuel (5+) |

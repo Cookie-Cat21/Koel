@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock
 import pytest
 from psycopg.errors import UniqueViolation
 
-from chime.domain import AlertEvent, AlertType, Disclosure, PriceSnapshot, SectorSnapshot
-from chime.storage import Storage, _row_to_rule, _row_to_snapshot
+from koel.domain import AlertEvent, AlertType, Disclosure, PriceSnapshot, SectorSnapshot
+from koel.storage import Storage, _row_to_rule, _row_to_snapshot
 
 
 class _Cursor:
@@ -116,7 +116,7 @@ async def test_health_check_records_real_pool_checkout_wait(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     ticks = iter([10.0, 10.125])
-    monkeypatch.setattr("chime.storage.perf_counter", lambda: next(ticks))
+    monkeypatch.setattr("koel.storage.perf_counter", lambda: next(ticks))
     conn = _Conn([{"ok": 1}])
     store = _store(conn)
 

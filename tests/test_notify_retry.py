@@ -9,7 +9,7 @@ import pytest
 from structlog.testing import capture_logs
 from telegram.error import NetworkError, RetryAfter, TelegramError, TimedOut
 
-from chime.notify import SendResult, _retry_delay_seconds, send_message
+from koel.notify import SendResult, _retry_delay_seconds, send_message
 
 
 def test_retry_delay_seconds_accepts_timedelta_and_numeric() -> None:
@@ -51,7 +51,7 @@ async def test_send_message_retry_after_then_succeeds() -> None:
         side_effect=[RetryAfter(1), None]  # first flood, then ok
     )
 
-    with patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
+    with patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
         result = await send_message(bot, chat_id=1001, text="hello")
 
     assert result is SendResult.OK
@@ -70,7 +70,7 @@ async def test_retry_after_sleep_is_capped() -> None:
     bot = AsyncMock()
     bot.send_message = AsyncMock(side_effect=[RetryAfter(999), None])
 
-    with patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
+    with patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
         result = await send_message(bot, chat_id=1001, text="hello")
 
     assert result is SendResult.OK
@@ -88,7 +88,7 @@ async def test_retry_after_timedelta_then_succeeds(monkeypatch: pytest.MonkeyPat
     bot = AsyncMock()
     bot.send_message = AsyncMock(side_effect=[flood, None])
 
-    with patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
+    with patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
         result = await send_message(bot, chat_id=1001, text="hello")
 
     assert result is SendResult.OK
@@ -103,7 +103,7 @@ async def test_retry_after_then_telegram_error_returns_failed() -> None:
 
     with (
         capture_logs() as logs,
-        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
     ):
         result = await send_message(bot, chat_id=1001, text="hello")
 
@@ -131,7 +131,7 @@ async def test_second_retry_after_returns_deferred_not_failed() -> None:
 
     with (
         capture_logs() as logs,
-        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
     ):
         result = await send_message(bot, chat_id=1001, text="hello")
 
@@ -151,7 +151,7 @@ async def test_retry_after_deferred_when_nonblocking() -> None:
     bot = AsyncMock()
     bot.send_message = AsyncMock(side_effect=RetryAfter(60))
 
-    with patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
+    with patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
         result = await send_message(bot, chat_id=1001, text="hello", block_on_retry_after=False)
 
     assert result is SendResult.DEFERRED
@@ -166,7 +166,7 @@ async def test_nonblocking_retry_after_returns_deferred_without_retrying() -> No
 
     with (
         capture_logs() as logs,
-        patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep,
     ):
         result = await send_message(bot, chat_id=1001, text="hello", block_on_retry_after=False)
 

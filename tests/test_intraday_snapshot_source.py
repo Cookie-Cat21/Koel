@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from chime.adapters.cse import ChartPointRow, chart_point_to_intraday_snapshot
-from chime.domain import PriceSnapshot
-from chime.migrate import apply_migrations
-from chime.storage import Storage
+from koel.adapters.cse import ChartPointRow, chart_point_to_intraday_snapshot
+from koel.domain import PriceSnapshot
+from koel.migrate import apply_migrations
+from koel.storage import Storage
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 pytestmark = [

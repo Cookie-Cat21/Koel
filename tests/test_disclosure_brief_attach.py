@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertEvent, AlertType, PreviousPriceState, PriceSnapshot, disclaimer
-from chime.notify import SendResult
-from chime.poller import Poller
+from koel.config import Settings
+from koel.domain import AlertEvent, AlertType, PreviousPriceState, PriceSnapshot, disclaimer
+from koel.notify import SendResult
+from koel.poller import Poller
 from tests.conftest import make_disclosure, make_rule
 
 

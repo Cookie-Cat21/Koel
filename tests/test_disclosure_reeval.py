@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertType, Disclosure, PreviousPriceState, PriceSnapshot
-from chime.poller import Poller
-from chime.storage import Storage
+from koel.config import Settings
+from koel.domain import AlertType, Disclosure, PreviousPriceState, PriceSnapshot
+from koel.poller import Poller
+from koel.storage import Storage
 from tests.conftest import make_disclosure, make_rule
 
 

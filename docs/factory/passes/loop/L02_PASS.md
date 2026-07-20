@@ -18,8 +18,8 @@
 ## Verify proof
 
 ```
-ruff check chime tests  → All checks passed
-mypy chime              → Success: no issues found in 15 source files
+ruff check koel tests  → All checks passed
+mypy koel              → Success: no issues found in 15 source files
 pytest -q               → green (3 skipped DB tests without DATABASE_URL)
 rules cov               → 100%
 ```

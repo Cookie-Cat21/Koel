@@ -10,7 +10,7 @@ import urllib.request
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from chime.health import HealthState, _is_loopback_host, start_health_server
+from koel.health import HealthState, _is_loopback_host, start_health_server
 
 
 def _ephemeral_port() -> int:
@@ -79,7 +79,7 @@ def test_loopback_health_includes_last_error_detail() -> None:
     state = HealthState()
     state.update(
         ok=False,
-        last_error="OperationalError: connection to host db.internal user chime failed",
+        last_error="OperationalError: connection to host db.internal user koel failed",
         lock_held_skip=False,
         db_ok=False,
     )
@@ -97,7 +97,7 @@ def test_non_loopback_health_redacts_last_error() -> None:
     state = HealthState()
     state.update(
         ok=False,
-        last_error="OperationalError: connection to host db.internal user chime failed",
+        last_error="OperationalError: connection to host db.internal user koel failed",
         lock_held_skip=True,
         db_ok=False,
         last_tick_ok=False,

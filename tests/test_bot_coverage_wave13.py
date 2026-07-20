@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     BRIEF_AI_OFF,
     BRIEF_NONE_YET,
     BRIEF_USAGE,
@@ -17,7 +17,7 @@ from chime.bot import (
     format_brief_lookup_reply,
     reset_cmd_rate_limits,
 )
-from chime.domain import AlertRule, AlertType, PriceSnapshot, disclaimer
+from koel.domain import AlertRule, AlertType, PriceSnapshot, disclaimer
 
 
 @pytest.fixture(autouse=True)

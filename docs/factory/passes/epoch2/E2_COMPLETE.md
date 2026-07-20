@@ -2,7 +2,7 @@
 
 **Branch:** `cursor/epoch2-agentic-loop-cb19`  
 **HEAD verify:** (post-SIM117)  
-**Result:** 16/16 board items DONE; unit verify green (`--cov=chime` ≥60%).
+**Result:** 16/16 board items DONE; unit verify green (`--cov=koel` ≥60%).
 
 ## Waves
 

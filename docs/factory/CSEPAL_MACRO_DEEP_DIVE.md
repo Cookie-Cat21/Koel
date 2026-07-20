@@ -199,12 +199,12 @@ storage / API
 web Overview
   └─ TapePulseStrip next to AppetiteStrip # M1
 
-chime rules + bot
+koel rules + bot
   └─ MARKET appetite/foreign/book alerts  # M2
 ```
 
 **Files likely to touch (future PR, not this doc):**  
-`chime/poller.py`, `chime/storage.py`, `chime/rules.py`, `chime/domain.py`, `web/src/app/overview/page.tsx`, new `web/src/lib/api/tape.ts` + small strip component, migrations only if aggregate tables needed (prefer derive-from-existing first).
+`koel/poller.py`, `koel/storage.py`, `koel/rules.py`, `koel/domain.py`, `web/src/app/overview/page.tsx`, new `web/src/lib/api/tape.ts` + small strip component, migrations only if aggregate tables needed (prefer derive-from-existing first).
 
 ---
 

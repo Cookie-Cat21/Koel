@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from chime.domain import AlertType, format_alert_message
-from chime.rules import evaluate_price_rules, filter_fireable
+from koel.domain import AlertType, format_alert_message
+from koel.rules import evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 

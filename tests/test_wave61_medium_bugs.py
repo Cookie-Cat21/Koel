@@ -19,8 +19,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from chime.domain import AlertType
-from chime.storage import _row_to_rule
+from koel.domain import AlertType
+from koel.storage import _row_to_rule
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"

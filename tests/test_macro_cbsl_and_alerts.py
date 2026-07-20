@@ -7,9 +7,9 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from chime.adapters.macro_cbsl import parse_cbsl_fx_xlsx
-from chime.domain import MARKET_SYMBOL, AlertRule, AlertType
-from chime.macro_alerts import evaluate_market_regime_rules
+from koel.adapters.macro_cbsl import parse_cbsl_fx_xlsx
+from koel.domain import MARKET_SYMBOL, AlertRule, AlertType
+from koel.macro_alerts import evaluate_market_regime_rules
 
 
 def _tiny_cbsl_xlsx() -> bytes:

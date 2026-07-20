@@ -16,6 +16,8 @@ function testRepoResolve() {
   // Legacy fork / old Vercel env defaults must not point Health at the fork.
   assert.equal(resolveHealthGithubRepo("Cookie-Cat21/Koel"), "ArdenoStudio/Koel");
   assert.equal(resolveHealthGithubRepo("cookie-cat21/koel"), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("Cookie-Cat21/Chime"), "ArdenoStudio/Koel");
+  assert.equal(resolveHealthGithubRepo("cookie-cat21/chime"), "ArdenoStudio/Koel");
   assert.equal(resolveHealthGithubRepo("Cookie-Cat21/Other"), "ArdenoStudio/Koel");
   assert.equal(resolveHealthGithubRepo("../evil"), "ArdenoStudio/Koel");
   assert.equal(resolveHealthGithubRepo("https://evil"), "ArdenoStudio/Koel");

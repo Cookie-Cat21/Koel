@@ -102,7 +102,7 @@ export default async function AppetitePage() {
         ) : !latest ? (
           <EmptyState
             title="No appetite history yet"
-            description="Run python3 -m chime appetite-backfill after path-backfill fills daily_bars."
+            description="Run python3 -m koel appetite-backfill after path-backfill fills daily_bars."
           />
         ) : (
           <>

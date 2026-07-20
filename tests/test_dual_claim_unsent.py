@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.config import Settings
-from chime.notify import SendResult
-from chime.poller import Poller
+from koel.config import Settings
+from koel.notify import SendResult
+from koel.poller import Poller
 
 
 def _settings() -> Settings:

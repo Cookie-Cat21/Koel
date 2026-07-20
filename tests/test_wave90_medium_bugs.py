@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from chime.adapters.cse import CSEClient, _retryable
+from koel.adapters.cse import CSEClient, _retryable
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,7 +34,7 @@ def test_retryable_rejects_bool_status_soft_accept() -> None:
     )
     assert _retryable(ok)
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("def _retryable")[1].split("def _try_ms_to_dt")[0]
     assert "isinstance(raw_status, bool)" in chunk
     assert "exc.response.status_code in {429" not in chunk
@@ -48,7 +48,7 @@ def test_cse_client_rejects_bool_min_interval_soft_accept() -> None:
     client3 = CSEClient(min_interval_seconds=0.5)
     assert client3._min_interval == 0.5
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     ctor = src.split("class CSEClient")[1].split("async def _pace")[0]
     assert "isinstance(min_interval_seconds, bool)" in ctor
 
@@ -98,7 +98,7 @@ async def test_request_rejects_bool_status_and_non_str_content_type(
     client2 = CSEClient(client=http)
     assert await client2._request("POST", "/tradeSummary", json_body={}) == {"ok": True}
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("async def _request")[1].split("async def _guarded")[0]
     assert "isinstance(raw_status, int)" in chunk
     assert "isinstance(raw_ct, str)" in chunk

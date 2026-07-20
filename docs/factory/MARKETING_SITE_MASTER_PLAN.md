@@ -1,7 +1,7 @@
 # Quiverly marketing site — master plan
 
 **Status:** Planning (survey complete 2026-07-15)  
-**Authority:** [CLAUDE.md](../CLAUDE.md) · [CHIME_BRAND.md](../brand/CHIME_BRAND.md) · [ARDENO_STEAL_SHEET.md](../brand/ARDENO_STEAL_SHEET.md) · [DASH_COMPONENT_FILTER.md](DASH_COMPONENT_FILTER.md)  
+**Authority:** [CLAUDE.md](../CLAUDE.md) · [KOEL_BRAND.md](../brand/KOEL_BRAND.md) · [ARDENO_STEAL_SHEET.md](../brand/ARDENO_STEAL_SHEET.md) · [DASH_COMPONENT_FILTER.md](DASH_COMPONENT_FILTER.md)  
 **Product rule:** Telegram = product. Site = front door + trust. Dash = daily cake.
 
 This plan expands the thin `/` landing into a real marketing surface (including FAQ densify, pricing stub, blog later) **without** turning Quiverly into a broker dashboard or generic SaaS wallpaper.

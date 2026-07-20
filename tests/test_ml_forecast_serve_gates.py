@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from chime.ml.forecast_serve import (
+from koel.ml.forecast_serve import (
     DEFAULT_GATE_THR,
     P90_GATE_THR,
     _load_gate_threshold,
 )
-from chime.ml.symbol_gate import DEFAULT_CONF_THR, load_symbol_gate
+from koel.ml.symbol_gate import DEFAULT_CONF_THR, load_symbol_gate
 
 
 def test_load_gate_threshold_default(tmp_path: Path, monkeypatch) -> None:

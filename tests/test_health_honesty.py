@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.circuit import CircuitOpenError
-from chime.config import Settings
-from chime.poller import Poller
+from koel.circuit import CircuitOpenError
+from koel.config import Settings
+from koel.poller import Poller
 
 
 def _settings() -> Settings:
@@ -73,7 +73,7 @@ async def test_cycle_exception_fail_closes_poll_health_flags() -> None:
     """Mid-tick abort must not leave cold-start True on price/disclosure legs."""
     from datetime import UTC, datetime
 
-    from chime.domain import AlertType, PriceSnapshot
+    from koel.domain import AlertType, PriceSnapshot
     from tests.conftest import make_disclosure, make_rule
 
     storage = AsyncMock()
@@ -88,7 +88,7 @@ async def test_cycle_exception_fail_closes_poll_health_flags() -> None:
             s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)
         ]
     )
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
     storage.claim_unsent_batch = AsyncMock(return_value=[])

@@ -1,7 +1,7 @@
 /**
  * Soft-merge keys for CSE directors with split initials spellings.
  * Display stays as CSE initials — not common/public first names.
- * Keep merge keys in sync with chime/extractors/person_aliases.py
+ * Keep merge keys in sync with koel/extractors/person_aliases.py
  */
 
 /** Normalized uppercase name (dots → spaces) → merge key */

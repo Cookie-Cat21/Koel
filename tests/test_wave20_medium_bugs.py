@@ -14,9 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import cmd_cancel, parse_cancel_alert_id
-from chime.domain import DISCLOSURE_CATEGORY_MAX, TELEGRAM_SAFE_MAX
-from chime.storage import _row_to_rule
+from koel.bot import cmd_cancel, parse_cancel_alert_id
+from koel.domain import DISCLOSURE_CATEGORY_MAX, TELEGRAM_SAFE_MAX
+from koel.storage import _row_to_rule
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
@@ -45,7 +45,7 @@ async def test_cmd_cancel_hostile_id_stays_under_telegram_limit() -> None:
     context.application.bot_data = {"storage": storage}
     context.args = ["9" * 10_000]
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     update.effective_message.reply_text.assert_awaited_once()
@@ -65,7 +65,7 @@ async def test_cmd_cancel_zero_still_positive_copy() -> None:
     context.application.bot_data = {"storage": storage}
     context.args = ["0"]
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     body = update.effective_message.reply_text.await_args.args[0]
@@ -85,7 +85,7 @@ async def test_cmd_cancel_success_clamped() -> None:
     context.application.bot_data = {"storage": storage}
     context.args = ["#7"]
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     storage.deactivate_alert.assert_awaited_once_with(1, 7)

@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     AnnouncementRow,
     CSEClient,
     SectorRow,
@@ -30,9 +30,9 @@ from chime.adapters.cse import (
     symbol_info_to_snapshot,
     trade_row_to_snapshot,
 )
-from chime.domain import AlertEvent, AlertRule, AlertType, PriceSnapshot, SectorSnapshot
-from chime.poller import Poller
-from chime.storage import Storage
+from koel.domain import AlertEvent, AlertRule, AlertType, PriceSnapshot, SectorSnapshot
+from koel.poller import Poller
+from koel.storage import Storage
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -67,7 +67,7 @@ async def test_ready_filing_brief_non_enum_type_fail_closed() -> None:
     )
     assert await poller._ready_filing_brief_for(ok) == "brief"
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     ready = src.split("async def _ready_filing_brief_for")[1].split(
         "async def _claim_only"
     )[0]
@@ -107,7 +107,7 @@ async def test_list_stock_names_rejects_non_string_rows() -> None:
     store._pool = _Pool()  # type: ignore[assignment]
     assert await store.list_stock_names() == [("JKH.N0000", "John Keells")]
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def list_stock_names")[1].split("async def insert_snapshot")[
         0
     ]
@@ -117,7 +117,7 @@ async def test_list_stock_names_rejects_non_string_rows() -> None:
 
 
 def test_market_persist_failed_present_set_isinstance_pin() -> None:
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("market_persist_failed")[1].split("watched_missing")[0]
     assert "isinstance(s.symbol, str)" in chunk
 
@@ -307,7 +307,7 @@ async def test_persist_and_previous_state_skip_non_string_symbols() -> None:
     prev2 = await store.get_previous_state("  ", before_id=1)
     assert prev2.price is None and prev2.move_fired_keys == set()
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     assert "isinstance(snap.symbol, str)" in src.split("async def persist_market_snapshots")[
         1
     ].split("async def delete_old_non_watchlist_snapshots")[0]

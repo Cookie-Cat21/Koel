@@ -18,10 +18,10 @@ import os
 import time
 from datetime import datetime
 
-from chime.domain import Disclosure
-from chime.graph import GraphSettings
-from chime.graph.people_worker import process_disclosure_people
-from chime.storage import Storage
+from koel.domain import Disclosure
+from koel.graph import GraphSettings
+from koel.graph.people_worker import process_disclosure_people
+from koel.storage import Storage
 
 
 def _as_dt(value: object) -> datetime | None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from chime.ml.symbol_gate import DEFAULT_CONF_THR, load_symbol_gate
+from koel.ml.symbol_gate import DEFAULT_CONF_THR, load_symbol_gate
 
 
 def test_load_symbol_gate_missing(tmp_path: Path) -> None:

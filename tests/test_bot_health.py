@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.__main__ import _refresh_bot_health, _refresh_both_health
-from chime.health import HealthState
-from chime.poller import Poller
+from koel.__main__ import _refresh_bot_health, _refresh_both_health
+from koel.health import HealthState
+from koel.poller import Poller
 
 
 @pytest.mark.asyncio

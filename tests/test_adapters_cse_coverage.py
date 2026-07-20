@@ -10,7 +10,7 @@ import httpx
 import pytest
 from structlog.testing import capture_logs
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     CDN_BASE,
     AnnouncementRow,
     CSEClient,
@@ -28,7 +28,7 @@ from chime.adapters.cse import (
     sector_row_to_snapshot,
     symbol_info_to_snapshot,
 )
-from chime.circuit import CircuitOpenError
+from koel.circuit import CircuitOpenError
 
 
 def test_allowed_cdn_pdf_url_null_empty_and_traversal() -> None:

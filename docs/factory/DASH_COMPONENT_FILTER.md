@@ -81,7 +81,7 @@ Cherry-pick **patterns** from blocks below; do not scaffold a second app from th
 | **21st.dev / Agent Elements** | Per-item / MIT registry | **No dump-all** | Cherry-pick Markdown / pending badges only — **not** full `AgentChat` (Phase 3) |
 | **Shadcnblocks** | Pro proprietary; free SPDX weak | Pro **no** | Free only if LICENSE clear; else skip |
 | **Cult UI** | Free MIT / Pro paid | Free yes | Skip Pro hero panels; light status only |
-| **Watermelon UI** (`ui.watermelon.sh`) | MIT registry + Premium marketing | Confirm per block | Footer already adapted (`ChimeFooter`); thin AI cards only |
+| **Watermelon UI** (`ui.watermelon.sh`) | MIT registry + Premium marketing | Confirm per block | Footer already adapted (`KoelFooter`); thin AI cards only |
 | **React Bits** | MIT + **Commons Clause** | App use ≠ pure MIT | **Constitution fail — skip** |
 | **Apple Cards Carousel / Footers / FAQ / Animated Beam** | Usually marketing demos | N/A | **Reject for dash** (landing may already use FAQ/footer patterns) |
 | **Better Design Tips** | Tips, not components | N/A | Skip as kit |

@@ -17,6 +17,7 @@ export const HEALTH_CI_STRING_MAX = 96;
 /** Legacy fork / old default — always resolve to the canonical Actions repo. */
 const HEALTH_GITHUB_REPO_ALIASES: Record<string, string> = {
   "cookie-cat21/koel": HEALTH_GITHUB_REPO_DEFAULT,
+  "cookie-cat21/chime": HEALTH_GITHUB_REPO_DEFAULT,
 };
 
 export type CiWorkflowRun = {

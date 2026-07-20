@@ -14,7 +14,7 @@ Activate via `make factory-refill` after Epoch 16.
 | E17-D02 | Symbol sparkline empty: brand “not enough ticks” stays | DONE |
 | E17-O01 | HANDOFF Epoch 16→17 | DONE |
 | E17-C01 | Circuit snapshot in health includes half_open_trial | DONE |
-| E17-A01 | SCOREBOARD note portfolio_score == chime node | DONE |
+| E17-A01 | SCOREBOARD note portfolio_score == koel node | DONE |
 | E17-B01 | /alert usage error lists four kinds + NFA | DONE |
 
 Never farm. One concern per commit.

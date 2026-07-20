@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from chime.bot import parse_alert_args
-from chime.domain import MAX_ALERT_THRESHOLD
+from koel.bot import parse_alert_args
+from koel.domain import MAX_ALERT_THRESHOLD
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
@@ -18,7 +18,7 @@ WEB = ROOT / "web"
 
 def test_bot_threshold_caps_at_max_alert_threshold() -> None:
     assert MAX_ALERT_THRESHOLD == 1_000_000_000
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     assert "MAX_ALERT_THRESHOLD" in src
     assert "threshold > MAX_ALERT_THRESHOLD" in src
     parsed_huge, err_huge = parse_alert_args(["JKH.N0000", "above", "1e20"])

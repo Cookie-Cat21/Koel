@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.config import Settings
-from chime.sector_backfill import SectorBackfillResult, run_sector_backfill
+from koel.config import Settings
+from koel.sector_backfill import SectorBackfillResult, run_sector_backfill
 
 
 @pytest.mark.asyncio

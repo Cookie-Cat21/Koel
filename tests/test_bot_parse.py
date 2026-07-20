@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     ALERT_USAGE,
     HELP_TEXT,
     START_TEXT,
     normalize_symbol,
     parse_alert_args,
 )
-from chime.domain import AlertType, disclaimer
+from koel.domain import AlertType, disclaimer
 
 
 @pytest.mark.parametrize(

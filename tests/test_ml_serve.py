@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.domain import DailyBar
-from chime.ml import sklearn_available
+from koel.domain import DailyBar
+from koel.ml import sklearn_available
 
 
 def _series(n: int = 200) -> dict[str, list[DailyBar]]:
@@ -35,7 +35,7 @@ def _series(n: int = 200) -> dict[str, list[DailyBar]]:
 
 @pytest.mark.skipif(not sklearn_available(), reason="sklearn not installed")
 def test_train_and_predict_path() -> None:
-    from chime.ml.serve import _predict_price_path, _train_horizon_models
+    from koel.ml.serve import _predict_price_path, _train_horizon_models
 
     series = _series()
     models = _train_horizon_models(series, horizons=(1, 5), min_history=60)
@@ -50,7 +50,7 @@ def test_train_and_predict_path() -> None:
 @pytest.mark.asyncio
 @pytest.mark.skipif(not sklearn_available(), reason="sklearn not installed")
 async def test_write_ml_forecasts_calls_storage() -> None:
-    from chime.ml.serve import write_ml_forecasts
+    from koel.ml.serve import write_ml_forecasts
 
     series = _series()
     storage = AsyncMock()

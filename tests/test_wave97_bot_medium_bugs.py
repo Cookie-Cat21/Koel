@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from telegram.error import RetryAfter
 
-from chime.notify import SendResult, send_message
+from koel.notify import SendResult, send_message
 
 
 @pytest.mark.asyncio
@@ -34,7 +34,7 @@ async def test_send_message_retry_unexpected_client_error_returns_failed() -> No
         side_effect=[RetryAfter(1), RuntimeError("retry transport exploded")]
     )
 
-    with patch("chime.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
+    with patch("koel.notify.asyncio.sleep", new_callable=AsyncMock) as sleep:
         result = await send_message(bot, chat_id=1001, text="hello")
 
     assert result is SendResult.FAILED

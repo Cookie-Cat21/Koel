@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from chime.ml.dataset import Sample
-from chime.ml.harden import _demean_by_day, _purge_train
-from chime.ml.metrics import mean_daily_rank_ic, spearman, sweep_confidence_gates
+from koel.ml.dataset import Sample
+from koel.ml.harden import _demean_by_day, _purge_train
+from koel.ml.metrics import mean_daily_rank_ic, spearman, sweep_confidence_gates
 
 
 def _sample(d: date, y_ret: float = 0.01) -> Sample:

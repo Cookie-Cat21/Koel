@@ -22,8 +22,8 @@ ML_FORECAST_ENABLED=0   # keep user-facing off until you opt in
 | `always_on` | Research only — not ops default | ~59–60% |
 
 ```bash
-python3 -m chime ml-forecast-unified --mode gated_p90
-python3 -m chime ml-forecast-unified --mode gated
+python3 -m koel ml-forecast-unified --mode gated_p90
+python3 -m koel ml-forecast-unified --mode gated
 ```
 
 Silence is expected. Selective ≠ always right.
@@ -32,12 +32,12 @@ Silence is expected. Selective ≠ always right.
 
 | Command | Loop | Purpose |
 |---|---|---|
-| `python3 -m chime ml-forecast-unified --mode …` | serve | Emit forecasts (+ outcomes rows) |
-| `python3 -m chime ml-score-outcomes` | A | Grade due horizons |
-| `python3 -m chime ml-loop-nightly --force` | A | Accrue market summary + OB, scoreboard, allowlist, drift |
-| `python3 -m chime ml-loop-retrain --force` | B | Train challenger; promote if gates pass |
-| `python3 -m chime ml-loop-research --force` | C | Run open backlog experiments |
-| `python3 -m chime market-summary-backfill` | data | Upsert CSE dailyMarketSummery (~2 days/call) |
+| `python3 -m koel ml-forecast-unified --mode …` | serve | Emit forecasts (+ outcomes rows) |
+| `python3 -m koel ml-score-outcomes` | A | Grade due horizons |
+| `python3 -m koel ml-loop-nightly --force` | A | Accrue market summary + OB, scoreboard, allowlist, drift |
+| `python3 -m koel ml-loop-retrain --force` | B | Train challenger; promote if gates pass |
+| `python3 -m koel ml-loop-research --force` | C | Run open backlog experiments |
+| `python3 -m koel market-summary-backfill` | data | Upsert CSE dailyMarketSummery (~2 days/call) |
 | Loop C agent | C | See `LOOP_C_PROMPT.md` + `EXPERIMENT_BACKLOG.md` |
 
 ## Accrual unlock thresholds

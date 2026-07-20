@@ -1,4 +1,4 @@
-# Finance dashboard inspiration → Chime
+# Finance dashboard inspiration → Koel
 
 **Date:** 2026-07-14  
 **Method:** Parallel survey (OSS repos + Ardeno bookmark kits). Factory concurrency
@@ -12,7 +12,7 @@ dump Pro marketplaces (see `DASH_COMPONENT_FILTER.md`).
 
 ## 1. Best open-source stock / finance dashboards (repos)
 
-| Repo | License | Stack | Steal for Chime | Verdict |
+| Repo | License | Stack | Steal for Koel | Verdict |
 |---|---|---|---|---|
 | [tremorlabs/tremor](https://github.com/tremorlabs/tremor) | Apache-2.0 | React + Tailwind | KPI chips, delta badges, spark header layout | **ACCEPT_PATTERN** |
 | [tremorlabs/tremor-blocks](https://github.com/tremorlabs/tremor-blocks) | MIT | TSX blocks | status strip, bar-list movers, form layouts, banners | **ACCEPT_PATTERN** (cherry-pick) |
@@ -27,13 +27,13 @@ dump Pro marketplaces (see `DASH_COMPONENT_FILTER.md`).
 
 ### Explicit reject (repos)
 
-- OpenStock / AGPL trees — do not fork into Chime  
+- OpenStock / AGPL trees — do not fork into Koel  
 - Quant / TA terminals, order-book clones  
 - Any portfolio + tax + screener “full app” as a drop-in  
 
 ---
 
-## 2. Ardeno bookmark folder → Chime
+## 2. Ardeno bookmark folder → Koel
 
 | Bookmark | License | Action |
 |---|---|---|
@@ -52,7 +52,7 @@ dump Pro marketplaces (see `DASH_COMPONENT_FILTER.md`).
 
 ---
 
-## 3. Ranked components to port next (Chime routes)
+## 3. Ranked components to port next (Koel routes)
 
 Already shipped: StatCard, AlertBanner, ChatBubble, Steps, Faq, Badge, Select,
 Armed/Delivery badges, PageHeader, PriceRefresh, EmptyState, sparkline.
@@ -94,4 +94,4 @@ Armed/Delivery badges, PageHeader, PriceRefresh, EmptyState, sparkline.
 **Wave B:** disclosure timeline · history pagination · Cmd+K  
 **Wave C:** optional LWC on symbol · Magic beam health diagram  
 
-Each port: adapt to Chime tokens → log `THIRD_PARTY.md` → `npm run typecheck && lint` → route regressions → “trading terminal?” adversarial check.
+Each port: adapt to Koel tokens → log `THIRD_PARTY.md` → `npm run typecheck && lint` → route regressions → “trading terminal?” adversarial check.

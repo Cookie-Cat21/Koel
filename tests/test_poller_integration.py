@@ -11,10 +11,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from chime.domain import AlertType, PriceSnapshot
-from chime.migrate import apply_migrations
-from chime.poller import Poller
-from chime.storage import Storage
+from koel.domain import AlertType, PriceSnapshot
+from koel.migrate import apply_migrations
+from koel.poller import Poller
+from koel.storage import Storage
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
@@ -88,7 +88,7 @@ async def test_crossing_fires_telegram_once(storage: Storage) -> None:
         ts=datetime(2026, 7, 11, 4, 5, tzinfo=UTC),
     )
     cse = FakeCSE([cross])
-    from chime.config import Settings
+    from koel.config import Settings
 
     settings = Settings(
         telegram_bot_token="dummy",
@@ -156,7 +156,7 @@ async def test_kill_restart_no_double_send(storage: Storage) -> None:
         sent_ok.append(text)
         return True
 
-    from chime.config import Settings
+    from koel.config import Settings
 
     settings = Settings(
         telegram_bot_token="dummy",

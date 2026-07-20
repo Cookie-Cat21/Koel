@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from chime.config import Settings
+from koel.config import Settings
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def test_from_env_missing_telegram_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:

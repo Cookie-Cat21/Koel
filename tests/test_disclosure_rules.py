@@ -7,8 +7,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from chime.domain import AlertType
-from chime.rules import evaluate_disclosure_rules
+from koel.domain import AlertType
+from koel.rules import evaluate_disclosure_rules
 from tests.conftest import make_disclosure, make_rule
 
 # Default rule created_at before default disclosure published_at (2026-07-11 06:00 UTC)

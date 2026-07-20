@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from chime.briefs import BRIEF_SYSTEM_INSTRUCTION, BriefSettings, build_brief_prompt
-from chime.briefs.provider import (
+from koel.briefs import BRIEF_SYSTEM_INSTRUCTION, BriefSettings, build_brief_prompt
+from koel.briefs.provider import (
     BriefsDisabledError,
     GeminiBriefProvider,
     GroqBriefProvider,
@@ -21,7 +21,7 @@ from chime.briefs.provider import (
     _openai_chat_failure_reason,
     make_brief_provider,
 )
-from chime.briefs.worker import claim_pending_briefs
+from koel.briefs.worker import claim_pending_briefs
 from tests.test_storage_unit import _Conn, _store
 
 
@@ -514,7 +514,7 @@ async def test_openrouter_summarize_httpx_mock() -> None:
     assert req.method == "POST"
     assert str(req.url) == "https://openrouter.ai/api/v1/chat/completions"
     assert req.headers.get("Authorization") == "Bearer test-key"
-    assert req.headers.get("HTTP-Referer") == "https://github.com/chime-cse"
+    assert req.headers.get("HTTP-Referer") == "https://github.com/ArdenoStudio/Koel"
     assert req.headers.get("X-Title") == "koel CSE alerts"
     payload = json.loads(req.content)
     assert payload["model"] == "openai/gpt-4o-mini"
@@ -1013,9 +1013,9 @@ async def test_storage_count_briefs_today() -> None:
 async def test_poller_schedule_brief_drain_only_when_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import chime.poller as poller_mod
-    from chime.config import Settings
-    from chime.poller import Poller
+    import koel.poller as poller_mod
+    from koel.config import Settings
+    from koel.poller import Poller
 
     assert hasattr(Poller, "_schedule_brief_drain")
     assert hasattr(Poller, "_drain_briefs_safe")

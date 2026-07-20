@@ -32,7 +32,7 @@ jobs:
         run: ruff check .
 
       - name: Mypy
-        run: mypy chime
+        run: mypy koel
 
       - name: Pytest (unit; no DATABASE_URL required)
         run: pytest
@@ -51,18 +51,18 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: chime
-          POSTGRES_PASSWORD: chime
-          POSTGRES_DB: chime
+          POSTGRES_USER: koel
+          POSTGRES_PASSWORD: koel
+          POSTGRES_DB: koel
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U chime -d chime"
+          --health-cmd "pg_isready -U koel -d koel"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://chime:chime@localhost:5432/chime
+      DATABASE_URL: postgresql://koel:koel@localhost:5432/koel
     steps:
       - uses: actions/checkout@v4
 
@@ -77,18 +77,18 @@ jobs:
       # Applies db/migrations/*.sql in sorted order (incl. 007 briefs status,
       # 008 sectors). Presence pinned in tests/test_migrate_idempotent.py.
       - name: Apply migrations
-        run: python -m chime.migrate
+        run: python -m koel.migrate
 
       - name: Collect integration tests (must not be empty)
         run: |
           set -euo pipefail
-          pytest --collect-only --no-cov -m integration | tee /tmp/chime-integ-collect.txt
-          if ! grep -Eq '[0-9]+/.* tests collected' /tmp/chime-integ-collect.txt; then
+          pytest --collect-only --no-cov -m integration | tee /tmp/koel-integ-collect.txt
+          if ! grep -Eq '[0-9]+/.* tests collected' /tmp/koel-integ-collect.txt; then
             echo "::error::integration collect produced no count line"
             exit 1
           fi
           # Deselected-only (0 selected) looks like "0/N tests collected"
-          if grep -Eq '^0/' /tmp/chime-integ-collect.txt; then
+          if grep -Eq '^0/' /tmp/koel-integ-collect.txt; then
             echo "::error::zero integration tests collected — marker wiring broke"
             exit 1
           fi
@@ -98,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           # Marker-scoped: unit job already owns full-suite + cov gate.
-          pytest --tb=line --no-cov -m integration -rs | tee /tmp/chime-db-pytest.txt
+          pytest --tb=line --no-cov -m integration -rs | tee /tmp/koel-db-pytest.txt
 
       - name: Require DB integration tests ran (not skipped)
         run: |
@@ -110,24 +110,24 @@ jobs:
             echo "::error::DATABASE_URL empty in migrate job"
             exit 1
           fi
-          if ! grep -Eq '[0-9]+ passed' /tmp/chime-db-pytest.txt; then
+          if ! grep -Eq '[0-9]+ passed' /tmp/koel-db-pytest.txt; then
             echo "::error::No passed count in pytest output"
             exit 1
           fi
           # Full skip of DB suite would look like "0 passed" with many skipped —
           # reject zero passes.
-          if grep -Eq '^0 passed' /tmp/chime-db-pytest.txt; then
+          if grep -Eq '^0 passed' /tmp/koel-db-pytest.txt; then
             echo "::error::Zero tests passed; DB suite likely skipped"
             exit 1
           fi
-          if grep -Eq 'SKIPPED.*(DATABASE_URL not set)' /tmp/chime-db-pytest.txt; then
+          if grep -Eq 'SKIPPED.*(DATABASE_URL not set)' /tmp/koel-db-pytest.txt; then
             echo "::error::integration tests still skipped despite DATABASE_URL"
             exit 1
           fi
           # Any skip in the marked suite is a gate failure (RUN_WEB etc. are not
           # in -m integration).
-          if grep -Eq '^[0-9]+ skipped' /tmp/chime-db-pytest.txt || \
-             grep -Eq ', [0-9]+ skipped' /tmp/chime-db-pytest.txt; then
+          if grep -Eq '^[0-9]+ skipped' /tmp/koel-db-pytest.txt || \
+             grep -Eq ', [0-9]+ skipped' /tmp/koel-db-pytest.txt; then
             echo "::error::integration marker suite reported skips"
             exit 1
           fi

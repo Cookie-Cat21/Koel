@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.briefs import BriefSettings, briefs_enabled
-from chime.config import Settings
-from chime.domain import PreviousPriceState, PriceSnapshot
-from chime.poller import Poller
+from koel.briefs import BriefSettings, briefs_enabled
+from koel.config import Settings
+from koel.domain import PreviousPriceState, PriceSnapshot
+from koel.poller import Poller
 
 
 def _settings() -> Settings:
@@ -186,7 +186,7 @@ async def test_circuit_open_empty_watchlist_degrades_tick() -> None:
     storage.claim_unsent_batch = AsyncMock(return_value=[])
 
     cse = AsyncMock()
-    from chime.circuit import CircuitOpenError
+    from koel.circuit import CircuitOpenError
 
     cse.fetch_trade_summary = AsyncMock(side_effect=CircuitOpenError("open"))
     cse.fetch_announcements_for_symbol = AsyncMock(return_value=[])
@@ -236,7 +236,7 @@ async def test_circuit_open_clears_stale_watched_missing() -> None:
     storage = AsyncMock()
     storage.watched_symbols = AsyncMock(return_value=["JKH.N0000"])
     cse = AsyncMock()
-    from chime.circuit import CircuitOpenError
+    from koel.circuit import CircuitOpenError
 
     cse.fetch_trade_summary = AsyncMock(side_effect=CircuitOpenError("open"))
 

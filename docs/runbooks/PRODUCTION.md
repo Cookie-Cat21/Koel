@@ -10,9 +10,9 @@ one poller leader per database.
 | Process | Command | Role |
 |---|---|---|
 | Postgres | `docker compose up -d` (or managed DSN) | Shared DB for bot, poller, dash |
-| Migrate | `python -m chime migrate` | Apply `db/migrations/` once per deploy |
-| Bot + poller | `python -m chime both` | Telegram UX + market-hours poll / rules / delivery |
-| *or* split | `python -m chime bot` **and** `python -m chime poller` | Same surfaces; one poller only |
+| Migrate | `python -m koel migrate` | Apply `db/migrations/` once per deploy |
+| Bot + poller | `python -m koel both` | Telegram UX + market-hours poll / rules / delivery |
+| *or* split | `python -m koel bot` **and** `python -m koel poller` | Same surfaces; one poller only |
 | Dashboard | `cd web && npm run build && npm run start` | Thin watchlist / alerts UI (port 3000) |
 
 Do **not** run two pollers against the same `DATABASE_URL` expecting dual
@@ -22,7 +22,7 @@ throughput — advisory lock means the second skips ticks (`lock_held_skip`).
 
 ```text
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  Postgres   │◄────│  chime both      │     │  web start  │
+│  Postgres   │◄────│  koel both      │     │  web start  │
 │  (compose / │     │  HEALTH :8080    │◄────│  :3000      │
 │   managed)  │◄────│                  │     │  (Postgres  │
 └─────────────┘     └──────────────────┘     │   + optional│
@@ -33,8 +33,8 @@ throughput — advisory lock means the second skips ticks (`lock_held_skip`).
 1. **Secrets** — copy `.env.example` → `.env` (repo root) and `web/.env.example`
    → `web/.env.local`. Never commit either. See secret checklist below.
 2. **DB** — `make up` (local) or set `DATABASE_URL` to the managed instance.
-3. **Migrate** — `python -m chime migrate` (or `make migrate` with local compose).
-4. **Core** — start `python -m chime both` under your process supervisor
+3. **Migrate** — `python -m koel migrate` (or `make migrate` with local compose).
+4. **Core** — start `python -m koel both` under your process supervisor
    (systemd, Docker `CMD`, etc.). Health: `http://127.0.0.1:8080/health`
    (bind `HEALTH_HOST`/`HEALTH_PORT`; non-loopback returns liveness only).
 5. **Dash** — `cd web && npm ci && npm run build && npm run start`.
@@ -45,11 +45,11 @@ throughput — advisory lock means the second skips ticks (`lock_held_skip`).
 
 | Unit | `ExecStart` | Restart |
 |---|---|---|
-| `chime-core` | `/path/.venv/bin/python -m chime both` | always |
-| `chime-web` | `/usr/bin/npm run start` (`WorkingDirectory=…/web`) | always |
+| `koel-core` | `/path/.venv/bin/python -m koel both` | always |
+| `koel-web` | `/usr/bin/npm run start` (`WorkingDirectory=…/web`) | always |
 
-Environment: `EnvironmentFile=/etc/chime/chime.env` (core) and
-`EnvironmentFile=/etc/chime/web.env` (dash). Keep Telegram token and session
+Environment: `EnvironmentFile=/etc/koel/koel.env` (core) and
+`EnvironmentFile=/etc/koel/web.env` (dash). Keep Telegram token and session
 secrets out of unit files in git.
 
 ## Compose (current)
@@ -61,7 +61,7 @@ docker compose --profile web up -d --build   # Postgres + dash (:3000)
 make migrate                            # waits for health when possible
 ```
 
-`DATABASE_URL=postgresql://chime:chime@localhost:5432/chime` matches compose
+`DATABASE_URL=postgresql://koel:koel@localhost:5432/koel` matches compose
 defaults — **dev only**. Production must use a strong password / managed DSN
 and must not expose Postgres on `0.0.0.0` without network controls.
 
@@ -108,8 +108,8 @@ Structured JSON logs (structlog). Grep keys documented in
 
 After Telegram accepts an alert, Quiverly fsyncs a local OK marker before updating
 Postgres so a restart after a DB-write outage does not re-send the same alert.
-Default path: `/tmp/chime/delivery-ok-<database-hash>.jsonl`; override with
-`CHIME_DELIVERY_OK_LEDGER=/var/lib/chime/delivery-ok.jsonl` on hosts where
+Default path: `/tmp/koel/delivery-ok-<database-hash>.jsonl`; override with
+`KOEL_DELIVERY_OK_LEDGER=/var/lib/koel/delivery-ok.jsonl` on hosts where
 `/tmp` is ephemeral. Keep the directory writable by the core process.
 
 ## Latency honesty
@@ -127,8 +127,8 @@ See [TIJORI.md](TIJORI.md) — run poller for `/market`, `AI_BRIEFS_ENABLED`, `P
 Flag-gated CSE chart drains (same politeness as path-backfill):
 
 ```bash
-python3 -m chime path-backfill --force --limit 0      # daily_bars (~1y)
-python3 -m chime intraday-backfill --force --limit 0  # session ticks
+python3 -m koel path-backfill --force --limit 0      # daily_bars (~1y)
+python3 -m koel intraday-backfill --force --limit 0  # session ticks
 ```
 
 Intraday rows land in `price_snapshots` with ``source='cse_intraday'``. Alert

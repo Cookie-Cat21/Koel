@@ -20,14 +20,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import cmd_brief
-from chime.briefs import BriefSettings
-from chime.briefs.worker import _notify_brief_followups, claim_pending_briefs
-from chime.domain import AlertRule, AlertType, Disclosure
-from chime.notify import SendResult
-from chime.poller import Poller
-from chime.rules import _disclosure_category_matches
-from chime.storage import _row_to_rule, _row_to_snapshot
+from koel.bot import cmd_brief
+from koel.briefs import BriefSettings
+from koel.briefs.worker import _notify_brief_followups, claim_pending_briefs
+from koel.domain import AlertRule, AlertType, Disclosure
+from koel.notify import SendResult
+from koel.poller import Poller
+from koel.rules import _disclosure_category_matches
+from koel.storage import _row_to_rule, _row_to_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -69,8 +69,8 @@ async def test_cmd_brief_rejects_non_string_symbol_and_brief() -> None:
     context.args = ["JKH.N0000"]
 
     with (
-        patch("chime.bot._rate_limited", AsyncMock(return_value=False)),
-        patch("chime.bot.briefs_enabled", return_value=True),
+        patch("koel.bot._rate_limited", AsyncMock(return_value=False)),
+        patch("koel.bot.briefs_enabled", return_value=True),
     ):
         await cmd_brief(update, context)
 
@@ -79,7 +79,7 @@ async def test_cmd_brief_rejects_non_string_symbol_and_brief() -> None:
     assert "True" not in text
     assert "JKH.N0000" in text
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     chunk = src.split("async def cmd_brief")[1].split("async def on_error")[0]
     assert "isinstance(raw_sym, str)" in chunk
     assert "isinstance(raw_brief, str)" in chunk
@@ -122,7 +122,7 @@ async def test_notify_brief_followups_skips_poisoned_claim_rows() -> None:
     assert "Margins steady." in texts[0]
     storage.mark_delivery_attempted_ok.assert_any_await(4)
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     chunk = src.split("async def _notify_brief_followups")[1].split(
         "async def _promote_skipped_if_needed"
     )[0]
@@ -170,7 +170,7 @@ async def test_brief_drain_skips_poisoned_disclosure_id() -> None:
     storage.mark_brief_ready.assert_not_awaited()
     storage.mark_brief_failed.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     drain = src.split("async def claim_pending_briefs(\n    storage:")[1]
     assert "isinstance(raw_did, bool)" in drain
     assert 'int(row["disclosure_id"])' not in drain.split("for i, row in enumerate")[
@@ -208,7 +208,7 @@ async def test_retry_unsent_skips_poisoned_rows() -> None:
     poller._delivery_ok_already_recorded = MagicMock(return_value=False)  # type: ignore[method-assign]
     poller._reconcile_delivery_ok = AsyncMock()  # type: ignore[method-assign]
 
-    with patch("chime.poller.RETRY_UNSENT_MAX", 5):
+    with patch("koel.poller.RETRY_UNSENT_MAX", 5):
         await poller._retry_unsent()
 
     assert poller._deliver_one.await_count == 1
@@ -216,7 +216,7 @@ async def test_retry_unsent_skips_poisoned_rows() -> None:
     assert pending.log_id == 7
     assert pending.message == ""
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("async def _retry_unsent(self)")[1].split(
         "async def _scheduled_tick"
     )[0]
@@ -262,7 +262,7 @@ def test_disclosure_category_rejects_non_string_haystack() -> None:
     )
     assert _disclosure_category_matches(rule, ok) is True
 
-    src = (ROOT / "chime" / "rules.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "rules.py").read_text(encoding="utf-8")
     chunk = src.split("def _disclosure_category_matches")[1].split(
         "def _safe_utc_aware"
     )[0]
@@ -308,7 +308,7 @@ def test_row_to_snapshot_rejects_poisoned_id_price_ts() -> None:
     ok = _row_to_snapshot({"id": 5, "symbol": "JKH.N0000", "price": 1.0, "ts": ts})
     assert ok is not None and ok.id == 5
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("def _row_to_snapshot")[1].split("def _row_to_rule")[0]
     assert "isinstance(raw_id, bool)" in chunk
     assert "isinstance(raw_price, bool)" in chunk
@@ -341,7 +341,7 @@ def test_row_to_rule_rejects_bool_ids_and_non_bool_flags() -> None:
     assert good_iso is not None and good_iso.created_at is not None
     assert _row_to_rule(base) is not None
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     create = src.split("async def create_alert")[1].split(
         "async def _fetch_active_rule"
     )[0]

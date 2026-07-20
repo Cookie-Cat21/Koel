@@ -39,5 +39,5 @@ gaps over further pin churn.
 
 ## Gate
 
-`DATABASE_URL= pytest -m 'not integration' --cov=chime --cov-fail-under=100`
+`DATABASE_URL= pytest -m 'not integration' --cov=koel --cov-fail-under=100`
 → **100.00%** (3866 stmts / 0 miss) at review HEAD.

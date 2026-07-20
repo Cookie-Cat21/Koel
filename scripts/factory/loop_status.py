@@ -63,7 +63,7 @@ def main() -> int:
     open_items = [r for r in rows if r[2] == "OPEN"]
     done = [r for r in rows if r[2] == "DONE"]
     prog = [r for r in rows if r[2] == "IN_PROGRESS"]
-    print("=== Chime Agentic Factory Status ===")
+    print("=== Koel Agentic Factory Status ===")
     print(f"epoch={score.get('epoch')} branch={score.get('branch')}")
     print(f"board={chosen.relative_to(ROOT)}")
     print(f"lifetime_factory_score={score.get('lifetime_factory_score', 0)}")

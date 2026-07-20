@@ -133,11 +133,11 @@ def test_logout_without_csrf_live() -> None:
 
     session_cookie = None
     for line in set_cookie:
-        if line.startswith("chime_session="):
+        if line.startswith("koel_session="):
             session_cookie = line.split(";", 1)[0]
             break
     if not session_cookie:
-        pytest.skip("no chime_session Set-Cookie from demo login")
+        pytest.skip("no koel_session Set-Cookie from demo login")
 
     logout_req = urllib.request.Request(
         f"{base}/api/v1/auth/logout",

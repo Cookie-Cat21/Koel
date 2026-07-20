@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import HELP_TEXT, START_TEXT, cmd_help, cmd_start, reset_cmd_rate_limits
-from chime.domain import disclaimer
+from koel.bot import HELP_TEXT, START_TEXT, cmd_help, cmd_start, reset_cmd_rate_limits
+from koel.domain import disclaimer
 
 # Factory / WS-014 / E7-B01–B02 budgets (non-blank content lines).
 _START_MAX_LINES = 3

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import ValidationError
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     CHART_PERIOD_1Y,
     CHART_PERIOD_INTRADAY,
     ChartPointRow,
@@ -18,9 +18,9 @@ from chime.adapters.cse import (
     chart_trade_date,
     trade_row_to_snapshot,
 )
-from chime.config import Settings
-from chime.domain import DailyBar, PriceSnapshot
-from chime.path_backfill import (
+from koel.config import Settings
+from koel.domain import DailyBar, PriceSnapshot
+from koel.path_backfill import (
     PathBackfillResult,
     run_path_backfill,
     seed_cse_stock_ids_from_company_info,

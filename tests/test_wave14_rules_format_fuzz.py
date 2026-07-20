@@ -12,14 +12,14 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from chime.domain import (
+from koel.domain import (
     TELEGRAM_SAFE_MAX,
     AlertEvent,
     AlertType,
     disclaimer,
     format_alert_message,
 )
-from chime.rules import crossed_above, crossed_below, evaluate_price_rules, filter_fireable
+from koel.rules import crossed_above, crossed_below, evaluate_price_rules, filter_fireable
 from tests.conftest import make_previous, make_rule, make_snapshot
 
 _COLOMBO = ZoneInfo("Asia/Colombo")

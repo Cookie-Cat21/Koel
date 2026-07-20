@@ -23,7 +23,7 @@ This document is the single source of truth for dash REST shapes. WAVE1_DASH `/a
 | NFA | **UI-only.** API returns raw facts; clients render `disclaimer()` chrome. |
 | Pagination | Query `limit` (default documented per route, max 200) and optional `cursor` / `offset` where noted. |
 | No WebSocket | v1 is request/response; pages refresh on navigation. |
-| Storage parity | Mutations mirror `chime.storage` / bot: auto-watch on alert create; unwatch deactivates rules for that symbol; cancel = soft `active=false`; duplicate active alerts → **idempotent return existing** (not deactivate-then-insert; not hard 409). |
+| Storage parity | Mutations mirror `koel.storage` / bot: auto-watch on alert create; unwatch deactivates rules for that symbol; cancel = soft `active=false`; duplicate active alerts → **idempotent return existing** (not deactivate-then-insert; not hard 409). |
 
 ### Error envelope
 
@@ -83,7 +83,7 @@ Demo only (`DASH_DEMO_AUTH=1` + allowlist). See ADR 001.
 }
 ```
 
-Sets `Set-Cookie: chime_session=…; HttpOnly; Secure; SameSite=Lax; Path=/` **and** CSRF material (non-HttpOnly CSRF cookie and/or `csrf_token` in the JSON body). See ADR 001 § CSRF.
+Sets `Set-Cookie: koel_session=…; HttpOnly; Secure; SameSite=Lax; Path=/` **and** CSRF material (non-HttpOnly CSRF cookie and/or `csrf_token` in the JSON body). See ADR 001 § CSRF.
 
 **Errors:** `403 demo_auth_disabled` · `403 demo_auth_denied` (unknown / empty allowlist — same shape) · `400 validation_error` · `429 rate_limited`
 

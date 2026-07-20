@@ -20,9 +20,9 @@ Fixed top adversarial findings from `docs/PASS1_AUDIT.md`:
 ## Proof
 
 ```
-ruff check chime tests     → All checks passed
-mypy chime                 → Success
-pytest                     → 57 passed, chime.rules 100% coverage
+ruff check koel tests     → All checks passed
+mypy koel                 → Success
+pytest                     → 57 passed, koel.rules 100% coverage
 ```
 
 ## Quality bar score (Pass 1)

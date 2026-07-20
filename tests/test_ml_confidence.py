@@ -1,6 +1,6 @@
 """Confidence mapping unit tests."""
 
-from chime.ml.confidence import confidence_band, score_to_confidence
+from koel.ml.confidence import confidence_band, score_to_confidence
 
 
 def test_score_to_confidence_clf_range() -> None:

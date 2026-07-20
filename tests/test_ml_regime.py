@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from chime.ml.regime import tag_regime
+from koel.ml.regime import tag_regime
 
 
 def test_tag_regime_up_high() -> None:

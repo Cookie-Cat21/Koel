@@ -3,7 +3,7 @@
 **Status:** **TARGET MET** (selective system)  
 **Tag:** `ml_hpe_p90_v1`  
 **Report:** [ml_precision90_20260716T154908Z.md](ml_precision90_20260716T154908Z.md)  
-**Config:** `chime/ml/hpe_p90_v1.json`
+**Config:** `koel/ml/hpe_p90_v1.json`
 
 ## What “90%” means here
 
@@ -40,11 +40,11 @@ Fold table: 7/8 folds ≥ 0.85 (fold 2 ≈ 0.83 — monitored).
 
 ```bash
 # Re-validate on current daily_bars
-python3 -m chime ml-precision90
+python3 -m koel ml-precision90
 
 # Serve gated forecasts (flag-gated)
 export ML_HPE_ENABLED=1
-python3 -m chime ml-hpe --force
+python3 -m koel ml-hpe --force
 ```
 
 Dash sparkline: uses `forecast_points` for `ml_hpe_p90_v1` when present; most symbols will have **no** overlay (silence = no high-precision signal).

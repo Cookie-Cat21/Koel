@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.macro_cbsl import _mid
-from chime.adapters.macro_eia import _parse_eia_payload
-from chime.macro_ingest import run_macro_tick
-from chime.storage import Storage
+from koel.adapters.macro_cbsl import _mid
+from koel.adapters.macro_eia import _parse_eia_payload
+from koel.macro_ingest import run_macro_tick
+from koel.storage import Storage
 
 
 class _Cursor:
@@ -197,11 +197,11 @@ async def test_run_macro_tick_force_upserts() -> None:
     settings.dcs_food_enabled = True
     with (
         patch(
-            "chime.macro_ingest.fetch_cbsl_fx_rows",
+            "koel.macro_ingest.fetch_cbsl_fx_rows",
             new=AsyncMock(return_value=[{"series_id": "USD_LKR"}]),
         ),
         patch(
-            "chime.macro_ingest.fetch_eia_oil_rows",
+            "koel.macro_ingest.fetch_eia_oil_rows",
             new=AsyncMock(return_value=[{"series_id": "BRENT_SPOT"}]),
         ),
     ):

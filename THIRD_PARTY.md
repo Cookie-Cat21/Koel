@@ -1,6 +1,6 @@
 # Third-party open-source dependencies
 
-Chime installs packages from PyPI (or equivalent); we do **not** vendor
+Koel installs packages from PyPI (or equivalent); we do **not** vendor
 copies of upstream source trees into this repo.
 
 | Package | License | Role |
@@ -12,7 +12,7 @@ copies of upstream source trees into this repo.
 | [APScheduler](https://github.com/agronholm/apscheduler) | MIT | Market-hours poller schedule |
 | [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) | LGPL-3.0 | Telegram bot |
 | [psycopg](https://github.com/psycopg/psycopg) (v3) | LGPL-3.0 | Postgres driver |
-| [pypdf](https://github.com/py-pdf/pypdf) | BSD-3-Clause | PDF text extraction for filing briefs (`chime[briefs]`) |
+| [pypdf](https://github.com/py-pdf/pypdf) | BSD-3-Clause | PDF text extraction for filing briefs (`koel[briefs]`) |
 
 Dev extras (`pytest`, `ruff`, `mypy`, etc.) are listed in `pyproject.toml`
 `[project.optional-dependencies]` and follow their own upstream licenses.

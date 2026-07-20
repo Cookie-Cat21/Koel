@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from chime.domain import AlertEvent, AlertType, PriceSnapshot
-from chime.migrate import apply_migrations
-from chime.storage import Storage
+from koel.domain import AlertEvent, AlertType, PriceSnapshot
+from koel.migrate import apply_migrations
+from koel.storage import Storage
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 pytestmark = [

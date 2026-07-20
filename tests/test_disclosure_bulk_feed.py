@@ -7,15 +7,15 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     AnnouncementRow,
     build_unique_company_name_map,
     normalize_company_name,
     resolve_announcement_symbol,
 )
-from chime.config import Settings
-from chime.domain import AlertType, Disclosure, PriceSnapshot
-from chime.poller import Poller
+from koel.config import Settings
+from koel.domain import AlertType, Disclosure, PriceSnapshot
+from koel.poller import Poller
 from tests.conftest import make_disclosure, make_rule
 
 
@@ -76,7 +76,7 @@ def test_resolve_announcement_symbol_prefers_explicit_then_name() -> None:
 
 def test_disclosure_bulk_feed_env_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
-    monkeypatch.setenv("DATABASE_URL", "postgresql://chime:chime@localhost:5432/chime")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://koel:koel@localhost:5432/koel")
     monkeypatch.delenv("DISCLOSURE_BULK_FEED", raising=False)
     assert Settings.from_env().disclosure_bulk_feed is False
     monkeypatch.setenv("DISCLOSURE_BULK_FEED", "1")
@@ -104,7 +104,7 @@ def _poller_mocks(
             s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)
         ]
     )
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
     storage.upsert_disclosure = AsyncMock(side_effect=lambda d: d.model_copy(update={"id": 99}))

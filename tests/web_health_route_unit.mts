@@ -62,11 +62,11 @@ function makeRequest(): NextRequest {
 }
 
 function installDbPool(): string[] {
-  process.env.DATABASE_URL = "postgres://unit.test/chime";
+  process.env.DATABASE_URL = "postgres://unit.test/koel";
   process.env.DASH_OPS_TELEGRAM_IDS = "9001";
   process.env.HEALTH_GITHUB_ACTIONS = "0";
   const queries: string[] = [];
-  (globalThis as typeof globalThis & { __chimePgPool?: unknown }).__chimePgPool = {
+  (globalThis as typeof globalThis & { __koelPgPool?: unknown }).__koelPgPool = {
     query: async (sql: string) => {
       queries.push(sql);
       if (sql.includes("FROM dash_sessions")) {
@@ -457,6 +457,7 @@ async function testNonLoopbackHealthUrlRejectedWithoutFetch(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  process.env.DASH_SESSION_REVOKE_CHECK = "0";
   await testWatchedMissingDegradesRoute();
   await testUnreachableHealthUrlDegradesRoute();
   await testNonLoopbackHealthUrlRejectedWithoutFetch();

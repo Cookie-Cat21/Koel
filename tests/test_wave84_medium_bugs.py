@@ -16,8 +16,8 @@ from typing import Any
 
 import pytest
 
-from chime.domain import AlertEvent, AlertType
-from chime.storage import Storage, _pg_count, _require_pg_int
+from koel.domain import AlertEvent, AlertType
+from koel.storage import Storage, _pg_count, _require_pg_int
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -102,7 +102,7 @@ async def test_claim_alert_rejects_poisoned_returning_id() -> None:
     assert await _store(_Conn([{"id": 50}])).claim_alert(_event(), "hi") == 50
     assert await _store(_Conn([None])).claim_alert(_event(), "hi") is None
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def claim_alert")[1].split("async def claim_and_disarm")[0]
     assert "_require_pg_int" in chunk
     assert 'int(_as_row(row)["id"])' not in chunk
@@ -149,7 +149,7 @@ async def test_try_advisory_lock_requires_locked_is_true() -> None:
     assert store_ok._lock_conn is conn_ok
     await store_ok.advisory_unlock()
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def try_advisory_lock")[1].split("async def advisory_unlock")[0]
     assert 'get("locked") is True' in chunk
     assert 'bool(row and _as_row(row)["locked"])' not in chunk

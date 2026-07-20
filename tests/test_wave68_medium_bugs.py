@@ -17,11 +17,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from chime.adapters.cse import resolve_announcement_symbol
-from chime.bot import parse_alert_args
-from chime.briefs import build_brief_prompt
-from chime.domain import AlertType
-from chime.storage import Storage
+from koel.adapters.cse import resolve_announcement_symbol
+from koel.bot import parse_alert_args
+from koel.briefs import build_brief_prompt
+from koel.domain import AlertType
+from koel.storage import Storage
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +41,7 @@ def test_build_brief_prompt_rejects_non_string_fields() -> None:
     )
     assert "Symbol: JKH.N0000" in ok and "Filing body" in ok
 
-    src = (ROOT / "chime" / "briefs" / "__init__.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "__init__.py").read_text(encoding="utf-8")
     chunk = src.split("def build_brief_prompt")[1]
     assert "isinstance(extracted_text, str)" in chunk
     assert "isinstance(symbol, str)" in chunk
@@ -74,7 +74,7 @@ def test_resolve_announcement_symbol_isinstance_guards() -> None:
         )
         is None
     )
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("def resolve_announcement_symbol")[1].split("class CSEClient")[0]
     assert "isinstance(s, str)" in chunk
     assert "isinstance(row.symbol, str)" in chunk
@@ -89,7 +89,7 @@ def test_parse_alert_args_rejects_non_string_kind_and_threshold() -> None:
     ok, err_ok = parse_alert_args(["JKH.N0000", "above", "5"])
     assert err_ok is None and ok is not None and ok.threshold == 5.0
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     thr = src.split("def _parse_threshold_token")[1].split("def parse_alert_args")[0]
     assert "isinstance(raw, str)" in thr
     args = src.split("def parse_alert_args")[1].split("async def _user_id")[0]
@@ -118,7 +118,7 @@ async def test_storage_symbol_isinstance_guards() -> None:
     with pytest.raises(ValueError, match="symbol"):
         await storage.create_alert_rule(1, "  ", AlertType.PRICE_ABOVE, 10.0)
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     for fn in (
         "async def upsert_stock",
         "async def latest_snapshot",

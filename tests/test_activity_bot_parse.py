@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from chime.bot import ALERT_USAGE, parse_alert_args
-from chime.domain import AlertType, disclaimer
+from koel.bot import ALERT_USAGE, parse_alert_args
+from koel.domain import AlertType, disclaimer
 
 
 def test_alert_usage_lists_activity_forms_and_nfa() -> None:

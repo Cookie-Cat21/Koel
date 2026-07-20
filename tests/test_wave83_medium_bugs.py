@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 import pytest
 
-from chime.briefs.extract import CdnPdfPermanentError, fetch_cdn_pdf
+from koel.briefs.extract import CdnPdfPermanentError, fetch_cdn_pdf
 
 ROOT = Path(__file__).resolve().parents[1]
 CDN_PDF = "https://cdn.cse.lk/uploadAnnounceFiles/x.pdf"
@@ -127,7 +127,7 @@ async def test_fetch_cdn_pdf_rejects_bool_status_redirect_and_length() -> None:
 
 
 def test_fetch_cdn_pdf_source_guards() -> None:
-    src = (ROOT / "chime" / "briefs" / "extract.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "extract.py").read_text(encoding="utf-8")
     chunk = src.split("async def fetch_cdn_pdf")[1].split("chunks: list[bytes]")[0]
     assert "isinstance(raw_status, int)" in chunk
     assert "isinstance(raw_status, bool)" in chunk

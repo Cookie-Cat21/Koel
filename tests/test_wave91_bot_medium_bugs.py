@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import cmd_alert, reset_cmd_rate_limits
-from chime.domain import disclaimer
+from koel.bot import cmd_alert, reset_cmd_rate_limits
+from koel.domain import disclaimer
 
 
 @pytest.fixture(autouse=True)

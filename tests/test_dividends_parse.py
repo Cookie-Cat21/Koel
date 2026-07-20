@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from chime.dividends import (
+from koel.bot import parse_alert_args
+from koel.dividends import (
     colombo_today,
     is_dividend_disclosure,
     merge_dividend_hints,
@@ -12,11 +13,8 @@ from chime.dividends import (
     parse_dividend_hints,
     xd_within_horizon,
 )
-from chime.bot import parse_alert_args
-from chime.domain import AlertType
-from chime.rules import evaluate_xd_digest_rules, evaluate_xd_soon_rules
-from chime.domain import AlertRule
-
+from koel.domain import AlertRule, AlertType
+from koel.rules import evaluate_xd_digest_rules, evaluate_xd_soon_rules
 
 LEGACY = (
     "Date of Announcement: - 31.Jan.2019 \r<br>"

@@ -34,7 +34,7 @@ Latest run: `ml_ltr_dual_20260717T091324Z.md` (200 symbols · 46,892 bars · pur
 
 Promote gate used: LTR RankIC ≥ 0.03 and Δ vs HGB reg ≥ +0.01 → `GO_LTR`; vol RankIC ≥ 0.05 → `+VOL`.
 
-CLI: `python3 -m chime ml-ltr-dual` (optional `--limit N`).
+CLI: `python3 -m koel ml-ltr-dual` (optional `--limit N`).
 
 **Shipped:** see `ML_LTR_SHIP.md` — `ml-ltr-ship` promoted LTR+vol champion;
 serve via `--mode gated_ltr` / `hpe_with_ltr_fallback` (`ML_LTR_SERVE=1`).

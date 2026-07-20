@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from chime.briefs import BriefSettings, BriefStatus, build_brief_prompt, nfa_suffix
-from chime.briefs.worker import enqueue_or_skip_brief
+from koel.briefs import BriefSettings, BriefStatus, build_brief_prompt, nfa_suffix
+from koel.briefs.worker import enqueue_or_skip_brief
 
 
 def test_build_brief_prompt_includes_nfa_suffix() -> None:

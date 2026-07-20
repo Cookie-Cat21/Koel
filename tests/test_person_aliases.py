@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from chime.extractors.cse_directors import parse_cse_director_row
-from chime.extractors.person_aliases import alias_merge_key, preferred_display_name
+from koel.extractors.cse_directors import parse_cse_director_row
+from koel.extractors.person_aliases import alias_merge_key, preferred_display_name
 
 
 def test_display_keeps_initials() -> None:

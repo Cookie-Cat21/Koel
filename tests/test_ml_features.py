@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 
-from chime.domain import DailyBar
-from chime.ml.dataset import build_samples
-from chime.ml.features import labels_at, path_features
+from koel.domain import DailyBar
+from koel.ml.dataset import build_samples
+from koel.ml.features import labels_at, path_features
 
 
 def _bars(prices: list[float], *, start: date | None = None) -> list[DailyBar]:
@@ -71,7 +71,7 @@ def test_build_samples_no_future_in_features() -> None:
 
 
 def test_sklearn_available_helper() -> None:
-    from chime.ml import sklearn_available
+    from koel.ml import sklearn_available
 
     # Just ensure callable; may be True/False depending on env.
     assert isinstance(sklearn_available(), bool)

@@ -236,7 +236,7 @@ export default async function SignalsPage() {
         ) : items.length === 0 ? (
           <EmptyState
             title="No scores yet"
-            description="Run path backfill then: python3 -m chime score-signals --limit 0"
+            description="Run path backfill then: python3 -m koel score-signals --limit 0"
           />
         ) : (
           <ol className="mt-8 divide-y divide-border rounded-lg border border-border">

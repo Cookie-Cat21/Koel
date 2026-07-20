@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     FlexibleNoticeRow,
     _parse_notice_created_date,
     flexible_row_to_notice,

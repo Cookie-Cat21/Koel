@@ -45,7 +45,7 @@ Dead-letter, DOA Colombo, rate limit, health honesty, claim-disarm, bot health, 
 ## Verify proof (unit path)
 
 ```
-ruff check chime tests → All checks passed
-mypy chime             → Success
+ruff check koel tests → All checks passed
+mypy koel             → Success
 DATABASE_URL= pytest   → green; rules cov 100%
 ```

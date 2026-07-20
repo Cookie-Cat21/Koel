@@ -16,14 +16,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import cmd_myalerts, cmd_mywatchlist
-from chime.domain import (
+from koel.bot import cmd_myalerts, cmd_mywatchlist
+from koel.domain import (
     TELEGRAM_SAFE_MAX,
     AlertRule,
     AlertType,
     format_dead_letter_notify,
 )
-from chime.storage import Storage
+from koel.storage import Storage
 
 
 def test_dead_letter_notify_caps_hostile_symbol_under_telegram_limit() -> None:
@@ -118,7 +118,7 @@ async def test_myalerts_null_threshold_does_not_crash() -> None:
     context.application.bot_data = {"storage": storage}
     context.args = []
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_myalerts(update, context)
 
     update.effective_message.reply_text.assert_awaited_once()
@@ -144,7 +144,7 @@ async def test_mywatchlist_strips_controls_and_clamps() -> None:
     context = MagicMock()
     context.application.bot_data = {"storage": storage}
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_mywatchlist(update, context)
 
     body = update.effective_message.reply_text.await_args.args[0]

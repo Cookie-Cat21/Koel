@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import date
 
-from chime.ml.diagnose import (
+from koel.ml.diagnose import (
     PredRow,
     _bucket,
     analyze_rows,
     build_recommendations,
 )
-from chime.ml.features import FEATURE_NAMES
+from koel.ml.features import FEATURE_NAMES
 
 
 def _feat(**overrides: float) -> tuple[float, ...]:

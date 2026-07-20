@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from chime.config import Settings
-from chime.poller import is_market_open
+from koel.config import Settings
+from koel.poller import is_market_open
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -19,14 +19,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import cmd_brief
-from chime.briefs import BriefSettings
-from chime.briefs.worker import _notify_brief_followups, claim_pending_briefs
-from chime.domain import AlertType, Disclosure
-from chime.notify import SendResult
-from chime.poller import PendingSend, Poller
-from chime.rules import _disclosure_category_matches
-from chime.storage import Storage, _row_to_rule, _row_to_snapshot
+from koel.bot import cmd_brief
+from koel.briefs import BriefSettings
+from koel.briefs.worker import _notify_brief_followups, claim_pending_briefs
+from koel.domain import AlertType, Disclosure
+from koel.notify import SendResult
+from koel.poller import PendingSend, Poller
+from koel.rules import _disclosure_category_matches
+from koel.storage import Storage, _row_to_rule, _row_to_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -68,8 +68,8 @@ async def test_cmd_brief_rejects_non_string_row_fields() -> None:
     context.application.bot_data = {"storage": storage}
 
     with (
-        patch("chime.bot._rate_limited", AsyncMock(return_value=False)),
-        patch("chime.bot.briefs_enabled", return_value=True),
+        patch("koel.bot._rate_limited", AsyncMock(return_value=False)),
+        patch("koel.bot.briefs_enabled", return_value=True),
     ):
         await cmd_brief(update, context)
 
@@ -78,7 +78,7 @@ async def test_cmd_brief_rejects_non_string_row_fields() -> None:
     assert "123" not in sent
     assert "{'x': 1}" not in sent
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     chunk = src.split("async def cmd_brief")[1].split("async def on_error")[0]
     assert "isinstance(raw_sym, str)" in chunk
     assert "isinstance(raw_brief, str)" in chunk
@@ -119,7 +119,7 @@ async def test_notify_brief_followups_rejects_poisoned_claim_rows() -> None:
     assert all("bad-bool-id" not in t for t in texts)
     storage.mark_delivery_attempted_ok.assert_any_await(4)
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     chunk = src.split("async def _notify_brief_followups")[1].split(
         "async def _promote_skipped_if_needed"
     )[0]
@@ -166,7 +166,7 @@ async def test_brief_drain_skips_poisoned_disclosure_id() -> None:
     provider.summarize.assert_not_awaited()
     storage.mark_brief_ready.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     drain = src.split("async def claim_pending_briefs(\n    storage:")[1]
     assert "isinstance(raw_did, bool)" in drain
     assert 'int(row["disclosure_id"])' not in drain.split("async def")[0]
@@ -213,7 +213,7 @@ async def test_retry_unsent_skips_poisoned_rows() -> None:
     assert item.log_id == 2
     assert item.message == ""
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("async def _retry_unsent(self) -> None:")[1].split(
         "async def _scheduled_tick"
     )[0]
@@ -247,7 +247,7 @@ def test_disclosure_category_rejects_non_string_haystack() -> None:
     )
     assert _disclosure_category_matches(rule, ok) is True  # type: ignore[arg-type]
 
-    src = (ROOT / "chime" / "rules.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "rules.py").read_text(encoding="utf-8")
     chunk = src.split("def _disclosure_category_matches")[1].split(
         "def _safe_utc_aware"
     )[0]
@@ -309,7 +309,7 @@ def test_row_mappers_reject_bool_ids() -> None:
     obj_created = _row_to_rule({**base, "created_at": object()})
     assert obj_created is not None and obj_created.created_at is None
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     snap_fn = src.split("def _row_to_snapshot")[1].split("def _row_to_rule")[0]
     rule_fn = src.split("def _row_to_rule")[1]
     create = src.split("async def create_alert_rule")[1].split(

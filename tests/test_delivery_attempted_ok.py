@@ -9,17 +9,17 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertEvent, AlertType, PriceSnapshot
-from chime.migrate import apply_migrations
-from chime.notify import SendResult
-from chime.poller import (
+from koel.config import Settings
+from koel.domain import AlertEvent, AlertType, PriceSnapshot
+from koel.migrate import apply_migrations
+from koel.notify import SendResult
+from koel.poller import (
     DELIVERY_OK_LEDGER_ENV,
     MARK_DELIVERY_OK_ATTEMPTS,
     PendingSend,
     Poller,
 )
-from chime.storage import Storage
+from koel.storage import Storage
 from tests.conftest import claim_unsent_deque
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()

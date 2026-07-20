@@ -1,6 +1,6 @@
 # Log field glossary (ops)
 
-Structured JSON logs via `chime.logging_setup` (structlog). Event name is the
+Structured JSON logs via `koel.logging_setup` (structlog). Event name is the
 first positional / `event` key. Never log `TELEGRAM_BOT_TOKEN`, raw DSNs with
 passwords, or session cookie material.
 
@@ -12,7 +12,7 @@ Companion runbook: [docs/runbooks/PRODUCTION.md](../runbooks/PRODUCTION.md).
 
 | | |
 |---|---|
-| **Where** | `chime/poller.py` after a successful claim→send for a price alert |
+| **Where** | `koel/poller.py` after a successful claim→send for a price alert |
 | **Level** | `INFO` |
 | **Meaning** | Wall-clock milliseconds from start of `_claim_and_send` to successful delivery for that fire |
 | **SLO** | Instrumented segment only — claim → Telegram send; target p95 &lt; 5s. **Not** CSE print → Telegram (that is poll-interval bounded) |
@@ -110,7 +110,7 @@ detail fields by design.
 
 ## Circuit breakers (`circuits` / `cse_circuit_open`)
 
-Per-endpoint breakers live on `CSEClient` (`chime.circuit.CircuitBreaker`).
+Per-endpoint breakers live on `CSEClient` (`koel.circuit.CircuitBreaker`).
 Open circuits short-call upstream and surface as poll-leg failures.
 
 | | |

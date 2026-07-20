@@ -4,8 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 echo "HEAD=$(git rev-parse HEAD)"
 # Include scripts/ — CI/make lint use `ruff check .`; keep factory verify in parity.
-ruff check chime tests scripts
-mypy chime
+ruff check koel tests scripts
+mypy koel
 if [[ -f web/package.json ]]; then
   if [[ -d web/node_modules ]]; then
     (cd web && npm run lint && npm run typecheck)

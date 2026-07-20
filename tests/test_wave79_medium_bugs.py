@@ -21,14 +21,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import cmd_brief
-from chime.briefs import BriefSettings
-from chime.briefs.worker import _notify_brief_followups, claim_pending_briefs
-from chime.domain import AlertRule, AlertType, Disclosure
-from chime.notify import SendResult
-from chime.poller import Poller
-from chime.rules import _disclosure_category_matches
-from chime.storage import _row_to_rule, _row_to_snapshot
+from koel.bot import cmd_brief
+from koel.briefs import BriefSettings
+from koel.briefs.worker import _notify_brief_followups, claim_pending_briefs
+from koel.domain import AlertRule, AlertType, Disclosure
+from koel.notify import SendResult
+from koel.poller import Poller
+from koel.rules import _disclosure_category_matches
+from koel.storage import _row_to_rule, _row_to_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,8 +54,8 @@ async def test_cmd_brief_rejects_non_string_pg_fields() -> None:
     }
 
     with (
-        patch("chime.bot._rate_limited", AsyncMock(return_value=False)),
-        patch("chime.bot.briefs_enabled", return_value=True),
+        patch("koel.bot._rate_limited", AsyncMock(return_value=False)),
+        patch("koel.bot.briefs_enabled", return_value=True),
     ):
         await cmd_brief(update, context)
 
@@ -65,7 +65,7 @@ async def test_cmd_brief_rejects_non_string_pg_fields() -> None:
     assert "99" not in text
     assert "True" not in text
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     chunk = src.split("async def cmd_brief")[1].split("async def on_error")[0]
     assert "isinstance(raw_sym, str)" in chunk
     assert "isinstance(raw_brief, str)" in chunk
@@ -109,7 +109,7 @@ async def test_notify_brief_followups_skips_poisoned_claim_rows() -> None:
     assert "123" not in sent[0][1]
     assert sent[1] == (99, "ok body")
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     chunk = src.split("async def _notify_brief_followups")[1].split(
         "async def _promote_skipped_if_needed"
     )[0]
@@ -154,7 +154,7 @@ async def test_claim_pending_briefs_skips_poisoned_disclosure_id() -> None:
     assert n == 0
     provider.summarize.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     drain = src.split("for i, row in enumerate(rows):")[1].split("try:")[0]
     assert "isinstance(raw_did, bool)" in drain
     assert "isinstance(raw_did, int)" in drain
@@ -195,7 +195,7 @@ def test_disclosure_category_rejects_non_string_haystack() -> None:
     )
     assert _disclosure_category_matches(rule, ok) is True
 
-    src = (ROOT / "chime" / "rules.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "rules.py").read_text(encoding="utf-8")
     chunk = src.split("def _disclosure_category_matches")[1].split("def _safe_utc_aware")[0]
     assert "isinstance(haystack, str)" in chunk
     assert "hay = str(haystack)" not in chunk
@@ -246,7 +246,7 @@ async def test_retry_unsent_skips_poisoned_rows() -> None:
     assert item.telegram_id == 9
     assert item.message == ""
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("async def _retry_unsent(self)")[1].split(
         "async def _scheduled_tick"
     )[0]
@@ -342,7 +342,7 @@ def test_row_to_rule_and_snapshot_reject_bool_ids_and_bad_iso() -> None:
     )
     assert snap_iso is not None and snap_iso.id == 8
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     rule_chunk = src.split("def _row_to_rule")[1]
     snap_chunk = src.split("def _row_to_snapshot")[1].split("def _row_to_rule")[0]
     assert "isinstance(raw_id, bool)" in rule_chunk

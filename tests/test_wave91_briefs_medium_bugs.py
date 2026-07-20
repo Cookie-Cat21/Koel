@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from chime.briefs import BriefSettings, build_brief_prompt
-from chime.briefs.provider import GeminiBriefProvider
+from koel.briefs import BriefSettings, build_brief_prompt
+from koel.briefs.provider import GeminiBriefProvider
 
 
 def _assert_single_filing_block(text: str, injected: str) -> None:

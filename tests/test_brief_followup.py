@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.worker import claim_pending_briefs
-from chime.domain import AlertType, disclaimer, format_brief_followup
-from chime.notify import SendResult
-from chime.rules import _event_key_disclosure
+from koel.briefs import BriefSettings
+from koel.briefs.worker import claim_pending_briefs
+from koel.domain import AlertType, disclaimer, format_brief_followup
+from koel.notify import SendResult
+from koel.rules import _event_key_disclosure
 from tests.conftest import make_disclosure, make_rule
 from tests.test_storage_unit import _Conn, _store
 
@@ -368,9 +368,9 @@ async def test_claim_pending_briefs_skips_followup_without_external_id() -> None
 async def test_poller_drain_briefs_passes_notify(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import chime.poller as poller_mod
-    from chime.config import Settings
-    from chime.poller import Poller
+    import koel.poller as poller_mod
+    from koel.config import Settings
+    from koel.poller import Poller
 
     settings = Settings(
         telegram_bot_token="t",

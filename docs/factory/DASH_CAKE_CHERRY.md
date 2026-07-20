@@ -32,4 +32,4 @@ dash `PriceRefresh` soft-reload (~15s).
 
 Postgres-only for `web/` remains — no cse.lk from the dashboard.
 
-**Full roadmap:** [CHIME_MASTER_PLAN.md](CHIME_MASTER_PLAN.md) (Waves D/C/E/S/A + phased Tracker-Pro unlocks).
+**Full roadmap:** [KOEL_MASTER_PLAN.md](KOEL_MASTER_PLAN.md) (Waves D/C/E/S/A + phased Tracker-Pro unlocks).

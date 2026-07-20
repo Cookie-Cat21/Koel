@@ -80,7 +80,7 @@ export default async function HomePage() {
   const botUrl = telegramBotUrl();
 
   return (
-    <div className="chime-atmosphere flex min-h-full flex-1 flex-col">
+    <div className="koel-atmosphere flex min-h-full flex-1 flex-col">
       <AnnouncementBar />
       <MarketingNav />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
@@ -88,21 +88,21 @@ export default async function HomePage() {
         <section className="relative mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-5xl flex-col justify-center px-6 py-16 sm:py-20">
           <HeroGridBackdrop />
           <div className="relative max-w-xl lg:max-w-2xl">
-            <div className="chime-rise">
+            <div className="koel-rise">
               <KoelWordmark size="hero" priority />
             </div>
-            <h1 className="chime-rise chime-rise-delay-1 mt-10 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.06]">
+            <h1 className="koel-rise koel-rise-delay-1 mt-10 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.06]">
               CSE alerts on Telegram.
               <span className="mt-2 block font-medium text-muted-foreground">
                 Dash when you need to manage.
               </span>
             </h1>
-            <p className="chime-rise chime-rise-delay-2 mt-6 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="koel-rise koel-rise-delay-2 mt-6 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
               Watch symbols, set price / move / disclosure rules, and get pinged
               the moment something fires — even with the tab closed.
             </p>
-            <NfaInline className="chime-rise chime-rise-delay-2 mt-4" />
-            <div className="chime-rise chime-rise-delay-3 mt-10 flex flex-wrap items-center gap-3">
+            <NfaInline className="koel-rise koel-rise-delay-2 mt-4" />
+            <div className="koel-rise koel-rise-delay-3 mt-10 flex flex-wrap items-center gap-3">
               <Button
                 asChild
                 size="lg"

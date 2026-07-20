@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from chime.notify import SendResult
-from chime.poller import _normalize_send_result
+from koel.notify import SendResult
+from koel.poller import _normalize_send_result
 
 
 def test_send_result_values() -> None:

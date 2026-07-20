@@ -50,7 +50,7 @@ Flow:
 2. Server rejects unless `telegram_id` ∈ `DASH_DEMO_TELEGRAM_IDS`.
 3. Resolve `users` row for that `telegram_id`. Demo may `ensure_user` **only** for allowlisted IDs (never for arbitrary clients).
 4. Mint a **new** session (rotate on every successful login — no fixation).
-5. Set a signed **HttpOnly** cookie (name e.g. `chime_session`) with attributes: `Secure` (HTTPS), `SameSite=Lax` (or `Strict` if same-site only), `Path=/`, short TTL (e.g. 12h) renewable on activity if desired.
+5. Set a signed **HttpOnly** cookie (name e.g. `koel_session`) with attributes: `Secure` (HTTPS), `SameSite=Lax` (or `Strict` if same-site only), `Path=/`, short TTL (e.g. 12h) renewable on activity if desired.
 6. Cookie payload is an opaque session id **or** a signed token containing `user_id` (+ expiry, version). It must **not** contain ops secrets or a raw `telegram_id` used as the sole trust anchor without signature.
 7. Response body may include `{ "user": { "id", "telegram_id" } }` for UI — **not** a bearer secret for subsequent calls. Prefer cookie-only credentials.
 

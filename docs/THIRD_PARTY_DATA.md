@@ -9,7 +9,7 @@ This file tracks **external market / macro feeds** considered for Signal Board f
 2. Feature-flagged + rate-limited + circuit-breaker shared patterns.
 3. Log ToS / license / attribution here **before** enabling in prod.
 4. No competitor scrape (`csetracker.lk` etc.).
-5. Not a Finnhub / TradingView **data spine** ([CHIME_MASTER_PLAN.md](factory/CHIME_MASTER_PLAN.md)).
+5. Not a Finnhub / TradingView **data spine** ([KOEL_MASTER_PLAN.md](factory/KOEL_MASTER_PLAN.md)).
 
 ## Tiers
 

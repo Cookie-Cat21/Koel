@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import MarketNotice
-from chime.notices_backfill import NoticesBackfillResult, run_notices_backfill
+from koel.config import Settings
+from koel.domain import MarketNotice
+from koel.notices_backfill import NoticesBackfillResult, run_notices_backfill
 
 
 @pytest.mark.asyncio

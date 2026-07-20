@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.circuit import CircuitOpenError
-from chime.config import Settings
-from chime.domain import AlertType, PriceSnapshot
-from chime.poller import Poller, is_market_open
+from koel.circuit import CircuitOpenError
+from koel.config import Settings
+from koel.domain import AlertType, PriceSnapshot
+from koel.poller import Poller, is_market_open
 from tests.conftest import make_rule
 
 
@@ -77,7 +77,7 @@ async def test_poller_survives_junk_then_ok() -> None:
         ]
     )
     storage.get_previous_state = AsyncMock()
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state.return_value = PreviousPriceState(price=None)
     storage.claim_unsent_batch = AsyncMock(return_value=[])
@@ -121,7 +121,7 @@ async def test_disclosure_poll_skips_price_only_symbols() -> None:
             s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)
         ]
     )
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
     storage.claim_unsent_batch = AsyncMock(return_value=[])
@@ -163,7 +163,7 @@ async def test_disclosure_poll_fetches_only_disclosure_symbols() -> None:
             s.model_copy(update={"id": i}) for i, s in enumerate(snaps, start=1)
         ]
     )
-    from chime.domain import PreviousPriceState
+    from koel.domain import PreviousPriceState
 
     storage.get_previous_state = AsyncMock(return_value=PreviousPriceState(price=None))
     storage.upsert_disclosure = AsyncMock()

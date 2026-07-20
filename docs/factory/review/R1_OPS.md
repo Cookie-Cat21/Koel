@@ -47,7 +47,7 @@ COMMIT_FACTORY Pass 1 OPS is “CI workflow running ruff/mypy/pytest.” That is
 | **WS-049 pre-commit** | Explicitly optional and CI is SoT — fine as Pass 5+, not Wave 1 critical path. |
 | **WS-051 PR / issue templates** | Factory already has COMMIT_FACTORY + pass reports; templates don’t unblock bar #5–#6. |
 | **WS-059 failure taxonomy** | Named steps in WS-041 are enough; `$GITHUB_STEP_SUMMARY` taxonomy is polish. |
-| **WS-057 full compose app profile** | Premature. DB compose + `make migrate` + manual `chime both` + probe script beats multi-service smoke theater. |
+| **WS-057 full compose app profile** | Premature. DB compose + `make migrate` + manual `koel both` + probe script beats multi-service smoke theater. |
 | **Five-commit micro-slicing per WS** | Constitution bans count farming. Several OPS WS should land as **1–2 commits** (e.g. CI+Postgres service = one workflow PR). |
 
 **just + make both?** No. Canonical Make; drop just from Wave 1.  
@@ -69,7 +69,7 @@ Wave 1 lists DX/docs well but under-weights runtime ops for this stack:
 | **No “how to run two processes” / leader election ops note** | Dual-poller + advisory lock is CORE, but OPS runbook must say: one leader, what `/health` looks like on lock-skip (503 degraded). Missing until WS-060. |
 | **Graceful shutdown verification** | Bar #5 claims it; OPS wave never probes SIGTERM on `both`. Coordinate with CORE WS-012; OPS should at least document expected exit. |
 | **Rate-limit / smoke CSE policy** | Noted in WS-057 risk — elevate to a hard acceptance: smoke **must not** call cse.lk in CI. |
-| **`.env.example` ↔ compose alignment** | WS-042 covers it; ensure placeholders stay empty (token) and `chime`/`chime`/`chime` match compose — already planned, keep non-negotiable. |
+| **`.env.example` ↔ compose alignment** | WS-042 covers it; ensure placeholders stay empty (token) and `koel`/`koel`/`koel` match compose — already planned, keep non-negotiable. |
 | **No deploy target** | Acceptable for Wave 1, but RELEASE_CHECKLIST must not pretend tagging == shipped Telegram bot. |
 
 Not missing yet (correctly deferred): app Dockerfile, K8s, log aggregation SaaS, coverage SaaS.
@@ -115,10 +115,10 @@ DEFER: 044, 047, 049, 051, 055, 057, 058, 059
 | Rank | WS | Pass 1 scope |
 |---|---|---|
 | 1 | **WS-041** | `.github/workflows/ci.yml`: checkout, Python 3.11, `pip install -e ".[dev]"`, ruff, mypy, pytest. Pin action major tags. |
-| 2 | **WS-048 + WS-056** (treat as one deliverable) | Postgres service container, `DATABASE_URL`, `python -m chime migrate`, full pytest — advisory-lock test **runs**, not skipped. |
+| 2 | **WS-048 + WS-056** (treat as one deliverable) | Postgres service container, `DATABASE_URL`, `python -m koel migrate`, full pytest — advisory-lock test **runs**, not skipped. |
 | 3 | **WS-042** | `docker-compose.yml` Postgres 16 + `.env.example` alignment + README “Local Postgres” blurb. |
 | 4 | **WS-054 (thin)** | Makefile: `install`, `lint`, `typecheck`, `test`, `up`, `down`, `migrate`, `help`. No seed/smoke/just yet. |
-| 5 | **WS-053** | `scripts/probe_health.py` (or `python -m chime healthcheck`) with exit codes; wire `make probe-health`. |
+| 5 | **WS-053** | `scripts/probe_health.py` (or `python -m koel healthcheck`) with exit codes; wire `make probe-health`. |
 
 **Explicitly not Pass 1:** justfile, Dependabot, coverage artifacts, `/metrics`, pre-commit, PR templates, compose app smoke, runbook novel, release checklist (stub OK only if it lists the five proof commands above).
 

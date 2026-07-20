@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from chime.ml.dataset import Sample
-from chime.ml.ltr_dual import (
+from koel.ml.dataset import Sample
+from koel.ml.ltr_dual import (
     _big_move_precision,
     _relevance_from_returns,
     _top_bottom_spread,

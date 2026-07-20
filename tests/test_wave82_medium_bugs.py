@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.domain import AlertEvent, AlertType
-from chime.storage import Storage, _pg_count, _require_pg_int
+from koel.domain import AlertEvent, AlertType
+from koel.storage import Storage, _pg_count, _require_pg_int
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -118,7 +118,7 @@ async def test_claim_alert_rejects_poisoned_returning_id() -> None:
     assert await _store(_Conn([{"id": 50}])).claim_alert(_event(), "hi") == 50
     assert await _store(_Conn([None])).claim_alert(_event(), "hi") is None
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def claim_alert")[1].split("async def claim_and_disarm")[0]
     assert "_require_pg_int" in chunk
     assert 'int(_as_row(row)["id"])' not in chunk
@@ -137,7 +137,7 @@ async def test_claim_and_disarm_rejects_poisoned_id_before_disarm() -> None:
     assert await _store(ok_conn).claim_and_disarm(_event(), "hi") == 51
     assert any("UPDATE alert_rules" in s for s in ok_conn.sql)
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def claim_and_disarm")[1].split(
         "async def mark_delivery_attempted_ok"
     )[0]
@@ -153,7 +153,7 @@ async def test_mark_alert_attempt_rejects_bool_attempt_count() -> None:
         await _store(_Conn([{"attempt_count": "3"}])).mark_alert_attempt(1)
     assert await _store(_Conn([{"attempt_count": 3}])).mark_alert_attempt(1) == 3
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def mark_alert_attempt")[1].split(
         "async def dead_letter"
     )[0]
@@ -175,7 +175,7 @@ async def test_count_helpers_reject_bool_n() -> None:
         await _store(_Conn([{"n": False}])).count_pending_disclosure_briefs()
     assert await _store(_Conn([{"n": 7}])).count_pending_disclosure_briefs() == 7
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     assert "def _pg_count" in src
     assert 'int(_as_row(row).get("n") or 0)' not in src
     assert 'int(_as_row(row)["n"])' not in src
@@ -228,7 +228,7 @@ async def test_try_advisory_lock_requires_locked_is_true() -> None:
     assert store2._lock_conn is conn2
     await store2.advisory_unlock(42)
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def try_advisory_lock")[1].split(
         "async def advisory_unlock"
     )[0]
@@ -243,7 +243,7 @@ async def test_health_check_rejects_bool_ok() -> None:
     assert await _store(_Conn([{"ok": 0}])).health_check() is False
     assert await _store(_Conn([None])).health_check() is False
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def health_check")[1].split(
         "async def count_pending_disclosure_briefs"
     )[0]
@@ -273,6 +273,6 @@ def test_pool_health_snapshot_rejects_bool_stats() -> None:
     assert snap["pool_available"] == 1
     assert snap["requests_waiting"] == 0
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("def pool_health_snapshot")[1].split("def _row_to_snapshot")[0]
     assert "isinstance(value, bool)" in chunk

@@ -29,4 +29,4 @@ Further waves that only rediscover `int(True)==1` / `True == 1` / `isinstance(Tr
 
 ## Gate
 
-`DATABASE_URL= pytest -m 'not integration' --cov=chime --cov-fail-under=100` green at review HEAD.
+`DATABASE_URL= pytest -m 'not integration' --cov=koel --cov-fail-under=100` green at review HEAD.

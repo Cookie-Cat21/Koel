@@ -5,7 +5,7 @@ can backfill priors. Plan: [CSE_FILING_YOY_PLAN.md](../experiments/CSE_FILING_YO
 
 ## Prerequisites
 
-1. `python -m chime migrate` (includes `011_filing_metrics` + `014_drain_indexes`).
+1. `python -m koel migrate` (includes `011_filing_metrics` + `014_drain_indexes`).
 2. Watchlist symbols have disclosures with `pdf_url` (use `drain-pdfs`).
 3. Spot-check ≥20 financial PDFs for `extract_ok`.
 
@@ -21,8 +21,8 @@ YOY_COMPARE_ALERTS_ENABLED=0
 YOY_APPEND_TO_DISCLOSURE=0
 
 # Backfill
-python -m chime drain-pdfs --limit 50
-python -m chime drain-metrics --limit 50
+python -m koel drain-pdfs --limit 50
+python -m koel drain-metrics --limit 50
 
 # 2) Shadow week — review alert_log rows prefixed [shadow]
 # 3) Live calc / YoY one flag at a time

@@ -1,7 +1,7 @@
 # Signal Board — walk-forward forecast eval
 
 **Updated:** 2026-07-16  
-**Commands:** `python3 -m chime eval-signals --limit 50`
+**Commands:** `python3 -m koel eval-signals --limit 50`
 
 ## Models tried
 

@@ -100,8 +100,8 @@ def build_scoreboard(existing: dict) -> dict:
             out[f"epoch{num}_done"] = done
 
     out["note"] = (
-        "Literal 5T git commits rejected; portfolio_score == chime node while "
-        "Chime is the only enrolled factory"
+        "Literal 5T git commits rejected; portfolio_score == koel node while "
+        "Koel is the only enrolled factory"
     )
     # Drop stale session notes if present — machine counts are source of truth.
     out.pop("sessions", None)

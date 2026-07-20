@@ -31,7 +31,7 @@
 
 ### 1. MEDIUM — Process `/health` is anonymous ops recon (bind-dependent)
 
-**Where:** `chime/health.py`, `chime/__main__.py`, `chime/poller.py` (`run_poller_forever` health loop), `chime/config.py` (`HEALTH_HOST` default `127.0.0.1`)
+**Where:** `koel/health.py`, `koel/__main__.py`, `koel/poller.py` (`run_poller_forever` health loop), `koel/config.py` (`HEALTH_HOST` default `127.0.0.1`)
 
 **What is true:** Defaults bind loopback. Body does **not** include `TELEGRAM_BOT_TOKEN` or `DATABASE_URL`. Status flips to `503` when `ok` is false.
 
@@ -51,7 +51,7 @@ ADR 001 / API_CONTRACT correctly **ops-gate** future `GET /api/v1/health`. That 
 
 ### 2. MEDIUM — Public bot has no abuse budget (CSE + DB write amplification)
 
-**Where:** `chime/bot.py` (`cmd_start`, `cmd_watch`, `cmd_alert`, `_lookup_symbol`)
+**Where:** `koel/bot.py` (`cmd_start`, `cmd_watch`, `cmd_alert`, `_lookup_symbol`)
 
 **What is true:** Symbols must match `SYMBOL_RE`; unknown tickers are rejected after CSE lookup; thresholds must parse as floats and be `> 0`; `/cancel` is scoped `user_id + rule_id`.
 
@@ -71,7 +71,7 @@ There is no command rate limit, no allowlist, no max watchlist/alert count. For 
 
 ### 3. MEDIUM — Structured logs emit Telegram identifiers and update snippets
 
-**Where:** `chime/notify.py` (`chat_id=` on retry/transient/error); `chime/bot.py` `on_error` (`update=str(update)[:200]`); `chime/logging_setup.py` (JSON to stdout, no redaction processor)
+**Where:** `koel/notify.py` (`chat_id=` on retry/transient/error); `koel/bot.py` `on_error` (`update=str(update)[:200]`); `koel/logging_setup.py` (JSON to stdout, no redaction processor)
 
 **What is true:** No call site logs `TELEGRAM_BOT_TOKEN` or `DATABASE_URL`. High-traffic CSE logs use path/endpoint/error, not user ids.
 
@@ -88,9 +88,9 @@ Under GDPR-style handling, telegram_id in always-on JSON logs is a retention/pro
 
 ### 4. LOW — Compose Postgres is world-reachable with a trivial password
 
-**Where:** `docker-compose.yml` (`ports: "5432:5432"`, `POSTGRES_PASSWORD=chime`); `.env.example` mirrors that DSN
+**Where:** `docker-compose.yml` (`ports: "5432:5432"`, `POSTGRES_PASSWORD=koel`); `.env.example` mirrors that DSN
 
-**Failure:** On a shared LAN / cloud VM with compose up, Postgres accepts `chime:chime` on `0.0.0.0:5432`. Local-dev convenience, not a production story — but nothing in compose or README says “bind localhost only.”
+**Failure:** On a shared LAN / cloud VM with compose up, Postgres accepts `koel:koel` on `0.0.0.0:5432`. Local-dev convenience, not a production story — but nothing in compose or README says “bind localhost only.”
 
 **Fix direction:** `127.0.0.1:5432:5432` or no host publish; document that compose creds are lab-only.
 
@@ -112,7 +112,7 @@ Under GDPR-style handling, telegram_id in always-on JSON logs is a retention/pro
 
 ### 6. LOW — Advisory lock: integrity OK; long hold remains an availability risk
 
-**Where:** `chime/storage.py` `try_advisory_lock` / `advisory_unlock`; `chime/poller.py` `run_once`; `chime/notify.py` RetryAfter cap
+**Where:** `koel/storage.py` `try_advisory_lock` / `advisory_unlock`; `koel/poller.py` `run_once`; `koel/notify.py` RetryAfter cap
 
 **PASS (integrity):** Session lock is held on one pooled connection (`_lock_cm` / `_lock_conn`) until unlock; `run_once` unlocks in `finally`; `close()` unlocks; dual-holder proof in `tests/test_advisory_lock.py`. Pass 2 sticky-lock defect is closed. Lock-skip degrades health (`poll_lock_held`). This is **not** an auth bypass.
 
@@ -126,7 +126,7 @@ Hard-coded `POLL_LOCK_ID = 4_201_337` is fine on a dedicated DB; irrelevant as a
 
 ### 7. LOW — Threshold parser accepts non-finite floats
 
-**Where:** `chime/bot.py` `cmd_alert` (`float(...)` then `threshold <= 0`)
+**Where:** `koel/bot.py` `cmd_alert` (`float(...)` then `threshold <= 0`)
 
 **Failure:** `inf` and `nan` pass the positive check (`nan <= 0` is false). Creates useless or confusing rules; not RCE / SQLi.
 
@@ -151,7 +151,7 @@ Hard-coded `POLL_LOCK_ID = 4_201_337` is fine on a dedicated DB; irrelevant as a
 - No `web/` binary to review — dash findings are ADR + doc consistency only.
 - No live penetration of Telegram or cse.lk.
 - WS-083 storm / dual-eval correctness belong to adversarial/reliability reviews; only the lock-hold side-effect is noted here.
-- Compose “password chime” is ranked LOW as a **dev** exposure, not as production credential management (production DSN is still env-only).
+- Compose “password koel” is ranked LOW as a **dev** exposure, not as production credential management (production DSN is still env-only).
 
 ---
 

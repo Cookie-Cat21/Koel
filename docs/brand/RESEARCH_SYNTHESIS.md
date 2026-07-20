@@ -9,12 +9,12 @@
 6. Telegram-first web as lobby
 7. Logo SVG craft rules
 8. Three alternate color systems
-9. Name collision (Chime neobank / Ring)
+9. Name collision (Koel neobank / Ring)
 10. Landing SVG composition coordinates
 
 ## Consensus that stuck
 - Soft mist teal = AI default (rejected with Signal Mist)
-- Bare "Chime" = high collision -> **Chime CSE**
+- Bare "Koel" = high collision -> **Koel CSE**
 - Mark must not be a cartoon bell -> **threshold cross**
 - Web enrolls; Telegram delivers
 - One-liner: **CSE moves. You hear it.**

@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.config import Settings
-from chime.poller import SHUTDOWN_TICK_TIMEOUT_SECONDS, PendingPdfEnrich, Poller
+from koel.config import Settings
+from koel.poller import SHUTDOWN_TICK_TIMEOUT_SECONDS, PendingPdfEnrich, Poller
 
 
 def _settings() -> Settings:
@@ -81,7 +81,7 @@ async def test_shutdown_times_out_waiting_for_tick() -> None:
     poller._tick_task = asyncio.create_task(never_finishes())
     await asyncio.sleep(0)  # let task start
 
-    with patch("chime.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0.05):
+    with patch("koel.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0.05):
         t0 = time.monotonic()
         await poller.shutdown()
         elapsed = time.monotonic() - t0
@@ -170,12 +170,12 @@ async def test_shutdown_awaits_pdf_enrich_without_cancelling() -> None:
                 cancelled = True
                 raise
 
-    task = asyncio.create_task(slow_pdf(), name="chime_pdf_enrich")
+    task = asyncio.create_task(slow_pdf(), name="koel_pdf_enrich")
     poller._pdf_enrich_tasks.add(task)
     task.add_done_callback(poller._pdf_enrich_tasks.discard)
     await started.wait()
 
-    with patch("chime.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0.05):
+    with patch("koel.poller.SHUTDOWN_TICK_TIMEOUT_SECONDS", 0.05):
         await poller.shutdown()
 
     assert cancelled is False
@@ -197,7 +197,7 @@ async def test_shutdown_awaits_brief_drain_and_logs_exceptions() -> None:
             await asyncio.sleep(0.05)
             raise RuntimeError("brief boom")
 
-    task = asyncio.create_task(boom(), name="chime_brief_drain")
+    task = asyncio.create_task(boom(), name="koel_brief_drain")
     poller._brief_drain_tasks.add(task)
     task.add_done_callback(poller._brief_drain_tasks.discard)
     await started.wait()
@@ -220,7 +220,7 @@ async def test_shutdown_rejects_late_pdf_and_brief_schedules() -> None:
     )
     assert not poller._pdf_enrich_tasks
 
-    with patch("chime.poller.briefs_enabled", return_value=True):
+    with patch("koel.poller.briefs_enabled", return_value=True):
         poller._schedule_brief_drain()
     assert not poller._brief_drain_tasks
 
@@ -242,7 +242,7 @@ async def test_brief_drain_coalesces_while_lock_held() -> None:
     task.add_done_callback(poller._brief_drain_tasks.discard)
     await started.wait()
 
-    with patch("chime.poller.briefs_enabled", return_value=True):
+    with patch("koel.poller.briefs_enabled", return_value=True):
         poller._schedule_brief_drain()
     assert len(poller._brief_drain_tasks) == 1
 
@@ -265,11 +265,11 @@ async def test_shutdown_drains_pdf_then_late_brief_from_same_window() -> None:
             order.append("brief")
             brief_started.set()
 
-        t = asyncio.create_task(brief(), name="chime_brief_drain")
+        t = asyncio.create_task(brief(), name="koel_brief_drain")
         poller._brief_drain_tasks.add(t)
         t.add_done_callback(poller._brief_drain_tasks.discard)
 
-    pdf_task = asyncio.create_task(pdf_then_spawn_brief(), name="chime_pdf_enrich")
+    pdf_task = asyncio.create_task(pdf_then_spawn_brief(), name="koel_pdf_enrich")
     poller._pdf_enrich_tasks.add(pdf_task)
     pdf_task.add_done_callback(poller._pdf_enrich_tasks.discard)
 

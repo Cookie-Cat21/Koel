@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Backfill POST /financials PDFs for an explicit symbol list (or all .N0000).
 
-Unlike ``chime financials-backfill``, this does not require daily_bars rows,
+Unlike ``koel financials-backfill``, this does not require daily_bars rows,
 so thin/illiquid issuers still get annual PDFs for the ownership drain.
 """
 
@@ -12,11 +12,11 @@ import asyncio
 import os
 from datetime import UTC, date, datetime, timedelta
 
-from chime.adapters.cse import CSEClient
-from chime.config import Settings
-from chime.domain import Disclosure
-from chime.financials_backfill import _title_for
-from chime.storage import Storage
+from koel.adapters.cse import CSEClient
+from koel.config import Settings
+from koel.domain import Disclosure
+from koel.financials_backfill import _title_for
+from koel.storage import Storage
 
 
 async def main() -> None:

@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from chime.adapters.cse import CSEClient, _retryable
+from koel.adapters.cse import CSEClient, _retryable
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -141,7 +141,7 @@ def test_retryable_rejects_bool_status() -> None:
 
 
 def test_cse_request_source_guards() -> None:
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("async def _request")[1].split("async def _guarded")[0]
     assert "isinstance(raw_status, int)" in chunk
     assert "isinstance(raw_status, bool)" in chunk

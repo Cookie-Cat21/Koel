@@ -78,7 +78,7 @@ Add `alert_log` uniqueness on `(rule_id, filing_id)` (or equivalent dedupe key).
 On new CSE financial disclosure for a watched symbol:
 
 1. Download PDF
-2. Run extractor (promote from research script → `chime/extractors/financial_pdf.py`)
+2. Run extractor (promote from research script → `koel/extractors/financial_pdf.py`)
 3. Gate: `eps_basic` present + adjacency verified + not analysis-page-only
 4. Persist `filing_metrics` (`extract_ok=true|false`)
 5. If `extract_ok`, evaluate matching `eps_*` rules
@@ -126,7 +126,7 @@ Validation:
 | Area | Change |
 |---|---|
 | `migrations/` | `filing_metrics` + rule types + dedupe |
-| `chime/extractors/financial_pdf.py` | Promote hardened extractor from experiments |
+| `koel/extractors/financial_pdf.py` | Promote hardened extractor from experiments |
 | Disclosure/poller job | Call extractor on new financial PDF |
 | Rule engine | `eps_above` / `eps_below` vs `filing_metrics` |
 | `bot.py` | Parse `/alert … eps above|below` |

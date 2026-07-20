@@ -8,7 +8,7 @@ import { toIso } from "@/lib/api/time";
 import { isAlertType, normalizeSymbol, type AlertType } from "@/lib/api/symbol";
 
 const globalForPg = globalThis as typeof globalThis & {
-  __chimePgPool?: Pool;
+  __koelPgPool?: Pool;
 };
 
 export function getPool(): Pool {
@@ -19,20 +19,20 @@ export function getPool(): Pool {
   if (!url) {
     throw new Error("DATABASE_URL is not set");
   }
-  if (!globalForPg.__chimePgPool) {
+  if (!globalForPg.__koelPgPool) {
     // Neon / managed Postgres usually require TLS. ``sslmode=require`` in the
     // URL is enough for libpq clients; node-pg needs an explicit ssl flag when
     // the host looks like Neon (or sslmode is in the query string).
     const needsSsl =
       /[?&]sslmode=(require|verify-full|verify-ca)/i.test(url) ||
       /\.neon\.tech\b/i.test(url);
-    globalForPg.__chimePgPool = new Pool({
+    globalForPg.__koelPgPool = new Pool({
       connectionString: url,
       max: 5,
       ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
     });
   }
-  return globalForPg.__chimePgPool;
+  return globalForPg.__koelPgPool;
 }
 
 /** ensure_user for allowlisted demo IDs only (caller must gate allowlist). */
@@ -90,6 +90,8 @@ export async function recordDashSession(
  */
 export async function isDashSessionRevoked(sid: string): Promise<boolean> {
   if (typeof sid !== "string" || !sid || sid.length > 64) return true;
+  // Unit harnesses (csrf_session_unit.mts) skip the DB round-trip.
+  if (process.env.DASH_SESSION_REVOKE_CHECK === "0") return false;
   const pool = getPool();
   const { rows } = await pool.query<{ revoked: boolean }>(
     `SELECT (revoked_at IS NOT NULL) AS revoked

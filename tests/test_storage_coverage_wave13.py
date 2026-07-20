@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock
 import pytest
 from psycopg.errors import UniqueViolation
 
-from chime.domain import AlertType
-from chime.storage import Storage
+from koel.domain import AlertType
+from koel.storage import Storage
 from tests.test_storage_unit import _Conn, _store
 
 

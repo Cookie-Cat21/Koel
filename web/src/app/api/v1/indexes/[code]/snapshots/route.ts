@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       count: points.length,
       points,
       disclaimer:
-        "Index ticks from Chime poller — research only, not financial advice.",
+        "Index ticks from Koel poller — research only, not financial advice.",
     });
   } catch (err) {
     console.error("GET /indexes/:code/snapshots failed", err);

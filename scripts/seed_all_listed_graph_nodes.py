@@ -10,8 +10,8 @@ from __future__ import annotations
 import asyncio
 import os
 
-from chime.adapters.cse import normalize_company_name
-from chime.storage import Storage
+from koel.adapters.cse import normalize_company_name
+from koel.storage import Storage
 
 
 async def main() -> None:

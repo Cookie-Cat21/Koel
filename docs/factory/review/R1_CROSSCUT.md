@@ -32,7 +32,7 @@
 | WS-065 (QUALITY dual-poller DB) | WS-056, WS-079 | Needs markers + integration job; overlaps WS-011 |
 | WS-030+ (DASH API) | WS-042 (compose) for local proof; schema already exists | Agents will invent Neon URLs without compose |
 | WS-039 (DASH smoke) | WS-042, WS-043 | Smoke without seed/DB is flaky by design |
-| WS-047 (OPS latency export) | Soft: CORE `chime/health` / notify ownership | Implementation touches CORE paths; lane says “OPS-compatible” but files are CORE |
+| WS-047 (OPS latency export) | Soft: CORE `koel/health` / notify ownership | Implementation touches CORE paths; lane says “OPS-compatible” but files are CORE |
 | WS-031 POST watchlist | Product decision vs CSE | DASH wave: “does **not** call cse.lk”; [DASH_IA](../DASH_IA.md): “validates via CSE adapter”. **Must resolve before WS-031 mutations** — either Postgres-only + known symbols, or shared CORE validation helper (not browser→CSE) |
 | WS-074 (QUALITY disclosure TZ) | WS-001, WS-002 | Tests should land *after* or *with* CORE fail-closed/parse fixes, else they pin wrong behavior then thrash |
 | WS-075 (QUALITY event_key) | WS-008 (CORE) | Characterization vs fix — if CORE changes key in Epoch 1, QUALITY must not lock “miss” as permanent without linking WS-008 |
@@ -43,9 +43,9 @@
 | WS | Claimed lane | Problem |
 |---|---|---|
 | WS-011 | CORE (`tests/`) | Same proof goal as QUALITY WS-065; OPS WS-056 owns enabling CI |
-| WS-043 | OPS (`scripts/` / `chime seed`) | If entry is `python -m chime seed`, touches `chime/` → CORE ownership conflict |
-| WS-047 | OPS | Likely edits `chime/health.py` or notify path — CORE files |
-| WS-053 | OPS | Reads health contract; must not change payload (ok) but probe in `chime` package → CORE |
+| WS-043 | OPS (`scripts/` / `koel seed`) | If entry is `python -m koel seed`, touches `koel/` → CORE ownership conflict |
+| WS-047 | OPS | Likely edits `koel/health.py` or notify path — CORE files |
+| WS-053 | OPS | Reads health contract; must not change payload (ok) but probe in `koel` package → CORE |
 | WS-012 / WS-092 | CORE vs ADVERSARIAL “OPS/CORE” | Same fix; adversarial should not own `__main__.py` |
 | WS-085, WS-100 | ADVERSARIAL → DASH | Correct as **probes**; must not ship parallel auth implementation — gate DASH WS-023/038/032 |
 | QUALITY WS-068/074 | QUALITY | May require product code changes; fence: QUALITY files tests only, file CORE finding for WS-013/002 |

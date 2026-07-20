@@ -59,13 +59,13 @@ function installDbPool(opts: {
   rows?: Record<string, unknown>[];
   mode?: "ok" | "throw";
 }): CapturedQuery[] {
-  process.env.DATABASE_URL = "postgres://unit.test/chime";
+  process.env.DATABASE_URL = "postgres://unit.test/koel";
   const captured: CapturedQuery[] = [];
   const stockExists = opts.stockExists !== false;
   const rows = opts.rows ?? [];
   const mode = opts.mode ?? "ok";
 
-  (globalThis as typeof globalThis & { __chimePgPool?: unknown }).__chimePgPool = {
+  (globalThis as typeof globalThis & { __koelPgPool?: unknown }).__koelPgPool = {
     query: async (sql: string, params: unknown[] = []) => {
       captured.push({ sql, params });
       if (mode === "throw") throw new Error("postgres boom");
@@ -295,6 +295,7 @@ async function testUnauthorized(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  process.env.DASH_SESSION_REVOKE_CHECK = "0";
   await testMapsBriefAndPdfFields();
   await testRejectsHostilePdfUrlAndHrefSchemes();
   await testBriefOnlyWhenReadyAndStripsControls();

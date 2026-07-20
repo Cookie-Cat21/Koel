@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.__main__ import POOL_CHECKOUT_WAIT_ELEVATED_MS, _refresh_both_health
-from chime.health import HealthState, start_health_server
+from koel.__main__ import POOL_CHECKOUT_WAIT_ELEVATED_MS, _refresh_both_health
+from koel.health import HealthState, start_health_server
 
 
 @contextmanager

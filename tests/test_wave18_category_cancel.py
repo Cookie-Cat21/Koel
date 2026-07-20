@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import CANCEL_USAGE, cmd_cancel, cmd_myalerts
-from chime.domain import AlertRule, AlertType, disclaimer
+from koel.bot import CANCEL_USAGE, cmd_cancel, cmd_myalerts
+from koel.domain import AlertRule, AlertType, disclaimer
 
 
 def _make_update_context(
@@ -47,7 +47,7 @@ async def test_myalerts_empty_mentions_category_disclosure() -> None:
     storage.list_alerts = AsyncMock(return_value=[])
     update, context = _make_update_context(storage=storage)
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_myalerts(update, context)
 
     reply = update.effective_message.reply_text.await_args.args[0]
@@ -93,7 +93,7 @@ async def test_myalerts_lists_category_and_any_disclosure_with_cancel_hint() -> 
     )
     update, context = _make_update_context(storage=storage)
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_myalerts(update, context)
 
     reply = update.effective_message.reply_text.await_args.args[0]
@@ -114,7 +114,7 @@ async def test_cancel_category_disclosure_rule_by_id() -> None:
     storage.deactivate_alert = AsyncMock(return_value=True)
     update, context = _make_update_context(args=["12"], storage=storage)
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     storage.deactivate_alert.assert_awaited_once_with(42, 12)
@@ -129,7 +129,7 @@ async def test_cancel_category_disclosure_rule_hash_prefix_from_myalerts() -> No
     storage.deactivate_alert = AsyncMock(return_value=True)
     update, context = _make_update_context(args=["#12"], storage=storage)
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     storage.deactivate_alert.assert_awaited_once_with(42, 12)
@@ -143,7 +143,7 @@ async def test_cancel_missing_category_rule_points_at_myalerts() -> None:
     storage.deactivate_alert = AsyncMock(return_value=False)
     update, context = _make_update_context(args=["99"], storage=storage)
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     storage.deactivate_alert.assert_awaited_once_with(42, 99)

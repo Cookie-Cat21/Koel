@@ -1,7 +1,7 @@
 # Edge loop scorecard — koel vs CSEPal strategy
 
 **Plan:** [KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md](../KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md)  
-**Live:** https://koel-cse.vercel.app  
+**Live:** https://chime-cse.vercel.app  
 
 Scores 0–10 per axis. Target composite ≥ 8.0 by loop 30.
 

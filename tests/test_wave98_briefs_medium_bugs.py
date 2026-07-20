@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.briefs import BriefSettings
-from chime.briefs.worker import claim_pending_briefs
+from koel.briefs import BriefSettings
+from koel.briefs.worker import claim_pending_briefs
 
 
 def _enabled_settings(**kwargs: Any) -> BriefSettings:

@@ -10,11 +10,11 @@ import os
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import PriceSnapshot
-from chime.migrate import apply_migrations
-from chime.poller import Poller
-from chime.storage import Storage
+from koel.config import Settings
+from koel.domain import PriceSnapshot
+from koel.migrate import apply_migrations
+from koel.poller import Poller
+from koel.storage import Storage
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 pytestmark = [

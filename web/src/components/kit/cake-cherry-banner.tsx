@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-const STORAGE_KEY = "chime_cake_cherry_banner_dismissed_v1";
+const STORAGE_KEY = "koel_cake_cherry_banner_dismissed_v1";
 
 /**
  * Dismissible product framing — Tremor banner-04 pattern.

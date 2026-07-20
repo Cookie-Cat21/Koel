@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 
-from chime.domain import DailyBar
-from chime.scenarios.guardrails import contains_buy_sell_language
-from chime.signals.eval import evaluate_walk_forward
-from chime.signals.forecast import forecast_path
-from chime.signals.job import _bars_as_of, _percentile_ranks
-from chime.signals.score import MODEL_VERSION, ExtraFactors, score_symbol_path
+from koel.domain import DailyBar
+from koel.scenarios.guardrails import contains_buy_sell_language
+from koel.signals.eval import evaluate_walk_forward
+from koel.signals.forecast import forecast_path
+from koel.signals.job import _bars_as_of, _percentile_ranks
+from koel.signals.score import MODEL_VERSION, ExtraFactors, score_symbol_path
 
 
 def _bars(prices: list[float], *, start: date | None = None) -> list[DailyBar]:

@@ -14,7 +14,7 @@ pass/fail criteria (ops honesty only).
 
 ## Probe
 
-1. **Static:** `chime/rules.py` contains no `datetime.now` — eval is pure over
+1. **Static:** `koel/rules.py` contains no `datetime.now` — eval is pure over
    `(previous, snapshot)` / `(disclosure, rules)`.
 2. **Disclosure:** `published_at` vs `rule.created_at` (CSE epoch vs PG
    `RETURNING created_at`). Inject ±5m / ±1h on those data stamps — fire only
@@ -37,5 +37,5 @@ pass criterion. Characterization pin: `tests/test_wave87_clock_skew.py`.
 
 ## Gate
 
-`DATABASE_URL= pytest -m 'not integration' --cov=chime --cov-fail-under=100`
+`DATABASE_URL= pytest -m 'not integration' --cov=koel --cov-fail-under=100`
 green at review HEAD (+ this pin).

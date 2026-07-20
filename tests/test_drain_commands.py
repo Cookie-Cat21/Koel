@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime import __main__ as main_mod
-from chime.briefs import BriefSettings
-from chime.domain import Disclosure
-from chime.drain import DrainResult, drain_briefs, drain_metrics, drain_pdfs
-from chime.metrics import MetricsSettings
+from koel import __main__ as main_mod
+from koel.briefs import BriefSettings
+from koel.domain import Disclosure
+from koel.drain import DrainResult, drain_briefs, drain_metrics, drain_pdfs
+from koel.metrics import MetricsSettings
 
 
 def _disc(**kwargs: Any) -> Disclosure:
@@ -44,7 +44,7 @@ async def test_drain_pdfs_sets_url_from_legacy_map() -> None:
     settings = MagicMock(pdf_enrich_sleep_seconds=0)
 
     with patch(
-        "chime.drain.legacy_pdf_urls_by_id",
+        "koel.drain.legacy_pdf_urls_by_id",
         return_value={"42": "https://cdn.cse.lk/cmt/upload_pdf_file/x.pdf"},
     ):
         result = await drain_pdfs(
@@ -71,7 +71,7 @@ async def test_drain_briefs_noop_when_disabled() -> None:
 async def test_drain_briefs_calls_worker_when_enabled() -> None:
     storage = AsyncMock()
     with patch(
-        "chime.drain.claim_pending_briefs", new=AsyncMock(return_value=2)
+        "koel.drain.claim_pending_briefs", new=AsyncMock(return_value=2)
     ) as claim:
         result = await drain_briefs(
             storage=storage,
@@ -147,7 +147,7 @@ def test_main_drain_briefs_dispatch(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(main_mod, "configure_logging", lambda *a, **k: None)
-    settings = MagicMock(database_url="postgresql://chime:chime@localhost/chime")
+    settings = MagicMock(database_url="postgresql://koel:koel@localhost/koel")
     monkeypatch.setattr(main_mod.Settings, "from_env", lambda **_: settings)
 
     storage = AsyncMock()
@@ -168,7 +168,7 @@ def test_main_drain_metrics_dispatch(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(main_mod, "configure_logging", lambda *a, **k: None)
-    settings = MagicMock(database_url="postgresql://chime:chime@localhost/chime")
+    settings = MagicMock(database_url="postgresql://koel:koel@localhost/koel")
     monkeypatch.setattr(main_mod.Settings, "from_env", lambda **_: settings)
     storage = AsyncMock()
     storage.open = AsyncMock()
@@ -203,7 +203,7 @@ async def test_drain_pdfs_skips_when_legacy_map_empty() -> None:
     cse = AsyncMock()
     cse.fetch_legacy_announcements = AsyncMock(return_value=[])
     settings = MagicMock(pdf_enrich_sleep_seconds=0)
-    with patch("chime.drain.legacy_pdf_urls_by_id", return_value={}):
+    with patch("koel.drain.legacy_pdf_urls_by_id", return_value={}):
         result = await drain_pdfs(storage=storage, cse=cse, settings=settings)
     assert result.skipped == 1
     assert result.updated == 0

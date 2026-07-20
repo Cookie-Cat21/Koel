@@ -19,7 +19,7 @@ check() {
 }
 
 check "/" \
-  "chime-atmosphere" \
+  "koel-atmosphere" \
   "CSE alerts on Telegram" \
   "The cherry — Telegram" \
   "Alerts fire on Telegram" \
@@ -33,16 +33,16 @@ check "/pricing" \
   "Pricing" \
   "Free" \
   "Coming later" \
-  "chime-atmosphere"
+  "koel-atmosphere"
 
 check "/legal/privacy" \
   "Privacy" \
-  "chime-atmosphere" \
+  "koel-atmosphere" \
   "publicly available CSE"
 
 check "/legal/terms" \
   "Terms" \
   "not investment advice" \
-  "chime-atmosphere"
+  "koel-atmosphere"
 
 echo "marketing_smoke: all routes ok"

@@ -51,11 +51,11 @@ export default async function LoginPage({
     <main
       id="main-content"
       tabIndex={-1}
-      className="chime-atmosphere relative flex min-h-full flex-1 flex-col"
+      className="koel-atmosphere relative flex min-h-full flex-1 flex-col"
     >
       <HeroGridBackdrop />
       <div className="relative mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16 sm:py-20">
-        <div className="chime-rise">
+        <div className="koel-rise">
           <Link
             href="/"
             className="inline-flex motion-safe:transition-opacity motion-safe:hover:opacity-80"
@@ -65,7 +65,7 @@ export default async function LoginPage({
           </Link>
         </div>
 
-        <h1 className="chime-rise chime-rise-delay-1 mt-10 max-w-md font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-[1.08]">
+        <h1 className="koel-rise koel-rise-delay-1 mt-10 max-w-md font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-[1.08]">
           CSE alerts on Telegram.
           <span className="mt-2 block font-medium text-muted-foreground">
             Dash when you need to manage.
@@ -76,7 +76,7 @@ export default async function LoginPage({
           <p
             role="status"
             data-testid="session-expired-notice"
-            className="chime-rise chime-rise-delay-1 mt-5 text-sm text-foreground"
+            className="koel-rise koel-rise-delay-1 mt-5 text-sm text-foreground"
           >
             Your session expired. Sign in again to open the dashboard.
           </p>
@@ -84,7 +84,7 @@ export default async function LoginPage({
 
         <p
           id="login-explainer"
-          className="chime-rise chime-rise-delay-2 mt-5 max-w-md text-base leading-relaxed text-muted-foreground"
+          className="koel-rise koel-rise-delay-2 mt-5 max-w-md text-base leading-relaxed text-muted-foreground"
         >
           Browse the market, watch symbols, and manage rules here. Telegram is
           the cherry — you still get the ping when a rule fires with the tab
@@ -92,7 +92,7 @@ export default async function LoginPage({
         </p>
 
         <ul
-          className="chime-rise chime-rise-delay-2 mt-6 max-w-md space-y-2.5 text-sm text-muted-foreground"
+          className="koel-rise koel-rise-delay-2 mt-6 max-w-md space-y-2.5 text-sm text-muted-foreground"
           aria-labelledby="login-explainer"
         >
           <li className="flex gap-2.5">
@@ -118,9 +118,9 @@ export default async function LoginPage({
           </li>
         </ul>
 
-        <NfaInline className="chime-rise chime-rise-delay-2 mt-5" />
+        <NfaInline className="koel-rise koel-rise-delay-2 mt-5" />
 
-        <div className="chime-rise chime-rise-delay-3 mt-10 max-w-sm rounded-2xl border border-border/80 bg-card/90 p-5 shadow-[0_1px_0_oklch(0.2_0.01_260/0.04)] backdrop-blur-sm sm:p-6">
+        <div className="koel-rise koel-rise-delay-3 mt-10 max-w-sm rounded-2xl border border-border/80 bg-card/90 p-5 shadow-[0_1px_0_oklch(0.2_0.01_260/0.04)] backdrop-blur-sm sm:p-6">
           <LoginForm
             allowlist={allowlist}
             defaultTelegramId={defaultId}

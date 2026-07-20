@@ -7,7 +7,7 @@ URLs are later stored or echoed to Telegram as allowlisted links.
 
 from __future__ import annotations
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     CDN_BASE,
     allowed_cdn_pdf_url,
     allowed_filing_url,

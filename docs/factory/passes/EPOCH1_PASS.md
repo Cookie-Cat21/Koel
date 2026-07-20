@@ -31,9 +31,9 @@ See also [EPOCH1_ADVERSARIAL.md](EPOCH1_ADVERSARIAL.md).
 ## Verify proof
 
 ```
-$ ruff check chime tests  → All checks passed
-$ mypy chime              → Success
-$ pytest --cov=chime.rules → green, 100% rules coverage
+$ ruff check koel tests  → All checks passed
+$ mypy koel              → Success
+$ pytest --cov=koel.rules → green, 100% rules coverage
 ```
 
 HEAD recorded at commit time in git history.

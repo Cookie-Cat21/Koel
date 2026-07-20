@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from chime.config import migrations_dir
-from chime.migrate import apply_migrations
+from koel.config import migrations_dir
+from koel.migrate import apply_migrations
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 

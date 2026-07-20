@@ -10,14 +10,14 @@ import asyncio
 import os
 from datetime import UTC, datetime
 
-from chime.adapters.cse import CSEClient
-from chime.config import Settings
-from chime.domain import Disclosure
-from chime.drain import drain_graph, drain_people
-from chime.financials_backfill import _title_for
-from chime.graph import GraphSettings
-from chime.graph.directors_sync import run_directors_sync
-from chime.storage import Storage
+from koel.adapters.cse import CSEClient
+from koel.config import Settings
+from koel.domain import Disclosure
+from koel.drain import drain_graph, drain_people
+from koel.financials_backfill import _title_for
+from koel.graph import GraphSettings
+from koel.graph.directors_sync import run_directors_sync
+from koel.storage import Storage
 
 # Fallback if DB has no market-cap snapshots yet
 _DEFAULT_SYMBOLS = [

@@ -12,8 +12,8 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from chime.extractors.financial_pdf import extract_filing_from_path, infer_filing_kind
-from chime.metrics.compare import MetricsRow, resolve_prior
+from koel.extractors.financial_pdf import extract_filing_from_path, infer_filing_kind
+from koel.metrics.compare import MetricsRow, resolve_prior
 
 REPO = Path(__file__).resolve().parents[2]
 PDF_DIR = Path("/tmp/cse-financial-pdfs")

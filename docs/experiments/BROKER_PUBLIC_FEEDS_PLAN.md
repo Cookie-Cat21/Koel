@@ -7,7 +7,7 @@
 **Spike (historical only — do not productize LOLC):**  
 `python3 scripts/experiments/lolc_public_feeds_spike.py` → [`LOLC_PUBLIC_FEEDS_SPIKE.md`](./LOLC_PUBLIC_FEEDS_SPIKE.md)
 
-Related: [`docs/THIRD_PARTY_DATA.md`](../THIRD_PARTY_DATA.md) · [`docs/factory/workstreams/FACTOR_INDEX.md`](../factory/workstreams/FACTOR_INDEX.md) (F-086) · [`docs/factory/CHIME_MASTER_PLAN.md`](../factory/CHIME_MASTER_PLAN.md) (P1 / P1b)
+Related: [`docs/THIRD_PARTY_DATA.md`](../THIRD_PARTY_DATA.md) · [`docs/factory/workstreams/FACTOR_INDEX.md`](../factory/workstreams/FACTOR_INDEX.md) (F-086) · [`docs/factory/KOEL_MASTER_PLAN.md`](../factory/KOEL_MASTER_PLAN.md) (P1 / P1b)
 
 ---
 
@@ -157,9 +157,9 @@ Log intake checklist rows in `THIRD_PARTY_DATA.md` before any flag flip.
 | Piece | Detail |
 |---|---|
 | Flag | `LOLC_FUNDAMENTALS_ENABLED=0` |
-| Adapter | `chime/adapters/lolc_stocklens.py` — GET JSON, normalize numbers, map ticker |
+| Adapter | `koel/adapters/lolc_stocklens.py` — GET JSON, normalize numbers, map ticker |
 | Tables | `fundamentals_snapshots (symbol, as_of, pe, sector_pe, pbv, sector_pbv, dy, dps, eps_4qt, nav, roe, foreign_holding_pct, mcap_mn, source, raw_hash)` |
-| Job | `python3 -m chime fundamentals-pull` (cron / poller idle leg) |
+| Job | `python3 -m koel fundamentals-pull` (cron / poller idle leg) |
 | API | Extend `GET /api/v1/symbols/[symbol]/metrics` with optional `fundamentals` block |
 | UI | Symbol KPI strip; attribution footer |
 | Signals | Wire **F-086** when coverage ≥ threshold |
@@ -171,7 +171,7 @@ Log intake checklist rows in `THIRD_PARTY_DATA.md` before any flag flip.
 | Piece | Detail |
 |---|---|
 | Flag | `LOLC_DIVIDENDS_ENABLED=0` |
-| Adapter | `chime/adapters/lolc_dividends.py` |
+| Adapter | `koel/adapters/lolc_dividends.py` |
 | Tables | `dividend_events (symbol, d_ann, d_xd, d_pay, dps, interim, fy, UNIQUE…)` |
 | Alert type | `xd_soon` (threshold = days ahead) — bot parse + dash create |
 | Rules | Evaluate once/day (not every price tick); claim/dedupe like disclosures |

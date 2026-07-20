@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from chime.briefs import BriefSettings
+from koel.briefs import BriefSettings
 from tests.test_storage_unit import _Conn, _store
 
 

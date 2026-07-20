@@ -11,10 +11,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.__main__ import _refresh_both_health
-from chime.adapters.cse import CSEClient
-from chime.circuit import CircuitBreaker
-from chime.health import HealthState, start_health_server
+from koel.__main__ import _refresh_both_health
+from koel.adapters.cse import CSEClient
+from koel.circuit import CircuitBreaker
+from koel.health import HealthState, start_health_server
 
 
 @contextmanager

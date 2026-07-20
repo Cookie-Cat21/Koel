@@ -115,7 +115,7 @@ These workstreams do **not** implement features. Each defines a concrete failure
 |---|---|
 | **id** | WS-088 |
 | **title** | Duplicate bot and poller processes |
-| **failure scenario** | Two `chime both` (or bot+poller on two hosts) run: advisory lock serializes ticks (good), but two bots long-poll Telegram → `getUpdates` conflict, dropped commands, or duplicate UX replies. Or one poller without lock ID alignment (different DB) double-sends. Pass 1 fixed dual-poller for same DB; split-brain across envs remains. |
+| **failure scenario** | Two `koel both` (or bot+poller on two hosts) run: advisory lock serializes ticks (good), but two bots long-poll Telegram → `getUpdates` conflict, dropped commands, or duplicate UX replies. Or one poller without lock ID alignment (different DB) double-sends. Pass 1 fixed dual-poller for same DB; split-brain across envs remains. |
 | **how to probe** | Start two processes with same `DATABASE_URL` + token: assert only one holds lock per tick; assert Telegram updater conflict is logged/handled. Start two pollers against different DBs sharing one bot token. Kill -9 holder mid-tick; confirm lock releases (session end) and standby resumes without dup claims (`UNIQUE(rule_id, event_key)`). |
 | **pass/fail criterion** | **Pass** if multi-poller same-DB is safe (lock + claim) and multi-bot same-token fails loudly or is ops-forbidden; **fail** if duplicate Telegram messages or silent command loss without health signal. |
 | **commits if fix needed** | 1–3 |
@@ -171,7 +171,7 @@ These workstreams do **not** implement features. Each defines a concrete failure
 |---|---|
 | **id** | WS-092 |
 | **title** | both SIGTERM and tick force-or-True |
-| **failure scenario** | (a) `chime both` does not cleanly stop scheduler + updater + health + unlock on SIGTERM → stuck advisory lock until TCP drop, orphan threads. (b) `tick` path uses `force=args.force or True` so `--force` is effectively always on — operators cannot dry-run market-hours gating via `tick`. |
+| **failure scenario** | (a) `koel both` does not cleanly stop scheduler + updater + health + unlock on SIGTERM → stuck advisory lock until TCP drop, orphan threads. (b) `tick` path uses `force=args.force or True` so `--force` is effectively always on — operators cannot dry-run market-hours gating via `tick`. |
 | **how to probe** | Read `__main__.py` + poller shutdown; send SIGTERM to `both` under load with held lock; assert unlock + exit code 0 within timeout. Run `tick` without `--force` outside hours and assert skip (today it forces). Fix or document. |
 | **pass/fail criterion** | **Pass** if SIGTERM releases lock and stops cleanly, and `tick` honors `--force` only when set; **fail** if lock sticks past process exit window or `tick` always forces. |
 | **commits if fix needed** | 1–2 |

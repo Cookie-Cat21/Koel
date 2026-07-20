@@ -4,7 +4,7 @@
  */
 export function SkipLink() {
   return (
-    <a href="#main-content" className="chime-skip-link">
+    <a href="#main-content" className="koel-skip-link">
       Skip to content
     </a>
   );

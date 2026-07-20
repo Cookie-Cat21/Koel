@@ -11,12 +11,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from chime.config import Settings
-from chime.domain import AlertEvent, AlertType, PriceSnapshot
-from chime.migrate import apply_migrations
-from chime.notify import SendResult
-from chime.poller import DELIVERY_OK_LEDGER_ENV, MARK_DELIVERY_OK_ATTEMPTS, Poller
-from chime.storage import Storage
+from koel.config import Settings
+from koel.domain import AlertEvent, AlertType, PriceSnapshot
+from koel.migrate import apply_migrations
+from koel.notify import SendResult
+from koel.poller import DELIVERY_OK_LEDGER_ENV, MARK_DELIVERY_OK_ATTEMPTS, Poller
+from koel.storage import Storage
 from tests.conftest import claim_unsent_deque
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
@@ -51,7 +51,7 @@ async def test_retry_unsent_uses_claim_batch_not_advisory_lock() -> None:
     send = AsyncMock(return_value=SendResult.OK)
 
     poller = Poller(_settings(), storage, AsyncMock(), send)
-    with patch("chime.poller.is_market_open", return_value=False):
+    with patch("koel.poller.is_market_open", return_value=False):
         events = await poller.run_once(force=False)
 
     assert events == []

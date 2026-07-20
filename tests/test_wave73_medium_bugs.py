@@ -23,26 +23,26 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     CSEClient,
     TradeSummaryRow,
     announcement_to_disclosure,
     symbol_info_to_snapshot,
     trade_row_to_snapshot,
 )
-from chime.bot import cmd_cancel
-from chime.briefs import BriefSettings, _env_float, _env_int
-from chime.briefs.worker import _notify_brief_followups
-from chime.domain import (
+from koel.bot import cmd_cancel
+from koel.briefs import BriefSettings, _env_float, _env_int
+from koel.briefs.worker import _notify_brief_followups
+from koel.domain import (
     AlertEvent,
     AlertType,
     PreviousPriceState,
     PriceSnapshot,
     SectorSnapshot,
 )
-from chime.notify import SendResult
-from chime.poller import Poller, _delivery_ok_token
-from chime.storage import Storage
+from koel.notify import SendResult
+from koel.poller import Poller, _delivery_ok_token
+from koel.storage import Storage
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
@@ -84,7 +84,7 @@ async def test_get_previous_state_rejects_non_string_symbol() -> None:
     out_blank = await store.get_previous_state("  ", before_id=1)
     assert out_blank.price is None and out_blank.move_fired_keys == set()
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     chunk = src.split("async def get_previous_state")[1].split("async def ")[0]
     assert "isinstance(symbol, str)" in chunk
     assert "symbol.strip().upper()," not in chunk
@@ -98,7 +98,7 @@ def test_cse_client_base_url_isinstance_guard() -> None:
     client3 = CSEClient(base_url="https://www.cse.lk/api/", timeout=1.0)
     assert client3.base_url == "https://www.cse.lk/api"
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     chunk = src.split("class CSEClient")[1].split("def _breaker")[0]
     assert "isinstance(base_url, str)" in chunk
 
@@ -112,14 +112,14 @@ async def test_cmd_cancel_non_string_arg_fail_closed() -> None:
     context.args = [123]
     context.application.bot_data = {"storage": MagicMock()}
 
-    with patch("chime.bot._rate_limited", AsyncMock(return_value=False)):
+    with patch("koel.bot._rate_limited", AsyncMock(return_value=False)):
         await cmd_cancel(update, context)
 
     update.effective_message.reply_text.assert_awaited_once()
     text = update.effective_message.reply_text.await_args.args[0]
     assert "Alert id must be a number" in text
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     chunk = src.split("async def cmd_cancel")[1].split("async def cmd_myalerts")[0]
     assert "isinstance(raw_arg, str)" in chunk
 
@@ -145,7 +145,7 @@ async def test_notify_brief_followups_rejects_non_string_brief() -> None:
     )
     storage.claim_brief_followups.assert_not_awaited()
 
-    src = (ROOT / "chime" / "briefs" / "worker.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "worker.py").read_text(encoding="utf-8")
     chunk = src.split("async def _notify_brief_followups")[1].split(
         "async def _promote_skipped_if_needed"
     )[0]
@@ -177,7 +177,7 @@ async def test_ready_filing_brief_rejects_non_string_event_key() -> None:
         symbol="JKH.N0000",
     )
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     chunk = src.split("async def _ready_filing_brief_for")[1].split(
         "async def _claim_only"
     )[0]
@@ -195,7 +195,7 @@ def test_delivery_ok_token_rejects_non_string_message() -> None:
         log_id=1, rule_id=2, telegram_id=3, message=""
     )
 
-    src = (ROOT / "chime" / "poller.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "poller.py").read_text(encoding="utf-8")
     tok = src.split("def _delivery_ok_token")[1].split("def parse_hhmm")[0]
     assert "isinstance(message, str)" in tok
     durable = src.split("def _durably_remember_delivery_ok")[1].split(
@@ -226,7 +226,7 @@ def test_briefs_env_int_float_reject_non_string_getenv(
             return default
         return None
 
-    with patch("chime.briefs.os.getenv", side_effect=_hostile):
+    with patch("koel.briefs.os.getenv", side_effect=_hostile):
         cfg = BriefSettings.from_env()
     assert cfg.max_briefs_per_day == 50
     assert cfg.max_input_chars == 12_000
@@ -234,11 +234,11 @@ def test_briefs_env_int_float_reject_non_string_getenv(
     assert cfg.http_timeout_seconds == 30.0
     assert cfg.sleep_seconds == 0.5
 
-    with patch("chime.briefs.os.getenv", return_value=99):
+    with patch("koel.briefs.os.getenv", return_value=99):
         assert _env_int("X", 3) == 3
         assert _env_float("Y", 1.5) == 1.5
 
-    src = (ROOT / "chime" / "briefs" / "__init__.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "__init__.py").read_text(encoding="utf-8")
     env_int = src.split("def _env_int")[1].split("def _env_float")[0]
     env_float = src.split("def _env_float")[1].split("@dataclass")[0]
     assert "isinstance(raw, str)" in env_int
@@ -299,7 +299,7 @@ async def test_cse_fetch_and_normalize_reject_non_string_symbol() -> None:
     )
     assert announcement_to_disclosure(ann, symbol=123) is None  # type: ignore[arg-type]
 
-    src = (ROOT / "chime" / "adapters" / "cse.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "adapters" / "cse.py").read_text(encoding="utf-8")
     assert "isinstance(row.symbol, str)" in src.split("def trade_row_to_snapshot")[1].split(
         "def sector_row_to_snapshot"
     )[0]
@@ -349,7 +349,7 @@ async def test_persist_market_and_sectors_skip_non_string_symbols() -> None:
         == []
     )
 
-    src = (ROOT / "chime" / "storage.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "storage.py").read_text(encoding="utf-8")
     assert "isinstance(snap.symbol, str)" in src.split("async def persist_market_snapshots")[
         1
     ].split("async def ")[0]

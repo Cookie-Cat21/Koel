@@ -8,13 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import ALERT_USAGE, parse_alert_args
-from chime.domain import AlertRule, AlertType, Disclosure, disclaimer, format_yoy_comparison_block
-from chime.extractors.financial_pdf import infer_filing_kind, is_financial_filing
-from chime.metrics import MetricsSettings
-from chime.metrics.compare import MetricsRow, resolve_prior
-from chime.metrics.worker import process_disclosure_metrics
-from chime.rules import evaluate_filing_metrics_rules
+from koel.bot import ALERT_USAGE, parse_alert_args
+from koel.domain import AlertRule, AlertType, Disclosure, disclaimer, format_yoy_comparison_block
+from koel.extractors.financial_pdf import infer_filing_kind, is_financial_filing
+from koel.metrics import MetricsSettings
+from koel.metrics.compare import MetricsRow, resolve_prior
+from koel.metrics.worker import process_disclosure_metrics
+from koel.rules import evaluate_filing_metrics_rules
 
 
 def _disc(**kwargs: object) -> Disclosure:
@@ -275,7 +275,7 @@ async def test_process_disclosure_metrics_extract_ok_path() -> None:
     fake_result.notes = {"source": "test"}
 
     with patch(
-        "chime.metrics.worker.extract_filing_from_bytes",
+        "koel.metrics.worker.extract_filing_from_bytes",
         return_value=fake_result,
     ):
         out = await process_disclosure_metrics(

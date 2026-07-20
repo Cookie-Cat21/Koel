@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from chime.ml.diagnose import PredRow
-from chime.ml.features import FEATURE_NAMES
-from chime.ml.precision90 import (
+from koel.ml.diagnose import PredRow
+from koel.ml.features import FEATURE_NAMES
+from koel.ml.precision90 import (
     PRECISION_TARGET,
     _eval_mask,
     pick_best,

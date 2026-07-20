@@ -16,15 +16,15 @@ from unittest.mock import patch
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     _env_cmd_rate_per_minute,
     _parse_threshold_token,
     parse_alert_args,
 )
-from chime.briefs import BriefSettings, briefs_enabled
-from chime.domain import _CTRL_RE
-from chime.poller import Poller
-from chime.scenarios import ScenarioSettings, scenarios_enabled
+from koel.briefs import BriefSettings, briefs_enabled
+from koel.domain import _CTRL_RE
+from koel.poller import Poller
+from koel.scenarios import ScenarioSettings, scenarios_enabled
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -48,7 +48,7 @@ def test_brief_settings_from_env_rejects_non_string_getenv(
             return 9.5
         return default
 
-    with patch("chime.briefs.os.getenv", side_effect=_hostile):
+    with patch("koel.briefs.os.getenv", side_effect=_hostile):
         cfg = BriefSettings.from_env()
     assert cfg.provider == "gemini"
     assert cfg.enabled is False
@@ -56,7 +56,7 @@ def test_brief_settings_from_env_rejects_non_string_getenv(
     assert cfg.model == "gemini-2.0-flash"
     assert briefs_enabled(cfg) is False
 
-    src = (ROOT / "chime" / "briefs" / "__init__.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "briefs" / "__init__.py").read_text(encoding="utf-8")
     chunk = src.split("def from_env")[1].split("def briefs_enabled")[0]
     assert "isinstance(provider_raw, str)" in chunk
     assert "isinstance(enabled_raw, str)" in chunk
@@ -64,15 +64,15 @@ def test_brief_settings_from_env_rejects_non_string_getenv(
 
 
 def test_scenario_settings_from_env_rejects_non_string_getenv() -> None:
-    with patch("chime.scenarios.os.getenv", return_value=1):
+    with patch("koel.scenarios.os.getenv", return_value=1):
         cfg = ScenarioSettings.from_env()
     assert cfg.enabled is False
     assert scenarios_enabled(cfg) is False
 
-    with patch("chime.scenarios.os.getenv", return_value="1"):
+    with patch("koel.scenarios.os.getenv", return_value="1"):
         assert ScenarioSettings.from_env().enabled is True
 
-    src = (ROOT / "chime" / "scenarios" / "__init__.py").read_text(
+    src = (ROOT / "koel" / "scenarios" / "__init__.py").read_text(
         encoding="utf-8"
     )
     chunk = src.split("def from_env")[1].split("def scenarios_enabled")[0]
@@ -80,9 +80,9 @@ def test_scenario_settings_from_env_rejects_non_string_getenv() -> None:
 
 
 def test_bot_rate_threshold_and_kind_isinstance_guards() -> None:
-    with patch("chime.bot.os.getenv", return_value=30):
+    with patch("koel.bot.os.getenv", return_value=30):
         assert _env_cmd_rate_per_minute() == 20
-    with patch("chime.bot.os.getenv", return_value="7"):
+    with patch("koel.bot.os.getenv", return_value="7"):
         assert _env_cmd_rate_per_minute() == 7
 
     assert _parse_threshold_token(123) is None  # type: ignore[arg-type]
@@ -94,7 +94,7 @@ def test_bot_rate_threshold_and_kind_isinstance_guards() -> None:
     ok, err_ok = parse_alert_args(["JKH.N0000", "above", "5"])
     assert err_ok is None and ok is not None
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     rate = src.split("def _env_cmd_rate_per_minute")[1].split("START_TEXT")[0]
     assert "isinstance(raw_env, str)" in rate
     thr = src.split("def _parse_threshold_token")[1].split("def parse_alert_args")[0]
@@ -108,7 +108,7 @@ def test_myalerts_mywatchlist_symbol_isinstance_guards() -> None:
         sym_raw = bad if isinstance(bad, str) else ""
         assert (_CTRL_RE.sub("", sym_raw).strip() or "?") == "?"
 
-    src = (ROOT / "chime" / "bot.py").read_text(encoding="utf-8")
+    src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
     alerts = src.split("Your alerts:")[1].split("async def cmd_mywatchlist")[0]
     assert "isinstance(r.symbol, str)" in alerts
     watch = src.split("async def cmd_mywatchlist")[1].split(
@@ -123,8 +123,8 @@ def test_myalerts_mywatchlist_symbol_isinstance_guards() -> None:
 
 def test_delivery_ok_ledger_path_rejects_non_string_getenv() -> None:
     poller = Poller.__new__(Poller)
-    poller.settings = SimpleNamespace(database_url="postgresql://localhost/chime")
-    with patch("chime.poller.os.getenv", return_value=123):
+    poller.settings = SimpleNamespace(database_url="postgresql://localhost/koel")
+    with patch("koel.poller.os.getenv", return_value=123):
         assert poller._delivery_ok_ledger_path_from_env() is None
-    with patch("chime.poller.os.getenv", return_value=""):
+    with patch("koel.poller.os.getenv", return_value=""):
         assert poller._delivery_ok_ledger_path_from_env() is None

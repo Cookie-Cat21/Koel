@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-from chime.domain import DailyBar
-from chime.hybrid_backfill import cse_symbol_to_yahoo, splice_bars
+from koel.domain import DailyBar
+from koel.hybrid_backfill import cse_symbol_to_yahoo, splice_bars
 
 
 def _cse(sym: str, d: date, px: float) -> DailyBar:

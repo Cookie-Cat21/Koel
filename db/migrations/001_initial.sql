@@ -1,5 +1,5 @@
 -- 001_initial.sql
--- Chime v1 schema
+-- Koel v1 schema
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
     filename TEXT PRIMARY KEY,

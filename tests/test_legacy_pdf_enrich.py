@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     CDN_BASE,
     CSEClient,
     LegacyAnnouncementRow,
@@ -18,9 +18,9 @@ from chime.adapters.cse import (
     legacy_pdf_urls_by_id,
     resolve_pdf_url,
 )
-from chime.config import Settings
-from chime.domain import AlertType, Disclosure, PreviousPriceState, PriceSnapshot
-from chime.poller import PendingPdfEnrich, Poller
+from koel.config import Settings
+from koel.domain import AlertType, Disclosure, PreviousPriceState, PriceSnapshot
+from koel.poller import PendingPdfEnrich, Poller
 from tests.conftest import make_disclosure, make_rule
 from tests.test_storage_unit import _Conn, _store
 
@@ -75,7 +75,7 @@ def test_resolve_pdf_url_rejects_non_cdn_ssrf() -> None:
 
 
 def test_allowed_filing_url_announcements_and_hostile() -> None:
-    from chime.adapters.cse import allowed_filing_url
+    from koel.adapters.cse import allowed_filing_url
 
     assert (
         allowed_filing_url("https://www.cse.lk/announcements#99")
@@ -216,7 +216,7 @@ async def test_poller_enriches_pdf_url_after_alerts_fail_soft(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Alerts claim/send even when legacy enrichment fails; enrichment is after unlock."""
-    monkeypatch.setattr("chime.poller.asyncio.sleep", AsyncMock())
+    monkeypatch.setattr("koel.poller.asyncio.sleep", AsyncMock())
 
     published = datetime(2026, 7, 11, 8, 0, 0, tzinfo=UTC)
     disc_rule = make_rule(
@@ -285,7 +285,7 @@ async def test_poller_enriches_pdf_url_after_alerts_fail_soft(
 async def test_poller_pdf_enrich_failure_does_not_block_alerts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("chime.poller.asyncio.sleep", AsyncMock())
+    monkeypatch.setattr("koel.poller.asyncio.sleep", AsyncMock())
 
     published = datetime(2026, 7, 11, 8, 0, 0, tzinfo=UTC)
     disc_rule = make_rule(
@@ -340,7 +340,7 @@ async def test_poller_pdf_enrich_failure_does_not_block_alerts(
 async def test_poller_skips_enrich_when_pdf_url_already_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("chime.poller.asyncio.sleep", AsyncMock())
+    monkeypatch.setattr("koel.poller.asyncio.sleep", AsyncMock())
 
     published = datetime(2026, 7, 11, 8, 0, 0, tzinfo=UTC)
     disc_rule = make_rule(
@@ -395,7 +395,7 @@ async def test_poller_skips_enrich_on_reupsert_without_just_inserted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Rate-limit: re-polled disclosures with null pdf_url must not re-hit legacy API."""
-    monkeypatch.setattr("chime.poller.asyncio.sleep", AsyncMock())
+    monkeypatch.setattr("koel.poller.asyncio.sleep", AsyncMock())
 
     published = datetime(2026, 7, 11, 8, 0, 0, tzinfo=UTC)
     disc_rule = make_rule(
@@ -522,7 +522,7 @@ async def test_enrich_sleeps_before_each_symbol(
 ) -> None:
     """Rate-limit: polite sleep before every legacy call, including the first."""
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("chime.poller.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("koel.poller.asyncio.sleep", sleep_mock)
 
     storage = AsyncMock()
     storage.set_disclosure_pdf_url = AsyncMock(return_value=True)

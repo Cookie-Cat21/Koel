@@ -1,6 +1,6 @@
 # Optional scheduled PDF enrich + metrics/briefs drains (Track C).
 # Requires repo secrets: DATABASE_URL. Optional AI_* for drain-briefs.
-# Does not scrape competitors — uses Chime's CSE JSON + CDN adapters only.
+# Does not scrape competitors — uses Koel's CSE JSON + CDN adapters only.
 
 name: pdf-metrics-drain
 
@@ -34,7 +34,7 @@ jobs:
       - name: Migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m chime migrate
+        run: python -m koel migrate
       - name: Drain PDFs
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -42,7 +42,7 @@ jobs:
           CSE_MIN_INTERVAL_SECONDS: "0.2"
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
-          python -m chime drain-pdfs --limit "$LIMIT"
+          python -m koel drain-pdfs --limit "$LIMIT"
       - name: Drain metrics
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -51,21 +51,21 @@ jobs:
           METRICS_SHADOW_MODE: "1"
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
-          python -m chime drain-metrics --limit "$LIMIT"
+          python -m koel drain-metrics --limit "$LIMIT"
       - name: Drain graph (ownership / equity links)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CSE_MIN_INTERVAL_SECONDS: "0.2"
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
-          python -m chime drain-graph --limit "$LIMIT"
+          python -m koel drain-graph --limit "$LIMIT"
       - name: Drain people (directors from PDFs)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CSE_MIN_INTERVAL_SECONDS: "0.2"
         run: |
           LIMIT="${{ github.event.inputs.limit || '30' }}"
-          python -m chime drain-people --limit "$LIMIT"
+          python -m koel drain-people --limit "$LIMIT"
       - name: Drain briefs (optional)
         if: ${{ github.event.inputs.run_briefs == 'true' || vars.DRAIN_BRIEFS == '1' }}
         env:
@@ -80,4 +80,4 @@ jobs:
           AI_MAX_BRIEFS_PER_DAY: "50"
         run: |
           LIMIT="${{ github.event.inputs.limit || '10' }}"
-          python -m chime drain-briefs --limit "$LIMIT"
+          python -m koel drain-briefs --limit "$LIMIT"

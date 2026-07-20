@@ -203,6 +203,6 @@ poller data (404 if unknown).
 
 ## Implementation notes (non-binding)
 
-1. Prefer a thin FastAPI/Starlette (or Next Route Handlers wrapping `chime.storage`) — reuse Postgres schema; no parallel tables.
+1. Prefer a thin FastAPI/Starlette (or Next Route Handlers wrapping `koel.storage`) — reuse Postgres schema; no parallel tables.
 2. First ship: read-only watchlist + auth demo → then alert CRUD → symbol detail → history → health.
 3. Mobile-first list UIs; brand-readable first viewport on `/login` and empty states (quality bar #8).

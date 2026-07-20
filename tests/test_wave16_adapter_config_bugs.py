@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock
 import pytest
 from structlog.testing import capture_logs
 
-from chime.adapters.cse import (
+from koel.adapters.cse import (
     AnnouncementRow,
     CSEClient,
     SymbolInfo,
@@ -27,11 +27,11 @@ from chime.adapters.cse import (
     symbol_info_to_snapshot,
     trade_row_to_snapshot,
 )
-from chime.bot import BRIEF_NONE_YET, HELP_TEXT, format_brief_lookup_reply
-from chime.config import Settings
-from chime.domain import TELEGRAM_SAFE_MAX, disclaimer
+from koel.bot import BRIEF_NONE_YET, HELP_TEXT, format_brief_lookup_reply
+from koel.config import Settings
+from koel.domain import TELEGRAM_SAFE_MAX, disclaimer
 
-_DSN = "postgresql://chime:chime@localhost:5432/chime"
+_DSN = "postgresql://koel:koel@localhost:5432/koel"
 
 
 def test_try_ms_to_dt_overflow_returns_none() -> None:

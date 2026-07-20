@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     RATE_LIMIT_REPLY,
     allow_command,
     cmd_alert,
@@ -136,7 +136,7 @@ async def test_alert_over_limit_replies_slow_down_no_cse() -> None:
 async def test_watch_under_limit_still_hits_cse() -> None:
     from datetime import UTC, datetime
 
-    from chime.domain import PriceSnapshot
+    from koel.domain import PriceSnapshot
 
     storage = AsyncMock()
     storage.ensure_user = AsyncMock(return_value=42)
@@ -211,7 +211,7 @@ async def test_brief_shares_cmd_rate_budget_with_watch() -> None:
     """Successful /watch consumes the shared per-user budget; /brief is limited too."""
     from datetime import UTC, datetime
 
-    from chime.domain import PriceSnapshot
+    from koel.domain import PriceSnapshot
 
     storage = AsyncMock()
     storage.ensure_user = AsyncMock(return_value=42)
@@ -251,11 +251,11 @@ async def test_brief_shares_cmd_rate_budget_with_watch() -> None:
 
 
 def test_build_application_stores_rate_from_arg() -> None:
-    from chime.bot import build_application
+    from koel.bot import build_application
 
     storage = MagicMock()
     cse = MagicMock()
-    with patch("chime.bot.Application") as App:
+    with patch("koel.bot.Application") as App:
         builder = MagicMock()
         App.builder.return_value = builder
         builder.token.return_value = builder
@@ -275,8 +275,8 @@ def test_all_command_handlers_share_rate_limit_gate() -> None:
     """Every registered cmd_* handler (incl. /brief) must call _rate_limited first."""
     import inspect
 
-    from chime import bot as bot_mod
-    from chime.bot import (
+    from koel import bot as bot_mod
+    from koel.bot import (
         cmd_alert,
         cmd_brief,
         cmd_cancel,

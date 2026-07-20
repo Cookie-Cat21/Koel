@@ -1292,7 +1292,7 @@ def write_markdown(summary: dict, rows: list[ValidatedExtract], out_path: Path, 
         "matches a human reading of page text. Validators still flag residual "
         "candidate conflicts on some filings.",
         "",
-        "## Recommendation for Chime",
+        "## Recommendation for Koel",
         "",
         "1. Still **do not** ship auto EPS/PE/YoY as alert truth.",
         "2. Offline extract + validators is useful for research / brief enrichment "

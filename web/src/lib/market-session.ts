@@ -1,6 +1,6 @@
 /**
  * CSE session clock helpers (Asia/Colombo).
- * Parity with ``chime.poller.is_market_open`` — weekdays 09:30–14:30 SLT.
+ * Parity with ``koel.poller.is_market_open`` — weekdays 09:30–14:30 SLT.
  * Dashboard-only; does not call cse.lk.
  */
 

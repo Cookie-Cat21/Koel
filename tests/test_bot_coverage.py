@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chime.bot import (
+from koel.bot import (
     RATE_LIMIT_REPLY,
     allow_command,
     cmd_alert,
@@ -22,7 +22,7 @@ from chime.bot import (
     reset_cmd_rate_limits,
     watch_upstream_error,
 )
-from chime.domain import AlertRule, AlertType, PriceSnapshot, disclaimer
+from koel.domain import AlertRule, AlertType, PriceSnapshot, disclaimer
 
 
 @pytest.fixture(autouse=True)
@@ -429,7 +429,7 @@ async def test_cmd_brief_returns_latest_ready() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_brief_strips_hostile_url() -> None:
-    from chime.bot import format_brief_lookup_reply
+    from koel.bot import format_brief_lookup_reply
 
     text = format_brief_lookup_reply(
         symbol="JKH.N0000",
