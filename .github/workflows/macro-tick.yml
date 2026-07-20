@@ -1,7 +1,8 @@
 # Tier B macro ingest → Postgres ``macro_series`` (Context tiles).
 # Requires repo secret: DATABASE_URL.
 # Optional: EIA_API_KEY (v2 API). Without it, oil uses EIA PET bulk zip (no key).
-# Kill switches: vars.CBSL_FX_ENABLED / vars.EIA_OIL_ENABLED set to 0 skip that feed.
+# Kill switches: vars.CBSL_FX_ENABLED / vars.EIA_OIL_ENABLED /
+# vars.WORLD_INDEX_RESEARCH_ENABLED set to 0 skip that feed.
 # Tourism / food stay off until ToS checklists land.
 #
 # Research context only — not financial advice.
@@ -45,12 +46,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python -m koel migrate
-      - name: Macro tick (CBSL FX + EIA oil)
+      - name: Macro tick (CBSL FX + EIA oil + world research)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
           # Live Context feeds. Whole job kill switch: vars.MACRO_TICK=0.
-          # Per-feed pause: set CBSL_FX_ENABLED / EIA_OIL_ENABLED repo vars to 0.
+          # Per-feed pause: set the matching repo var to 0.
           CBSL_FX_ENABLED: ${{ vars.CBSL_FX_ENABLED != '0' && '1' || '0' }}
           EIA_OIL_ENABLED: ${{ vars.EIA_OIL_ENABLED != '0' && '1' || '0' }}
+          WORLD_INDEX_RESEARCH_ENABLED: ${{ vars.WORLD_INDEX_RESEARCH_ENABLED != '0' && '1' || '0' }}
         run: python -m koel macro-tick --force

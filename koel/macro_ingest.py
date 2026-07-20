@@ -7,6 +7,7 @@ from typing import Any
 
 from koel.adapters.macro_cbsl import fetch_cbsl_fx_rows
 from koel.adapters.macro_eia import fetch_eia_oil_rows
+from koel.adapters.macro_world import fetch_world_index_rows
 from koel.config import Settings
 from koel.storage import Storage
 
@@ -21,17 +22,19 @@ async def run_macro_tick(
 ) -> dict[str, Any]:
     """Pull enabled macro feeds and upsert. Returns counts per source.
 
-    When ``force`` is set, pull CBSL/EIA even if flags are off (ops smoke).
+    When ``force`` is set, pull CBSL/EIA/world even if flags are off (ops smoke).
     Prod still requires intake checklist before leaving flags on.
     """
     result: dict[str, Any] = {
         "cbsl_fx": 0,
         "eia_oil": 0,
+        "world_indexes": 0,
         "skipped": [],
     }
 
     pull_fx = settings.cbsl_fx_enabled or force
     pull_oil = settings.eia_oil_enabled or force
+    pull_world = settings.world_index_research_enabled or force
 
     if pull_fx:
         try:
@@ -54,6 +57,17 @@ async def run_macro_tick(
             result["skipped"].append("eia_oil_error")
     else:
         result["skipped"].append("eia_oil_disabled")
+
+    if pull_world:
+        try:
+            rows = await fetch_world_index_rows(max_points=90)
+            n = await storage.upsert_macro_series(rows)
+            result["world_indexes"] = n
+        except Exception:
+            log.exception("macro_tick: world_indexes failed")
+            result["skipped"].append("world_indexes_error")
+    else:
+        result["skipped"].append("world_indexes_disabled")
 
     # Tourism / food adapters land when intake checklist is green;
     # keep slots honest so ops see intent.

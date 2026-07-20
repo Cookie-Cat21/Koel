@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AreaSpark } from "@/components/kit/area-spark";
 import {
   isDemoMacroAttribution,
+  isResearchMacroAttribution,
   type MacroSeriesCard,
 } from "@/lib/api/macro-context";
 import { toneFromSeries } from "@/lib/area-spark";
@@ -67,6 +68,13 @@ export function ContextModule({
             {latest && isDemoMacroAttribution(latest.attribution) ? (
               <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-amber-800 uppercase dark:text-amber-200">
                 Demo seed
+              </span>
+            ) : null}
+            {latest &&
+            !isDemoMacroAttribution(latest.attribution) &&
+            isResearchMacroAttribution(latest.attribution) ? (
+              <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                Research / delayed
               </span>
             ) : null}
           </div>

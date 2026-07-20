@@ -11,6 +11,7 @@ import pytest
 
 from koel.adapters.macro_cbsl import _mid
 from koel.adapters.macro_eia import _parse_bulk_series_line, _parse_eia_payload
+from koel.adapters.macro_world import parse_fred_csv, parse_yahoo_chart
 from koel.macro_ingest import run_macro_tick
 from koel.storage import Storage
 
@@ -194,23 +195,27 @@ async def test_run_macro_tick_disabled() -> None:
     settings = MagicMock()
     settings.cbsl_fx_enabled = False
     settings.eia_oil_enabled = False
+    settings.world_index_research_enabled = False
     settings.sltda_tourism_enabled = False
     settings.dcs_food_enabled = False
     result = await run_macro_tick(storage, settings)
     assert result["cbsl_fx"] == 0
     assert result["eia_oil"] == 0
+    assert result["world_indexes"] == 0
     assert "cbsl_fx_disabled" in result["skipped"]
     assert "eia_oil_disabled" in result["skipped"]
+    assert "world_indexes_disabled" in result["skipped"]
     storage.upsert_macro_series.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_run_macro_tick_force_upserts() -> None:
     storage = MagicMock()
-    storage.upsert_macro_series = AsyncMock(side_effect=[3, 2])
+    storage.upsert_macro_series = AsyncMock(side_effect=[3, 2, 5])
     settings = MagicMock()
     settings.cbsl_fx_enabled = False
     settings.eia_oil_enabled = False
+    settings.world_index_research_enabled = False
     settings.sltda_tourism_enabled = True
     settings.dcs_food_enabled = True
     with (
@@ -222,8 +227,51 @@ async def test_run_macro_tick_force_upserts() -> None:
             "koel.macro_ingest.fetch_eia_oil_rows",
             new=AsyncMock(return_value=[{"series_id": "BRENT_SPOT"}]),
         ),
+        patch(
+            "koel.macro_ingest.fetch_world_index_rows",
+            new=AsyncMock(return_value=[{"series_id": "WORLD_SPX"}]),
+        ),
     ):
         result = await run_macro_tick(storage, settings, force=True)
     assert result["cbsl_fx"] == 3
     assert result["eia_oil"] == 2
+    assert result["world_indexes"] == 5
     assert result["skipped"] == []
+
+
+def test_parse_fred_csv_skips_dots() -> None:
+    text = "DATE,SP500\n2026-07-15,7572.40\n2026-07-16,.\n2026-07-17,7457.69\n"
+    rows = parse_fred_csv(
+        text,
+        series_id="WORLD_SPX",
+        attribution="FRED SP500 — research / delayed, not CSE official",
+        max_points=10,
+    )
+    assert len(rows) == 2
+    assert rows[-1]["value"] == 7457.69
+    assert rows[-1]["as_of_date"].isoformat() == "2026-07-17"
+
+
+def test_parse_yahoo_chart_closes() -> None:
+    from datetime import UTC, datetime
+
+    day = int(datetime(2026, 7, 17, 12, tzinfo=UTC).timestamp())
+    prev = int(datetime(2026, 7, 16, 12, tzinfo=UTC).timestamp())
+    payload = {
+        "chart": {
+            "result": [
+                {
+                    "timestamp": [prev, day],
+                    "indicators": {"quote": [{"close": [100.0, 105.5]}]},
+                }
+            ]
+        }
+    }
+    rows = parse_yahoo_chart(
+        payload,
+        series_id="WORLD_FTSE",
+        attribution="Yahoo ^FTSE — research / delayed, not CSE official",
+    )
+    assert len(rows) == 2
+    assert rows[-1]["value"] == 105.5
+    assert "research" in rows[-1]["attribution"].lower()

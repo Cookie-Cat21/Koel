@@ -91,19 +91,23 @@ Probe notes only. **Not license clearance.** Complete the full checklist before 
 - [ ] NFA: arrivals YoY + Hotels/Travel sector link only
 - **Note:** World Bank `ST.INT.ARVL` API responds but recent annual values were **null** in probe — do not use as dash truth.
 
-### World indexes (F-096) — research panel only
+### World indexes (F-096) — research panel shipped (flagged)
 
-- [ ] Source: TBD ToS-clean EOD (avoid brittle bot-gated scrapers; Stooq challenged in probe)
-- [ ] ToS / license: treat like Tier D* until cleared; banner “research / delayed”
-- [ ] Flag: `WORLD_INDEX_RESEARCH_ENABLED` default `0`
-- [ ] Never label as CSE official
+- [x] Source: FRED public CSV (`SP500`, `NIKKEI225`, `VIXCLS`) + Yahoo chart JSON (`^FTSE`, `^NSEI`) — Stooq bot-gated (confirmed)
+- [x] ToS / license: FRED series redistributable with Fed St. Louis attribution; Yahoo unofficial → **Tier D\*** research / delayed banner only (same honesty as hybrid bars)
+- [x] Auth: none
+- [x] Rate limit: daily via `macro-tick`
+- [x] Schema: `macro_series` (`WORLD_SPX` / `WORLD_FTSE` / `WORLD_NIKKEI` / `WORLD_NSEI` / `WORLD_VIX`)
+- [x] Flag: `WORLD_INDEX_RESEARCH_ENABLED` default `0` in app; GitHub `macro-tick` sets `1` (kill with `vars.WORLD_INDEX_RESEARCH_ENABLED=0`)
+- [x] Fail-soft: empty world tiles on `/context`
+- [x] NFA: never label as CSE official; UI badge “research / delayed”
 
-### External news / social sentiment — deferred
+### External news / social sentiment — disclosure-first on Context
 
-- [ ] Prefer in-house CSE disclosures/notices + existing Gemini brief flags
+- [x] Prefer in-house CSE disclosures + `market_notices` timeline on `/context` (Postgres only)
 - [ ] No full-text scrape of EconomyNext / Daily FT / Ada Derana without written license
 - [ ] Link-out / RSS only after per-publisher ToS row
-- [ ] Skip CSEPal-style social-feed clone
+- [x] Skip CSEPal-style social-feed clone
 
 ## Broker / CDS public feeds — decision log (2026-07-18)
 
