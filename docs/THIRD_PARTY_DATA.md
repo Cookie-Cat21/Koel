@@ -45,28 +45,28 @@ Do **not** flip prod flags until the matching intake row below is completed.
 
 Probe notes only. **Not license clearance.** Complete the full checklist before `*_ENABLED=1`.
 
-### CBSL FX (F-091) — candidate
+### CBSL FX (F-091) — adapter shipped (flagged)
 
-- [ ] Source: [Daily indicative exchange rates](https://www.cbsl.gov.lk/en/rates-and-indicators/exchange-rates) · tool `https://www.cbsl.gov.lk/cbsl_custom/exrates/exrates.php` (HTTP 200 in probe) + spreadsheet downloads on same hub
-- [ ] ToS / license: official public statistics; confirm redistribution into Postgres + attribution wording
-- [ ] Auth: none (HTML/spreadsheet)
-- [ ] Rate limit: ≤1 pull / business day after publish; backoff on 5xx
-- [ ] Schema: `macro_series` (`source=cbsl_fx`, `series_id=USD_LKR` …)
-- [ ] Flag: `CBSL_FX_ENABLED` default `0`
-- [ ] Fail-soft: hide FX chips; CSE tape pulse unaffected
-- [ ] NFA: “USD/LKR as of …” never “rupee cheap → buy”
+- [x] Source: [Daily indicative exchange rates](https://www.cbsl.gov.lk/en/rates-and-indicators/exchange-rates) spreadsheet `IF_Buying_Selling_Exchange_Rates.xlsx`
+- [x] ToS / license: official public statistics; attribute “CBSL buying & selling exchange rates (commercial banks TT)”
+- [x] Auth: none (spreadsheet download)
+- [x] Rate limit: daily via `macro-tick` workflow (~08:15 SLT); backoff on 5xx
+- [x] Schema: `macro_series` (`source=cbsl_fx`, `series_id=USD_LKR` / `EUR_LKR` / `GBP_LKR`)
+- [x] Flag: `CBSL_FX_ENABLED` default `0` in app; GitHub `macro-tick` sets `1` (kill with `vars.MACRO_TICK=0` or `vars.CBSL_FX_ENABLED=0`)
+- [x] Fail-soft: empty Context FX cards; CSE tape pulse unaffected
+- [x] NFA: “USD/LKR as of …” never “rupee cheap → buy”
 - **Note:** Frankfurter/ECB API is fine for USD↔EUR/INR/SGD cross-checks but **does not publish LKR** (confirmed 2026-07-20) — CBSL remains LKR truth.
 
-### EIA oil (F-095) — candidate
+### EIA oil (F-095) — adapter shipped (flagged)
 
-- [ ] Source: [EIA Open Data API](https://www.eia.gov/opendata/) — Brent / WTI spot series
-- [ ] ToS / license: US government works generally **public domain**; [Copyrights & Reuse](https://www.eia.gov/about/copyrights_reuse.cfm) requires acknowledgment; register free API key; obey API ToS / rate limits
-- [ ] Auth: `EIA_API_KEY`
-- [ ] Rate limit: polite daily pull; respect EIA throttles
-- [ ] Schema: `macro_series` (`source=eia_oil`, `series_id=BRENT_SPOT` / `WTI_SPOT`)
-- [ ] Flag: `EIA_OIL_ENABLED` default `0`
-- [ ] Fail-soft: hide oil chip
-- [ ] NFA: descriptive Δ% only; optional energy-sector bridge chip
+- [x] Source: [EIA Open Data API](https://www.eia.gov/opendata/) Brent / WTI spot — with **PET bulk zip** fallback when `EIA_API_KEY` is unset
+- [x] ToS / license: US government works generally **public domain**; [Copyrights & Reuse](https://www.eia.gov/about/copyrights_reuse.cfm) requires acknowledgment (“U.S. Energy Information Administration (EIA)”)
+- [x] Auth: optional `EIA_API_KEY`; bulk facility needs no key
+- [x] Rate limit: polite daily pull via `macro-tick`; respect EIA throttles when using the API
+- [x] Schema: `macro_series` (`source=eia_oil`, `series_id=BRENT_SPOT` / `WTI_SPOT`)
+- [x] Flag: `EIA_OIL_ENABLED` default `0` in app; GitHub `macro-tick` sets `1` (kill with `vars.MACRO_TICK=0` or `vars.EIA_OIL_ENABLED=0`)
+- [x] Fail-soft: empty oil Context cards
+- [x] NFA: descriptive Δ% only; optional energy-sector bridge chip
 
 ### DCS food / CPI (F-093 / food pressure) — candidate
 

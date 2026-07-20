@@ -280,6 +280,10 @@ type DataInventory = {
   latest_migration: string | null;
   latest_migration_at: string | null;
   appetite_cse_tip: string | null;
+  /** Latest non-demo USD/LKR as_of (CBSL live ingest tip). */
+  macro_usd_lkr_tip: string | null;
+  /** Latest non-demo Brent as_of (EIA live ingest tip). */
+  macro_brent_tip: string | null;
 };
 
 async function queryDataInventory(
@@ -341,6 +345,26 @@ async function queryDataInventory(
     console.error("GET /health appetite tip failed", err);
   }
 
+  let macro_usd_lkr_tip: string | null = null;
+  let macro_brent_tip: string | null = null;
+  try {
+    const tips = await pool.query<{ series_id: string; tip: string | null }>(
+      `SELECT series_id, MAX(as_of_date)::text AS tip
+         FROM macro_series
+        WHERE series_id IN ('USD_LKR', 'BRENT_SPOT')
+          AND attribution NOT ILIKE '%demo seed%'
+        GROUP BY series_id`,
+    );
+    for (const t of tips.rows) {
+      const raw = t.tip;
+      if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) continue;
+      if (t.series_id === "USD_LKR") macro_usd_lkr_tip = raw;
+      if (t.series_id === "BRENT_SPOT") macro_brent_tip = raw;
+    }
+  } catch (err) {
+    console.error("GET /health macro tip failed", err);
+  }
+
   return {
     disclosures: toNonNegativeSafeInt(row.disclosures, 0),
     filing_metrics: toNonNegativeSafeInt(row.filing_metrics, 0),
@@ -352,6 +376,8 @@ async function queryDataInventory(
     latest_migration,
     latest_migration_at,
     appetite_cse_tip,
+    macro_usd_lkr_tip,
+    macro_brent_tip,
   };
 }
 

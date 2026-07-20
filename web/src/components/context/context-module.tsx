@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AreaSpark } from "@/components/kit/area-spark";
-import type { MacroSeriesCard } from "@/lib/api/macro-context";
+import {
+  isDemoMacroAttribution,
+  type MacroSeriesCard,
+} from "@/lib/api/macro-context";
 import { toneFromSeries } from "@/lib/area-spark";
 import { cn } from "@/lib/utils";
 
@@ -57,9 +60,16 @@ export function ContextModule({
     >
       <div className="flex flex-1 flex-col px-4 pt-4 pb-3">
         <div className="min-w-0">
-          <h2 className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            {title}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              {title}
+            </h2>
+            {latest && isDemoMacroAttribution(latest.attribution) ? (
+              <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-amber-800 uppercase dark:text-amber-200">
+                Demo seed
+              </span>
+            ) : null}
+          </div>
           <p className="mt-1 text-sm leading-snug text-muted-foreground">
             {subtitle}
           </p>

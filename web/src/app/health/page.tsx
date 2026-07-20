@@ -93,6 +93,8 @@ type DataInventory = {
   latest_migration: string | null;
   latest_migration_at: string | null;
   appetite_cse_tip: string | null;
+  macro_usd_lkr_tip: string | null;
+  macro_brent_tip: string | null;
 };
 
 type CiRun = {
@@ -119,6 +121,12 @@ const SCHEDULED_JOBS: ReadonlyArray<{
     label: "pdf-metrics-drain",
     match: "pdf-metrics-drain",
     cadence: "hourly",
+  },
+  {
+    id: "macro-tick",
+    label: "macro-tick",
+    match: "macro-tick",
+    cadence: "daily ~08:15 SLT",
   },
   {
     id: "score-signals",
@@ -377,6 +385,12 @@ function parseDataInventory(raw: unknown): DataInventory | null {
     /^\d{4}-\d{2}-\d{2}$/.test(d.appetite_cse_tip)
       ? d.appetite_cse_tip
       : null;
+  const dateTip = (key: string): string | null => {
+    const raw = d[key];
+    return typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)
+      ? raw
+      : null;
+  };
   return {
     stocks,
     disclosures,
@@ -388,6 +402,8 @@ function parseDataInventory(raw: unknown): DataInventory | null {
     latest_migration: mig,
     latest_migration_at: healthTs(d.latest_migration_at),
     appetite_cse_tip: tip,
+    macro_usd_lkr_tip: dateTip("macro_usd_lkr_tip"),
+    macro_brent_tip: dateTip("macro_brent_tip"),
   };
 }
 
@@ -806,6 +822,14 @@ export default async function HealthPage() {
                     label="Appetite CSE tip"
                     value={data.appetite_cse_tip ?? "—"}
                   />
+                  <Row
+                    label="Macro USD/LKR tip"
+                    value={data.macro_usd_lkr_tip ?? "—"}
+                  />
+                  <Row
+                    label="Macro Brent tip"
+                    value={data.macro_brent_tip ?? "—"}
+                  />
                 </dl>
               </section>
             ) : null}
@@ -893,9 +917,10 @@ export default async function HealthPage() {
                       Scheduled jobs
                     </h3>
                     <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                      Expected ops workflows vs latest run seen in the strip
-                      above. Missing = no recent run returned (not necessarily
-                      broken).
+                      Checklist against the Actions strip above (not a separate
+                      cron API). ✓ success/in-progress · ! seen but
+                      skipped/failed · — not in the recent-runs window (weekly
+                      jobs often look empty mid-week). Cached up to ~60s.
                     </p>
                     <ul className="mt-3 divide-y divide-border/60 rounded-xl border border-border">
                       {SCHEDULED_JOBS.map((job) => {
@@ -908,6 +933,7 @@ export default async function HealthPage() {
                             : wf.includes(needle);
                         });
                         const seen = run != null;
+                        const skipped = run?.conclusion === "skipped";
                         const ok =
                           seen &&
                           (run.conclusion === "success" ||
@@ -939,6 +965,7 @@ export default async function HealthPage() {
                                 {run?.updated_at
                                   ? ` · last ${formatTs(run.updated_at)}`
                                   : " · no recent run"}
+                                {skipped ? " · skipped (kill switch / gate)" : ""}
                               </p>
                             </div>
                             {run ? (

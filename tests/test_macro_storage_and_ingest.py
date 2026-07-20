@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from koel.adapters.macro_cbsl import _mid
-from koel.adapters.macro_eia import _parse_eia_payload
+from koel.adapters.macro_eia import _parse_bulk_series_line, _parse_eia_payload
 from koel.macro_ingest import run_macro_tick
 from koel.storage import Storage
 
@@ -64,6 +64,24 @@ def test_mid_rejects_bad_inputs() -> None:
     assert _mid("x", 310) is None
     assert _mid(0, 310) is None
     assert _mid(-1, 310) is None
+
+
+def test_parse_eia_bulk_line_yyyyymmdd() -> None:
+    line = (
+        b'{"series_id":"PET.RBRTE.D","data":[["20260713",81.62],'
+        b'["20260710",74.34],["bad",1],["20260701",0]]}'
+    )
+    rows = _parse_bulk_series_line(
+        line,
+        wanted={"PET.RBRTE.D": "BRENT_SPOT"},
+        length=10,
+    )
+    assert len(rows) == 2
+    assert rows[0]["series_id"] == "BRENT_SPOT"
+    assert rows[0]["as_of_date"].isoformat() == "2026-07-10"
+    assert rows[-1]["as_of_date"].isoformat() == "2026-07-13"
+    assert rows[-1]["value"] == 81.62
+    assert "demo" not in rows[-1]["attribution"].lower()
 
 
 def test_parse_eia_payload_mids() -> None:

@@ -133,7 +133,7 @@ export default async function ContextPage() {
                 delta_pct: null,
               }
             }
-            emptyHint="Enable CBSL_FX_ENABLED and run macro-tick after intake checklist."
+            emptyHint="Enable CBSL_FX_ENABLED and run macro-tick (daily GitHub workflow)."
             sectorHref="/market"
             sectorLabel="Browse CSE"
           />
@@ -162,7 +162,7 @@ export default async function ContextPage() {
               }
             }
             formatDigits={2}
-            emptyHint="Set EIA_API_KEY + EIA_OIL_ENABLED, then macro-tick."
+            emptyHint="Enable EIA_OIL_ENABLED and run macro-tick (API key optional — PET bulk zip fallback)."
             sectorHref="/market?q=energy"
             sectorLabel="Energy-related browse"
           />
@@ -177,7 +177,7 @@ export default async function ContextPage() {
                 delta_pct: null,
               }
             }
-            emptyHint="Same EIA oil adapter as Brent."
+            emptyHint="Same EIA oil adapter as Brent (API or PET bulk)."
           />
           <ContextModule
             title="Tourist arrivals"

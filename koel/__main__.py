@@ -387,7 +387,8 @@ def main(argv: list[str] | None = None) -> None:
             "tick: ignore market hours; "
             "digest: ignore 14:30–16:00 SLT window; "
             "path-backfill/intraday-backfill/hybrid-backfill/"
-            "sector-backfill/notices-backfill/directors-backfill: "
+            "sector-backfill/notices-backfill/directors-backfill/"
+            "macro-tick: "
             "run even if flag off"
         ),
     )
@@ -501,6 +502,7 @@ def main(argv: list[str] | None = None) -> None:
         "financials-backfill",
         "aspi-backfill",
         "appetite-backfill",
+        "macro-tick",
         "ml-loop-nightly",
         "ml-loop-retrain",
         "ml-loop-research",
@@ -510,7 +512,7 @@ def main(argv: list[str] | None = None) -> None:
             "--force is only valid for tick, digest, path-backfill, "
             "intraday-backfill, hybrid-backfill, sector-backfill, notices-backfill, "
             "directors-backfill, disclosures-backfill, financials-backfill, "
-            "aspi-backfill, appetite-backfill, ml-forecast, ml-hpe, "
+            "aspi-backfill, appetite-backfill, macro-tick, ml-forecast, ml-hpe, "
             "ml-forecast-unified, ml-loop-nightly, ml-loop-retrain, "
             "ml-loop-research, or ml-ltr-ship"
         )

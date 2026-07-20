@@ -53,6 +53,12 @@ function parsePoint(row: Record<string, unknown>): MacroPoint | null {
   };
 }
 
+/** True when attribution marks a demo / fixture row (not live ingest). */
+export function isDemoMacroAttribution(attribution: string | null | undefined): boolean {
+  if (typeof attribution !== "string") return false;
+  return /demo\s*seed/i.test(attribution);
+}
+
 export async function queryMacroSeries(
   pool: Pool,
   seriesId: string,
@@ -60,10 +66,12 @@ export async function queryMacroSeries(
 ): Promise<MacroSeriesCard> {
   const lim = Math.min(Math.max(limit, 1), 500);
   try {
+    // Prefer live ingest; demo-seed fixtures must not shadow real CBSL/EIA rows.
     const res = await pool.query(
       `SELECT source, series_id, ts, value, unit, as_of_date, attribution
        FROM macro_series
        WHERE series_id = $1
+         AND attribution NOT ILIKE '%demo seed%'
        ORDER BY ts DESC
        LIMIT $2`,
       [seriesId, lim],

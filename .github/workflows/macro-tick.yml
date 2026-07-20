@@ -1,0 +1,56 @@
+# Tier B macro ingest → Postgres ``macro_series`` (Context tiles).
+# Requires repo secret: DATABASE_URL.
+# Optional: EIA_API_KEY (v2 API). Without it, oil uses EIA PET bulk zip (no key).
+# Kill switches: vars.CBSL_FX_ENABLED / vars.EIA_OIL_ENABLED set to 0 skip that feed.
+# Tourism / food stay off until ToS checklists land.
+#
+# Research context only — not financial advice.
+
+name: macro-tick
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily ~08:15 Asia/Colombo (02:45 UTC) — after CBSL sheet / EIA prior session.
+    - cron: "45 2 * * *"
+
+concurrency:
+  group: macro-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.MACRO_TICK != '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL secret is not set"
+            exit 1
+          fi
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m koel migrate
+      - name: Macro tick (CBSL FX + EIA oil)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+          # Live Context feeds. Whole job kill switch: vars.MACRO_TICK=0.
+          # Per-feed pause: set CBSL_FX_ENABLED / EIA_OIL_ENABLED repo vars to 0.
+          CBSL_FX_ENABLED: ${{ vars.CBSL_FX_ENABLED != '0' && '1' || '0' }}
+          EIA_OIL_ENABLED: ${{ vars.EIA_OIL_ENABLED != '0' && '1' || '0' }}
+        run: python -m koel macro-tick --force

@@ -419,7 +419,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Where do the macro cards come from?",
         answer:
-          "Each card shows a stored series with attribution and as-of date, plus a short history spark. The % badge is change vs the prior point in that stored series.\n\nEmpty cards stay empty when ingest is flag/key gated or a source is down — koel does not fill demo numbers.",
+          "Each card shows a stored series with attribution and as-of date, plus a short history spark. The % badge is change vs the prior point in that stored series.\n\nLive cards come from `macro-tick` (CBSL FX spreadsheet + EIA oil API or PET bulk zip). Tourism / food stay empty until ToS flags are enabled. Old “demo seed” fixture rows are hidden when live rows exist. Empty = ingest off, source down, or compliance-gated — not a broken quote.",
       },
       {
         question: "What are the sector bridge links?",
@@ -877,7 +877,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What is Data inventory / CI / ML / delivery?",
         answer:
-          "Data inventory — Postgres counts (stocks, snapshots, disclosures, metrics, briefs, alerts, watchlist) plus migration/appetite tips.\n\nGitHub Actions — latest workflow runs and a scheduled-job checklist (informational).\n\nModel / forecast — serving champion, gated hit-rate style stats, spoke coverage, related research ops (not tips).\n\nTelegram delivery — delivered (24h) / retrying / dead-lettered from alert_log.\n\nFull ops blocks may require your Telegram id on DASH_OPS_TELEGRAM_IDS.",
+          "Data inventory — Postgres counts (stocks, snapshots, disclosures, metrics, briefs, alerts, watchlist) plus migration / appetite / live macro tips (USD/LKR + Brent as-of).\n\nGitHub Actions — latest workflow runs (≤~60s cache) and a scheduled-job checklist matched to that strip (not a separate cron API). ✓ success/in-progress · ! skipped/failed · — not in the recent window.\n\nModel / forecast — serving champion, gated hit-rate style stats, spoke coverage, related research ops (not tips).\n\nTelegram delivery — delivered (24h) / retrying / dead-lettered from alert_log.\n\nFull ops blocks may require your Telegram id on DASH_OPS_TELEGRAM_IDS.",
       },
       {
         question: "Watched missing, circuits, brief queue, retention?",
