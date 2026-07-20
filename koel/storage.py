@@ -1486,7 +1486,7 @@ class Storage:
         return out
 
     async def list_symbols_missing_sector(self) -> list[str]:
-        """Symbols with daily bars (or any stock) missing a sector label."""
+        """Symbols with daily bars missing a sector label (excludes indexes)."""
         async with self._pool.connection() as conn:
             rows = await (
                 await conn.execute(
@@ -1494,6 +1494,7 @@ class Storage:
                     SELECT s.symbol
                     FROM stocks s
                     WHERE (s.sector IS NULL OR btrim(s.sector) = '')
+                      AND s.symbol NOT IN ('ASPI', 'SNP_SL20')
                       AND EXISTS (
                           SELECT 1 FROM daily_bars d WHERE d.symbol = s.symbol
                       )
@@ -1507,6 +1508,88 @@ class Storage:
             if isinstance(raw, str) and raw.strip():
                 out.append(raw.strip().upper())
         return out
+
+    async def list_untagged_market_indexes(self) -> list[str]:
+        """ASPI / SNP_SL20 rows not yet tagged ``Market Index``."""
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT symbol
+                      FROM stocks
+                     WHERE symbol IN ('ASPI', 'SNP_SL20')
+                       AND (
+                           sector IS NULL
+                           OR btrim(sector) = ''
+                           OR btrim(sector) IS DISTINCT FROM 'Market Index'
+                       )
+                     ORDER BY symbol ASC
+                    """
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            raw = row.get("symbol")
+            if isinstance(raw, str) and raw.strip():
+                out.append(raw.strip().upper())
+        return out
+
+    async def upsert_ops_job_status(
+        self,
+        *,
+        job_id: str,
+        status: str,
+        summary: str,
+        detail: str | None = None,
+    ) -> None:
+        """Persist last-run status for Health (exact issue text)."""
+        if not isinstance(job_id, str) or not job_id.strip():
+            return
+        jid = job_id.strip()[:64]
+        st = status.strip().lower() if isinstance(status, str) else ""
+        if st not in ("ok", "notice", "failed"):
+            st = "failed"
+        summ = (
+            summary.strip()[:240]
+            if isinstance(summary, str) and summary.strip()
+            else "no summary"
+        )
+        det: str | None
+        if isinstance(detail, str) and detail.strip():
+            det = detail.strip()[:512]
+        else:
+            det = None
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                """
+                INSERT INTO ops_job_status (job_id, status, summary, detail, updated_at)
+                VALUES (%s, %s, %s, %s, now())
+                ON CONFLICT (job_id) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    summary = EXCLUDED.summary,
+                    detail = EXCLUDED.detail,
+                    updated_at = now()
+                """,
+                (jid, st, summ, det),
+            )
+
+    async def get_ops_job_status(self, job_id: str) -> dict[str, object] | None:
+        if not isinstance(job_id, str) or not job_id.strip():
+            return None
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT job_id, status, summary, detail, updated_at
+                      FROM ops_job_status
+                     WHERE job_id = %s
+                    """,
+                    (job_id.strip()[:64],),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        return dict(_as_row(row))
 
     async def get_stock_sector(self, symbol: str) -> str | None:
         if not isinstance(symbol, str) or not symbol.strip():

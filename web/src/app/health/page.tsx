@@ -95,6 +95,10 @@ type DataInventory = {
   appetite_cse_tip: string | null;
   macro_usd_lkr_tip: string | null;
   macro_brent_tip: string | null;
+  sector_backfill_status: string | null;
+  sector_backfill_summary: string | null;
+  sector_backfill_detail: string | null;
+  sector_backfill_updated_at: string | null;
 };
 
 type CiRun = {
@@ -162,7 +166,8 @@ const SCHEDULED_JOBS: ReadonlyArray<{
     id: "sector-notices-backfill",
     label: "sector-notices-backfill",
     match: "sector-notices-backfill",
-    cadence: "daily ~03:00 SLT",
+    cadence:
+      "daily ~03:00 SLT · ASPI/SNP_SL20 are indexes (no companyProfile)",
   },
   {
     id: "ci",
@@ -410,6 +415,13 @@ function parseDataInventory(raw: unknown): DataInventory | null {
     appetite_cse_tip: tip,
     macro_usd_lkr_tip: dateTip("macro_usd_lkr_tip"),
     macro_brent_tip: dateTip("macro_brent_tip"),
+    sector_backfill_status: (() => {
+      const raw = healthUiString(d.sector_backfill_status)?.toLowerCase();
+      return raw === "ok" || raw === "notice" || raw === "failed" ? raw : null;
+    })(),
+    sector_backfill_summary: healthUiString(d.sector_backfill_summary),
+    sector_backfill_detail: healthUiString(d.sector_backfill_detail),
+    sector_backfill_updated_at: healthTs(d.sector_backfill_updated_at),
   };
 }
 
@@ -836,6 +848,29 @@ export default async function HealthPage() {
                     label="Macro Brent tip"
                     value={data.macro_brent_tip ?? "—"}
                   />
+                  <Row
+                    label="Sector backfill"
+                    value={
+                      data.sector_backfill_status
+                        ? `${data.sector_backfill_status}${
+                            data.sector_backfill_updated_at
+                              ? ` · ${formatTs(data.sector_backfill_updated_at)}`
+                              : ""
+                          }`
+                        : "—"
+                    }
+                  />
+                  {data.sector_backfill_detail ||
+                  data.sector_backfill_summary ? (
+                    <Row
+                      label="Sector backfill detail"
+                      value={
+                        data.sector_backfill_detail ??
+                        data.sector_backfill_summary ??
+                        "—"
+                      }
+                    />
+                  ) : null}
                 </dl>
               </section>
             ) : null}
@@ -945,6 +980,17 @@ export default async function HealthPage() {
                           (run.conclusion === "success" ||
                             run.status === "in_progress" ||
                             run.status === "queued");
+                        const sectorTip =
+                          job.id === "sector-notices-backfill" && data != null
+                            ? data
+                            : null;
+                        const sectorIssue =
+                          sectorTip?.sector_backfill_status === "failed" ||
+                          sectorTip?.sector_backfill_status === "notice"
+                            ? sectorTip.sector_backfill_detail ||
+                              sectorTip.sector_backfill_summary
+                            : null;
+                        const markWarn = Boolean(sectorIssue) && ok;
                         return (
                           <li
                             key={job.id}
@@ -952,15 +998,15 @@ export default async function HealthPage() {
                           >
                             <span
                               className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-medium ${
-                                ok
+                                ok && !markWarn
                                   ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                                  : seen
+                                  : seen || markWarn
                                     ? "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200"
                                     : "border-border bg-muted text-muted-foreground"
                               }`}
                               aria-hidden
                             >
-                              {ok ? "✓" : seen ? "!" : "—"}
+                              {ok && !markWarn ? "✓" : seen || markWarn ? "!" : "—"}
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-mono text-sm text-foreground">
@@ -973,6 +1019,19 @@ export default async function HealthPage() {
                                   : " · no recent run"}
                                 {skipped ? " · skipped (kill switch / gate)" : ""}
                               </p>
+                              {sectorIssue ? (
+                                <p
+                                  className={`mt-1 text-xs whitespace-normal ${
+                                    sectorTip?.sector_backfill_status ===
+                                    "failed"
+                                      ? "text-red-700 dark:text-red-300"
+                                      : "text-amber-800 dark:text-amber-200"
+                                  }`}
+                                >
+                                  {sectorTip?.sector_backfill_status}:{" "}
+                                  {sectorIssue}
+                                </p>
+                              ) : null}
                             </div>
                             {run ? (
                               <a

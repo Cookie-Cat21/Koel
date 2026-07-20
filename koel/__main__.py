@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import inspect
 import signal
+import sys
 
 from telegram import Bot
 
@@ -764,6 +765,7 @@ def main(argv: list[str] | None = None) -> None:
                 reset_timeout=settings.circuit_reset_seconds,
                 min_interval_seconds=settings.cse_min_interval_seconds,
             )
+            exit_code = 0
             try:
                 result = await run_sector_backfill(
                     settings=settings,
@@ -779,9 +781,15 @@ def main(argv: list[str] | None = None) -> None:
                     f"skipped={result.symbols_skipped} "
                     f"failed={result.symbols_failed}"
                 )
+                for issue in result.issues:
+                    print(f"sector-backfill issue: {issue}", file=sys.stderr)
+                if result.symbols_failed > 0:
+                    exit_code = 1
             finally:
                 await cse.aclose()
                 await storage.close()
+            if exit_code:
+                raise SystemExit(exit_code)
 
         asyncio.run(_sector_bf())
         return

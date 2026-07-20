@@ -306,6 +306,35 @@ async def test_request_non_json_raises(
 
 
 @pytest.mark.asyncio
+async def test_request_http_204_empty_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Indexes (ASPI) hit companyProfile with 204 + empty body."""
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    req = httpx.Request("POST", "https://www.cse.lk/api/companyProfile")
+    response = httpx.Response(
+        204,
+        content=b"",
+        headers={"content-type": "application/json"},
+        request=req,
+    )
+    http = AsyncMock()
+    http.request = AsyncMock(return_value=response)
+    client = CSEClient(fail_max=99, reset_timeout=60.0, client=http)
+
+    with capture_logs() as logs:
+        out = await client._request(
+            "POST",
+            "/companyProfile",
+            data={"symbol": "ASPI"},
+            log_context={"symbol": "ASPI"},
+        )
+
+    assert out is None
+    assert any(e.get("event") == "cse_empty_response" for e in logs)
+
+
+@pytest.mark.asyncio
 async def test_request_json_success() -> None:
     req = httpx.Request("POST", "https://www.cse.lk/api/tradeSummary")
     response = httpx.Response(

@@ -284,6 +284,13 @@ type DataInventory = {
   macro_usd_lkr_tip: string | null;
   /** Latest non-demo Brent as_of (EIA live ingest tip). */
   macro_brent_tip: string | null;
+  /** Last sector-backfill ops status (ok | notice | failed). */
+  sector_backfill_status: string | null;
+  /** Short sector-backfill summary for Health. */
+  sector_backfill_summary: string | null;
+  /** Exact sector-backfill issue text (indexes / real failures). */
+  sector_backfill_detail: string | null;
+  sector_backfill_updated_at: string | null;
 };
 
 async function queryDataInventory(
@@ -365,6 +372,37 @@ async function queryDataInventory(
     console.error("GET /health macro tip failed", err);
   }
 
+  let sector_backfill_status: string | null = null;
+  let sector_backfill_summary: string | null = null;
+  let sector_backfill_detail: string | null = null;
+  let sector_backfill_updated_at: string | null = null;
+  try {
+    const job = await pool.query<{
+      status: string;
+      summary: string;
+      detail: string | null;
+      updated_at: Date | string;
+    }>(
+      `SELECT status, summary, detail, updated_at
+         FROM ops_job_status
+        WHERE job_id = 'sector-backfill'
+        LIMIT 1`,
+    );
+    const j = job.rows[0];
+    if (j) {
+      const st = sanitizeHealthString(j.status)?.toLowerCase() ?? null;
+      if (st === "ok" || st === "notice" || st === "failed") {
+        sector_backfill_status = st;
+      }
+      sector_backfill_summary = sanitizeHealthString(j.summary) ?? null;
+      sector_backfill_detail = sanitizeHealthString(j.detail) ?? null;
+      sector_backfill_updated_at = toIso(j.updated_at);
+    }
+  } catch (err) {
+    // Table may not exist until migration 031 — fail soft.
+    console.error("GET /health sector-backfill tip failed", err);
+  }
+
   return {
     disclosures: toNonNegativeSafeInt(row.disclosures, 0),
     filing_metrics: toNonNegativeSafeInt(row.filing_metrics, 0),
@@ -378,6 +416,10 @@ async function queryDataInventory(
     appetite_cse_tip,
     macro_usd_lkr_tip,
     macro_brent_tip,
+    sector_backfill_status,
+    sector_backfill_summary,
+    sector_backfill_detail,
+    sector_backfill_updated_at,
   };
 }
 
