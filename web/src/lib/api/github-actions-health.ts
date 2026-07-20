@@ -14,6 +14,21 @@ export const HEALTH_CI_FETCH_TIMEOUT_MS = 8000;
 export const HEALTH_CI_RUNS_MAX = 12;
 export const HEALTH_CI_STRING_MAX = 96;
 
+/**
+ * Ops workflows the Health checklist expects. Fetched one-latest each so a
+ * CI flood of push/PR runs cannot push scheduled jobs out of the window.
+ */
+export const HEALTH_CI_WORKFLOW_FILES = [
+  "ci.yml",
+  "pdf-metrics-drain.yml",
+  "macro-tick.yml",
+  "score-signals.yml",
+  "ml-self-learn.yml",
+  "path-backfill.yml",
+  "appetite-backfill.yml",
+  "sector-notices-backfill.yml",
+] as const;
+
 /** Legacy fork / old default — always resolve to the canonical Actions repo. */
 const HEALTH_GITHUB_REPO_ALIASES: Record<string, string> = {
   "cookie-cat21/koel": HEALTH_GITHUB_REPO_DEFAULT,
@@ -115,6 +130,83 @@ type GhRun = {
   path?: unknown;
 };
 
+function parseGhRun(row: GhRun): CiWorkflowRun | null {
+  if (!row || typeof row !== "object") return null;
+  const workflow =
+    cleanStr(row.name) ||
+    cleanStr(row.path)?.replace(/\.ya?ml$/i, "") ||
+    null;
+  if (!workflow) return null;
+  const statusRaw = cleanStr(row.status, 32)?.toLowerCase() ?? "";
+  const status = STATUS_ALLOW.has(statusRaw) ? statusRaw : "unknown";
+  const conclusionRaw = cleanStr(row.conclusion, 32)?.toLowerCase() ?? null;
+  const conclusion =
+    conclusionRaw && CONCLUSION_ALLOW.has(conclusionRaw)
+      ? conclusionRaw
+      : conclusionRaw
+        ? "unknown"
+        : null;
+  const branch = cleanStr(row.head_branch, 64) ?? "—";
+  const event = cleanStr(row.event, 32) ?? "—";
+  const runNumber = toNonNegativeSafeInt(row.run_number, -1);
+  if (runNumber < 0) return null;
+  const url = cleanStr(row.html_url, 256);
+  if (!url || !url.startsWith("https://github.com/")) return null;
+  const updated = toIso(
+    typeof row.updated_at === "string" ? row.updated_at : null,
+  );
+  return {
+    workflow,
+    status,
+    conclusion,
+    branch,
+    event,
+    run_number: runNumber,
+    html_url: url,
+    updated_at: updated,
+  };
+}
+
+function parseWorkflowRunsPayload(json: unknown, maxRows: number): CiWorkflowRun[] {
+  if (
+    json == null ||
+    typeof json !== "object" ||
+    Array.isArray(json) ||
+    !Array.isArray((json as { workflow_runs?: unknown }).workflow_runs)
+  ) {
+    return [];
+  }
+  const rawRuns = (json as { workflow_runs: GhRun[] }).workflow_runs;
+  const parsed: CiWorkflowRun[] = [];
+  for (const row of rawRuns) {
+    const run = parseGhRun(row);
+    if (!run) continue;
+    parsed.push(run);
+    if (parsed.length >= maxRows) break;
+  }
+  return parsed;
+}
+
+async function fetchRunsJson(
+  url: string,
+  fetchImpl: typeof fetch,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): Promise<{ ok: boolean; status: number; json: unknown }> {
+  const res = await fetchImpl(url, {
+    method: "GET",
+    signal,
+    redirect: "follow",
+    headers,
+    // Cache briefly on the Next data cache when available.
+    next: { revalidate: 60 },
+  } as RequestInit);
+  if (!res.ok) {
+    return { ok: false, status: res.status, json: null };
+  }
+  return { ok: true, status: res.status, json: await res.json() };
+}
+
 /** Opt out with ``HEALTH_GITHUB_ACTIONS=0`` (unit harness / air-gapped). */
 export function githubActionsHealthEnabled(): boolean {
   const raw = process.env.HEALTH_GITHUB_ACTIONS;
@@ -123,8 +215,8 @@ export function githubActionsHealthEnabled(): boolean {
 }
 
 /**
- * Fetch recent Actions runs. Prefer one row per workflow name so the Health
- * page shows CI + drain + ML without drowning in PR noise.
+ * Fetch recent Actions runs. Prefer one row per known workflow file so the
+ * Health checklist is not drowned by CI push/PR noise in a global window.
  */
 export async function queryGithubActionsHealth(
   fetchImpl: typeof fetch = fetch,
@@ -152,84 +244,63 @@ export async function queryGithubActionsHealth(
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const res = await fetchImpl(
-      `https://api.github.com/repos/${repo}/actions/runs?per_page=30`,
-      {
-        method: "GET",
-        signal: ctrl.signal,
-        redirect: "follow",
-        headers,
-        // Cache briefly on the Next data cache when available.
-        next: { revalidate: 60 },
-      } as RequestInit,
+    const base = `https://api.github.com/repos/${repo}/actions`;
+    const requests = [
+      fetchRunsJson(`${base}/runs?per_page=30`, fetchImpl, headers, ctrl.signal),
+      ...HEALTH_CI_WORKFLOW_FILES.map((file) =>
+        fetchRunsJson(
+          `${base}/workflows/${encodeURIComponent(file)}/runs?per_page=1`,
+          fetchImpl,
+          headers,
+          ctrl.signal,
+        ),
+      ),
+    ];
+    const results = await Promise.all(requests);
+
+    const globalRes = results[0];
+    if (!globalRes?.ok) {
+      // Per-workflow alone can still populate the checklist.
+      const anyWorkflowOk = results.slice(1).some((r) => r.ok);
+      if (!anyWorkflowOk) {
+        return {
+          repo,
+          html_url: htmlUrl,
+          runs: [],
+          fetched_at: fetchedAt,
+          error: `github_http_${globalRes?.status ?? 0}`,
+        };
+      }
+    }
+
+    // Per-workflow latest first so CI noise in the global page cannot win.
+    const perWorkflow: CiWorkflowRun[] = [];
+    for (const res of results.slice(1)) {
+      if (!res.ok) continue;
+      perWorkflow.push(...parseWorkflowRunsPayload(res.json, 1));
+    }
+    const globalRuns = globalRes?.ok
+      ? parseWorkflowRunsPayload(globalRes.json, 40)
+      : [];
+    const merged = pickLatestPerWorkflow(
+      [...perWorkflow, ...globalRuns],
+      HEALTH_CI_RUNS_MAX,
     );
-    if (!res.ok) {
+
+    if (merged.length === 0 && !globalRes?.ok) {
       return {
         repo,
         html_url: htmlUrl,
         runs: [],
         fetched_at: fetchedAt,
-        error: `github_http_${res.status}`,
+        error: `github_http_${globalRes?.status ?? 0}`,
       };
     }
-    const json: unknown = await res.json();
-    if (
-      json == null ||
-      typeof json !== "object" ||
-      Array.isArray(json) ||
-      !Array.isArray((json as { workflow_runs?: unknown }).workflow_runs)
-    ) {
-      return {
-        repo,
-        html_url: htmlUrl,
-        runs: [],
-        fetched_at: fetchedAt,
-        error: "github_bad_shape",
-      };
-    }
-    const rawRuns = (json as { workflow_runs: GhRun[] }).workflow_runs;
-    const parsed: CiWorkflowRun[] = [];
-    for (const row of rawRuns) {
-      if (!row || typeof row !== "object") continue;
-      const workflow =
-        cleanStr(row.name) ||
-        cleanStr(row.path)?.replace(/\.ya?ml$/i, "") ||
-        null;
-      if (!workflow) continue;
-      const statusRaw = cleanStr(row.status, 32)?.toLowerCase() ?? "";
-      const status = STATUS_ALLOW.has(statusRaw) ? statusRaw : "unknown";
-      const conclusionRaw = cleanStr(row.conclusion, 32)?.toLowerCase() ?? null;
-      const conclusion =
-        conclusionRaw && CONCLUSION_ALLOW.has(conclusionRaw)
-          ? conclusionRaw
-          : conclusionRaw
-            ? "unknown"
-            : null;
-      const branch = cleanStr(row.head_branch, 64) ?? "—";
-      const event = cleanStr(row.event, 32) ?? "—";
-      const runNumber = toNonNegativeSafeInt(row.run_number, -1);
-      if (runNumber < 0) continue;
-      const url = cleanStr(row.html_url, 256);
-      if (!url || !url.startsWith("https://github.com/")) continue;
-      const updated = toIso(
-        typeof row.updated_at === "string" ? row.updated_at : null,
-      );
-      parsed.push({
-        workflow,
-        status,
-        conclusion,
-        branch,
-        event,
-        run_number: runNumber,
-        html_url: url,
-        updated_at: updated,
-      });
-      if (parsed.length >= 40) break;
-    }
+
     return {
       repo,
       html_url: htmlUrl,
-      runs: pickLatestPerWorkflow(parsed, HEALTH_CI_RUNS_MAX),
+      runs: merged,
       fetched_at: fetchedAt,
     };
   } catch {
