@@ -180,8 +180,8 @@ export default async function ContextPage() {
             emptyHint="Same EIA oil adapter as Brent (API or PET bulk)."
           />
           <ContextModule
-            title="Tourist arrivals"
-            subtitle="SLTDA monthly arrivals — Hotels / Travel bridge."
+            title="Tourism earnings"
+            subtitle="CBSL monthly tourism earnings (USD mn) — Hotels / Travel bridge."
             card={
               macros?.tourism_arrivals ?? {
                 series_id: "TOURISM_ARRIVALS",
@@ -190,14 +190,14 @@ export default async function ContextPage() {
                 delta_pct: null,
               }
             }
-            formatDigits={0}
-            emptyHint="Enable SLTDA_TOURISM_ENABLED after ToS checklist; monthly Excel ingest."
+            formatDigits={1}
+            emptyHint="Enable SLTDA_TOURISM_ENABLED and run macro-tick (CBSL earnings sheet)."
             sectorHref="/market?q=hotel"
             sectorLabel="Hotels / leisure"
           />
           <ContextModule
             title="Food pressure"
-            subtitle="Small staple basket index from DCS weekly retail (when enabled)."
+            subtitle="CBSL headline CCPI (2021=100) — consumer / food sector bridge."
             card={
               macros?.food_pressure ?? {
                 series_id: "FOOD_PRESSURE",
@@ -207,7 +207,7 @@ export default async function ContextPage() {
               }
             }
             formatDigits={1}
-            emptyHint="DCS_FOOD_ENABLED after copyright/redistribution confirm — not a grocery desk."
+            emptyHint="Enable DCS_FOOD_ENABLED and run macro-tick (CBSL CCPI sheet)."
             sectorHref="/market?q=food"
             sectorLabel="Food / consumer"
           />

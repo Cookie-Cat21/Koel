@@ -68,28 +68,29 @@ Probe notes only. **Not license clearance.** Complete the full checklist before 
 - [x] Fail-soft: empty oil Context cards
 - [x] NFA: descriptive Δ% only; optional energy-sector bridge chip
 
-### DCS food / CPI (F-093 / food pressure) — candidate
+### Food pressure / CCPI (F-093) — adapter shipped via CBSL (flagged)
 
-- [ ] Source: [DCS Weekly Retail Prices dashboard](https://www.statistics.gov.lk/DashBoard/Prices/) (HTTP 200) · monthly [CCPI](https://www.statistics.gov.lk/InflationAndPrices/StaticalInformation/MonthlyCCPI) · optional [CBSL Daily Price Report](https://www.cbsl.gov.lk/statistics/economic-indicators/price-report)
-- [ ] ToS / license: DCS copyright notice on dashboard (“All Rights Reserved”) — **confirm redistribution** before any scrape/parse; prefer published bulletins/spreadsheets if clearer
-- [ ] Auth: none
-- [ ] Rate limit: weekly (retail) / monthly (CCPI)
-- [ ] Schema: `macro_series` + small staple basket → food pressure score in `macro_snapshots_daily`
-- [ ] Flag: `DCS_FOOD_ENABLED` default `0`
-- [ ] Fail-soft: hide Food module on `/context`
-- [ ] NFA: staples pressure, not “inflation trade”
+- [x] Source: CBSL [CCPI and CCPI Core](https://www.cbsl.gov.lk/en/statistics/statistical-tables/real-sector/prices-wages-employment) spreadsheet (cites DCS)
+- [x] ToS / license: **do not scrape** DCS Weekly Retail dashboard (“All Rights Reserved”) or DCS microdata (redistribution needs written agreement). CBSL republication of headline CCPI is official public statistics — same pattern as CBSL FX
+- [x] Auth: none (spreadsheet download; URL discovered from the prices/wages page)
+- [x] Rate limit: daily via `macro-tick` (sheet updates monthly)
+- [x] Schema: `macro_series` (`source=cbsl_ccpi`, `series_id=FOOD_PRESSURE`, unit `index`)
+- [x] Flag: `DCS_FOOD_ENABLED` default `0` in app; GitHub `macro-tick` sets `1` (kill with `vars.DCS_FOOD_ENABLED=0`)
+- [x] Fail-soft: empty Food module on `/context`
+- [x] NFA: “CCPI as of …” / Δ% only — not an inflation trade tip
+- **Deferred:** DCS weekly staple basket / CBSL Daily Price Report PDF denser series — only after clearer redistribution terms
 
-### SLTDA tourism (F-097) — candidate
+### Tourism (F-097) — adapter shipped via CBSL (flagged)
 
-- [ ] Source: [Tourist arrivals from all countries](https://www.sltda.gov.lk/en/tourist-arrivals-from-all-countries) Excel/PDF (portal HTTP 200; files listed through 2026-05 in probe)
-- [ ] ToS / license: official stats publication; attribute SLTDA; confirm Excel reuse
-- [ ] Auth: none (file download)
-- [ ] Rate limit: monthly (weekly report optional later)
-- [ ] Schema: `macro_series` / tourism monthly table
-- [ ] Flag: `SLTDA_TOURISM_ENABLED` default `0`
-- [ ] Fail-soft: hide Tourism module
-- [ ] NFA: arrivals YoY + Hotels/Travel sector link only
-- **Note:** World Bank `ST.INT.ARVL` API responds but recent annual values were **null** in probe — do not use as dash truth.
+- [x] Source: CBSL [Earnings from Tourism](https://www.cbsl.gov.lk/en/statistics/statistical-tables/External-Sector) spreadsheet (SLTDA survey inputs)
+- [x] ToS / license: **do not ingest** SLTDA site Excel directly — [SLTDA Terms of Use](https://sltda.gov.lk/en/terms-of-use) limit site content to personal/non-commercial display without written consent. CBSL tourism *earnings* sheet is official public statistics
+- [x] Auth: none (spreadsheet download; URL discovered from External Sector page)
+- [x] Rate limit: daily via `macro-tick` (sheet updates monthly)
+- [x] Schema: `macro_series` (`source=cbsl_tourism`, `series_id=TOURISM_ARRIVALS`, unit `USD_mn`) — Context card labels this **Tourism earnings**
+- [x] Flag: `SLTDA_TOURISM_ENABLED` default `0` in app; GitHub `macro-tick` sets `1` (kill with `vars.SLTDA_TOURISM_ENABLED=0`)
+- [x] Fail-soft: empty Tourism module
+- [x] NFA: earnings MoM/YoY + Hotels/Travel sector link only
+- **Note:** World Bank `ST.INT.ARVL` API recent annual values were **null/stale** in probe — do not use as dash truth.
 
 ### World indexes (F-096) — research panel only
 

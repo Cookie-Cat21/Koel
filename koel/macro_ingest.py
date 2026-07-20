@@ -7,6 +7,8 @@ from typing import Any
 
 from koel.adapters.macro_cbsl import fetch_cbsl_fx_rows
 from koel.adapters.macro_eia import fetch_eia_oil_rows
+from koel.adapters.macro_food import fetch_food_pressure_rows
+from koel.adapters.macro_tourism import fetch_tourism_rows
 from koel.config import Settings
 from koel.storage import Storage
 
@@ -21,17 +23,21 @@ async def run_macro_tick(
 ) -> dict[str, Any]:
     """Pull enabled macro feeds and upsert. Returns counts per source.
 
-    When ``force`` is set, pull CBSL/EIA even if flags are off (ops smoke).
+    When ``force`` is set, pull all Tier B feeds even if flags are off (ops smoke).
     Prod still requires intake checklist before leaving flags on.
     """
     result: dict[str, Any] = {
         "cbsl_fx": 0,
         "eia_oil": 0,
+        "cbsl_tourism": 0,
+        "cbsl_ccpi": 0,
         "skipped": [],
     }
 
     pull_fx = settings.cbsl_fx_enabled or force
     pull_oil = settings.eia_oil_enabled or force
+    pull_tourism = settings.sltda_tourism_enabled or force
+    pull_food = settings.dcs_food_enabled or force
 
     if pull_fx:
         try:
@@ -55,11 +61,26 @@ async def run_macro_tick(
     else:
         result["skipped"].append("eia_oil_disabled")
 
-    # Tourism / food adapters land when intake checklist is green;
-    # keep slots honest so ops see intent.
-    if not settings.sltda_tourism_enabled:
+    if pull_tourism:
+        try:
+            rows = await fetch_tourism_rows(max_points=120)
+            n = await storage.upsert_macro_series(rows)
+            result["cbsl_tourism"] = n
+        except Exception:
+            log.exception("macro_tick: cbsl_tourism failed")
+            result["skipped"].append("cbsl_tourism_error")
+    else:
         result["skipped"].append("sltda_tourism_disabled")
-    if not settings.dcs_food_enabled:
+
+    if pull_food:
+        try:
+            rows = await fetch_food_pressure_rows(max_points=60)
+            n = await storage.upsert_macro_series(rows)
+            result["cbsl_ccpi"] = n
+        except Exception:
+            log.exception("macro_tick: cbsl_ccpi failed")
+            result["skipped"].append("cbsl_ccpi_error")
+    else:
         result["skipped"].append("dcs_food_disabled")
 
     return result

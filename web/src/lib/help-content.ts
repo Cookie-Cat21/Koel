@@ -419,12 +419,12 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What is Context vs Appetite vs Overview?",
         answer:
-          "Overview = your home tape + watchlist slice. Appetite = the 0–100 CSE mood meter. Context = official / attributed macros around the tape (CBSL FX, EIA oil, SLTDA tourism, DCS food when enabled) plus the same Tape pulse.\n\nContext is research framing — not a macro trading terminal.",
+          "Overview = your home tape + watchlist slice. Appetite = the 0–100 CSE mood meter. Context = official / attributed macros around the tape (CBSL FX, EIA oil, CBSL tourism earnings, CBSL CCPI food pressure when enabled) plus the same Tape pulse.\n\nContext is research framing — not a macro trading terminal.",
       },
       {
         question: "Where do the macro cards come from?",
         answer:
-          "Each card shows a stored series with attribution and as-of date, plus a short history spark. The % badge is change vs the prior point in that stored series.\n\nLive cards come from `macro-tick` (CBSL FX spreadsheet + EIA oil API or PET bulk zip). Tourism / food stay empty until ToS flags are enabled. Old “demo seed” fixture rows are hidden when live rows exist. Empty = ingest off, source down, or compliance-gated — not a broken quote.",
+          "Each card shows a stored series with attribution and as-of date, plus a short history spark. The % badge is change vs the prior point in that stored series.\n\nLive cards come from `macro-tick`: CBSL FX spreadsheet, EIA oil (API or PET bulk zip), CBSL tourism earnings sheet, and CBSL CCPI (food pressure). Direct SLTDA/DCS scrapes stay off (ToS). Old “demo seed” fixture rows are hidden when live rows exist. Empty = ingest off or source down — not a broken quote.",
       },
       {
         question: "What are the sector bridge links?",
