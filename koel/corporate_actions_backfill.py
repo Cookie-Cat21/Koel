@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Any, cast
 
 from koel.corporate_actions import detect_splits_from_closes, is_split_disclosure
 from koel.logging_setup import get_logger
@@ -25,16 +26,11 @@ class CorporateActionsBackfillResult:
     errors: int = 0
 
 
-def _as_mapping(row: object) -> dict:
-    if isinstance(row, dict):
-        return row
-    if hasattr(row, "keys"):
-        return {k: row[k] for k in row}  # type: ignore[index]
-    # Fallback positional (id, symbol, title, category, published_at) etc.
-    return {}
+def _as_mapping(row: Any) -> dict[str, Any]:
+    return cast(dict[str, Any], row)
 
 
-def _trade_date(raw: object) -> date | None:
+def _trade_date(raw: Any) -> date | None:
     if isinstance(raw, date) and not hasattr(raw, "hour"):
         return raw
     if hasattr(raw, "date") and callable(raw.date):
@@ -93,8 +89,6 @@ async def run_corporate_actions_backfill(
     for row in rows:
         result.disclosures_scanned += 1
         data = _as_mapping(row)
-        if not data:
-            continue
         title = data.get("title") if isinstance(data.get("title"), str) else None
         category = (
             data.get("category") if isinstance(data.get("category"), str) else None
@@ -102,9 +96,10 @@ async def run_corporate_actions_backfill(
         if not is_split_disclosure(category, title):
             continue
         try:
+            disc_id = data.get("id")
             stored = await storage.upsert_corporate_action_from_disclosure(
                 symbol=str(data["symbol"]),
-                disclosure_id=int(data["id"]) if data.get("id") is not None else None,
+                disclosure_id=int(disc_id) if disc_id is not None else None,
                 title=title,
                 category=category,
                 published_at=data.get("published_at"),
@@ -129,13 +124,7 @@ async def run_corporate_actions_backfill(
                 """
             )
         ).fetchall()
-    symbols = []
-    for r in sym_rows:
-        m = _as_mapping(r)
-        if m and m.get("symbol"):
-            symbols.append(str(m["symbol"]))
-        elif not m and len(r) > 0:  # type: ignore[arg-type]
-            symbols.append(str(r[0]))  # type: ignore[index]
+    symbols = [str(_as_mapping(r)["symbol"]) for r in sym_rows]
     if limit is not None and limit > 0:
         symbols = symbols[: int(limit)]
 
@@ -157,14 +146,10 @@ async def run_corporate_actions_backfill(
             points: list[tuple[date, float]] = []
             for br in bar_rows:
                 m = _as_mapping(br)
-                if m:
-                    td, px = m.get("trade_date"), m.get("price")
-                else:
-                    td, px = br[0], br[1]  # type: ignore[index]
-                d = _trade_date(td)
+                d = _trade_date(m.get("trade_date"))
                 try:
-                    px_f = float(px)  # type: ignore[arg-type]
-                except (TypeError, ValueError):
+                    px_f = float(m["price"])
+                except (TypeError, ValueError, KeyError):
                     continue
                 if d is None or px_f <= 0:
                     continue
