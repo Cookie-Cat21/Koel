@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo } from "react";
+import { useId, useMemo, useRef } from "react";
 
 import { useChartHover } from "@/hooks/use-chart-hover";
 import {
@@ -38,6 +38,7 @@ export function AreaSpark({
   formatValue?: (n: number) => string;
 }) {
   const gid = useId();
+  const svgRef = useRef<SVGSVGElement | null>(null);
   // Zip value+label before dropping non-finite so hover dates stay aligned.
   const paired = useMemo(() => {
     const out: { value: number; label: string | null }[] = [];
@@ -57,7 +58,20 @@ export function AreaSpark({
   const geo = useMemo(() => buildChartGeometry(series), [series]);
 
   const points = geo?.points ?? [];
-  const hover = useChartHover(points, geo?.width ?? 240, interactive && points.length >= 2);
+  const {
+    activeIndex,
+    onPointerMove,
+    onPointerLeave,
+    onPointerDown,
+    onKeyDown,
+    onFocus,
+    onBlur,
+  } = useChartHover(
+    svgRef,
+    points,
+    geo?.width ?? 240,
+    interactive && points.length >= 2,
+  );
 
   if (!geo || series.length < 2) {
     return (
@@ -78,24 +92,26 @@ export function AreaSpark({
   const stroke = AREA_SPARK_STROKE[resolved];
   const last = geo.points[geo.points.length - 1]!;
   const active =
-    interactive && hover.activeIndex != null
-      ? geo.points[hover.activeIndex] ?? null
+    interactive && activeIndex != null
+      ? geo.points[activeIndex] ?? null
       : null;
   const activeLabel =
-    interactive && hover.activeIndex != null
-      ? alignedLabels[hover.activeIndex] ?? null
+    interactive && activeIndex != null
+      ? alignedLabels[activeIndex] ?? null
       : null;
-  const fmt = formatValue ?? ((n: number) => {
-    if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-    if (Math.abs(n) >= 1e3) return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
-    return Number.isInteger(n) ? String(n) : n.toFixed(2);
-  });
+  const fmt =
+    formatValue ??
+    ((n: number) => {
+      if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+      if (Math.abs(n) >= 1e3)
+        return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+      return Number.isInteger(n) ? String(n) : n.toFixed(2);
+    });
 
   const tipText = active
     ? `${activeLabel ? `${activeLabel} · ` : ""}${fmt(active.value)}`
     : null;
 
-  // Keep tooltip inside the viewBox (avoid clipping at edges).
   const tipX = active
     ? Math.min(Math.max(active.x, 36), geo.width - 36)
     : 0;
@@ -104,7 +120,7 @@ export function AreaSpark({
   return (
     <div className={cn("relative w-full", className)}>
       <svg
-        ref={hover.svgRef}
+        ref={svgRef}
         viewBox={`0 0 ${geo.width} ${geo.height}`}
         preserveAspectRatio="none"
         className={cn(
@@ -121,12 +137,12 @@ export function AreaSpark({
           }`
         }
         tabIndex={interactive ? 0 : undefined}
-        onPointerMove={interactive ? hover.onPointerMove : undefined}
-        onPointerLeave={interactive ? hover.onPointerLeave : undefined}
-        onPointerDown={interactive ? hover.onPointerDown : undefined}
-        onKeyDown={interactive ? hover.onKeyDown : undefined}
-        onFocus={interactive ? hover.onFocus : undefined}
-        onBlur={interactive ? hover.onBlur : undefined}
+        onPointerMove={interactive ? onPointerMove : undefined}
+        onPointerLeave={interactive ? onPointerLeave : undefined}
+        onPointerDown={interactive ? onPointerDown : undefined}
+        onKeyDown={interactive ? onKeyDown : undefined}
+        onFocus={interactive ? onFocus : undefined}
+        onBlur={interactive ? onBlur : undefined}
       >
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">

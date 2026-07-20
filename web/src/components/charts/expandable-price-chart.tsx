@@ -28,7 +28,6 @@ import {
 import { isSafeClientApiPath } from "@/lib/api/client-fetch";
 import { toFiniteNumber } from "@/lib/api/finite-number";
 import { formatCompactNumber, formatNumber, formatPct } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 type Point = { ts: string | null; price: number | null | undefined };
 

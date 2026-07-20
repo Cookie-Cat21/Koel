@@ -13,7 +13,7 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -27,7 +27,8 @@ CBSL_FX_XLSX_URL = (
 ATTRIBUTION = "CBSL buying & selling exchange rates (commercial banks TT)"
 
 # series_id → (buy_col_0based_in_row_tuple_with_leading_None, sell_col)
-# Row shape from openpyxl: (None, date, USD_buy, USD_sell, GBP_buy, GBP_sell, EUR_buy, EUR_sell, ...)
+# Row shape from openpyxl:
+# (None, date, USD_buy, USD_sell, GBP_buy, GBP_sell, EUR_buy, EUR_sell, ...)
 _SERIES_COLS: dict[str, tuple[int, int]] = {
     "USD_LKR": (2, 3),
     "GBP_LKR": (4, 5),
@@ -74,7 +75,7 @@ def parse_cbsl_fx_xlsx(data: bytes, *, max_rows: int = 500) -> list[dict[str, An
         daily = daily[-max_rows:]
 
     for d, row in daily:
-        ts = datetime(d.year, d.month, d.day, 12, 0, tzinfo=timezone.utc)
+        ts = datetime(d.year, d.month, d.day, 12, 0, tzinfo=UTC)
         for series_id, (bi, si) in _SERIES_COLS.items():
             if si >= len(row):
                 continue

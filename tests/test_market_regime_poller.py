@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -21,7 +21,7 @@ def _rule(alert_type: AlertType, threshold: float, rule_id: int) -> AlertRule:
         type=alert_type,
         threshold=threshold,
         active=True,
-        created_at=datetime.now(tz=timezone.utc),
+        created_at=datetime.now(tz=UTC),
     )
 
 
@@ -91,7 +91,6 @@ async def test_poll_market_regime_respects_fired_keys() -> None:
     storage.market_book_imbalance_pct = AsyncMock(return_value=None)
     storage.latest_macro_change_pct = AsyncMock(return_value=None)
     # Pre-seed a matching day key so evaluate skips.
-    from datetime import date
     from zoneinfo import ZoneInfo
 
     day = datetime.now(tz=ZoneInfo("Asia/Colombo")).date().isoformat()

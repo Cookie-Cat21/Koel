@@ -10,7 +10,7 @@ import hashlib
 import json
 import logging
 import os
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -51,7 +51,7 @@ def _parse_eia_payload(payload: dict[str, Any], *, series_id: str) -> list[dict[
             d = date.fromisoformat(str(period)[:10])
         except ValueError:
             continue
-        ts = datetime(d.year, d.month, d.day, 12, 0, tzinfo=timezone.utc)
+        ts = datetime(d.year, d.month, d.day, 12, 0, tzinfo=UTC)
         out.append(
             {
                 "source": "eia_oil",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from chime.adapters.macro_cbsl import parse_cbsl_fx_xlsx
 from chime.domain import MARKET_SYMBOL, AlertRule, AlertType
@@ -52,7 +52,7 @@ def _rule(alert_type: AlertType, threshold: float, rule_id: int = 1) -> AlertRul
         type=alert_type,
         threshold=threshold,
         active=True,
-        created_at=datetime.now(tz=timezone.utc),
+        created_at=datetime.now(tz=UTC),
     )
 
 

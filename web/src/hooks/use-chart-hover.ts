@@ -2,11 +2,10 @@
 
 import {
   useCallback,
-  useEffect,
-  useRef,
   useState,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from "react";
 
 import {
@@ -16,19 +15,17 @@ import {
 
 /**
  * Pointer + keyboard hover for 1D SVG series charts.
- * Maps client X → viewBox X via getBoundingClientRect + viewBox width.
+ * Caller owns ``svgRef`` (avoids returning a ref object from the hook).
  */
 export function useChartHover(
+  svgRef: RefObject<SVGSVGElement | null>,
   points: ChartPoint[],
   viewBoxWidth: number,
   enabled: boolean,
 ) {
-  const svgRef = useRef<SVGSVGElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!enabled) setActiveIndex(null);
-  }, [enabled]);
+  // Derive display index — no setState-in-effect when disabled.
+  const displayIndex = enabled ? activeIndex : null;
 
   const resolveIndex = useCallback(
     (clientX: number) => {
@@ -39,7 +36,7 @@ export function useChartHover(
       const x = ((clientX - rect.left) / rect.width) * viewBoxWidth;
       return nearestIndexAtX(points, x);
     },
-    [points, viewBoxWidth],
+    [points, svgRef, viewBoxWidth],
   );
 
   const onPointerMove = useCallback(
@@ -59,7 +56,6 @@ export function useChartHover(
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<SVGSVGElement>) => {
       if (!enabled) return;
-      // Capture so drag across the spark keeps updating.
       e.currentTarget.setPointerCapture?.(e.pointerId);
       const idx = resolveIndex(e.clientX);
       if (idx != null) setActiveIndex(idx);
@@ -100,9 +96,7 @@ export function useChartHover(
   }, []);
 
   return {
-    svgRef,
-    activeIndex,
-    setActiveIndex,
+    activeIndex: displayIndex,
     onPointerMove,
     onPointerLeave,
     onPointerDown,
