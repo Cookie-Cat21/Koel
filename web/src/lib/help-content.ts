@@ -136,7 +136,12 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What do Just updated / Updated / Stale mean on Refresh?",
         answer:
-          "The header soft-refreshes the page about every 15 seconds and ages the last snapshot: Just updated, Updated Ns / Nm, then Stale (~3+ minutes) or Down (~15+ minutes) while the session looks open. Closed · Xm appears when the clock fence says closed.\n\nThat chip is about soft-reload freshness — not the same as the 24h “· stale” on the last-price eyebrow.",
+          "On Overview, Browse, Watchlist, and company pages, PriceRefresh soft-reloads about every 15 seconds and ages the newest snapshot: Just updated → Updated Ns / Xm ago. Around 3+ minutes the chip uses a stale tone (“Updated Xm ago”); the word Stale / Down-style aging kicks in around 15+ minutes while the session looks open. Closed · Xm appears when the clock fence says closed.\n\nThat chip is not the same as the 24h “· stale” on the last-price eyebrow.",
+      },
+      {
+        question: "Why don’t Context / Appetite show a refresh chip?",
+        answer:
+          "Those pages use a silent soft reload about every 60 seconds (SoftPageRefresh) with no age chip. Price-led pages show the LiveIndicator aged off the newest snapshot instead.",
       },
     ],
   },
@@ -343,7 +348,12 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What are Market indexes and Top movers?",
         answer:
-          "Indexes (ASPI, S&P SL20, and friends) come from poller-stored index snapshots — expand charts when daily path exists.\n\nTop gainers/losers are the latest snapshot % movers (short list). Same family of data as Browse movers — not a recommendation list.",
+          "Indexes (ASPI, S&P SL20, and friends) come from poller-stored index snapshots. Expand opens a research chart (same family as company candles/ticks) — not a brokerage terminal. Empty path copy means index daily bars are not loaded yet.\n\nTop gainers/losers are the latest snapshot % movers (short list). Same family of data as Browse movers — not a recommendation list.",
+      },
+      {
+        question: "What is the Sectors strip?",
+        answer:
+          "Session sector board change % as a heat strip on Overview — discovery coloring from stored sector performance, not a tip list or sector allocation advice.",
       },
       {
         question: "What is the XD week strip?",
@@ -442,6 +452,21 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         question: "What are Seats / Network / Across years?",
         answer:
           "Dossier tabs: Seats = issuers and roles with price/change/volume/mcap/turnover when present. Network = co-directors who share seats. Across years / filings timeline = issuer disclosures around board context.\n\nSoft-merged name variants collapse initials spelling differences; the display name stays the primary CSE string. Board data refreshes when operators run directors-backfill — not a live registry feed.",
+      },
+      {
+        question: "What is Influence share %?",
+        answer:
+          "On a dossier, each seat’s contribution (mcap × role_weight) as a share of that person’s total linked influence. Bars sum to ~100% for that person.\n\nExample: Chair of A (contrib 10B) + NED of B (0.5B) → about 95% / 5%. Still not personal net worth.",
+      },
+      {
+        question: "What does the Network / ego map show?",
+        answer:
+          "A small map of the person → their companies (capped) → co-directors who share those boards (capped). Click a company to open the symbol page; click a peer to open their dossier. It is a board-overlap sketch — not a trading network.",
+      },
+      {
+        question: "Is Across years a full career history?",
+        answer:
+          "No. CSE companyProfile boards are live snapshots, not a historical appointments archive. The timeline mixes board-context events with issuer filings koel stored — Board event vs Filing badges. Gaps mean missing extracts, not “never held a seat.”",
       },
     ],
   },
@@ -581,6 +606,26 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
           "Cancel deactivates the rule (leaves the active list). Armed / disarmed is separate: after a price cross fire the rule disarms until price re-arms on the other side. Cancelled rules do not fire; disarmed active rules still exist and can re-arm.",
       },
       {
+        question: "Why is Symbol locked to MARKET?",
+        answer:
+          "Some rule types are market-wide: halt, Market Appetite, foreign flow, book pressure, USD/LKR move, oil move, and XD digest. The create form forces Symbol to MARKET for those (same as bot `/alert MARKET …`). Per-symbol types still need a real CSE ticker.",
+      },
+      {
+        question: "What do the threshold fields mean on the create form?",
+        answer:
+          "Labels change with type:\n\n• Price — LKR level for above/below crosses\n• Percent — daily |%| move, gap %, or YoY %\n• Multiplier — volume spike / up / down / crossing (e.g. 2 → ≥ 2× recent average)\n• Shares — big print size\n• Appetite score ≥ — MARKET minimum 0–100 score\n• Foreign net (LKR) — absolute foreign_net magnitude\n• Days — XD soon / digest horizon\n\nBuy-in, non-compliance, halt, and plain disclosure need no numeric threshold (disclosure may take an optional category).",
+      },
+      {
+        question: "How does the disclosure Category field work?",
+        answer:
+          "Optional. Blank = any new filing after the rule was created. Set = disclosure.category must contain your text (case-insensitive substring), e.g. Financial.\n\nThat is not the same as the category chips on a company page (those only filter the timeline view).",
+      },
+      {
+        question: "Why don’t filing EPS / YoY alerts fire yet?",
+        answer:
+          "Those rules need financial-metrics extract flags enabled in the deployment (FINANCIAL_METRICS / YOY_COMPARE). When flags are off, koel may still shadow-log matches without sending Telegram. Check Health / ops config if the dash form warns about metrics flags.",
+      },
+      {
         question: "Can I set the same alerts in Telegram?",
         answer:
           "Yes. Bot commands mirror the dash for core types — e.g. /alert JKH.N0000 above 200, /alert JKH.N0000 move 5, /alert JKH.N0000 disclosure. Full command list: /help in Telegram. See also the Telegram topic below.",
@@ -640,12 +685,12 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Market Appetite, foreign flow, book pressure, USD/LKR, oil",
         answer:
-          "Regime-style MARKET rules. Appetite band fires when the composite appetite score enters bands you care about. Foreign flow / book pressure / USD/LKR / oil move use stored macro or market aggregates — research bridges, not tips.\n\nExample: appetite alert when the meter enters “strong appetite” or “extreme caution.”",
+          "Regime-style MARKET rules — the create form locks Symbol to MARKET.\n\nMarket Appetite is a minimum score threshold, not a band picker: it fires when the composite score is ≥ your number (e.g. threshold 61 ≈ the Appetite band floor). Foreign flow uses |foreign_net| in LKR vs your threshold. Book pressure uses |imbalance %| vs your threshold. USD/LKR and oil use stored macro move thresholds.\n\nExample: Appetite score ≥ 61 on MARKET when the meter prints 63.",
       },
       {
         question: "XD soon / XD digest",
         answer:
-          "Dividend calendar helpers: ping when an ex-dividend date is approaching, or a digest of upcoming XD events koel already stored from CSE disclosures.\n\nAlways verify the CSE announcement before acting on dates.",
+          "XD soon (per symbol): Days = horizon. Fires when an stored XD date falls within that many Colombo days — once per (rule, XD date), not every poll.\n\nXD digest is MARKET + watchlist-scoped: a weekly digest of upcoming XDs on names you watch (once per ISO week per rule), not a daily ping.\n\nExample: `/alert JKH.N0000 xd 7` vs `/alert MARKET xd_digest 7`. Always verify the CSE announcement before acting on dates.",
       },
     ],
   },
@@ -714,7 +759,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Why was the newest thin day skipped for the headline?",
         answer:
-          "When the newest appetite day has a tiny universe (under about 100 names with computable changes), koel can skip it for the big headline number and show the last fuller board day instead. The thin day may still appear as a hollow tip on the history chart.",
+          "When the newest appetite day has a tiny universe (under about 100 names with computable changes), koel can skip it for the big headline number and show the last fuller board day instead. The thin day may still appear as a hollow tip on the history chart.\n\nThe Universe KPI is that `universe_n` count (sometimes with advancers↑ / decliners↓) — the same figure used for thin-day skip.",
       },
       {
         question: "What are Δ 1 / 5 / ~1 month and Days in band?",
@@ -769,6 +814,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         question: "What is Event yield on a company page?",
         answer:
           "When koel has a latest dividend event with DPS and a last price, Event yield ≈ DPS ÷ last price × 100. That is a single-event research label — not a trailing twelve-month yield.\n\nExample: DPS 2.00 on price 50.00 → 4.00%. The strip also shows XD / Pay when those dates were parsed from CSE dividend disclosures.",
+      },
+      {
+        question: "How do multi-row rows and the 14% WHT checkbox work?",
+        answer:
+          "The calculator keeps session-only symbol rows (add several names). Each row has Shares and DPS; cash ≈ DPS × shares. Combined cash sums the rows.\n\nApply WHT (14%) estimates net = gross × (1 − 0.14). Example: DPS 1.50 × 1,000 = 1,500 gross → WHT 210 → net 1,290. This is a rough research estimate — not a tax report or WHT certificate.",
       },
       {
         question: "XD vs payment day?",
@@ -851,6 +901,16 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         answer:
           "Active, unmuted rules fire to Telegram when conditions match, subject to quiet hours, digest, and mute. Rearm-only events do not send a push. History in the dash shows what already fired.",
       },
+      {
+        question: "How do I cancel a rule from Telegram?",
+        answer:
+          "Use `/cancel ALERT_ID` with the numeric id from `/myalerts` — same cancel as the dash Cancel button. If you hit a command rate-limit reply, wait a moment and retry.",
+      },
+      {
+        question: "What is /brief SYMBOL?",
+        answer:
+          "Read-only: shows the latest ready AI filing brief koel stored for that symbol. You may see “none yet” (no ready brief) or that AI briefs are off for the deployment. Source PDF/link remains the authority — see Filing metrics & briefs.",
+      },
     ],
   },
   {
@@ -867,6 +927,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         question: "What koel deliberately does not do (yet)",
         answer:
           "No portfolio quantities / cost basis / P&L tracker, no tax reports, no heavy multi-filter trading terminal, no full TA suite, no native mobile app, and no payments. If a feature is not about seeing the market in the dash or getting pinged on Telegram, it is out of scope for now.",
+      },
+      {
+        question: "What is Scenarios?",
+        answer:
+          "A Phase 3 stub (deep-link `/scenarios`, off primary nav). Even when AI_SCENARIOS_ENABLED is on, the dash does not run AgentChat, personas, or model calls yet. Alerts stay on Telegram; this page is only an informational fence.",
       },
     ],
   },

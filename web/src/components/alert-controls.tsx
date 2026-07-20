@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { HelpLink } from "@/components/help-link";
 import { InlineError } from "@/components/inline-error";
 import { useToast } from "@/components/toast";
 import {
@@ -254,6 +255,13 @@ export function AlertCreateForm({
       className="mt-6 rounded-lg border border-border/70 p-4 sm:p-5"
       noValidate
     >
+      <p className="mb-4 text-xs text-muted-foreground">
+        MARKET-locked types, threshold labels, and category substring:{" "}
+        <HelpLink topic="alerts" variant="text">
+          create-form help
+        </HelpLink>
+        .
+      </p>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)_auto_minmax(12rem,auto)] lg:items-start">
         <section
           aria-labelledby="alert-symbol-type-heading"
