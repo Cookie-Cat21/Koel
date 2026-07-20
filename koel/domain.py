@@ -59,6 +59,8 @@ class AlertType(StrEnum):
     # Dividend calendar (CSE disclosures → dividend_events).
     XD_SOON = "xd_soon"
     XD_DIGEST = "xd_digest"
+    # Share split / consolidation (price-ratio cliff or CSE subdivision filing).
+    SHARE_SPLIT = "share_split"
 
 
 # Alert types that need a positive numeric threshold.
@@ -142,6 +144,7 @@ PRICE_BOARD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.VOLUME_DOWN,
         AlertType.CROSSING_VOLUME,
         AlertType.GAP,
+        AlertType.SHARE_SPLIT,
     }
 )
 
@@ -151,6 +154,7 @@ NOTICE_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.BUY_IN,
         AlertType.NON_COMPLIANCE,
         AlertType.HALT,
+        AlertType.SHARE_SPLIT,
     }
 )
 

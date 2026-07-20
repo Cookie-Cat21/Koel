@@ -13,9 +13,12 @@ const ORDER = ["1W", "1M", "3M", "1Y"] as const;
 export function PeriodReturnsStrip({
   returns,
   className,
+  splitAdjusted = false,
 }: {
   returns: PeriodReturns;
   className?: string;
+  /** True when closes were adjusted via corporate_actions. */
+  splitAdjusted?: boolean;
 }) {
   const hasAny = ORDER.some((k) => returns[k] != null);
   if (!hasAny) return null;
@@ -31,6 +34,9 @@ export function PeriodReturnsStrip({
       <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         Returns
       </span>
+      {splitAdjusted ? (
+        <span className="text-[11px] text-muted-foreground">split-adj</span>
+      ) : null}
       <Link
         href="/help#symbol-returns-tech"
         className="text-[11px] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"

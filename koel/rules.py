@@ -137,6 +137,10 @@ def _gap_pct(snapshot: PriceSnapshot) -> float | None:
     return abs((snapshot.open - snapshot.previous_close) / snapshot.previous_close) * 100.0
 
 
+def _event_key_share_split_disclosure(rule: AlertRule, disclosure: Disclosure) -> str:
+    return f"share_split:{rule.id}:d:{disclosure.external_id}"
+
+
 def _rule_inactive_or_muted(rule: AlertRule, *, as_of: datetime) -> bool:
     """Skip inactive rules and temporary mutes; malformed mute timestamps skip.
 
@@ -422,6 +426,37 @@ def evaluate_price_rules(
                 )
             )
 
+        elif rule.type == AlertType.SHARE_SPLIT:
+            # Compare last koel snapshot price → current (not CSE previous_close,
+            # which is often already reset on subdivision day).
+            key = _event_key_day("share_split", rule, snapshot)
+            if key is None or key in previous.activity_fired_keys:
+                continue
+            from koel.corporate_actions import action_label, detect_share_split_ratio
+
+            hit = detect_share_split_ratio(prev_price, curr)
+            if hit is None or not _finite(prev_price):
+                continue
+            prev_disp = float(prev_price)
+            events.append(
+                AlertEvent(
+                    rule_id=rule.id,
+                    user_id=rule.user_id,
+                    telegram_id=rule.telegram_id,
+                    symbol=rule.symbol,
+                    type=rule.type,
+                    threshold=None,
+                    trigger=(
+                        f"possible {action_label(hit)} "
+                        f"(session {prev_disp:.2f} → {curr:.2f}; "
+                        f"observed ×{hit.observed_ratio:.2f})"
+                    ),
+                    current_price=curr,
+                    snapshot_id=snapshot.id,
+                    event_key=key,
+                )
+            )
+
     return events
 
 
@@ -626,6 +661,64 @@ def evaluate_disclosure_rules(
                 disclosure_id=disclosure.id,
                 snapshot_id=None,
                 event_key=_event_key_disclosure(rule, disclosure),
+            )
+        )
+    return events
+
+
+def evaluate_share_split_disclosure_rules(
+    *,
+    disclosure: Disclosure,
+    rules: list[AlertRule],
+) -> list[AlertEvent]:
+    """Fire share_split rules when a CSE subdivision / consolidation filing lands.
+
+    Same backfill gates as disclosure rules (created_at / published_at).
+    """
+    from koel.corporate_actions import is_split_disclosure, parse_split_hints
+
+    events: list[AlertEvent] = []
+    if not is_split_disclosure(disclosure.category, disclosure.title):
+        return events
+    if not isinstance(disclosure.external_id, str) or not disclosure.external_id.strip():
+        return events
+    published = _safe_utc_aware(disclosure.published_at)
+    if published is None or published <= datetime(1970, 1, 1, tzinfo=UTC):
+        return events
+
+    hints = parse_split_hints(disclosure.title, disclosure.category)
+    if hints.ratio_from and hints.ratio_to:
+        label = f"{hints.ratio_from}:{hints.ratio_to} {hints.kind or 'split'}"
+    else:
+        label = "share split / consolidation"
+
+    for rule in rules:
+        if _rule_inactive_or_muted(rule, as_of=published):
+            continue
+        if rule.type != AlertType.SHARE_SPLIT:
+            continue
+        if rule.symbol != disclosure.symbol:
+            continue
+        if rule.created_at is None:
+            continue
+        created = _safe_utc_aware(rule.created_at)
+        if created is None or published <= created:
+            continue
+        events.append(
+            AlertEvent(
+                rule_id=rule.id,
+                user_id=rule.user_id,
+                telegram_id=rule.telegram_id,
+                symbol=rule.symbol,
+                type=rule.type,
+                threshold=None,
+                trigger=f"CSE filing: possible {label}",
+                current_price=None,
+                disclosure_url=disclosure.url,
+                disclosure_title=disclosure.title,
+                disclosure_id=disclosure.id,
+                snapshot_id=None,
+                event_key=_event_key_share_split_disclosure(rule, disclosure),
             )
         )
     return events

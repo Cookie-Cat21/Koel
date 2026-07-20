@@ -845,6 +845,7 @@ def test_period_tech_fundamentals_unit() -> None:
         "src/lib/api/period-returns.ts",
         "src/lib/api/tech-labels.ts",
         "src/lib/api/fundamentals.ts",
+        "src/lib/api/corporate-actions.ts",
     ):
         assert (WEB / rel).is_file(), rel
     _require_web_node_modules()

@@ -78,6 +78,7 @@ ALERT_USAGE = (
     "/alert SYMBOL askheavy MULTIPLIER\n"
     "/alert SYMBOL xd DAYS\n"
     "/alert MARKET xd_digest DAYS\n"
+    "/alert SYMBOL split\n"
     "Example: /alert JKH.N0000 volume 5\n"
     f"{disclaimer()}"
 )
@@ -413,6 +414,9 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
         "non_compliance": AlertType.NON_COMPLIANCE,
         "halt": AlertType.HALT,
         "notice": AlertType.HALT,
+        "split": AlertType.SHARE_SPLIT,
+        "share_split": AlertType.SHARE_SPLIT,
+        "subdivision": AlertType.SHARE_SPLIT,
     }
     if kind in notice_kinds:
         if len(args) > 2:
@@ -750,6 +754,11 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{symbol} ex-dividend (XD) within {thr_s} days — "
             "one ping per upcoming XD date"
         )
+    elif alert_type == AlertType.SHARE_SPLIT:
+        desc = (
+            f"{symbol} possible share split / consolidation "
+            "(price-ratio cliff or CSE subdivision filing)"
+        )
     else:
         desc = f"{symbol} alert"
 
@@ -864,6 +873,7 @@ async def cmd_myalerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 AlertType.BUY_IN: "buyin",
                 AlertType.NON_COMPLIANCE: "noncompliance",
                 AlertType.HALT: "halt",
+                AlertType.SHARE_SPLIT: "split",
             }.get(r.type, r.type.value)
             lines.append(f"#{r.id} {sym} {label}")
         else:

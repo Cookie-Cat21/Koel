@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 
 import {
+  adjustBarsForSplits,
+  normalizeCorporateAction,
+  type CorporateActionPoint,
+} from "@/lib/api/corporate-actions";
+import {
   DEFAULT_DAILY_BARS_LIMIT,
   MAX_DAILY_BARS_LIMIT,
   normalizeDailyBar,
@@ -18,6 +23,9 @@ type RouteContext = { params: Promise<{ symbol: string }> };
 /**
  * GET /api/v1/symbols/{symbol}/daily-bars — daily OHLC for candlestick expand.
  * Postgres ``daily_bars`` only (~1y path history). Session required.
+ *
+ * By default returns split-adjusted bars when ``corporate_actions`` exist.
+ * Pass ``?adjusted=0`` for raw CSE closes.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
   const gated = await requireSession(request);
@@ -42,6 +50,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
     limit = Math.min(n, MAX_DAILY_BARS_LIMIT);
   }
+
+  const adjustedParam = request.nextUrl.searchParams.get("adjusted");
+  const wantAdjusted = adjustedParam !== "0" && adjustedParam !== "false";
 
   try {
     const pool = getPool();
@@ -72,17 +83,55 @@ export async function GET(request: NextRequest, context: RouteContext) {
       [symbol, limit],
     );
 
-    const bars = result.rows
+    const rawBars = result.rows
       .map((row) => normalizeDailyBar(row))
       .filter((b): b is NonNullable<typeof b> => b != null)
       .reverse();
+
+    let actions: CorporateActionPoint[] = [];
+    if (wantAdjusted) {
+      try {
+        const ca = await pool.query<{
+          effective_date: Date | string;
+          kind: string;
+          ratio_from: number;
+          ratio_to: number;
+          source: string | null;
+          title: string | null;
+        }>(
+          `
+          SELECT effective_date, kind, ratio_from, ratio_to, source, title
+          FROM corporate_actions
+          WHERE symbol = $1
+          ORDER BY effective_date ASC
+          `,
+          [symbol],
+        );
+        for (const row of ca.rows) {
+          const n = normalizeCorporateAction(row);
+          if (n) actions.push(n);
+        }
+      } catch {
+        // Table may not exist yet on an unmigrated DB — serve raw bars.
+        actions = [];
+      }
+    }
+
+    const bars =
+      wantAdjusted && actions.length > 0
+        ? adjustBarsForSplits(rawBars, actions)
+        : rawBars;
 
     return jsonOk({
       symbol,
       count: bars.length,
       bars,
+      adjusted: wantAdjusted && actions.length > 0,
+      corporate_actions: actions,
       disclaimer:
-        "Daily OHLC from koel path history — research only, not financial advice.",
+        wantAdjusted && actions.length > 0
+          ? "Daily OHLC split-adjusted from koel corporate_actions when known — research only, not financial advice. Raw CSE closes: ?adjusted=0."
+          : "Daily OHLC from koel path history — research only, not financial advice.",
     });
   } catch (err) {
     console.error("GET /symbols/:symbol/daily-bars failed", err);

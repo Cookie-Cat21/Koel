@@ -3099,6 +3099,204 @@ class Storage:
             raw_hash=data.get("raw_hash") if isinstance(data.get("raw_hash"), str) else None,
         )
 
+    async def upsert_corporate_action_from_disclosure(
+        self,
+        *,
+        symbol: str,
+        disclosure_id: int | None,
+        title: str | None,
+        category: str | None,
+        published_at: datetime | None = None,
+    ) -> Any:
+        """Parse split/consolidation hints and upsert ``corporate_actions``.
+
+        Returns stored ``CorporateAction`` or None when not a split filing.
+        """
+        from koel.corporate_actions import (
+            colombo_today,
+            hints_raw_hash,
+            is_split_disclosure,
+            parse_split_hints,
+            row_to_corporate_action,
+        )
+
+        if not is_split_disclosure(category, title):
+            return None
+        hints = parse_split_hints(title, category)
+        if (
+            hints.kind is None
+            or hints.ratio_from is None
+            or hints.ratio_to is None
+        ):
+            return None
+        effective = hints.effective_date
+        if effective is None and published_at is not None:
+            try:
+                effective = colombo_today(published_at)
+            except Exception:
+                effective = None
+        if effective is None:
+            effective = colombo_today()
+        clean_title = (title or "").strip()[:500] or None
+        raw_hash = hints_raw_hash(symbol, clean_title or "", hints)
+        async with self._pool.connection() as conn:
+            if disclosure_id is not None:
+                row = await (
+                    await conn.execute(
+                        """
+                        INSERT INTO corporate_actions (
+                            symbol, disclosure_id, effective_date, kind,
+                            ratio_from, ratio_to, title, source, raw_hash
+                        ) VALUES (
+                            %s, %s, %s, %s,
+                            %s, %s, %s, 'cse_disclosure', %s
+                        )
+                        ON CONFLICT (disclosure_id) WHERE disclosure_id IS NOT NULL
+                        DO UPDATE SET
+                            effective_date = EXCLUDED.effective_date,
+                            kind = EXCLUDED.kind,
+                            ratio_from = EXCLUDED.ratio_from,
+                            ratio_to = EXCLUDED.ratio_to,
+                            title = COALESCE(EXCLUDED.title, corporate_actions.title),
+                            raw_hash = EXCLUDED.raw_hash,
+                            updated_at = now()
+                        RETURNING id, symbol, disclosure_id, effective_date, kind,
+                                  ratio_from, ratio_to, title, source, raw_hash
+                        """,
+                        (
+                            symbol,
+                            disclosure_id,
+                            effective,
+                            hints.kind,
+                            hints.ratio_from,
+                            hints.ratio_to,
+                            clean_title,
+                            raw_hash,
+                        ),
+                    )
+                ).fetchone()
+            else:
+                row = await (
+                    await conn.execute(
+                        """
+                        INSERT INTO corporate_actions (
+                            symbol, disclosure_id, effective_date, kind,
+                            ratio_from, ratio_to, title, source, raw_hash
+                        ) VALUES (
+                            %s, NULL, %s, %s,
+                            %s, %s, %s, 'cse_disclosure', %s
+                        )
+                        ON CONFLICT (symbol, effective_date, kind, ratio_from,
+                                     ratio_to, source)
+                            WHERE disclosure_id IS NULL
+                        DO UPDATE SET
+                            title = COALESCE(EXCLUDED.title, corporate_actions.title),
+                            raw_hash = EXCLUDED.raw_hash,
+                            updated_at = now()
+                        RETURNING id, symbol, disclosure_id, effective_date, kind,
+                                  ratio_from, ratio_to, title, source, raw_hash
+                        """,
+                        (
+                            symbol,
+                            effective,
+                            hints.kind,
+                            hints.ratio_from,
+                            hints.ratio_to,
+                            clean_title,
+                            raw_hash,
+                        ),
+                    )
+                ).fetchone()
+        if row is None:
+            return None
+        return row_to_corporate_action(_as_row(row))
+
+    async def upsert_corporate_action_from_price(
+        self,
+        *,
+        symbol: str,
+        prev_price: float | None,
+        curr_price: float | None,
+        as_of: datetime | date | None = None,
+    ) -> Any:
+        """Persist a price-ratio detected split/consolidation for chart adjust."""
+        from koel.corporate_actions import (
+            colombo_today,
+            detect_share_split_ratio,
+            row_to_corporate_action,
+        )
+
+        hit = detect_share_split_ratio(prev_price, curr_price)
+        if hit is None:
+            return None
+        effective = colombo_today(as_of)
+        title = (
+            f"Detected {hit.ratio_from}:{hit.ratio_to} {hit.kind} "
+            f"(session ratio ×{hit.observed_ratio:.3f})"
+        )
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    INSERT INTO corporate_actions (
+                        symbol, disclosure_id, effective_date, kind,
+                        ratio_from, ratio_to, title, source, raw_hash
+                    ) VALUES (
+                        %s, NULL, %s, %s,
+                        %s, %s, %s, 'price_ratio', %s
+                    )
+                    ON CONFLICT (symbol, effective_date, kind, ratio_from,
+                                 ratio_to, source)
+                        WHERE disclosure_id IS NULL
+                    DO UPDATE SET
+                        title = COALESCE(EXCLUDED.title, corporate_actions.title),
+                        raw_hash = EXCLUDED.raw_hash,
+                        updated_at = now()
+                    RETURNING id, symbol, disclosure_id, effective_date, kind,
+                              ratio_from, ratio_to, title, source, raw_hash
+                    """,
+                    (
+                        symbol,
+                        effective,
+                        hit.kind,
+                        hit.ratio_from,
+                        hit.ratio_to,
+                        title[:500],
+                        f"price:{symbol}:{effective}:{hit.kind}:"
+                        f"{hit.ratio_from}:{hit.ratio_to}",
+                    ),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        return row_to_corporate_action(_as_row(row))
+
+    async def list_corporate_actions(
+        self,
+        *,
+        symbol: str,
+        limit: int = 50,
+    ) -> list[Any]:
+        """Corporate actions for a symbol, newest effective_date first."""
+        from koel.corporate_actions import row_to_corporate_action
+
+        lim = max(1, min(int(limit), 200))
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT id, symbol, disclosure_id, effective_date, kind,
+                           ratio_from, ratio_to, title, source, raw_hash
+                    FROM corporate_actions
+                    WHERE symbol = %s
+                    ORDER BY effective_date DESC, id DESC
+                    LIMIT %s
+                    """,
+                    (symbol, lim),
+                )
+            ).fetchall()
+        return [row_to_corporate_action(_as_row(r)) for r in rows]
+
     async def list_upcoming_dividend_events(
         self,
         *,

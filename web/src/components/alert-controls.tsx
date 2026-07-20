@@ -59,6 +59,7 @@ const TYPE_OPTIONS: { value: AlertType; label: string }[] = [
   { value: "crossing_volume", label: "Crossing volume (×)" },
   { value: "big_print", label: "Big print (shares)" },
   { value: "gap", label: "Open gap %" },
+  { value: "share_split", label: "Share split / consolidation" },
   { value: "buy_in", label: "Buy-in board" },
   { value: "non_compliance", label: "Non-compliance" },
   { value: "halt", label: "Market halt (MARKET)" },
