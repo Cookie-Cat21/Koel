@@ -361,9 +361,10 @@ def main(argv: list[str] | None = None) -> None:
             "ml-loop-research",
             "market-summary-backfill",
             "macro-tick",
+            "digest",
         ],
         help=(
-            "bot | poller | both | migrate | tick | "
+            "bot | poller | both | migrate | tick | digest | "
             "drain-pdfs | drain-briefs | drain-briefs-local | drain-metrics | "
             "drain-graph | drain-people | directors-backfill | "
             "path-backfill | intraday-backfill | hybrid-backfill | "
@@ -384,6 +385,7 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help=(
             "tick: ignore market hours; "
+            "digest: ignore 14:30–16:00 SLT window; "
             "path-backfill/intraday-backfill/hybrid-backfill/"
             "sector-backfill/notices-backfill/directors-backfill: "
             "run even if flag off"
@@ -485,6 +487,7 @@ def main(argv: list[str] | None = None) -> None:
     limit: int | None = None  # CLI per-command; rebound below
     if args.force and args.command not in (
         "tick",
+        "digest",
         "path-backfill",
         "intraday-backfill",
         "hybrid-backfill",
@@ -504,8 +507,8 @@ def main(argv: list[str] | None = None) -> None:
         "ml-ltr-ship",
     ):
         parser.error(
-            "--force is only valid for tick, path-backfill, intraday-backfill, "
-            "hybrid-backfill, sector-backfill, notices-backfill, "
+            "--force is only valid for tick, digest, path-backfill, "
+            "intraday-backfill, hybrid-backfill, sector-backfill, notices-backfill, "
             "directors-backfill, disclosures-backfill, financials-backfill, "
             "aspi-backfill, appetite-backfill, ml-forecast, ml-hpe, "
             "ml-forecast-unified, ml-loop-nightly, ml-loop-retrain, "
@@ -1616,6 +1619,38 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_macro())
+        return
+
+    if args.command == "digest":
+        configure_logging()
+        settings = Settings.from_env(require_token=True)
+
+        async def _digest() -> None:
+            from koel.digest import run_eod_digest
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            bot = Bot(settings.telegram_bot_token)
+
+            async def send(chat_id: int, text: str) -> SendResult:
+                return await send_message(
+                    bot, chat_id, text, block_on_retry_after=True
+                )
+
+            try:
+                result = await run_eod_digest(
+                    storage, send, force=args.force
+                )
+                print(
+                    "digest: "
+                    f"candidates={result.candidates} sent={result.sent} "
+                    f"skipped={result.skipped} errors={result.errors} "
+                    f"outside_window={int(result.outside_window)}"
+                )
+            finally:
+                await storage.close()
+
+        asyncio.run(_digest())
         return
 
     if args.command == "appetite-backfill":

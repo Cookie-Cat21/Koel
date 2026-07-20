@@ -37,4 +37,9 @@ the same Postgres-backed watchlist, rules, and fire history.
 - Halt create on the dash forces symbol `MARKET` (bot parity).
 - Quiet hours from Settings are honored by the poller delivery path: Telegram
   sends are held until outside the Colombo local window (no retry-counter burn).
-- Digest flag is stored for a future EOD digest job.
+- EOD digest job reads `digest_enabled`: once per Colombo trading day after
+  market close (14:30–16:00 SLT) via poller off-hours ticks, or
+  `python3 -m koel digest` (`--force` skips the window). Quiet hours gate live
+  alerts only — digests intentionally fire at EOD. Idempotent via
+  `users.last_digest_on`. Body: today's fires, watchlist movers, upcoming XD
+  on watchlist + NFA (`koel/digest.py`).

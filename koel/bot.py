@@ -1,6 +1,6 @@
 """Telegram bot — the only user-facing surface for v1.
 
-Commands: /start, /help, /watch, /unwatch, /alert, /cancel, /myalerts,
+Commands: /start, /help, /primer, /watch, /unwatch, /alert, /cancel, /myalerts,
 /mywatchlist, /brief. Alert dispatch happens from the poller via notify.send_message.
 """
 
@@ -158,10 +158,11 @@ def _env_cmd_rate_per_minute() -> int:
 
 # ≤3 lines including NFA; command dump lives on /help only (WS-014 / E7-B02).
 # Wave5/w20: Browse dash note + disclosure CATEGORY + optional AI brief.
+# Point beginners at /primer without a command dump (stay ≤3 lines).
 START_TEXT = (
     "koel watches the Colombo Stock Exchange and pings Telegram on price, "
     "move, volume, or disclosure alerts — Browse dash mirrors watchlists; "
-    "push stays here.\n"
+    "push stays here. New here? /primer.\n"
     "Disclosures: /alert SYMBOL disclosure [CATEGORY]; "
     "optional AI brief when enabled. See /help.\n"
     f"{disclaimer()}"
@@ -173,6 +174,7 @@ START_TEXT = (
 # Wave5: Browse dash + CATEGORY + optional AI brief.
 # Wave9: /brief SYMBOL — read-only latest ready brief (or none yet / AI off).
 # Wave12: scenarios disabled note (Phase 3 stub fence).
+# XD + /primer folded into existing rows (no 13th line).
 HELP_TEXT = (
     "Commands:\n"
     "/watch SYMBOL\n"
@@ -182,11 +184,23 @@ HELP_TEXT = (
     "/alert SYMBOL move PERCENT\n"
     "/alert SYMBOL disclosure [CATEGORY]\n"
     "/cancel ALERT_ID\n"
-    "/myalerts — active only · /mywatchlist · /brief SYMBOL\n"
+    "/myalerts — active only · /mywatchlist · /brief SYMBOL · /primer\n"
     "Browse dash thin UI; scenarios disabled (Phase 3 stub).\n"
     "Disclosure alerts: new filings after the rule only "
     "(missing publish time → no fire; CATEGORY = category substring; "
-    "optional AI brief when enabled). Also volume/gap/print/buyin/halt — see /alert.\n"
+    "optional AI brief when enabled). Also volume/gap/print/buyin/halt/xd "
+    "— see /alert.\n"
+    f"{disclaimer()}"
+)
+
+# Beginner path: CDS account → broker → koel alerts. Always NFA.
+PRIMER_TEXT = (
+    "CSE beginner path (informational):\n"
+    "1) Open a CDS account via a licensed broker (cse.lk has the broker list).\n"
+    "2) Fund and place orders through that broker — koel does not trade.\n"
+    "3) Here: /watch SYMBOL, then /alert for price/move/disclosure/XD pings.\n"
+    "XD: /alert SYMBOL xd DAYS · weekly watchlist digest: "
+    "/alert MARKET xd_digest DAYS.\n"
     f"{disclaimer()}"
 )
 
@@ -499,6 +513,15 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.effective_message.reply_text(HELP_TEXT)
 
 
+async def cmd_primer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if await _rate_limited(update, context):
+        return
+    if update.effective_message:
+        await update.effective_message.reply_text(
+            _clamp_telegram_message(PRIMER_TEXT)
+        )
+
+
 async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if await _rate_limited(update, context):
         return
@@ -594,6 +617,10 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     threshold = parsed.threshold
     category = parsed.category
 
+    # xd_digest is MARKET-scoped only — normalize any ticker to MARKET.
+    if alert_type == AlertType.XD_DIGEST:
+        symbol = MARKET_SYMBOL
+
     # Market-wide halt + tape/context regime alerts use synthetic MARKET stock.
     if alert_type in MARKET_REGIME_ALERT_TYPES and symbol == MARKET_SYMBOL:
         if alert_type != AlertType.HALT and threshold is None:
@@ -609,6 +636,17 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         if alert_type == AlertType.HALT:
             msg = f"Alert #{rule.id} set: market halt/notice alerts.\n{disclaimer()}"
+        elif alert_type == AlertType.XD_DIGEST:
+            thr_s = (
+                f"{threshold:g}"
+                if threshold is not None and math.isfinite(threshold)
+                else "?"
+            )
+            msg = (
+                f"Alert #{rule.id} set: weekly XD digest for your watchlist "
+                f"(horizon {thr_s} days). Symbol is MARKET.\n"
+                f"{disclaimer()}"
+            )
         else:
             thr_s = (
                 f"{threshold:g}"
@@ -707,6 +745,11 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         desc = f"{symbol} filing profit YoY above +{thr_s}%"
     elif alert_type == AlertType.PROFIT_YOY_BELOW:
         desc = f"{symbol} filing profit YoY below -{thr_s}%"
+    elif alert_type == AlertType.XD_SOON:
+        desc = (
+            f"{symbol} ex-dividend (XD) within {thr_s} days — "
+            "one ping per upcoming XD date"
+        )
     else:
         desc = f"{symbol} alert"
 
@@ -850,6 +893,10 @@ async def cmd_myalerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 lines.append(f"#{r.id} {sym} bidheavy {thr_s}x")
             elif r.type == AlertType.ASK_HEAVY:
                 lines.append(f"#{r.id} {sym} askheavy {thr_s}x")
+            elif r.type == AlertType.XD_SOON:
+                lines.append(f"#{r.id} {sym} xd {thr_s}d")
+            elif r.type == AlertType.XD_DIGEST:
+                lines.append(f"#{r.id} {sym} xd_digest {thr_s}d")
             else:
                 lines.append(f"#{r.id} {sym} {r.type.value} {thr_s}")
     # Category disclosure rules share a symbol with any-disclosure rules; the
@@ -1005,6 +1052,7 @@ def build_application(
     )
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("primer", cmd_primer))
     app.add_handler(CommandHandler("watch", cmd_watch))
     app.add_handler(CommandHandler("unwatch", cmd_unwatch))
     app.add_handler(CommandHandler("alert", cmd_alert))

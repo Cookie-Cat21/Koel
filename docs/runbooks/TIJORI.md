@@ -24,6 +24,8 @@ Top movers rows use one symbol+**Watch** link to `/symbols/[symbol]` (accessible
 ## AI briefs (`AI_BRIEFS_ENABLED`)
 
 Default **off**. Stub in `koel/briefs/`; no LLM until explicitly enabled.
+Controlled enable checklist (one replica, keys, rate caps, soak, rollback):
+[AI_BRIEFS_ENABLE.md](AI_BRIEFS_ENABLE.md).
 
 ```bash
 AI_BRIEFS_ENABLED=0          # leave off in prod until Phase 2

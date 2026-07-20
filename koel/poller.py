@@ -39,6 +39,7 @@ from koel.briefs import briefs_enabled
 from koel.briefs.worker import claim_pending_briefs
 from koel.circuit import CircuitOpenError
 from koel.config import Settings
+from koel.digest import maybe_run_eod_digest
 from koel.domain import (
     MARKET_REGIME_ALERT_TYPES,
     MARKET_SYMBOL,
@@ -272,6 +273,22 @@ class Poller:
             # Delivery is independent of market hours — retry unsent backlog
             # so Telegram failures overnight/weekend still drain.
             await self._retry_unsent_with_lock()
+            # EOD digest: once/day after market close (14:30–16:00 SLT).
+            # Quiet hours gate live alerts only — see koel/digest.py.
+            try:
+                digest_result = await maybe_run_eod_digest(
+                    self.storage, self.send, now=now
+                )
+                if digest_result is not None:
+                    log.info(
+                        "eod_digest_tick",
+                        sent=digest_result.sent,
+                        skipped=digest_result.skipped,
+                        errors=digest_result.errors,
+                        candidates=digest_result.candidates,
+                    )
+            except Exception:
+                log.exception("eod_digest_tick_failed")
             self.last_tick_at = datetime.now(UTC)
             self._schedule_brief_drain()
             return []

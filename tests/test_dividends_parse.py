@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
-from koel.bot import parse_alert_args
+import pytest
+
+from koel.bot import cmd_alert, parse_alert_args, reset_cmd_rate_limits
 from koel.dividends import (
     colombo_today,
     is_dividend_disclosure,
@@ -13,7 +16,7 @@ from koel.dividends import (
     parse_dividend_hints,
     xd_within_horizon,
 )
-from koel.domain import AlertRule, AlertType
+from koel.domain import MARKET_SYMBOL, AlertRule, AlertType, PriceSnapshot, disclaimer
 from koel.rules import evaluate_xd_digest_rules, evaluate_xd_soon_rules
 
 LEGACY = (
@@ -75,6 +78,66 @@ def test_parse_alert_xd() -> None:
     assert err is None
     assert parsed is not None
     assert parsed.alert_type == AlertType.XD_DIGEST
+
+
+@pytest.mark.asyncio
+async def test_cmd_alert_xd_confirm_and_digest_normalizes_market() -> None:
+    """XD confirm copy + xd_digest always stores MARKET (even if ticker given)."""
+    reset_cmd_rate_limits()
+    storage = AsyncMock()
+    storage.ensure_user = AsyncMock(return_value=1)
+    storage.upsert_stock = AsyncMock()
+    storage.create_alert_rule = AsyncMock(
+        side_effect=lambda uid, sym, atype, thr, category=None: AlertRule(
+            id=11,
+            user_id=uid,
+            telegram_id=9,
+            symbol=sym,
+            type=atype,
+            threshold=thr,
+            active=True,
+            category=category,
+        )
+    )
+    cse = AsyncMock()
+    cse.fetch_company_info = AsyncMock(
+        return_value=PriceSnapshot(
+            symbol="JKH.N0000",
+            price=20.0,
+            name="John Keells",
+            ts=datetime(2026, 7, 20, tzinfo=UTC),
+        )
+    )
+    message = AsyncMock()
+    update = MagicMock()
+    update.effective_message = message
+    update.effective_user = MagicMock(id=9)
+    context = MagicMock()
+    context.application = MagicMock(
+        bot_data={"storage": storage, "cse": cse, "cmd_rate_per_minute": 100}
+    )
+
+    # Per-symbol xd_soon confirm
+    context.args = ["JKH.N0000", "xd", "7"]
+    await cmd_alert(update, context)
+    reply = message.reply_text.await_args.args[0]
+    assert "ex-dividend" in reply.lower() or "XD" in reply
+    assert "7" in reply
+    assert disclaimer() in reply
+    assert cse.fetch_company_info.await_count == 1
+
+    # xd_digest with non-MARKET symbol → normalized to MARKET (no CSE lookup)
+    message.reply_text.reset_mock()
+    storage.create_alert_rule.reset_mock()
+    context.args = ["JKH.N0000", "xd_digest", "7"]
+    await cmd_alert(update, context)
+    create_args = storage.create_alert_rule.await_args.args
+    assert create_args[1] == MARKET_SYMBOL
+    reply = message.reply_text.await_args.args[0]
+    assert "XD digest" in reply or "xd digest" in reply.lower()
+    assert "MARKET" in reply
+    assert disclaimer() in reply
+    assert cse.fetch_company_info.await_count == 1
 
 
 def test_evaluate_xd_soon_once_per_xd() -> None:

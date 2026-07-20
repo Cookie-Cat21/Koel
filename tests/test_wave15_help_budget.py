@@ -12,7 +12,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from koel.bot import HELP_TEXT, START_TEXT, cmd_help, cmd_start, reset_cmd_rate_limits
+from koel.bot import (
+    HELP_TEXT,
+    PRIMER_TEXT,
+    START_TEXT,
+    cmd_help,
+    cmd_primer,
+    cmd_start,
+    reset_cmd_rate_limits,
+)
 from koel.domain import disclaimer
 
 # Factory / WS-014 / E7-B01–B02 budgets (non-blank content lines).
@@ -67,6 +75,7 @@ def test_start_line_budget_holds_after_scenarios_note() -> None:
     assert "scenarios disabled" not in START_TEXT
     assert "/watch SYMBOL" not in START_TEXT  # command dump is /help only
     assert "/help" in START_TEXT
+    assert "/primer" in START_TEXT
     assert disclaimer() in START_TEXT
 
 
@@ -99,11 +108,21 @@ def test_help_still_lists_core_commands_inside_budget() -> None:
         "/cancel ALERT_ID",
         "/myalerts — active only",
         "/brief SYMBOL",
+        "/primer",
         "optional AI brief",
         "Disclosure alerts:",
         "scenarios disabled",
+        "halt/xd",  # xd mention on disclosure/activity line (budget fold)
     ):
         assert needle in HELP_TEXT
+
+
+def test_primer_mentions_cds_broker_and_nfa() -> None:
+    assert "CDS" in PRIMER_TEXT
+    assert "broker" in PRIMER_TEXT.lower()
+    assert "xd_digest" in PRIMER_TEXT
+    assert disclaimer() in PRIMER_TEXT
+    assert len(_nonblank_lines(PRIMER_TEXT)) <= 8
 
 
 @pytest.mark.asyncio
@@ -128,4 +147,13 @@ async def test_cmd_help_reply_keeps_scenarios_note_inside_budget() -> None:
     assert reply == HELP_TEXT
     assert len(_nonblank_lines(reply)) <= _HELP_MAX_LINES
     assert "scenarios disabled" in reply
+    assert disclaimer() in reply
+
+
+@pytest.mark.asyncio
+async def test_cmd_primer_reply() -> None:
+    update, context = _make_update_context()
+    await cmd_primer(update, context)
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "CDS" in reply
     assert disclaimer() in reply

@@ -4513,6 +4513,166 @@ class Storage:
             return v if 0 <= v <= 23 else None
         return _hour(start), _hour(end)
 
+    async def list_digest_users(self) -> list[dict[str, Any]]:
+        """Users with digest_enabled and a positive telegram_id."""
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT id, telegram_id, last_digest_on
+                      FROM users
+                     WHERE digest_enabled IS TRUE
+                       AND telegram_id IS NOT NULL
+                       AND telegram_id > 0
+                     ORDER BY id ASC
+                    """
+                )
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in _as_rows(rows):
+            uid = row.get("id")
+            tid = row.get("telegram_id")
+            if isinstance(uid, bool) or not isinstance(uid, int) or uid <= 0:
+                continue
+            if isinstance(tid, bool) or not isinstance(tid, int) or tid <= 0:
+                continue
+            out.append(
+                {
+                    "id": uid,
+                    "telegram_id": tid,
+                    "last_digest_on": row.get("last_digest_on"),
+                }
+            )
+        return out
+
+    async def claim_digest_send(self, user_id: int, on_date: date) -> bool:
+        """Claim today's digest slot. True if newly claimed (not already sent)."""
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return False
+        if not isinstance(on_date, date):
+            return False
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    UPDATE users
+                       SET last_digest_on = %s
+                     WHERE id = %s
+                       AND digest_enabled IS TRUE
+                       AND (last_digest_on IS DISTINCT FROM %s)
+                    RETURNING id
+                    """,
+                    (on_date, user_id, on_date),
+                )
+            ).fetchone()
+        return row is not None
+
+    async def list_recent_alert_fires(
+        self,
+        user_id: int,
+        *,
+        since: datetime,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Recent alert_log rows for a user (today's fires for digests)."""
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return []
+        if not isinstance(since, datetime):
+            return []
+        lim = max(1, min(int(limit) if isinstance(limit, int) and not isinstance(limit, bool) else 20, 50))
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT al.id,
+                           al.fired_at,
+                           al.message_text,
+                           ar.symbol,
+                           ar.type,
+                           ar.threshold
+                      FROM alert_log al
+                      JOIN alert_rules ar ON ar.id = al.rule_id
+                     WHERE ar.user_id = %s
+                       AND al.fired_at >= %s
+                       AND COALESCE(al.message_text, '') NOT LIKE '[dry-run]%%'
+                     ORDER BY al.fired_at DESC
+                     LIMIT %s
+                    """,
+                    (user_id, since, lim),
+                )
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            typ = row.get("type")
+            msg = row.get("message_text")
+            # Prefer first line of stored message as trigger summary.
+            trigger = typ if isinstance(typ, str) else "alert"
+            if isinstance(msg, str) and msg.strip():
+                first = msg.strip().splitlines()[0].strip()
+                if first and not first.startswith("Not financial"):
+                    trigger = first[:120]
+            out.append(
+                {
+                    "id": row.get("id"),
+                    "symbol": sym if isinstance(sym, str) else "?",
+                    "type": typ if isinstance(typ, str) else None,
+                    "trigger": trigger,
+                    "fired_at": row.get("fired_at"),
+                    "threshold": row.get("threshold"),
+                }
+            )
+        return out
+
+    async def list_watchlist_movers(
+        self,
+        user_id: int,
+        *,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Watchlist symbols sorted by |change_pct| from latest poller snaps."""
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return []
+        lim = max(1, min(int(limit) if isinstance(limit, int) and not isinstance(limit, bool) else 5, 20))
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    WITH latest AS (
+                        SELECT DISTINCT ON (ps.symbol)
+                               ps.symbol, ps.price, ps.change_pct, ps.ts
+                          FROM price_snapshots ps
+                          JOIN watchlist_items w
+                            ON w.symbol = ps.symbol
+                         WHERE w.user_id = %s
+                           AND ps.source = 'poller'
+                           AND ps.symbol <> 'MARKET'
+                         ORDER BY ps.symbol ASC, ps.ts DESC, ps.id DESC
+                    )
+                    SELECT symbol, price, change_pct, ts
+                      FROM latest
+                     WHERE change_pct IS NOT NULL
+                     ORDER BY ABS(change_pct) DESC NULLS LAST, symbol ASC
+                     LIMIT %s
+                    """,
+                    (user_id, lim),
+                )
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            if not isinstance(sym, str) or not sym.strip():
+                continue
+            out.append(
+                {
+                    "symbol": sym.strip().upper(),
+                    "price": row.get("price"),
+                    "change_pct": row.get("change_pct"),
+                    "ts": row.get("ts"),
+                }
+            )
+        return out
+
     async def _fetch_active_rule(
         self,
         conn: Any,
