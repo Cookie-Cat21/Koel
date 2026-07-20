@@ -56,6 +56,9 @@ class AlertType(StrEnum):
     BOOK_PRESSURE = "book_pressure"
     USDLKR_MOVE = "usdlkr_move"
     OIL_MOVE = "oil_move"
+    # Dividend calendar (CSE disclosures → dividend_events).
+    XD_SOON = "xd_soon"
+    XD_DIGEST = "xd_digest"
 
 
 # Alert types that need a positive numeric threshold.
@@ -85,6 +88,8 @@ THRESHOLD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.BOOK_PRESSURE,
         AlertType.USDLKR_MOVE,
         AlertType.OIL_MOVE,
+        AlertType.XD_SOON,
+        AlertType.XD_DIGEST,
     }
 )
 
@@ -97,6 +102,7 @@ MARKET_REGIME_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.BOOK_PRESSURE,
         AlertType.USDLKR_MOVE,
         AlertType.OIL_MOVE,
+        AlertType.XD_DIGEST,
     }
 )
 

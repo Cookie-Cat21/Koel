@@ -833,6 +833,140 @@ def evaluate_filing_metrics_rules(
     return events
 
 
+def evaluate_xd_soon_rules(
+    *,
+    events_by_symbol: dict[str, list[Any]],
+    rules: list[AlertRule],
+    today: Any = None,
+    fired_keys: set[str] | None = None,
+) -> list[AlertEvent]:
+    """Fire once per (rule, d_xd) when XD is within threshold days ahead.
+
+    ``events_by_symbol`` maps symbol → list of objects with ``d_xd``, optional
+    ``dps`` / ``title`` / ``disclosure_id`` (DividendEvent or duck-typed).
+    """
+    from datetime import date as date_cls
+
+    from chime.dividends import colombo_today, xd_within_horizon
+
+    out: list[AlertEvent] = []
+    claimed = fired_keys or set()
+    base = today if isinstance(today, date_cls) else colombo_today()
+
+    for rule in rules:
+        if _rule_inactive_or_muted(rule, as_of=datetime.now(UTC)):
+            continue
+        if rule.type != AlertType.XD_SOON:
+            continue
+        if rule.threshold is None or not math.isfinite(rule.threshold):
+            continue
+        rows = events_by_symbol.get(rule.symbol) or []
+        for row in rows:
+            d_xd = getattr(row, "d_xd", None)
+            if not xd_within_horizon(d_xd, horizon_days=rule.threshold, today=base):
+                continue
+            key = f"xd:{rule.id}:{d_xd.isoformat()}"
+            if key in claimed:
+                continue
+            dps = getattr(row, "dps", None)
+            title = getattr(row, "title", None) or "Dividend"
+            dps_bit = f", DPS {dps:g} LKR" if isinstance(dps, (int, float)) else ""
+            days = (d_xd - base).days
+            when = "today" if days == 0 else (f"in {days}d" if days > 0 else "passed")
+            out.append(
+                AlertEvent(
+                    rule_id=rule.id,
+                    user_id=rule.user_id,
+                    telegram_id=rule.telegram_id,
+                    symbol=rule.symbol,
+                    type=rule.type,
+                    threshold=rule.threshold,
+                    trigger=f"XD {when} ({d_xd.isoformat()}{dps_bit}) — {title}",
+                    current_price=None,
+                    disclosure_id=getattr(row, "disclosure_id", None),
+                    snapshot_id=None,
+                    event_key=key,
+                )
+            )
+            claimed.add(key)
+    return out
+
+
+def evaluate_xd_digest_rules(
+    *,
+    upcoming: list[Any],
+    rules: list[AlertRule],
+    today: Any = None,
+    fired_keys: set[str] | None = None,
+) -> list[AlertEvent]:
+    """Weekly MARKET digest: XD events in horizon across the user's watch context.
+
+    ``upcoming`` items need ``symbol`` + ``d_xd`` (optional ``dps``).
+    Dedupe key: ``xddigest:{rule.id}:{ISO-week}``.
+    """
+    from datetime import date as date_cls
+
+    from chime.dividends import colombo_today, iso_week_key, xd_within_horizon
+    from chime.domain import MARKET_SYMBOL
+
+    out: list[AlertEvent] = []
+    claimed = fired_keys or set()
+    base = today if isinstance(today, date_cls) else colombo_today()
+    week = iso_week_key(base)
+
+    for rule in rules:
+        if _rule_inactive_or_muted(rule, as_of=datetime.now(UTC)):
+            continue
+        if rule.type != AlertType.XD_DIGEST:
+            continue
+        if rule.symbol != MARKET_SYMBOL:
+            continue
+        if rule.threshold is None or not math.isfinite(rule.threshold):
+            continue
+        key = f"xddigest:{rule.id}:{week}"
+        if key in claimed:
+            continue
+        hits = [
+            row
+            for row in upcoming
+            if xd_within_horizon(
+                getattr(row, "d_xd", None),
+                horizon_days=rule.threshold,
+                today=base,
+            )
+        ]
+        if not hits:
+            continue
+        # Cap digest length for Telegram.
+        bits: list[str] = []
+        for row in sorted(hits, key=lambda r: getattr(r, "d_xd"))[:12]:
+            sym = getattr(row, "symbol", "?")
+            xd = getattr(row, "d_xd")
+            dps = getattr(row, "dps", None)
+            dps_bit = f" DPS {dps:g}" if isinstance(dps, (int, float)) else ""
+            bits.append(f"{sym} XD {xd.isoformat()}{dps_bit}")
+        more = len(hits) - len(bits)
+        trigger = "XD this week: " + "; ".join(bits)
+        if more > 0:
+            trigger += f" (+{more} more)"
+        out.append(
+            AlertEvent(
+                rule_id=rule.id,
+                user_id=rule.user_id,
+                telegram_id=rule.telegram_id,
+                symbol=MARKET_SYMBOL,
+                type=rule.type,
+                threshold=rule.threshold,
+                trigger=trigger,
+                current_price=None,
+                snapshot_id=None,
+                event_key=key,
+            )
+        )
+        claimed.add(key)
+    return out
+
+
 def filter_fireable(events: list[AlertEvent]) -> list[AlertEvent]:
     """Drop rearm-only events from the notify path (arming updates still apply)."""
     return [e for e in events if e.trigger != "rearm"]

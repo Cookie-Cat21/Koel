@@ -2950,6 +2950,344 @@ class Storage:
             ).fetchone()
         return row is not None
 
+    async def upsert_dividend_event_from_disclosure(
+        self,
+        *,
+        symbol: str,
+        disclosure_id: int | None,
+        title: str | None,
+        category: str | None,
+        brief: str | None = None,
+        published_at: datetime | None = None,
+    ) -> Any:
+        """Parse dividend hints from disclosure text and upsert ``dividend_events``.
+
+        Returns the stored ``DividendEvent`` or None when not a dividend filing /
+        nothing useful to store. Fail-soft for poller.
+        """
+        from chime.dividends import (
+            DividendEvent,
+            hints_raw_hash,
+            is_dividend_disclosure,
+            merge_dividend_hints,
+        )
+
+        if not is_dividend_disclosure(category, title):
+            return None
+        hints = merge_dividend_hints(title, category, brief)
+        # Need at least one of DPS / XD / pay / dates_tbd to persist.
+        if (
+            hints.dps is None
+            and hints.d_xd is None
+            and hints.d_pay is None
+            and not hints.dates_tbd
+        ):
+            return None
+        d_ann = hints.d_ann
+        if d_ann is None and published_at is not None:
+            try:
+                from chime.dividends import colombo_today
+
+                d_ann = colombo_today(published_at)
+            except Exception:
+                d_ann = None
+        clean_title = (title or "").strip()[:500] or None
+        raw_hash = hints_raw_hash(symbol, clean_title or "", hints)
+        async with self._pool.connection() as conn:
+            if disclosure_id is not None:
+                row = await (
+                    await conn.execute(
+                        """
+                        INSERT INTO dividend_events (
+                            symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                            kind, fy, dates_tbd, title, source, raw_hash
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, 'cse_disclosure', %s
+                        )
+                        ON CONFLICT (disclosure_id) WHERE disclosure_id IS NOT NULL
+                        DO UPDATE SET
+                            d_ann = COALESCE(EXCLUDED.d_ann, dividend_events.d_ann),
+                            d_xd = COALESCE(EXCLUDED.d_xd, dividend_events.d_xd),
+                            d_pay = COALESCE(EXCLUDED.d_pay, dividend_events.d_pay),
+                            dps = COALESCE(EXCLUDED.dps, dividend_events.dps),
+                            kind = COALESCE(EXCLUDED.kind, dividend_events.kind),
+                            fy = COALESCE(EXCLUDED.fy, dividend_events.fy),
+                            dates_tbd = EXCLUDED.dates_tbd OR dividend_events.dates_tbd,
+                            title = COALESCE(EXCLUDED.title, dividend_events.title),
+                            raw_hash = EXCLUDED.raw_hash,
+                            updated_at = now()
+                        RETURNING id, symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                                  kind, fy, dates_tbd, title, source, raw_hash
+                        """,
+                        (
+                            symbol,
+                            disclosure_id,
+                            d_ann,
+                            hints.d_xd,
+                            hints.d_pay,
+                            hints.dps,
+                            hints.kind,
+                            hints.fy,
+                            hints.dates_tbd,
+                            clean_title,
+                            raw_hash,
+                        ),
+                    )
+                ).fetchone()
+            else:
+                if hints.d_xd is None:
+                    return None
+                row = await (
+                    await conn.execute(
+                        """
+                        INSERT INTO dividend_events (
+                            symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                            kind, fy, dates_tbd, title, source, raw_hash
+                        ) VALUES (
+                            %s, NULL, %s, %s, %s, %s,
+                            %s, %s, %s, %s, 'cse_disclosure', %s
+                        )
+                        ON CONFLICT (symbol, d_xd, dps, source)
+                            WHERE disclosure_id IS NULL AND d_xd IS NOT NULL
+                        DO UPDATE SET
+                            d_ann = COALESCE(EXCLUDED.d_ann, dividend_events.d_ann),
+                            d_pay = COALESCE(EXCLUDED.d_pay, dividend_events.d_pay),
+                            kind = COALESCE(EXCLUDED.kind, dividend_events.kind),
+                            fy = COALESCE(EXCLUDED.fy, dividend_events.fy),
+                            dates_tbd = EXCLUDED.dates_tbd OR dividend_events.dates_tbd,
+                            title = COALESCE(EXCLUDED.title, dividend_events.title),
+                            raw_hash = EXCLUDED.raw_hash,
+                            updated_at = now()
+                        RETURNING id, symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                                  kind, fy, dates_tbd, title, source, raw_hash
+                        """,
+                        (
+                            symbol,
+                            d_ann,
+                            hints.d_xd,
+                            hints.d_pay,
+                            hints.dps,
+                            hints.kind,
+                            hints.fy,
+                            hints.dates_tbd,
+                            clean_title,
+                            raw_hash,
+                        ),
+                    )
+                ).fetchone()
+        if row is None:
+            return None
+        data = _as_row(row)
+        return DividendEvent(
+            id=_require_pg_int(data.get("id"), what="dividend_events.id"),
+            symbol=str(data.get("symbol") or symbol),
+            disclosure_id=(
+                _require_pg_int(data["disclosure_id"], what="disclosure_id")
+                if data.get("disclosure_id") is not None
+                else None
+            ),
+            d_ann=data.get("d_ann"),
+            d_xd=data.get("d_xd"),
+            d_pay=data.get("d_pay"),
+            dps=data.get("dps"),
+            kind=data.get("kind") if isinstance(data.get("kind"), str) else None,
+            fy=data.get("fy") if isinstance(data.get("fy"), str) else None,
+            dates_tbd=data.get("dates_tbd") is True,
+            title=data.get("title") if isinstance(data.get("title"), str) else None,
+            source=str(data.get("source") or "cse_disclosure"),
+            raw_hash=data.get("raw_hash") if isinstance(data.get("raw_hash"), str) else None,
+        )
+
+    async def list_upcoming_dividend_events(
+        self,
+        *,
+        symbols: Sequence[str] | None = None,
+        horizon_days: int = 14,
+        limit: int = 50,
+    ) -> list[Any]:
+        """Upcoming XD rows (Colombo today → today+horizon), newest XD first."""
+        from chime.dividends import DividendEvent, colombo_today
+
+        days = max(1, min(int(horizon_days), 90))
+        lim = max(1, min(int(limit), 200))
+        today = colombo_today()
+        async with self._pool.connection() as conn:
+            if symbols:
+                syms = [s for s in symbols if isinstance(s, str) and s]
+                if not syms:
+                    return []
+                rows = await (
+                    await conn.execute(
+                        """
+                        SELECT id, symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                               kind, fy, dates_tbd, title, source, raw_hash
+                        FROM dividend_events
+                        WHERE d_xd IS NOT NULL
+                          AND d_xd >= %s
+                          AND d_xd <= (%s::date + %s::int)
+                          AND symbol = ANY(%s)
+                        ORDER BY d_xd ASC, symbol ASC
+                        LIMIT %s
+                        """,
+                        (today, today, days, syms, lim),
+                    )
+                ).fetchall()
+            else:
+                rows = await (
+                    await conn.execute(
+                        """
+                        SELECT id, symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                               kind, fy, dates_tbd, title, source, raw_hash
+                        FROM dividend_events
+                        WHERE d_xd IS NOT NULL
+                          AND d_xd >= %s
+                          AND d_xd <= (%s::date + %s::int)
+                        ORDER BY d_xd ASC, symbol ASC
+                        LIMIT %s
+                        """,
+                        (today, today, days, lim),
+                    )
+                ).fetchall()
+        out: list[DividendEvent] = []
+        for row in rows:
+            data = _as_row(row)
+            try:
+                out.append(
+                    DividendEvent(
+                        id=_require_pg_int(data.get("id"), what="dividend_events.id"),
+                        symbol=str(data.get("symbol")),
+                        disclosure_id=(
+                            _require_pg_int(data["disclosure_id"], what="disclosure_id")
+                            if data.get("disclosure_id") is not None
+                            else None
+                        ),
+                        d_ann=data.get("d_ann"),
+                        d_xd=data.get("d_xd"),
+                        d_pay=data.get("d_pay"),
+                        dps=data.get("dps"),
+                        kind=data.get("kind") if isinstance(data.get("kind"), str) else None,
+                        fy=data.get("fy") if isinstance(data.get("fy"), str) else None,
+                        dates_tbd=data.get("dates_tbd") is True,
+                        title=data.get("title") if isinstance(data.get("title"), str) else None,
+                        source=str(data.get("source") or "cse_disclosure"),
+                        raw_hash=(
+                            data.get("raw_hash")
+                            if isinstance(data.get("raw_hash"), str)
+                            else None
+                        ),
+                    )
+                )
+            except Exception:
+                continue
+        return out
+
+    async def list_dividend_events_for_symbol(
+        self,
+        symbol: str,
+        *,
+        limit: int = 40,
+    ) -> list[Any]:
+        from chime.dividends import DividendEvent
+
+        lim = max(1, min(int(limit), 100))
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT id, symbol, disclosure_id, d_ann, d_xd, d_pay, dps,
+                           kind, fy, dates_tbd, title, source, raw_hash
+                    FROM dividend_events
+                    WHERE symbol = %s
+                    ORDER BY COALESCE(d_xd, d_ann, DATE '1970-01-01') DESC, id DESC
+                    LIMIT %s
+                    """,
+                    (symbol, lim),
+                )
+            ).fetchall()
+        out: list[DividendEvent] = []
+        for row in rows:
+            data = _as_row(row)
+            try:
+                out.append(
+                    DividendEvent(
+                        id=_require_pg_int(data.get("id"), what="dividend_events.id"),
+                        symbol=str(data.get("symbol")),
+                        disclosure_id=(
+                            _require_pg_int(data["disclosure_id"], what="disclosure_id")
+                            if data.get("disclosure_id") is not None
+                            else None
+                        ),
+                        d_ann=data.get("d_ann"),
+                        d_xd=data.get("d_xd"),
+                        d_pay=data.get("d_pay"),
+                        dps=data.get("dps"),
+                        kind=data.get("kind") if isinstance(data.get("kind"), str) else None,
+                        fy=data.get("fy") if isinstance(data.get("fy"), str) else None,
+                        dates_tbd=data.get("dates_tbd") is True,
+                        title=data.get("title") if isinstance(data.get("title"), str) else None,
+                        source=str(data.get("source") or "cse_disclosure"),
+                        raw_hash=(
+                            data.get("raw_hash")
+                            if isinstance(data.get("raw_hash"), str)
+                            else None
+                        ),
+                    )
+                )
+            except Exception:
+                continue
+        return out
+
+    async def sync_dividend_events_from_recent_disclosures(
+        self,
+        *,
+        limit: int = 200,
+    ) -> int:
+        """Backfill/refresh dividend_events from recent dividend-labelled disclosures."""
+        lim = max(1, min(int(limit), 500))
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT d.id, d.symbol, d.title, d.category, d.published_at,
+                           b.brief, b.status AS brief_status
+                    FROM disclosures d
+                    LEFT JOIN disclosure_briefs b ON b.disclosure_id = d.id
+                    WHERE d.category ILIKE '%%dividend%%'
+                       OR d.title ILIKE '%%dividend%%'
+                       OR d.category ILIKE '%%cash div%%'
+                       OR d.title ILIKE '%%cash div%%'
+                    ORDER BY d.published_at DESC, d.id DESC
+                    LIMIT %s
+                    """,
+                    (lim,),
+                )
+            ).fetchall()
+        n = 0
+        for row in rows:
+            data = _as_row(row)
+            brief = None
+            if data.get("brief_status") == "ready" and isinstance(data.get("brief"), str):
+                brief = data["brief"]
+            try:
+                stored = await self.upsert_dividend_event_from_disclosure(
+                    symbol=str(data.get("symbol")),
+                    disclosure_id=_require_pg_int(data.get("id"), what="disclosures.id"),
+                    title=data.get("title") if isinstance(data.get("title"), str) else None,
+                    category=(
+                        data.get("category")
+                        if isinstance(data.get("category"), str)
+                        else None
+                    ),
+                    brief=brief,
+                    published_at=data.get("published_at"),
+                )
+            except Exception:
+                continue
+            if stored is not None:
+                n += 1
+        return n
+
     async def get_disclosure_by_id(self, disclosure_id: int) -> Disclosure | None:
         """Load a disclosure row by id (metrics worker)."""
         async with self._pool.connection() as conn:

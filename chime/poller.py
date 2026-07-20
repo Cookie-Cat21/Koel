@@ -57,6 +57,8 @@ from chime.notify import SendResult
 from chime.rules import (
     evaluate_big_print_rules,
     evaluate_disclosure_rules,
+    evaluate_xd_digest_rules,
+    evaluate_xd_soon_rules,
     evaluate_notice_rules,
     evaluate_order_book_rules,
     evaluate_price_rules,
@@ -306,6 +308,7 @@ class Poller:
             book_events, book_ok = await self._poll_order_books()
             # Postgres-only MARKET tape/context regime (fail-soft).
             regime_events, _regime_ok = await self._poll_market_regime()
+            xd_events, _xd_ok = await self._poll_dividend_xd()
             await self._poll_indexes()
             await self._poll_sectors()
             fired.extend(price_events)
@@ -314,6 +317,7 @@ class Poller:
             fired.extend(notice_events)
             fired.extend(book_events)
             fired.extend(regime_events)
+            fired.extend(xd_events)
             symbols = await self.storage.watched_symbols()
             rules = await self.storage.active_rules_for_symbols(symbols) if symbols else []
             # Fail closed — non-enum rule.type used to throw on .value mid tick
@@ -812,6 +816,22 @@ class Poller:
                     claimed = await self._claim_and_send(event)
                     if claimed:
                         fired.append(event)
+                # CSE dividend calendar — parse title/category into dividend_events.
+                try:
+                    await self.storage.upsert_dividend_event_from_disclosure(
+                        symbol=stored.symbol,
+                        disclosure_id=stored.id,
+                        title=stored.title,
+                        category=stored.category,
+                        brief=None,
+                        published_at=stored.published_at,
+                    )
+                except Exception as exc:
+                    log.warning(
+                        "dividend_event_upsert_failed",
+                        symbol=symbol,
+                        error=str(exc),
+                    )
                 # Queue PDF enrichment after alerts are claimed — never blocks
                 # rule eval / Telegram. Skip rows that already have pdf_url.
                 if (
@@ -955,8 +975,10 @@ class Poller:
             log.exception("market_regime_rules_load_failed", error=str(exc))
             return [], False
 
+        # xd_digest is MARKET-scoped but evaluated in _poll_dividend_xd.
         regime_type_values = {
-            t.value for t in (MARKET_REGIME_ALERT_TYPES - {AlertType.HALT})
+            t.value
+            for t in (MARKET_REGIME_ALERT_TYPES - {AlertType.HALT, AlertType.XD_DIGEST})
         }
         regime_rules = [
             r
@@ -1057,6 +1079,89 @@ class Poller:
                 count=len(fired),
                 types=[getattr(e.type, "value", e.type) for e in fired],
             )
+        return fired, ok
+
+    async def _poll_dividend_xd(self) -> tuple[list[AlertEvent], bool]:
+        """Sync dividend_events from disclosures; fire xd_soon + xd_digest."""
+        ok = True
+        try:
+            await self.storage.sync_dividend_events_from_recent_disclosures(limit=120)
+        except Exception as exc:
+            ok = False
+            log.warning("dividend_events_sync_failed", error=str(exc))
+
+        fired: list[AlertEvent] = []
+        try:
+            watched = await self.storage.watched_symbols()
+            symbols = list(watched) if watched else []
+            # Include symbols that have xd_soon rules even if not watched.
+            soon_rules = await self.storage.active_rules_for_symbols(
+                symbols + [MARKET_SYMBOL] if symbols else [MARKET_SYMBOL]
+            )
+            # Also load any xd_soon via a broad MARKET+watched pull; for symbols
+            # only in rules, merge from active rules query on those symbols.
+            xd_soon_rules = [
+                r
+                for r in soon_rules
+                if getattr(r.type, "value", r.type) == "xd_soon"
+            ]
+            digest_rules = [
+                r
+                for r in soon_rules
+                if getattr(r.type, "value", r.type) == "xd_digest"
+            ]
+            # Expand rule symbols for calendar fetch.
+            rule_syms = sorted({r.symbol for r in xd_soon_rules})
+            fetch_syms = sorted(set(symbols) | set(rule_syms))
+            upcoming = await self.storage.list_upcoming_dividend_events(
+                symbols=fetch_syms or None,
+                horizon_days=90,
+                limit=200,
+            )
+            by_symbol: dict[str, list] = {}
+            for ev in upcoming:
+                by_symbol.setdefault(ev.symbol, []).append(ev)
+
+            # If xd_soon rules reference symbols with no upcoming rows, still ok.
+            if xd_soon_rules:
+                # Reload rules for exact rule symbols (may be outside watchlist).
+                if rule_syms:
+                    extra = await self.storage.active_rules_for_symbols(rule_syms)
+                    xd_soon_rules = [
+                        r
+                        for r in extra
+                        if getattr(r.type, "value", r.type) == "xd_soon"
+                    ]
+                events = evaluate_xd_soon_rules(
+                    events_by_symbol=by_symbol,
+                    rules=xd_soon_rules,
+                )
+                for event in filter_fireable(events):
+                    claimed = await self._claim_and_send(event)
+                    if claimed:
+                        fired.append(event)
+
+            if digest_rules:
+                for rule in digest_rules:
+                    try:
+                        user_watch = await self.storage.list_watchlist(rule.user_id)
+                    except Exception:
+                        user_watch = []
+                    watch_set = {w for w in user_watch if isinstance(w, str)}
+                    user_upcoming = [e for e in upcoming if e.symbol in watch_set]
+                    events = evaluate_xd_digest_rules(
+                        upcoming=user_upcoming,
+                        rules=[rule],
+                    )
+                    for event in filter_fireable(events):
+                        claimed = await self._claim_and_send(event)
+                        if claimed:
+                            fired.append(event)
+        except Exception as exc:
+            ok = False
+            log.exception("dividend_xd_poll_failed", error=str(exc))
+        if fired:
+            log.info("dividend_xd_fired", count=len(fired))
         return fired, ok
 
     async def _poll_order_books(self) -> tuple[list[AlertEvent], bool]:

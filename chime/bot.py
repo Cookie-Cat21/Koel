@@ -76,6 +76,8 @@ ALERT_USAGE = (
     "/alert MARKET oil PCT\n"
     "/alert SYMBOL bidheavy MULTIPLIER\n"
     "/alert SYMBOL askheavy MULTIPLIER\n"
+    "/alert SYMBOL xd DAYS\n"
+    "/alert MARKET xd_digest DAYS\n"
     "Example: /alert JKH.N0000 volume 5\n"
     f"{disclaimer()}"
 )
@@ -413,6 +415,8 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
         "book": AlertType.BOOK_PRESSURE,
         "usdlkr": AlertType.USDLKR_MOVE,
         "oil": AlertType.OIL_MOVE,
+        "xd_digest": AlertType.XD_DIGEST,
+        "xddigest": AlertType.XD_DIGEST,
     }
     if kind in regime_kinds:
         if len(args) < 3:
@@ -431,7 +435,32 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                 "Threshold must be a positive finite number. "
                 f"Example: /alert MARKET {kind} 10\n{ALERT_USAGE}"
             )
+        if regime_kinds[kind] == AlertType.XD_DIGEST and threshold > 90:
+            return None, (
+                "XD digest horizon must be 1–90 days. "
+                f"Example: /alert MARKET xd_digest 7\n{ALERT_USAGE}"
+            )
         return ParsedAlert(regime_kinds[kind], threshold), None
+
+    # Per-symbol XD-soon: /alert SYMBOL xd DAYS
+    if kind in ("xd", "xd_soon", "exdiv"):
+        if len(args) < 3:
+            return None, (
+                "Almost — need days ahead after xd. "
+                f"Example: /alert JKH.N0000 xd 7\n{ALERT_USAGE}"
+            )
+        if len(args) > 3:
+            return None, (
+                "Unexpected extra text after xd days. "
+                f"Example: /alert JKH.N0000 xd 7\n{ALERT_USAGE}"
+            )
+        threshold = _parse_threshold_token(args[2])
+        if threshold is None or threshold > 90:
+            return None, (
+                "XD horizon must be a positive number of days (1–90). "
+                f"Example: /alert JKH.N0000 xd 7\n{ALERT_USAGE}"
+            )
+        return ParsedAlert(AlertType.XD_SOON, threshold), None
 
     return None, (f"I didn't catch that alert type.\n{ALERT_USAGE}")
 
