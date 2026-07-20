@@ -442,7 +442,16 @@ export function AlertCreateForm({
 }
 
 function thresholdFieldLabel(type: AlertType): string {
-  if (type === "daily_move" || type === "gap" || type.includes("_yoy_")) {
+  if (type === "appetite_band") return "Appetite score";
+  if (type === "foreign_flow") return "Foreign net (LKR)";
+  if (
+    type === "book_pressure" ||
+    type === "usdlkr_move" ||
+    type === "oil_move" ||
+    type === "daily_move" ||
+    type === "gap" ||
+    type.includes("_yoy_")
+  ) {
     return "Percent";
   }
   if (type === "big_print") return "Shares";
@@ -459,8 +468,17 @@ function thresholdFieldLabel(type: AlertType): string {
 }
 
 function thresholdFieldPlaceholder(type: AlertType): string {
-  if (type === "daily_move" || type === "gap" || type.includes("_yoy_")) {
-    return "5";
+  if (type === "appetite_band") return "61";
+  if (type === "foreign_flow") return "1000000";
+  if (
+    type === "book_pressure" ||
+    type === "usdlkr_move" ||
+    type === "oil_move" ||
+    type === "daily_move" ||
+    type === "gap" ||
+    type.includes("_yoy_")
+  ) {
+    return type === "book_pressure" ? "10" : "2";
   }
   if (type === "big_print") return "10000";
   if (
