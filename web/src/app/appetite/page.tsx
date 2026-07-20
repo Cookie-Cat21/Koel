@@ -9,6 +9,7 @@ import {
 import { AppetiteTracker } from "@/components/appetite/appetite-tracker";
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { HelpLink } from "@/components/help-link";
 import { KpiStrip } from "@/components/kit/kpi-strip";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
@@ -88,9 +89,12 @@ export default async function AppetitePage() {
           title="Market Appetite"
           description="Session mood proxy from CSE breadth, move intensity, ASPI day change, and participation. Higher scores are not a tip — research only. Soft-reloads about every minute."
           action={
-            <Button asChild variant="outline" size="sm">
-              <Link href="/overview">Overview</Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <HelpLink topic="appetite">How appetite works</HelpLink>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/overview">Overview</Link>
+              </Button>
+            </div>
           }
         />
 

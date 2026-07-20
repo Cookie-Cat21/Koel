@@ -8,6 +8,7 @@ import {
 } from "@/components/alert-controls";
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { HelpLink } from "@/components/help-link";
 import { ArmedBadge } from "@/components/kit/status-badge";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
@@ -133,6 +134,7 @@ export default async function AlertsPage({
           eyebrow="Rules"
           title="Alerts"
           description="Active rules only. Create a price, move, or disclosure alert here; koel adds the symbol to your watchlist and sends the push on Telegram."
+          action={<HelpLink topic="alerts">How alerts work</HelpLink>}
         />
 
         <form
@@ -169,8 +171,19 @@ export default async function AlertsPage({
           <Link href="/settings" className="underline underline-offset-4">
             Settings
           </Link>
-          . Mute a rule below to pause Telegram fires. Filing EPS/YoY rules need
-          metrics flags to live-fire.
+          . Mute / test fire / cancel:{" "}
+          <HelpLink topic="alerts" variant="text">
+            how alerts work
+          </HelpLink>
+          . Delivery statuses:{" "}
+          <HelpLink topic="alert-history" variant="text">
+            history help
+          </HelpLink>
+          . Filing EPS/YoY rules need metrics flags to live-fire. Alert types:{" "}
+          <HelpLink topic="alert-types" variant="text">
+            alert types help
+          </HelpLink>
+          .
         </p>
 
         {!payload ? (
@@ -221,7 +234,12 @@ export default async function AlertsPage({
                   <code className="font-mono text-xs">
                     /alert SYMBOL above PRICE
                   </code>{" "}
-                  in Telegram — koel pushes when it fires.
+                  in Telegram — koel pushes when it fires. Unsure about
+                  crossing vs armed?{" "}
+                  <HelpLink topic="alerts" variant="text">
+                    Read Help
+                  </HelpLink>
+                  .
                 </>
               )
             }

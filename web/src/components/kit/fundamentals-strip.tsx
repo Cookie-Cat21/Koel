@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { FundamentalsLabels } from "@/lib/api/fundamentals";
 import { formatCompactNumber, formatNumber, formatPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,12 @@ export function FundamentalsStrip({
       <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         Book
       </span>
+      <Link
+        href="/help#symbol-fundamentals"
+        className="text-[11px] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+      >
+        NAV / P/B / ROE
+      </Link>
       {labels.nav != null ? (
         <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground">
           <span className="font-medium text-foreground/80">NAV</span>

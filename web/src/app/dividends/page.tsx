@@ -1,5 +1,6 @@
 import { AppNav } from "@/components/app-nav";
 import { DividendCalculator } from "@/components/dividends/dividend-calculator";
+import { HelpLink } from "@/components/help-link";
 import { FaqSection } from "@/components/kit/faq-section";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
@@ -60,6 +61,7 @@ export default async function DividendsPage({
           eyebrow="Tools"
           title="Dividend calculator"
           description="Estimate cash across session-only symbol rows from DPS × shares, optionally apply a rough WHT estimate, and review stored CSE dividend events."
+          action={<HelpLink topic="dividends">Dividend help</HelpLink>}
         />
         <NfaInline className="mt-3" />
 

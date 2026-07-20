@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import Link from "next/link";
 
 import { ExpandableBrief } from "@/components/kit/expandable-brief";
 import { Badge } from "@/components/ui/badge";
@@ -70,12 +71,20 @@ export function FilingMetricsPanel({
     >
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div>
-          <h2
-            id="filing-metrics-heading"
-            className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
-          >
-            Filing metrics
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2
+              id="filing-metrics-heading"
+              className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+            >
+              Filing metrics
+            </h2>
+            <Link
+              href="/help#filing-metrics"
+              className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+            >
+              How metrics work
+            </Link>
+          </div>
           {loadFailed ? (
             <div
               className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4"

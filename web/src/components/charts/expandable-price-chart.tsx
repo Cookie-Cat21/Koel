@@ -1,6 +1,7 @@
 "use client";
 
 import { Maximize2, X } from "lucide-react";
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -449,6 +450,12 @@ export function ExpandablePriceChart({
                   {heroFrom} → {heroTo}
                 </span>
               ) : null}
+              <Link
+                href="/help#symbol-charts"
+                className="ml-2 font-normal normal-case tracking-normal text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+              >
+                Chart help
+              </Link>
             </p>
             <button
               type="button"

@@ -213,7 +213,14 @@ export function TapePulseStrip({
             CSE tape pulse
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Session appetite, foreign flow, and public book pressure — not tips.
+            Session appetite, foreign flow, and public book pressure — not tips.{" "}
+            <Link
+              href="/help#tape-pulse"
+              className="underline underline-offset-4 transition-colors hover:text-foreground"
+            >
+              How tape pulse works
+            </Link>
+            .
           </p>
         </div>
         <Link

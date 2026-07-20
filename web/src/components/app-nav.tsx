@@ -24,6 +24,7 @@ const links = [
   { href: "/alerts/history", label: "History" },
   { href: "/settings", label: "Settings" },
   { href: "/health", label: "Health" },
+  { href: "/help", label: "Help" },
 ] as const;
 
 /**

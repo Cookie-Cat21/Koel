@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { CompanyGraphClient } from "@/components/company-graph/graph-client";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
@@ -59,6 +60,7 @@ export default async function GraphPage({
           description="Subsidiaries and associates parsed from public CSE annual-report PDFs — CSE has no ownership API. Research map, not a complete register."
           action={
             <div className="flex flex-wrap gap-2">
+              <HelpLink topic="ownership-graph">Map help</HelpLink>
               <Button asChild variant="secondary" size="sm">
                 <Link href="/people">People</Link>
               </Button>

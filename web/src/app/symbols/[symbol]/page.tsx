@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { HelpLink } from "@/components/help-link";
 import {
   DisclosureCategoryHint,
   DisclosureTimeline,
@@ -671,9 +672,13 @@ export default async function SymbolDetailPage({
           <Button asChild variant="outline" size="sm">
             <Link href={`/graph?symbol=${encoded}`}>Ownership map</Link>
           </Button>
+          <HelpLink topic="ownership-graph" variant="text" className="text-xs">
+            Map help
+          </HelpLink>
           <Button asChild variant="outline" size="sm">
             <Link href="/people">People</Link>
           </Button>
+          <HelpLink topic="symbol-page">Symbol help</HelpLink>
           <Button asChild variant="ghost" size="sm">
             <Link href="/watchlist">← Watchlist</Link>
           </Button>
@@ -681,6 +686,15 @@ export default async function SymbolDetailPage({
       </div>
 
       <DataQualityNotices notices={qualityNotices} />
+      {qualityNotices.length > 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          What these notices mean:{" "}
+          <HelpLink topic="data-quality" variant="text">
+            data quality help
+          </HelpLink>
+          .
+        </p>
+      ) : null}
 
       <section
         aria-label="Last price"
@@ -896,12 +910,17 @@ export default async function SymbolDetailPage({
         className="mt-8 border-t border-border/60 pt-6"
         aria-labelledby="disclosures-heading"
       >
-        <h2
-          id="disclosures-heading"
-          className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
-        >
-          Disclosures
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="disclosures-heading"
+            className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+          >
+            Disclosures
+          </h2>
+          <HelpLink topic="disclosures" variant="text" className="text-xs">
+            How disclosures work
+          </HelpLink>
+        </div>
         {!discsFailed && disclosureCategories.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             <DisclosureCategoryHint

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { NfaFooter } from "@/components/nfa-footer";
 import { PersonDossierView } from "@/components/people/person-dossier";
 import { Button } from "@/components/ui/button";
@@ -48,16 +49,22 @@ export default async function PersonDossierPage({ params }: Props) {
     <div className="min-h-screen bg-background">
       <AppNav active="/people" />
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
-        <nav
-          aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground"
-        >
-          <Link href="/people" className="hover:text-foreground hover:underline">
-            People
-          </Link>
-          <span aria-hidden>/</span>
-          <span className="truncate text-foreground">{dossier.name}</span>
-        </nav>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 flex-wrap items-center gap-2 text-[12px] text-muted-foreground"
+          >
+            <Link
+              href="/people"
+              className="hover:text-foreground hover:underline"
+            >
+              People
+            </Link>
+            <span aria-hidden>/</span>
+            <span className="truncate text-foreground">{dossier.name}</span>
+          </nav>
+          <HelpLink topic="people-dossier">Dossier help</HelpLink>
+        </div>
         <PersonDossierView dossier={dossier} />
         <div className="flex flex-wrap gap-2 border-t border-border/60 pt-4">
           <Button asChild variant="outline" size="sm">

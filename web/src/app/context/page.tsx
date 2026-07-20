@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { ContextModule } from "@/components/context/context-module";
 import { TapePulseStrip } from "@/components/tape/tape-pulse-strip";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -75,6 +76,7 @@ export default async function ContextPage() {
           description="Official Sri Lanka + energy context around the CSE tape. Attribution on every card. Not a Macro terminal clone."
           action={
             <div className="flex flex-wrap items-center gap-2">
+              <HelpLink topic="context-macros">Context help</HelpLink>
               <SoftPageRefresh />
               <Button asChild variant="outline" size="sm">
                 <Link href="/overview">Overview</Link>

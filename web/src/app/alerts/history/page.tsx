@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { EmptyState } from "@/components/empty-state";
 import { DeliveryBadge } from "@/components/kit/status-badge";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -262,6 +263,7 @@ export default async function AlertHistoryPage({
           eyebrow="Audit"
           title="History"
           description="When your rules fire, Telegram gets the push. This list is the audit trail from Postgres."
+          action={<HelpLink topic="alert-history">History help</HelpLink>}
         />
 
         <form

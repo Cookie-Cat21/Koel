@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Info } from "lucide-react";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { PeopleGraphClient } from "@/components/company-graph/people-client";
 import { AlertBanner } from "@/components/kit/alert-banner";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -47,6 +48,7 @@ export default async function PeoplePage() {
           description="Official CSE boards (companyProfile) ranked by linked market value × role. Open a dossier for seats, network, and issuer filings. Not personal net worth — and not auto-updated; run directors-backfill to refresh."
           action={
             <div className="flex flex-wrap gap-2">
+              <HelpLink topic="people-dossier">People help</HelpLink>
               <Button asChild variant="outline" size="sm">
                 <Link href="/graph">Ownership</Link>
               </Button>

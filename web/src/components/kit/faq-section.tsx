@@ -1,11 +1,45 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Minus, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type FaqItem = { question: string; answer: string };
+export type FaqItem = { question: string; answer: string | ReactNode };
+
+function FaqAnswer({ answer }: { answer: string | ReactNode }) {
+  if (typeof answer !== "string") {
+    return (
+      <div className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+        {answer}
+      </div>
+    );
+  }
+  const paras = answer
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (paras.length <= 1) {
+    return (
+      <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+        {answer}
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {paras.map((p, i) => (
+        <p
+          key={i}
+          className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base"
+        >
+          {p}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Watermelon faq-3 — numbered FAQ rows.
@@ -17,15 +51,18 @@ export function FaqSection({
   heading = "Questions",
   description,
   className,
+  headingId = "faq-heading",
 }: {
   items: FaqItem[];
   eyebrow?: string;
   heading?: string;
   description?: string;
   className?: string;
+  /** Unique id when several FAQ blocks share a page. */
+  headingId?: string;
 }) {
   return (
-    <section className={cn("w-full", className)} aria-labelledby="faq-heading">
+    <section className={cn("w-full", className)} aria-labelledby={headingId}>
       <div className="mb-10 flex w-full max-w-xl flex-col sm:mb-12">
         <Badge
           variant="outline"
@@ -35,7 +72,7 @@ export function FaqSection({
           {eyebrow}
         </Badge>
         <h2
-          id="faq-heading"
+          id={headingId}
           className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
         >
           {heading}
@@ -68,9 +105,7 @@ export function FaqSection({
                 </span>
               </summary>
               <div className="px-5 pb-5 pl-[4.25rem] sm:px-6 sm:pb-6">
-                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  {item.answer}
-                </p>
+                <FaqAnswer answer={item.answer} />
               </div>
             </details>
           );

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Activity, Radio, Timer } from "lucide-react";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { XdWeekStrip } from "@/components/dividends/xd-week-strip";
 import { TapePulseStrip } from "@/components/tape/tape-pulse-strip";
 import { EmptyState } from "@/components/empty-state";
@@ -515,6 +516,7 @@ export default async function OverviewPage() {
           description="CSE snapshots from koel’s poller. Set rules here — Telegram is the cherry that pings you when they fire."
           action={
             <div className="flex flex-wrap items-center gap-2">
+              <HelpLink topic="overview">Overview help</HelpLink>
               <MarketSessionChip />
               <PriceRefresh lastSnapshotAt={freshestTs} />
               <Button asChild size="sm">
@@ -542,12 +544,17 @@ export default async function OverviewPage() {
         ) : null}
 
         <section className="mt-6" aria-labelledby="overview-indexes-heading">
-          <h2
-            id="overview-indexes-heading"
-            className="mb-2 text-sm font-medium tracking-wide text-muted-foreground uppercase"
-          >
-            Market indexes
-          </h2>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2
+              id="overview-indexes-heading"
+              className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+            >
+              Market indexes
+            </h2>
+            <HelpLink topic="overview" variant="text" className="text-xs">
+              Index help
+            </HelpLink>
+          </div>
           <IndexStrip
             items={indexes}
             barsByCode={indexCharts.barsByCode}
@@ -576,12 +583,17 @@ export default async function OverviewPage() {
 
         {sectors.length > 0 ? (
           <section className="mt-4" aria-labelledby="overview-sectors-heading">
-            <h2
-              id="overview-sectors-heading"
-              className="mb-2 text-sm font-medium tracking-wide text-muted-foreground uppercase"
-            >
-              Sectors
-            </h2>
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+              <h2
+                id="overview-sectors-heading"
+                className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+              >
+                Sectors
+              </h2>
+              <HelpLink topic="overview" variant="text" className="text-xs">
+                What sectors show
+              </HelpLink>
+            </div>
             <SectorHeatStrip items={sectors} />
           </section>
         ) : null}

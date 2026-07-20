@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { TechLabels } from "@/lib/api/tech-labels";
 import { formatPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -56,6 +58,12 @@ export function TechLabelsStrip({
       <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         Tech
       </span>
+      <Link
+        href="/help#symbol-returns-tech"
+        className="text-[11px] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+      >
+        What these mean
+      </Link>
       {labels.sma50_pct != null ? (
         <Chip
           label="SMA50"

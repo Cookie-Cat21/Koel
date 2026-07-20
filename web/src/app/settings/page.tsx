@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { HelpLink } from "@/components/help-link";
 import { EmptyState } from "@/components/empty-state";
 import { NfaFooter } from "@/components/nfa-footer";
 import { PageHeader } from "@/components/page-header";
@@ -63,6 +64,7 @@ export default async function SettingsPage() {
           eyebrow="Account"
           title="Settings"
           description="Manage digest and quiet-hour preferences. koel still sends actionable alerts through Telegram."
+          action={<HelpLink topic="settings">Settings help</HelpLink>}
         />
 
         {prefs ? (

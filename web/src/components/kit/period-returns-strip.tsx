@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ChangeBadge } from "@/components/kit/change-badge";
 import type { PeriodReturns } from "@/lib/api/period-returns";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,12 @@ export function PeriodReturnsStrip({
       <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         Returns
       </span>
+      <Link
+        href="/help#symbol-returns-tech"
+        className="text-[11px] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+      >
+        How calculated
+      </Link>
       {ORDER.map((key) => {
         const v = returns[key];
         return (

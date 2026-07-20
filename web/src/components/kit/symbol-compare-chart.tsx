@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -360,12 +361,20 @@ export function SymbolCompareChart({
       aria-labelledby="compare-heading"
     >
       <div>
-        <h2
-          id="compare-heading"
-          className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
-        >
-          Price compare
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="compare-heading"
+            className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+          >
+            Price compare
+          </h2>
+          <Link
+            href="/help#symbol-compare"
+            className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+          >
+            How compare works
+          </Link>
+        </div>
         <p className="mt-1 max-w-xl text-sm text-muted-foreground">
           Overlay up to {MAX_COMPARE_SYMBOLS} listed symbols from stored ticks
           (~{COMPARE_TICK_LIMIT} points each). Indexed mode starts each line at

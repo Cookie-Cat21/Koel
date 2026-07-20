@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
 import { EmptyState } from "@/components/empty-state";
+import { HelpLink } from "@/components/help-link";
 import { ChangeBadge } from "@/components/kit/change-badge";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
@@ -104,17 +105,20 @@ export default async function WatchlistPage() {
           title="Watchlist"
           description="Symbols you watch for price and disclosure alerts. Pushes still go to Telegram."
           action={
-            <PriceRefresh
-              lastSnapshotAt={
-                payload
-                  ? payload.items
-                      .map((i) => i.ts)
-                      .filter((t): t is string => typeof t === "string" && !!t)
-                      .sort()
-                      .at(-1) ?? null
-                  : null
-              }
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <HelpLink topic="watchlist">Watchlist help</HelpLink>
+              <PriceRefresh
+                lastSnapshotAt={
+                  payload
+                    ? payload.items
+                        .map((i) => i.ts)
+                        .filter((t): t is string => typeof t === "string" && !!t)
+                        .sort()
+                        .at(-1) ?? null
+                    : null
+                }
+              />
+            </div>
           }
         />
 
