@@ -146,7 +146,8 @@ def discover_ccpi_xlsx_url(html: str, *, base: str = CBSL_PRICES_PAGE_URL) -> st
             continue
         if not re.search(r"\.xlsx?$", href, re.I):
             continue
-        return str(urljoin(base, href))
+        joined: str = urljoin(base, href)
+        return joined
     return None
 
 
