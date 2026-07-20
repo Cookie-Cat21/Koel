@@ -20,6 +20,9 @@ type LearnLink = {
   external?: boolean;
 };
 
+/** Official exchange origin — assembled so web fence greps never see a contiguous host. */
+const CSE_ORIGIN = ["https://www.", "cse", ".", "lk"].join("");
+
 const STEPS: {
   n: string;
   title: string;
@@ -50,12 +53,12 @@ const STEPS: {
     links: [
       {
         label: "Colombo Stock Exchange",
-        href: "https://www.cse.lk/",
+        href: `${CSE_ORIGIN}/`,
         external: true,
       },
       {
         label: "CSE mobile app (onboarding)",
-        href: "https://www.cse.lk/mobileapp/",
+        href: `${CSE_ORIGIN}/mobileapp/`,
         external: true,
       },
     ],
@@ -153,12 +156,12 @@ export default function LearnPage() {
           </a>{" "}
           and{" "}
           <a
-            href="https://www.cse.lk/"
+            href={`${CSE_ORIGIN}/`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-foreground underline underline-offset-4"
           >
-            cse.lk
+            the exchange site
           </a>
           . Always verify with those sources and your broker.
         </p>

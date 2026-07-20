@@ -258,8 +258,8 @@ def test_symbols_list_route_requires_snapshots_and_session() -> None:
     assert browse.is_file()
     source = route.read_text(encoding="utf-8")
     browse_src = browse.read_text(encoding="utf-8")
-    assert "requireSession" in source
-    # Safe GET: session only — must not demand CSRF.
+    # Public read browse — optional session; mutations stay gated elsewhere.
+    assert "optionalSession" in source
     assert "requireSessionAndCsrf" not in source
     assert "queryMarketBrowse" in source
     assert "INNER JOIN LATERAL" in browse_src
@@ -329,7 +329,7 @@ def test_market_movers_route_static() -> None:
     source = route.read_text(encoding="utf-8")
     browse_src = browse.read_text(encoding="utf-8")
     market_src = market.read_text(encoding="utf-8")
-    assert "requireSession" in source
+    assert "optionalSession" in source
     assert "requireSessionAndCsrf" not in source
     assert "queryMarketBrowse" in source
     assert 'direction === "down" ? "change_pct_asc" : "change_pct"' in source
@@ -438,7 +438,7 @@ def test_market_page_and_nav_browse_link() -> None:
     assert "direction=down" in market_src
     assert "Top movers" in market_src
     assert "NfaInline" in market_src
-    assert "requirePageSession" in market_src
+    assert "optionalPageSession" in market_src
     assert "normalizeMarketQuery" in market_src
     assert 'role="search"' in market_src
     assert "maxLength={MAX_MARKET_Q_LENGTH}" in market_src
@@ -511,7 +511,7 @@ def test_market_page_fence_no_screener_or_quote_board() -> None:
     assert 'role="status"' in market_src
     assert "changeDirectionSr" in market_src or "changeDirectionSr" in movers_kit
     assert "MoversBarList" in market_src
-    assert "ChangeBadge" in market_src
+    assert "SectorHeatStrip" in market_src
 
 
 def test_scenarios_dash_stub_page() -> None:
@@ -681,11 +681,11 @@ def test_price_refresh_soft_reloads_from_postgres() -> None:
 
 
 def test_sectors_route_static() -> None:
-    """Wave6: GET /api/v1/sectors reads Postgres sectors; session GET; no cse.lk."""
+    """Wave6: GET /api/v1/sectors reads Postgres sectors; public GET; no cse.lk."""
     route = WEB / "src" / "app" / "api" / "v1" / "sectors" / "route.ts"
     assert route.is_file()
     source = route.read_text(encoding="utf-8")
-    assert "requireSession" in source
+    assert "optionalSession" in source
     assert "requireSessionAndCsrf" not in source
     assert "FROM sectors" in source
     assert "ORDER BY change_pct DESC NULLS LAST" in source
@@ -1223,7 +1223,7 @@ def test_wave_master_plan_kit_wiring() -> None:
     assert "SectorHeatStrip" in overview
     assert "/api/v1/indexes" in overview
     assert "MoversBarList" in market
-    assert "ChangeBadge" in market
+    assert "SectorHeatStrip" in market
     assert "delivery-heading" in health
     assert "retention-heading" in health
     assert "TestFireButton" in alerts

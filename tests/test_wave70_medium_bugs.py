@@ -113,9 +113,14 @@ def test_require_page_session_cookie_typeof_guard() -> None:
     source = (WEB / "src" / "lib" / "auth" / "page-session.ts").read_text(
         encoding="utf-8"
     )
+    # Soft session helper owns the typeof + secret guard; requirePageSession
+    # reuses it and still typeof-guards the expired redirect.
+    opt = source.split("export async function optionalPageSession")[1].split(
+        "export async function requirePageSession"
+    )[0]
+    assert 'typeof raw === "string" && raw && cfg.sessionSecret' in opt
     chunk = source.split("export async function requirePageSession")[1]
-    assert 'typeof raw === "string" && raw && cfg.sessionSecret' in chunk
-    assert chunk.count('typeof raw === "string"') >= 2
+    assert 'typeof raw === "string"' in chunk
     assert "LOGIN_EXPIRED_PATH" in chunk
     # Bare truthy cookie (no typeof) must not decide expired redirect alone.
     assert "redirect(raw ? LOGIN_EXPIRED_PATH" not in chunk

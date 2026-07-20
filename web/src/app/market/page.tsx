@@ -474,7 +474,8 @@ export default async function MarketPage({
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               CSE sector index change from the latest poll — soft heat strip,
-              not a terminal heatmap. Use the chips above to filter the table.
+              not a trading terminal board. Use the chips above to filter the
+              table.
             </p>
             <div className="mt-4">
               <SectorHeatStrip items={sectorItems} />
