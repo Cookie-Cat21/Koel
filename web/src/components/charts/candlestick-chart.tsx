@@ -172,10 +172,11 @@ export function CandlestickChart({
     !closeCandles && priceMax < 3 && preFlat / bars.length >= 0.4;
 
   const padL = fitWidth ? (minimal ? 6 : 8) : 14;
-  const padR = fitWidth ? (minimal ? 44 : 52) : 56;
+  const padR = fitWidth ? (minimal ? 46 : 52) : 56;
   // Tighter chrome so the OHLC band owns the frame (especially hero).
-  const padT = fitWidth ? (minimal ? 8 : 10) : 20;
-  const padB = fitWidth ? (minimal ? 22 : 28) : 40;
+  // minimal keeps extra top pad so the high label isn't clipped by the card.
+  const padT = fitWidth ? (minimal ? 16 : 10) : 20;
+  const padB = fitWidth ? (minimal ? 24 : 28) : 40;
 
   const fc =
     showForecast && forecastPrices
@@ -393,11 +394,19 @@ export function CandlestickChart({
                 {labelClash ? null : (
                   <text
                     x={w - 10}
-                    y={gy}
+                    y={
+                      gi === 0
+                        ? gy + (minimal ? 10 : 0)
+                        : gi === gridYs.length - 1
+                          ? gy - (minimal ? 2 : 0)
+                          : gy
+                    }
                     textAnchor="end"
                     dominantBaseline={
                       gi === 0
-                        ? "hanging"
+                        ? minimal
+                          ? "middle"
+                          : "hanging"
                         : gi === gridYs.length - 1
                           ? "auto"
                           : "middle"
