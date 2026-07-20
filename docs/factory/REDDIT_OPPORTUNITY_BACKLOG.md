@@ -79,10 +79,10 @@ Ship or harden these now. Each maps to an existing master-plan ID where noted.
 | **B2** | Stale poller Alert on overview | `/overview` |
 
 **Acceptance**
-- [ ] B1: circuit / CSE error budget visible as tracker dots (kit pattern); no Magic Beam required.
-- [ ] B2: Overview shows dismissible/stale Alert when poller age exceeds threshold during session expectations.
-- [ ] Tokens match Quiverly (no purple-glow); logged in `THIRD_PARTY.md` if new pattern.
-- [ ] Adversarial: not a trading terminal KPI wall.
+- [x] B1: circuit / CSE error budget visible as tracker dots (kit pattern); no Magic Beam required.
+- [x] B2: Overview shows stale Alert when poller age exceeds threshold during session expectations.
+- [x] Tokens match Quiverly (no purple-glow); logged in `THIRD_PARTY.md` if new pattern.
+- [x] Adversarial: not a trading terminal KPI wall.
 
 ### P0-7 — Briefs enable runbook pointer
 

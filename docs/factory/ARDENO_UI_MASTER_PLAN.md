@@ -45,12 +45,12 @@ People dossier + ownership React Flow (hand-rolled).
 
 ### Wave B — Overview / Market / Alerts
 
-| # | Pattern | Route |
-|---|---|---|
-| B1 | Health circuit tracker dots | `/health` |
-| B2 | Stale poller Alert on overview | `/overview` |
-| B3 | History pagination polish | `/alerts/history` |
-| B4 | Optional Magic Beam (CSE→Telegram) | `/health` only |
+| # | Pattern | Source | Target | Status |
+|---|---|---|---|---|
+| B1 | Health circuit tracker dots | Tremor tracker-03 (short) | `/health` | done |
+| B2 | Stale poller Alert on overview | in-tree `AlertBanner` | `/overview` | done |
+| B3 | History pagination polish | HyperUI pagination | `/alerts/history` | done |
+| B4 | Optional Magic Beam (CSE→Telegram) | Magic UI Animated Beam | `/health` only | skip |
 
 ### Wave C — deferred
 
@@ -90,4 +90,4 @@ Ten loops completed (2026-07-17):
 9. Across years → `EventTimeline`
 10. a11y (focus rings, `aria-pressed`, banner `role=status`) + KPI density
 
-Wave B/C stay planned unless a later pass picks them up.
+Wave B1–B3 done (2026-07-20); B4 Magic Beam skipped. Wave C stays deferred.

@@ -1,9 +1,12 @@
 import Link from "next/link";
 
+import { Activity, Radio, Timer } from "lucide-react";
+
 import { AppNav } from "@/components/app-nav";
 import { XdWeekStrip } from "@/components/dividends/xd-week-strip";
 import { TapePulseStrip } from "@/components/tape/tape-pulse-strip";
 import { EmptyState } from "@/components/empty-state";
+import { AlertBanner } from "@/components/kit/alert-banner";
 import { CakeCherryBanner } from "@/components/kit/cake-cherry-banner";
 import { ChangeBadge } from "@/components/kit/change-badge";
 import {
@@ -28,8 +31,13 @@ import { MarketSessionChip } from "@/components/market-session-chip";
 import { NfaFooter } from "@/components/nfa-footer";
 import { NfaInline } from "@/components/nfa-inline";
 import { PageHeader } from "@/components/page-header";
-import { PriceRefresh } from "@/components/price-refresh";
+import {
+  PRICE_DOWN_MS,
+  PRICE_STALE_MS,
+  PriceRefresh,
+} from "@/components/price-refresh";
 import { Button } from "@/components/ui/button";
+import { isMarketSessionOpen } from "@/lib/market-session";
 import {
   deltaVs,
   headlineDay,
@@ -457,6 +465,43 @@ export default async function OverviewPage() {
       ? `${fires[0].symbol} · ${deliveryLabel(fires[0].delivery_status)}`
       : "No fires yet";
 
+  /** Same thresholds as PriceRefresh — banner only while session is open. */
+  const marketOpen = isMarketSessionOpen();
+  const snapshotAgeMs = (() => {
+    if (!freshestTs) return null;
+    const t = Date.parse(freshestTs);
+    if (Number.isNaN(t)) return null;
+    return Math.max(0, Date.now() - t);
+  })();
+  const pollerBanner =
+    marketOpen && !freshestTs
+      ? ({
+          tone: "warning" as const,
+          icon: Radio,
+          title: "No poller snapshots yet",
+          description:
+            "Overview has no watchlist or index tick age to show. During market hours the poller should write price_snapshots — check /health and that symbols are watched. Not financial advice.",
+        } as const)
+      : marketOpen &&
+          snapshotAgeMs != null &&
+          snapshotAgeMs >= PRICE_DOWN_MS
+        ? ({
+            tone: "danger" as const,
+            icon: Activity,
+            title: "Poller snapshot looks unreachable",
+            description: `Freshest watchlist / index tick is ${ageLabel(freshestTs)}. During an open CSE session that usually means the poller is paused, HEALTH_URL is dark, or nothing watched is being written. See /health. Not financial advice.`,
+          } as const)
+        : marketOpen &&
+            snapshotAgeMs != null &&
+            snapshotAgeMs >= PRICE_STALE_MS
+          ? ({
+              tone: "warning" as const,
+              icon: Timer,
+              title: "Price snapshot looks stale",
+              description: `Freshest tick is ${ageLabel(freshestTs)} while the market session is open. Prices and armed alerts may lag until the next poller write. Not financial advice.`,
+            } as const)
+          : null;
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppNav active="/overview" />
@@ -484,6 +529,18 @@ export default async function OverviewPage() {
         />
 
         <CakeCherryBanner />
+
+        {pollerBanner ? (
+          <div className="mt-6">
+            <AlertBanner
+              role="alert"
+              tone={pollerBanner.tone}
+              icon={pollerBanner.icon}
+              title={pollerBanner.title}
+              description={pollerBanner.description}
+            />
+          </div>
+        ) : null}
 
         <section className="mt-6" aria-labelledby="overview-indexes-heading">
           <h2

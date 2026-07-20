@@ -11,8 +11,10 @@ export const MIN_PRICE_REFRESH_MS = 5_000;
 export const DEFAULT_PRICE_REFRESH_MS = 15_000;
 export const MAX_PRICE_REFRESH_MS = 120_000;
 
-const STALE_MS = 3 * 60_000;
-const DOWN_MS = 15 * 60_000;
+/** Snapshot age → “stale” chip / overview banner (market open only). */
+export const PRICE_STALE_MS = 3 * 60_000;
+/** Snapshot age → “down” chip / stronger overview banner. */
+export const PRICE_DOWN_MS = 15 * 60_000;
 
 function clampInterval(ms: number): number {
   if (!Number.isFinite(ms)) return DEFAULT_PRICE_REFRESH_MS;
@@ -83,13 +85,13 @@ export function PriceRefresh({
     if (!Number.isNaN(t)) {
       const ageMs = Math.max(0, now - t);
       const ageSec = Math.floor(ageMs / 1000);
-      if (ageMs >= DOWN_MS) {
+      if (ageMs >= PRICE_DOWN_MS) {
         tone = "down";
         label =
           ageSec >= 3600
             ? `Stale ${Math.floor(ageSec / 3600)}h`
             : `Stale ${Math.floor(ageSec / 60)}m`;
-      } else if (ageMs >= STALE_MS) {
+      } else if (ageMs >= PRICE_STALE_MS) {
         tone = "stale";
         label = `Updated ${Math.floor(ageSec / 60)}m ago`;
       } else if (ageSec < 5) {

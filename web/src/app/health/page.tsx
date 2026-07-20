@@ -13,6 +13,11 @@ import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
 import { AlertBanner } from "@/components/kit/alert-banner";
+import {
+  CircuitTracker,
+  normalizeCircuitTrackerState,
+  type CircuitTrackerItem,
+} from "@/components/kit/circuit-tracker";
 import { StatCard } from "@/components/kit/stat-card";
 import { LiveIndicator } from "@/components/live-indicator";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -1039,19 +1044,23 @@ export default async function HealthPage() {
             )}
 
             {circuits != null && Object.keys(circuits).length > 0 && (
-              <section className="mt-10 border-t border-border/60 pt-6">
-                <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+              <section
+                className="mt-10 border-t border-border/60 pt-6"
+                aria-labelledby="circuits-heading"
+              >
+                <h2
+                  id="circuits-heading"
+                  className="text-sm font-medium tracking-wide text-muted-foreground uppercase"
+                >
                   Circuits
                 </h2>
-                <dl className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  {Object.entries(circuits).map(([name, snap]) => (
-                    <Row
-                      key={name}
-                      label={name}
-                      value={`${snap?.state ?? "—"} (failures ${String(snap?.failures ?? "—")})`}
-                    />
-                  ))}
-                </dl>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  Per-endpoint CSE breakers from the poller — tracker dots are
+                  an ops error-budget skim, not a live tape.
+                </p>
+                <div className="mt-4">
+                  <CircuitTracker items={circuitTrackerItems(circuits)} />
+                </div>
               </section>
             )}
 
@@ -1352,6 +1361,19 @@ function boolLabel(v: boolean | undefined): string {
   if (v === true) return "yes";
   if (v === false) return "no";
   return "—";
+}
+
+/** Map sanitized poller circuits → tracker rows (stable name sort). */
+function circuitTrackerItems(
+  circuits: NonNullable<NonNullable<HealthPayload["poller"]>["circuits"]>,
+): CircuitTrackerItem[] {
+  return Object.entries(circuits)
+    .map(([name, snap]) => ({
+      name,
+      state: normalizeCircuitTrackerState(snap?.state),
+      ...(typeof snap?.failures === "number" ? { failures: snap.failures } : {}),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 type TimestampAge = {

@@ -86,6 +86,7 @@ dev-only.
 | Alert banner | Tremor / Watermelon thin alert | Pattern | 2026-07-15 | `AlertBanner` — ops + people snapshot honesty |
 | Movers bar list | Tremor bar-list | Apache-2.0 pattern | 2026-07-15 | `MoversBarList` — market % movers only |
 | Disclosure timeline | HyperUI timeline | MIT pattern | 2026-07-15 | `DisclosureTimeline` — symbol filings |
+| Circuit tracker | [Tremor Tracker](https://tremor.so/docs/ui/tracker) (tracker-03 short) | Apache-2.0 pattern | 2026-07-20 | `CircuitTracker` — `/health` CSE breaker dots; koel oklch; adapted from in-tree `AppetiteTracker` — **no** Tremor npm |
 
 **Rejected (do not add):** React Bits (Commons Clause), DaisyUI npm plugin, 21st Financial Dashboard packs, Cult Pro/shaders, Apple Cards Carousel on signed-in dash. See `docs/factory/ARDENO_UI_MASTER_PLAN.md`.
 
