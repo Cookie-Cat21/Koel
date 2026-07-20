@@ -5,6 +5,10 @@
 import assert from "node:assert/strict";
 
 import {
+  adjustBarsForSplits,
+  adjustFactor,
+} from "./src/lib/api/corporate-actions.ts";
+import {
   closesFromBars,
   computePeriodReturns,
   returnPctAtCalendarDays,
@@ -126,7 +130,48 @@ function testFundamentalsHonesty() {
   assert.ok(ok.roe_pct != null && Math.abs(ok.roe_pct - 20) < 1e-9);
 }
 
+function testSplitAdjust() {
+  assert.ok(Math.abs(adjustFactor(1, 3) - 1 / 3) < 1e-12);
+  const bars = [
+    {
+      trade_date: "2026-04-08",
+      open: 128,
+      high: 130,
+      low: 126,
+      close: 127.75,
+      volume: 1000,
+    },
+    {
+      trade_date: "2026-04-09",
+      open: 46,
+      high: 48,
+      low: 45,
+      close: 46.3,
+      volume: 2000,
+    },
+  ];
+  const adjusted = adjustBarsForSplits(bars, [
+    {
+      effective_date: "2026-04-09",
+      kind: "split",
+      ratio_from: 1,
+      ratio_to: 3,
+    },
+  ]);
+  assert.ok(Math.abs(adjusted[0]!.close - 127.75 / 3) < 1e-9);
+  assert.equal(adjusted[1]!.close, 46.3);
+  // 1Y-style return across the cliff should not be ~−64% after adjust.
+  const rets = computePeriodReturns(
+    closesFromBars(adjusted),
+    adjusted,
+  );
+  // Only 2 points — short horizons null; just assert continuity of closes.
+  assert.ok(adjusted[0]!.close < 50);
+  assert.ok(rets["1W"] == null);
+}
+
 testPeriodReturns();
 testTechLabels();
 testFundamentalsHonesty();
+testSplitAdjust();
 console.log("WEB_PERIOD_TECH_UNIT_OK");

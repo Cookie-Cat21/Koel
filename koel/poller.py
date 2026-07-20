@@ -61,6 +61,7 @@ from koel.rules import (
     evaluate_notice_rules,
     evaluate_order_book_rules,
     evaluate_price_rules,
+    evaluate_share_split_disclosure_rules,
     evaluate_xd_digest_rules,
     evaluate_xd_soon_rules,
     filter_fireable,
@@ -747,6 +748,21 @@ class Poller:
                     event_key=event.event_key,
                 )
                 fired.append(event)
+                # Persist price-ratio corporate actions for chart adjust.
+                if getattr(event.type, "value", event.type) == "share_split":
+                    try:
+                        await self.storage.upsert_corporate_action_from_price(
+                            symbol=stored.symbol,
+                            prev_price=previous.price,
+                            curr_price=stored.price,
+                            as_of=stored.ts,
+                        )
+                    except Exception as exc:
+                        log.warning(
+                            "corporate_action_price_upsert_failed",
+                            symbol=stored.symbol,
+                            error=str(exc),
+                        )
         return fired
 
     async def _poll_disclosures(self) -> tuple[list[AlertEvent], bool]:
@@ -759,9 +775,15 @@ class Poller:
         disclosure_rules = [
             r for r in rules if getattr(r.type, "value", r.type) == "disclosure"
         ]
-        # Only hit CSE announcements for symbols with active disclosure rules
-        # (price-only watchlist symbols skip this leg — rate-limit priority).
-        disclosure_symbols = sorted({r.symbol for r in disclosure_rules})
+        share_split_rules = [
+            r for r in rules if getattr(r.type, "value", r.type) == "share_split"
+        ]
+        # Hit CSE announcements for disclosure rules and share_split rules
+        # (price-only watchlist symbols still skip — rate-limit priority).
+        disclosure_symbols = sorted(
+            {r.symbol for r in disclosure_rules}
+            | {r.symbol for r in share_split_rules}
+        )
         if not disclosure_symbols:
             return [], True
 
@@ -833,6 +855,17 @@ class Poller:
                     claimed = await self._claim_and_send(event)
                     if claimed:
                         fired.append(event)
+                split_rules = [
+                    r for r in share_split_rules if r.symbol == symbol
+                ]
+                split_events = evaluate_share_split_disclosure_rules(
+                    disclosure=stored,
+                    rules=split_rules,
+                )
+                for event in filter_fireable(split_events):
+                    claimed = await self._claim_and_send(event)
+                    if claimed:
+                        fired.append(event)
                 # CSE dividend calendar — parse title/category into dividend_events.
                 try:
                     await self.storage.upsert_dividend_event_from_disclosure(
@@ -846,6 +879,21 @@ class Poller:
                 except Exception as exc:
                     log.warning(
                         "dividend_event_upsert_failed",
+                        symbol=symbol,
+                        error=str(exc),
+                    )
+                # Share split / consolidation calendar for chart adjust + alerts.
+                try:
+                    await self.storage.upsert_corporate_action_from_disclosure(
+                        symbol=stored.symbol,
+                        disclosure_id=stored.id,
+                        title=stored.title,
+                        category=stored.category,
+                        published_at=stored.published_at,
+                    )
+                except Exception as exc:
+                    log.warning(
+                        "corporate_action_upsert_failed",
                         symbol=symbol,
                         error=str(exc),
                     )

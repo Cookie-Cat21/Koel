@@ -508,6 +508,7 @@ export default async function SymbolDetailPage({
   const snapsFailed = !snapRes.ok;
 
   const initialDailyBars: DailyBarPoint[] = [];
+  let dailyBarsSplitAdjusted = false;
   if (dailyBarsRes?.ok) {
     try {
       const body: unknown = await dailyBarsRes.json();
@@ -518,6 +519,14 @@ export default async function SymbolDetailPage({
         Array.isArray((body as { bars?: unknown }).bars)
           ? (body as { bars: unknown[] }).bars
           : [];
+      if (
+        body != null &&
+        typeof body === "object" &&
+        !Array.isArray(body) &&
+        (body as { adjusted?: unknown }).adjusted === true
+      ) {
+        dailyBarsSplitAdjusted = true;
+      }
       for (const row of raw) {
         if (row == null || typeof row !== "object" || Array.isArray(row)) {
           continue;
@@ -815,7 +824,10 @@ export default async function SymbolDetailPage({
             ) : null}
           </dl>
         ) : null}
-        <PeriodReturnsStrip returns={periodReturns} />
+        <PeriodReturnsStrip
+          returns={periodReturns}
+          splitAdjusted={dailyBarsSplitAdjusted}
+        />
         <TechLabelsStrip labels={techLabels} />
         <FilingSnapshotStrip
           epsBasic={filingMetrics?.eps_basic ?? null}

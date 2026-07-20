@@ -354,6 +354,7 @@ def main(argv: list[str] | None = None) -> None:
             "financials-backfill",
             "aspi-backfill",
             "appetite-backfill",
+            "corporate-actions-backfill",
             "ml-score-outcomes",
             "ml-backfill-outcomes",
             "ml-loop-nightly",
@@ -371,6 +372,7 @@ def main(argv: list[str] | None = None) -> None:
             "score-signals | eval-signals | "
             "sector-backfill | notices-backfill | disclosures-backfill | "
             "financials-backfill | aspi-backfill | appetite-backfill | "
+            "corporate-actions-backfill | "
             "market-summary-backfill | macro-tick | "
             "ml-experiment | "
             "ml-forecast | ml-transfer | ml-harden | ml-diagnose | "
@@ -387,7 +389,8 @@ def main(argv: list[str] | None = None) -> None:
             "tick: ignore market hours; "
             "digest: ignore 14:30–16:00 SLT window; "
             "path-backfill/intraday-backfill/hybrid-backfill/"
-            "sector-backfill/notices-backfill/directors-backfill: "
+            "sector-backfill/notices-backfill/directors-backfill/"
+            "corporate-actions-backfill: "
             "run even if flag off"
         ),
     )
@@ -501,6 +504,7 @@ def main(argv: list[str] | None = None) -> None:
         "financials-backfill",
         "aspi-backfill",
         "appetite-backfill",
+        "corporate-actions-backfill",
         "ml-loop-nightly",
         "ml-loop-retrain",
         "ml-loop-research",
@@ -510,7 +514,8 @@ def main(argv: list[str] | None = None) -> None:
             "--force is only valid for tick, digest, path-backfill, "
             "intraday-backfill, hybrid-backfill, sector-backfill, notices-backfill, "
             "directors-backfill, disclosures-backfill, financials-backfill, "
-            "aspi-backfill, appetite-backfill, ml-forecast, ml-hpe, "
+            "aspi-backfill, appetite-backfill, corporate-actions-backfill, "
+            "ml-forecast, ml-hpe, "
             "ml-forecast-unified, ml-loop-nightly, ml-loop-retrain, "
             "ml-loop-research, or ml-ltr-ship"
         )
@@ -1685,6 +1690,38 @@ def main(argv: list[str] | None = None) -> None:
                 await storage.close()
 
         asyncio.run(_appetite_bf())
+        return
+
+    if args.command == "corporate-actions-backfill":
+        configure_logging()
+        settings = Settings.from_env(require_token=False)
+        # Default argparse --limit 20 is a smoke size; pass a large limit for full scan.
+        limit = _cli_limit(args.limit)
+
+        async def _ca_bf() -> None:
+            from koel.corporate_actions_backfill import run_corporate_actions_backfill
+
+            storage = Storage(settings.database_url)
+            await storage.open()
+            try:
+                result = await run_corporate_actions_backfill(
+                    storage=storage,
+                    limit=limit,
+                    force=args.force,
+                )
+                print(
+                    "corporate-actions-backfill: "
+                    f"disclosures_scanned={result.disclosures_scanned} "
+                    f"disclosures_upserted={result.disclosures_upserted} "
+                    f"symbols_scanned={result.symbols_scanned} "
+                    f"price_hits={result.price_hits} "
+                    f"price_upserted={result.price_upserted} "
+                    f"errors={result.errors}"
+                )
+            finally:
+                await storage.close()
+
+        asyncio.run(_ca_bf())
         return
 
     if args.command == "ml-loop-research":

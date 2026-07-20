@@ -67,6 +67,7 @@ export const ALERT_TYPES = [
   "oil_move",
   "xd_soon",
   "xd_digest",
+  "share_split",
 ] as const;
 
 /** Alert types that require a positive numeric threshold (parity Python). */
@@ -105,6 +106,7 @@ export const NOTICE_ALERT_TYPES = [
   "buy_in",
   "non_compliance",
   "halt",
+  "share_split",
 ] as const;
 
 /** Market-wide regime alerts — symbol forced to MARKET (parity bot). */

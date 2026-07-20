@@ -161,6 +161,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
           "Expand ranges opens a dialog with session-depth windows (about 1 day of ticks, or ~22 / 66 / 132 / 260 sessions for 1M–1Y). Default SSR paint is often 3M. These are research windows over stored Postgres path data — not a brokerage chart package.",
       },
       {
+        question: "Are charts split-adjusted?",
+        answer:
+          "When koel has a stored corporate action (CSE subdivision/consolidation filing or a detected near-integer session price cliff), daily candles and period returns use split-adjusted closes so a 1:3 subdivision does not look like a −67% crash. Raw CSE closes remain in Postgres; the API can return them with `?adjusted=0`.\n\nAdjustment is research-only and may miss silent consolidations until a filing or price cliff is stored. Last trade on the quote card stays the live unadjusted board price.",
+      },
+      {
         question: "When is 1D Intraday vs Daily?",
         answer:
           "1D prefers today’s Colombo ticks when there are enough prints to build candles (koel looks for a richer tick set, otherwise shows “Few ticks · showing recent daily”). A Live badge can poll ticks every ~20s when the session looks open and the mode is intraday.",
@@ -202,7 +207,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "How are 1W / 1M / 3M / 1Y returns calculated?",
         answer:
-          "Percent change of daily closes vs about 5 / 22 / 66 sessions ago. 1Y prefers ~365 calendar days (with slack) when trade dates exist, else about 220 sessions — CSE public path history is roughly one year, so koel does not demand a full NYSE-style 252-session year.\n\nExample: close 100 → 110 over 22 sessions → 1M +10%. Null means history is too short. Research labels only.",
+          "Percent change of daily closes vs about 5 / 22 / 66 sessions ago. 1Y prefers ~365 calendar days (with slack) when trade dates exist, else about 220 sessions — CSE public path history is roughly one year, so koel does not demand a full NYSE-style 252-session year.\n\nWhen corporate actions are known, the company page uses the same split-adjusted closes as the chart (so a share subdivision does not invent a huge negative 1Y). Example: close 100 → 110 over 22 sessions → 1M +10%. Null means history is too short. Research labels only.",
       },
       {
         question: "What is SMA50?",
@@ -613,7 +618,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What do the threshold fields mean on the create form?",
         answer:
-          "Labels change with type:\n\n• Price — LKR level for above/below crosses\n• Percent — daily |%| move, gap %, or YoY %\n• Multiplier — volume spike / up / down / crossing (e.g. 2 → ≥ 2× recent average)\n• Shares — big print size\n• Appetite score ≥ — MARKET minimum 0–100 score\n• Foreign net (LKR) — absolute foreign_net magnitude\n• Days — XD soon / digest horizon\n\nBuy-in, non-compliance, halt, and plain disclosure need no numeric threshold (disclosure may take an optional category).",
+          "Labels change with type:\n\n• Price — LKR level for above/below crosses\n• Percent — daily |%| move, gap %, or YoY %\n• Multiplier — volume spike / up / down / crossing (e.g. 2 → ≥ 2× recent average)\n• Shares — big print size\n• Appetite score ≥ — MARKET minimum 0–100 score\n• Foreign net (LKR) — absolute foreign_net magnitude\n• Days — XD soon / digest horizon\n\nBuy-in, non-compliance, halt, share split / consolidation, and plain disclosure need no numeric threshold (disclosure may take an optional category).",
       },
       {
         question: "How does the disclosure Category field work?",
@@ -666,6 +671,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         question: "Gap",
         answer:
           "Fires when |open − previous_close| / previous_close × 100 reaches your percent.\n\nExample: gap 2 — open is at least 2% away from prior close.",
+      },
+      {
+        question: "Share split / consolidation",
+        answer:
+          "No threshold. Fires when koel sees a near-integer session price cliff (about ×2 / ×3 / ×4 / ×5 / ×8 / ×10 forward or reverse vs the prior koel snapshot — not the exchange previous-close field, which is often already reset on subdivision day) or when a CSE filing matches subdivision / share-split / consolidation wording.\n\nOne price-path fire per Colombo day; disclosure fires are keyed per filing. Example: `/alert JINS.N0000 split`. Heuristic — confirm against the CSE announcement. Watching alone still does not ping.",
       },
       {
         question: "Buy-in, non-compliance, halt",
@@ -894,7 +904,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Core commands",
         answer:
-          "/start — register and short explainer\n/watch SYMBOL — add to watchlist\n/unwatch SYMBOL — remove\n/alert SYMBOL above|below PRICE — price cross\n/alert SYMBOL move PERCENT — daily |%| move\n/alert SYMBOL disclosure — new filings\n/myalerts — list rules\n/mywatchlist — list watchlist\n\nMore activity and notice types share the same /alert family; the bot /help lists the full syntax. Dash and bot share one rule store.",
+          "/start — register and short explainer\n/watch SYMBOL — add to watchlist\n/unwatch SYMBOL — remove\n/alert SYMBOL above|below PRICE — price cross\n/alert SYMBOL move PERCENT — daily |%| move\n/alert SYMBOL disclosure — new filings\n/alert SYMBOL split — share split / consolidation\n/myalerts — list rules\n/mywatchlist — list watchlist\n\nMore activity and notice types share the same /alert family; the bot /help lists the full syntax. Dash and bot share one rule store.",
       },
       {
         question: "Will every dash alert push to Telegram?",
