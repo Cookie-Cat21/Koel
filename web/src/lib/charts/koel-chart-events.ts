@@ -112,6 +112,35 @@ export function buildDisclosureMarkers(
   return out;
 }
 
+/** Short chart pin labels — LWC clips long marker text mid-word ("daily r"). */
+function fireMarkerLabel(type: string | null | undefined): string {
+  const t = (type || "").toLowerCase();
+  switch (t) {
+    case "daily_move":
+      return "Fire · ±%";
+    case "price_above":
+      return "Fire · above";
+    case "price_below":
+      return "Fire · below";
+    case "disclosure":
+      return "Fire · filing";
+    case "volume_spike":
+    case "volume_up":
+    case "volume_down":
+      return "Fire · vol";
+    case "ref_move":
+      return "Fire · ref%";
+    case "high_52w":
+      return "Fire · 52w↑";
+    case "low_52w":
+      return "Fire · 52w↓";
+    case "ma_cross":
+      return "Fire · MA";
+    default:
+      return "Fire";
+  }
+}
+
 export function buildFireMarkers(
   events: readonly ChartAlertFireEvent[],
   barDates: readonly string[],
@@ -127,11 +156,10 @@ export function buildFireMarkers(
     const key = `f:${time}:${ev.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const typ = (ev.type || "alert").replace(/_/g, " ");
     out.push({
       time,
       kind: "fire",
-      text: truncateLabel(`✉ ${typ}`),
+      text: fireMarkerLabel(ev.type),
       color: "#7c3aed",
       shape: "arrowUp",
       position: "belowBar",
