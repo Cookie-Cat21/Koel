@@ -8,11 +8,11 @@ import json
 import math
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime, time
+from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
 from koel.adapters.cse import CSEClient
-from koel.domain import OrderBookSnapshot, PriceSnapshot
+from koel.domain import DailyBar, OrderBookSnapshot, PriceSnapshot
 from koel.storage import Storage
 
 COLOMBO = ZoneInfo("Asia/Colombo")
@@ -28,6 +28,8 @@ class LiveCaptureResult:
     index_rows: int
     order_book_rows: int
     daily_summary_rows: int
+    daily_bars_written: int
+    hybrid_bars_written: int
     partial_session: bool
 
 
@@ -75,6 +77,34 @@ def public_book_imbalance(book: OrderBookSnapshot) -> float | None:
     return (bids - asks) / denominator
 
 
+def board_to_daily_bars(
+    board: list[PriceSnapshot],
+    *,
+    trade_date: datetime | date,
+) -> list[DailyBar]:
+    """Convert the post-close ordinary-share board into CSE daily bars."""
+    session_date = (
+        trade_date.date() if isinstance(trade_date, datetime) else trade_date
+    )
+    return [
+        DailyBar(
+            symbol=snapshot.symbol.strip().upper(),
+            trade_date=session_date,
+            price=snapshot.price,
+            high=snapshot.high,
+            low=snapshot.low,
+            open=snapshot.open,
+            volume=snapshot.volume,
+            source_period=5,
+            bar_ts=snapshot.ts.astimezone(UTC),
+        )
+        for snapshot in board
+        if snapshot.symbol.strip().upper().endswith(ORDINARY_SUFFIXES)
+        and snapshot.price > 0
+        and math.isfinite(snapshot.price)
+    ]
+
+
 async def capture_live_factors(
     *,
     storage: Storage,
@@ -110,6 +140,30 @@ async def capture_live_factors(
         summary = await cse.fetch_daily_market_summary()
         summary_rows = await storage.upsert_market_daily_summary(summary)
 
+    daily_bars_written = 0
+    hybrid_bars_written = 0
+    if not partial_session:
+        trade_date = datetime.now(COLOMBO).date()
+        bars = board_to_daily_bars(board, trade_date=trade_date)
+        daily_bars_written = await storage.persist_daily_bars(bars)
+        hybrid_bars_written = await storage.persist_hybrid_daily_bars(
+            [
+                {
+                    "symbol": bar.symbol,
+                    "trade_date": bar.trade_date,
+                    "price": bar.price,
+                    "high": bar.high,
+                    "low": bar.low,
+                    "open": bar.open,
+                    "volume": bar.volume,
+                    "source": "cse",
+                    "yahoo_ticker": None,
+                    "bar_ts": bar.bar_ts,
+                }
+                for bar in bars
+            ]
+        )
+
     return LiveCaptureResult(
         captured_at=datetime.now(COLOMBO).isoformat(),
         board_rows=len(board),
@@ -118,6 +172,8 @@ async def capture_live_factors(
         index_rows=len(indexes),
         order_book_rows=book_rows,
         daily_summary_rows=summary_rows,
+        daily_bars_written=daily_bars_written,
+        hybrid_bars_written=hybrid_bars_written,
         partial_session=partial_session,
     )
 
