@@ -17,6 +17,8 @@ Use a scoped `ML_SHADOW_DATABASE_URL` GitHub secret. It needs the existing
 application role's read/write access to market capture tables,
 `daily_bars`, `hybrid_daily_bars`, and `forecast_outcomes`. The read-only
 `ML_DATABASE_URL` used by distributed training is intentionally separate.
+Until the scoped role is configured, the workflow falls back to the existing
+`DATABASE_URL` application secret so prospective capture does not stop.
 
 ## Scheduled workflow
 

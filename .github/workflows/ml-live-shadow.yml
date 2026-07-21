@@ -34,7 +34,7 @@ jobs:
 
       - name: Require scoped shadow-writer database secret
         env:
-          ML_SHADOW_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+          ML_SHADOW_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           if [ -z "${ML_SHADOW_DATABASE_URL}" ]; then
             echo "::error::ML_SHADOW_DATABASE_URL is not set"
@@ -43,7 +43,7 @@ jobs:
 
       - name: Persist final board and live factors
         env:
-          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           mkdir -p artifacts/ml-live-shadow
           python -m koel.ml.live_capture \
@@ -54,7 +54,7 @@ jobs:
 
       - name: Freeze post-close training snapshot
         env:
-          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           python -m koel.ml.snapshot export \
             --dataset hybrid \
@@ -63,7 +63,7 @@ jobs:
 
       - name: Emit prospective shadow rows only
         env:
-          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           python -m koel.ml.live_shadow \
             --snapshot artifacts/ml-live-shadow/snapshot \
@@ -73,14 +73,14 @@ jobs:
 
       - name: Score matured prior shadow outcomes
         env:
-          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           python -m koel ml-score-outcomes \
             | tee artifacts/ml-live-shadow/scoring.log
 
       - name: Evaluate prospective standards
         env:
-          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           python -m koel.ml.live_shadow_report \
             | tee artifacts/ml-live-shadow/standards.json
