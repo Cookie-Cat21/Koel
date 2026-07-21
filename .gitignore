@@ -31,6 +31,8 @@ Thumbs.db
 # local probe artifacts
 *.bin
 /artifacts/
+/mlruns/
+/workspace/
 
 # Large offline transfer-learning panels (Yahoo/Kaggle downloads)
 /data/

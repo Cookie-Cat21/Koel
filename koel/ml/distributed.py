@@ -36,6 +36,8 @@ ALLOWED_MODELS = (
     "xgb_two_stage",
     "qlib_lgb_native",
     "double_ensemble_native",
+    "qlib_lgb_exact",
+    "qlib_double_ensemble_exact",
 )
 PARTITIONS = ("calibration", "test")
 TARGETS = ("absolute", "relative")

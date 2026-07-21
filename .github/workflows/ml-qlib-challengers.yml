@@ -14,7 +14,7 @@ concurrency:
 jobs:
   qlib-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +97,47 @@ jobs:
               "last_session": str(calendar[-1]) if len(calendar) else None,
           }, sort_keys=True))
           PY
+
+      - name: Run exact Qlib challengers
+        env:
+          QLIB_PROVIDER_URI: artifacts/ml-qlib/provider
+          MLFLOW_ALLOW_FILE_STORE: "true"
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ml-qlib/shards
+          for fold in 0 1 2; do
+            for model in qlib_lgb_exact qlib_double_ensemble_exact; do
+              python -m koel.ml.distributed_worker \
+                --snapshot artifacts/ml-qlib/snapshot \
+                --output "artifacts/ml-qlib/shards/rel-h1-f0${fold}-${model}.predictions.jsonl.gz" \
+                --run-id "qlib-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+                --shard-id "rel-h1-f0${fold}-${model}" \
+                --model "$model" \
+                --outer-fold "$fold" \
+                --outer-folds 3 \
+                --horizon 1 \
+                --seeds 0 \
+                --target relative \
+                --evaluation-domain cse \
+                --max-flat-fraction 0.40
+            done
+          done
+
+      - name: Aggregate exact Qlib challenger report
+        run: |
+          set -euo pipefail
+          python -m koel.ml.distributed aggregate \
+            --input-dir artifacts/ml-qlib/shards \
+            --models qlib_lgb_exact,qlib_double_ensemble_exact \
+            --ensemble-mode calibration_select \
+            --target-precision 0.90 \
+            --min-precision-lcb 0.90 \
+            --min-coverage 0.01 \
+            --min-emits 500 \
+            --min-symbols 80 \
+            --output-json artifacts/ml-qlib/result.json \
+            --output-markdown artifacts/ml-qlib/result.md
+          cat artifacts/ml-qlib/result.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Qlib parity artifact
         if: always()

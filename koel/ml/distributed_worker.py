@@ -265,6 +265,19 @@ def _fit_predict_one(
         from koel.ml.challengers import predict_native_double_ensemble
 
         return predict_native_double_ensemble(train, test, seed=seed)
+    if model in {"qlib_lgb_exact", "qlib_double_ensemble_exact"}:
+        from koel.ml.qlib_exact import predict_exact_qlib
+
+        provider_uri = os.environ.get("QLIB_PROVIDER_URI")
+        if not provider_uri:
+            raise ValueError("QLIB_PROVIDER_URI is required for exact Qlib models")
+        return predict_exact_qlib(
+            train,
+            test,
+            model_name=model,
+            provider_uri=provider_uri,
+            seed=seed,
+        )
     if model.endswith("_two_stage"):
         return _fit_predict_two_stage(
             model=model,
