@@ -25,6 +25,7 @@ from koel.ml.iterate import _enrich_cross_section
 from koel.ml.research_features import (
     ResearchBarMetadata,
     build_research_bar_metadata,
+    enrich_market_context,
     enrich_research_quality,
     sample_domain,
 )
@@ -381,6 +382,7 @@ def run_worker(
     )
     research = enrich_research_quality(base, metadata)
     research = enrich_fundamentals(research, loaded.fundamentals)
+    research = enrich_market_context(research)
     if spec.target == "relative":
         research = _demean_by_day(research)
     samples = _enrich_cross_section(research)

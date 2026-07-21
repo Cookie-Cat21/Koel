@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 
+import pytest
+
 from koel.domain import DailyBar
 from koel.ml.dataset import Sample
 from koel.ml.research_features import (
     RESEARCH_FEATURE_NAMES,
     build_research_bar_metadata,
+    enrich_market_context,
     enrich_research_quality,
     sample_domain,
 )
@@ -55,6 +58,8 @@ def test_research_metadata_tracks_source_without_future_leakage() -> None:
     assert first_cse.features[4] == 1.0
     assert latest.features[1] == 1.0
     assert latest.features[5] == 1.0
+    assert len(latest.features) == len(RESEARCH_FEATURE_NAMES)
+    assert latest.features[9] > 0
 
     poisoned = list(bars)
     poisoned[-1] = poisoned[-1].model_copy(update={"source_period": 0, "open": 99.0})
@@ -96,3 +101,19 @@ def test_research_enrichment_preserves_target_and_domain() -> None:
         target_date=bars[50].trade_date,
     )
     assert sample_domain(crossing, metadata) is None
+
+
+def test_market_context_uses_current_session_features() -> None:
+    day = date(2025, 2, 1)
+    samples = [
+        Sample("A", day, (0.10, 0.20), 0.01, 1.0, 1, day + timedelta(days=1)),
+        Sample("B", day, (-0.05, -0.10), -0.01, -1.0, 1, day + timedelta(days=1)),
+    ]
+    enriched = enrich_market_context(samples)
+    for sample in enriched:
+        context = sample.x[-5:]
+        assert context[0] == pytest.approx(0.025)
+        assert context[1] == pytest.approx(0.025)
+        assert context[2] == 0.5
+        assert context[3] == pytest.approx(0.075)
+        assert context[4] == pytest.approx(0.05)
