@@ -9,6 +9,8 @@
 in §1–§2; sources inline). International product deep-dive (Tijori / Stock Alarm /
 Robinhood / Groww / TradingView / Aktai → fence-legal koel backlog):
 [INTL_STOCK_PRODUCT_RESEARCH.md](INTL_STOCK_PRODUCT_RESEARCH.md).
+Official CSE company-page UI vs koel symbol page (gaps + fence-legal backlog):
+[CSE_COMPANY_PAGE_VS_KOEL.md](CSE_COMPANY_PAGE_VS_KOEL.md).
 
 ### Horizon 1 execution checklist (code)
 
