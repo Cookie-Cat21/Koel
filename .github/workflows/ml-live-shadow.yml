@@ -78,6 +78,13 @@ jobs:
           python -m koel ml-score-outcomes \
             | tee artifacts/ml-live-shadow/scoring.log
 
+      - name: Evaluate prospective standards
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL }}
+        run: |
+          python -m koel.ml.live_shadow_report \
+            | tee artifacts/ml-live-shadow/standards.json
+
       - name: Upload immutable run evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -93,7 +100,7 @@ jobs:
           {
             echo "## ML live shadow"
             echo ""
-            for file in capture.jsonl snapshot.json shadow.json scoring.log; do
+            for file in capture.jsonl snapshot.json shadow.json scoring.log standards.json; do
               if [ -f "artifacts/ml-live-shadow/$file" ]; then
                 echo "### $file"
                 echo '```'
