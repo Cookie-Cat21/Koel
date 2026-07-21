@@ -1,6 +1,6 @@
 # Live CSE shadow canary — 2026-07-21
 
-**Status:** capture active; partial-session canary excluded from standards  
+**Status:** first non-partial prospective issue complete; outcomes pending  
 **User-facing forecasts written:** 0  
 **Telegram alerts sent:** 0
 
@@ -17,9 +17,20 @@ First persisted cycle at 13:25 SLT:
 | Stable ordinary-share order-book panel | 25 |
 | Daily market summary rows returned | 2 |
 
-The minute board loop continued through close. Sector/index snapshots were
-captured every five cycles and the stable top-turnover ordinary-share order-book
-panel every ten cycles.
+The minute board loop ran from 13:26 SLT into the closing window. Sector/index
+snapshots were captured every five cycles and the stable top-turnover
+ordinary-share order-book panel every ten cycles. One transient Neon connection
+drop was observed near close; reconnect-and-retry handling was added. A clean
+final cycle completed at 14:41 SLT:
+
+| Final surface | Persisted |
+|---|---:|
+| Board rows | 287 |
+| Ordinary-company daily + hybrid bars | 283 |
+| Order books | 25 |
+| Sector indexes | 22 |
+| Market indexes | 2 |
+| Daily summary rows | 2 |
 
 ## Shadow canary
 
@@ -36,6 +47,28 @@ All rows were written only to `forecast_outcomes` with model versions ending in
 `_partial`. Query verification found **zero** matching `forecast_points`, so the
 dashboard and Telegram surfaces were untouched. The standards report excludes
 every partial row.
+
+## First prospective issue
+
+Post-close snapshot:
+
+- bars SHA-256:
+  `dc7de31d5c9ac46f17d878aee89676306da1959ff0b006badc7020a4a00f1da7`
+- 917,087 bars across the expanded current board;
+- last trade date `2026-07-21`;
+- 3,675 publication-safe filing rows.
+
+The first non-partial issue wrote:
+
+| Stream | Rows | Current status |
+|---|---:|---|
+| All eligible-company absolute direction | 176 | awaiting next session |
+| Top-0.5% selective | 1 | awaiting next session |
+| Book + signed-volume challenger | 22 | awaiting next session |
+
+Database verification found 283 current-session `daily_bars`, all 199 final
+shadow rows unscored as expected, and **zero** matching user-facing
+`forecast_points`.
 
 ## Frozen live streams
 
