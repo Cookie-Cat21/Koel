@@ -13,6 +13,13 @@ import {
 
 import { CandlestickChart } from "@/components/charts/candlestick-chart";
 import {
+  ChartActiveStrip,
+  ChartSegmentButton,
+  ChartSegmentGroup,
+  ChartShortcutsHint,
+  ChartToggleChip,
+} from "@/components/charts/chart-workbench-controls";
+import {
   LwcPriceChart,
   type ChartDrawMode,
   type ChartSeriesStyle,
@@ -20,6 +27,7 @@ import {
 } from "@/components/charts/lwc-price-chart";
 import { TradingViewEmbed } from "@/components/charts/tradingview-embed";
 import { SparklineWithForecast } from "@/components/sparkline-with-forecast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toTradingViewSymbol } from "@/lib/tradingview-symbol";
 import {
@@ -481,7 +489,45 @@ export function ExpandablePriceChart({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      // Ignore when typing in inputs (none in dialog today — fail closed).
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      ) {
+        return;
+      }
+      if (chartLayer !== "koel") return;
+      const rangeKeys: Record<string, ChartRangeKey> = {
+        "1": "1D",
+        "2": "1M",
+        "3": "3M",
+        "4": "6M",
+        "5": "1Y",
+      };
+      if (rangeKeys[e.key]) {
+        e.preventDefault();
+        setRange(rangeKeys[e.key]!);
+        return;
+      }
+      if (seriesKind !== "symbol") return;
+      const k = e.key.toLowerCase();
+      if (k === "d") {
+        e.preventDefault();
+        setShowDisclosures((v) => !v);
+      } else if (k === "f") {
+        e.preventDefault();
+        setShowFires((v) => !v);
+      } else if (k === "a") {
+        e.preventDefault();
+        setShowAlertLines((v) => !v);
+      }
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -493,7 +539,7 @@ export function ExpandablePriceChart({
       document.body.style.overflow = prevOverflow;
       trigger?.focus();
     };
-  }, [open]);
+  }, [open, chartLayer, seriesKind]);
 
   // Thin / multi-day tick piles: prefer recent daily OHLC until the latest
   // Colombo session has enough prints for a real intraday chart.
@@ -724,7 +770,10 @@ export function ExpandablePriceChart({
                   </p>
                 ) : null}
                 {range === "1D" && intradayReady ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1.5 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                  >
                     <span
                       className="size-1.5 animate-pulse rounded-full bg-emerald-500"
                       aria-hidden
@@ -733,12 +782,12 @@ export function ExpandablePriceChart({
                     {lastRefresh
                       ? ` · ${new Date(lastRefresh).toLocaleTimeString()}`
                       : ""}
-                  </span>
+                  </Badge>
                 ) : null}
                 {oneDayUsingDaily ? (
-                  <span className="inline-flex items-center rounded-full border border-border/70 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Few ticks · showing recent daily
-                  </span>
+                  <Badge variant="outline" className="text-muted-foreground">
+                    Few ticks · recent daily
+                  </Badge>
                 ) : null}
               </div>
               <Button
@@ -753,268 +802,226 @@ export function ExpandablePriceChart({
               </Button>
             </div>
 
-            {/* Toolbar — layer + TV-inspired workbench chrome */}
+            {/* Toolbar — HyperUI segments + koel overlay chips */}
             <div className="flex shrink-0 flex-col gap-2 border-b border-border/40 px-5 py-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                {tvAvailable ? (
-                  <div
-                    role="group"
-                    aria-label="Chart source"
-                    className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/60 p-0.5"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setChartLayer("koel")}
-                      aria-pressed={chartLayer === "koel"}
-                      className={
-                        chartLayer === "koel"
-                          ? "rounded-md bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm"
-                          : "rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                      }
-                    >
-                      koel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setChartLayer("tv")}
-                      aria-pressed={chartLayer === "tv"}
-                      title="External TradingView chart — drawings & indicators. Often delayed."
-                      className={
-                        chartLayer === "tv"
-                          ? "rounded-md bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm"
-                          : "rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                      }
-                    >
-                      TradingView
-                    </button>
-                  </div>
-                ) : null}
-                {chartLayer === "koel" ? (
-                  <div
-                    role="group"
-                    aria-label="Chart range"
-                    className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/60 p-0.5"
-                  >
-                    {RANGES.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setRange(r)}
-                        aria-pressed={range === r}
-                        className={
-                          range === r
-                            ? "rounded-md bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm"
-                            : "rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                        }
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {tvAvailable ? (
+                    <ChartSegmentGroup label="Chart source">
+                      <ChartSegmentButton
+                        pressed={chartLayer === "koel"}
+                        onClick={() => setChartLayer("koel")}
                       >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                {chartLayer === "koel" ? (
-                  <div
-                    role="group"
-                    aria-label="Chart style"
-                    className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/60 p-0.5"
-                  >
-                    {(
-                      [
-                        ["candle", "Candles"],
-                        ["line", "Line"],
-                        ["area", "Area"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setSeriesStyle(key)}
-                        aria-pressed={seriesStyle === key}
-                        className={
-                          seriesStyle === key
-                            ? "rounded-md bg-background px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm"
-                            : "rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                        }
+                        koel
+                      </ChartSegmentButton>
+                      <ChartSegmentButton
+                        pressed={chartLayer === "tv"}
+                        onClick={() => setChartLayer("tv")}
+                        title="External TradingView chart — often delayed."
                       >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {chartLayer === "koel" && seriesKind === "symbol" ? (
-                  <>
-                    <button
-                      type="button"
-                      aria-pressed={showDisclosures}
-                      onClick={() => setShowDisclosures((v) => !v)}
-                      title="CSE disclosure pins on koel path history — not on TradingView."
-                      className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                        showDisclosures
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-900"
-                          : "border-border text-muted-foreground hover:text-foreground"
-                      }`}
+                        TradingView
+                      </ChartSegmentButton>
+                    </ChartSegmentGroup>
+                  ) : null}
+                  {chartLayer === "koel" ? (
+                    <ChartSegmentGroup label="Chart range">
+                      {RANGES.map((r) => (
+                        <ChartSegmentButton
+                          key={r}
+                          pressed={range === r}
+                          onClick={() => setRange(r)}
+                        >
+                          {r}
+                        </ChartSegmentButton>
+                      ))}
+                    </ChartSegmentGroup>
+                  ) : null}
+                  {chartLayer === "koel" ? (
+                    <ChartSegmentGroup label="Chart style">
+                      {(
+                        [
+                          ["candle", "Candles"],
+                          ["line", "Line"],
+                          ["area", "Area"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ChartSegmentButton
+                          key={key}
+                          pressed={seriesStyle === key}
+                          onClick={() => setSeriesStyle(key)}
+                        >
+                          {label}
+                        </ChartSegmentButton>
+                      ))}
+                    </ChartSegmentGroup>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {chartLayer === "koel" && seriesKind === "symbol" ? (
+                    <>
+                      <ChartToggleChip
+                        pressed={showDisclosures}
+                        onClick={() => setShowDisclosures((v) => !v)}
+                        tone="amber"
+                        count={initialDisclosures?.length ?? 0}
+                        title="CSE disclosure pins (D)"
+                      >
+                        Disclosures
+                      </ChartToggleChip>
+                      <ChartToggleChip
+                        pressed={showFires}
+                        onClick={() => setShowFires((v) => !v)}
+                        tone="violet"
+                        count={fireEvents.length}
+                        title="Telegram alert fires (F)"
+                      >
+                        Fires
+                      </ChartToggleChip>
+                      <ChartToggleChip
+                        pressed={showAlertLines}
+                        onClick={() => setShowAlertLines((v) => !v)}
+                        tone="emerald"
+                        count={
+                          alertRules.filter(
+                            (r) =>
+                              r.active &&
+                              (r.type === "price_above" ||
+                                r.type === "price_below"),
+                          ).length
+                        }
+                        title="Armed price thresholds (A)"
+                      >
+                        Alert lines
+                      </ChartToggleChip>
+                    </>
+                  ) : null}
+                  {chartLayer === "koel" && forecastPrices.length > 0 ? (
+                    <ChartToggleChip
+                      id={forecastToggleId}
+                      pressed={showForecast}
+                      onClick={() => setShowForecast((v) => !v)}
+                      tone="sky"
+                      title="Stored model forecast overlay — research only, NFA."
                     >
-                      Disclosures
-                      {(initialDisclosures?.length ?? 0) > 0
-                        ? ` · ${initialDisclosures!.length}`
-                        : ""}
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={showFires}
-                      onClick={() => setShowFires((v) => !v)}
-                      title="Telegram alert fires for this symbol — koel’s wedge."
-                      className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                        showFires
-                          ? "border-violet-500/40 bg-violet-500/10 text-violet-900"
-                          : "border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Fires
-                      {fireEvents.length > 0 ? ` · ${fireEvents.length}` : ""}
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={showAlertLines}
-                      onClick={() => setShowAlertLines((v) => !v)}
-                      title="Armed price_above / price_below thresholds as dashed lines."
-                      className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                        showAlertLines
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-900"
-                          : "border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Alert lines
-                      {alertRules.filter(
-                        (r) =>
-                          r.active &&
-                          (r.type === "price_above" || r.type === "price_below"),
-                      ).length > 0
-                        ? ` · ${
-                            alertRules.filter(
-                              (r) =>
-                                r.active &&
-                                (r.type === "price_above" ||
-                                  r.type === "price_below"),
-                            ).length
-                          }`
-                        : ""}
-                    </button>
-                  </>
-                ) : null}
-                {chartLayer === "koel" ? (
-                  <button
-                    id={forecastToggleId}
-                    type="button"
-                    aria-pressed={showForecast}
-                    disabled={forecastPrices.length === 0}
-                    onClick={() => setShowForecast((v) => !v)}
-                    title={
-                      forecastPrices.length === 0
-                        ? "No stored model forecast for this symbol."
-                        : "Overlay the stored model forecast (dashed). Research only — not financial advice."
-                    }
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                      showForecast && forecastPrices.length > 0
-                        ? "border-sky-500/40 bg-sky-500/10 text-sky-800 dark:text-sky-200"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
+                      Forecast
+                    </ChartToggleChip>
+                  ) : chartLayer === "koel" ? (
                     <span
-                      className={`h-0 w-4 border-t-2 border-dashed ${
-                        showForecast && forecastPrices.length > 0
-                          ? "border-sky-600 dark:border-sky-400"
-                          : "border-muted-foreground/60"
-                      }`}
-                      aria-hidden
-                    />
-                    Forecast
-                    {forecastPrices.length === 0 ? " — none" : ""}
-                  </button>
-                ) : null}
+                      id={forecastToggleId}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border/70 px-2.5 py-1.5 text-xs text-muted-foreground"
+                      title="No stored model forecast for this symbol."
+                    >
+                      Forecast unavailable
+                    </span>
+                  ) : null}
+                </div>
               </div>
+              {chartLayer === "koel" ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ChartSegmentGroup label="Drawing tools">
+                      {(
+                        [
+                          ["none", "Cursor"],
+                          ["hline", "H-line"],
+                          ["trend", "Trend"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ChartSegmentButton
+                          key={key}
+                          pressed={drawMode === key}
+                          onClick={() => setDrawMode(key)}
+                        >
+                          {label}
+                        </ChartSegmentButton>
+                      ))}
+                      <ChartSegmentButton
+                        pressed={false}
+                        onClick={() => {
+                          setDrawings([]);
+                          setDrawMode("none");
+                        }}
+                        title="Clear session drawings"
+                      >
+                        Clear
+                        {drawings.length > 0 ? ` · ${drawings.length}` : ""}
+                      </ChartSegmentButton>
+                    </ChartSegmentGroup>
+                    <div
+                      role="group"
+                      aria-label="Indicators"
+                      className="flex flex-wrap items-center gap-1"
+                    >
+                      {(
+                        [
+                          ["sma20", "SMA 20"],
+                          ["sma50", "SMA 50"],
+                          ["ema12", "EMA 12"],
+                          ["bb", "BB"],
+                          ["rsi", "RSI"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ChartToggleChip
+                          key={key}
+                          pressed={indicators[key]}
+                          onClick={() =>
+                            setIndicators((prev) => ({
+                              ...prev,
+                              [key]: !prev[key],
+                            }))
+                          }
+                          tone="neutral"
+                        >
+                          {label}
+                        </ChartToggleChip>
+                      ))}
+                    </div>
+                  </div>
+                  <ChartShortcutsHint />
+                </div>
+              ) : null}
             </div>
             {chartLayer === "koel" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div
-                  role="group"
-                  aria-label="Drawing tools"
-                  className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/60 p-0.5"
-                >
-                  {(
+              <ChartActiveStrip
+                chips={[
+                  { key: "range", label: range, tone: "neutral" },
+                  { key: "style", label: seriesStyle, tone: "neutral" },
+                  ...(showDisclosures && seriesKind === "symbol"
+                    ? [{ key: "disc", label: "Disclosures", tone: "amber" as const }]
+                    : []),
+                  ...(showFires && seriesKind === "symbol"
+                    ? [{ key: "fires", label: "Fires", tone: "violet" as const }]
+                    : []),
+                  ...(showAlertLines && seriesKind === "symbol"
+                    ? [
+                        {
+                          key: "alerts",
+                          label: "Alert lines",
+                          tone: "emerald" as const,
+                        },
+                      ]
+                    : []),
+                  ...(
                     [
-                      ["none", "Cursor"],
-                      ["hline", "H-line"],
-                      ["trend", "Trend"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setDrawMode(key)}
-                      aria-pressed={drawMode === key}
-                      className={
-                        drawMode === key
-                          ? "rounded-md bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm"
-                          : "rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDrawings([]);
-                      setDrawMode("none");
-                    }}
-                    className="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                    title="Clear session drawings"
-                  >
-                    Clear
-                    {drawings.length > 0 ? ` · ${drawings.length}` : ""}
-                  </button>
-                </div>
-                <div
-                  role="group"
-                  aria-label="Indicators"
-                  className="flex flex-wrap items-center gap-1"
-                >
-                  {(
-                    [
-                      ["sma20", "SMA 20"],
-                      ["sma50", "SMA 50"],
-                      ["ema12", "EMA 12"],
+                      ["sma20", "SMA20"],
+                      ["sma50", "SMA50"],
+                      ["ema12", "EMA12"],
                       ["bb", "BB"],
                       ["rsi", "RSI"],
                     ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={indicators[key]}
-                      onClick={() =>
-                        setIndicators((prev) => ({
-                          ...prev,
-                          [key]: !prev[key],
-                        }))
-                      }
-                      className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
-                        indicators[key]
-                          ? "border-foreground/30 bg-foreground/5 text-foreground"
-                          : "border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  )
+                    .filter(([k]) => indicators[k])
+                    .map(([k, label]) => ({
+                      key: k,
+                      label,
+                      tone: "neutral" as const,
+                    })),
+                  ...(showForecast && forecastPrices.length > 0
+                    ? [{ key: "fc", label: "Forecast", tone: "sky" as const }]
+                    : []),
+                ]}
+              />
             ) : null}
-            </div>
 
             {chartLayer === "koel" && windowStats ? (
               <dl className="flex shrink-0 flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-border/40 px-5 py-2 font-mono text-xs tabular-nums">

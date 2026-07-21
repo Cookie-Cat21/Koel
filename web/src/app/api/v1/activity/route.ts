@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
   if (!gated.ok) return gated.response;
 
   const url = new URL(request.url);
-  const limitRaw = toSafePositiveInt(url.searchParams.get("limit"), MAX_ITEMS);
-  const limit = Math.min(limitRaw || 40, MAX_ITEMS);
+  const limitRaw = toSafePositiveInt(url.searchParams.get("limit"));
+  const limit = Math.min(limitRaw ?? 40, MAX_ITEMS);
   const userId = gated.session.user_id;
 
   try {
