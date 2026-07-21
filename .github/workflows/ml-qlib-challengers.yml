@@ -1,0 +1,108 @@
+# Manual pinned Qlib parity build. Read-only research; no live forecast writes.
+name: ml-qlib-challengers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-qlib-challengers
+  cancel-in-progress: false
+
+jobs:
+  qlib-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pinned Qlib research environment
+        run: pip install -e ".[ml,qlib]"
+
+      - name: Require read-only training database
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${ML_DATABASE_URL}" ]; then
+            echo "::error::ML_DATABASE_URL is not set"
+            exit 1
+          fi
+
+      - name: Export immutable Koel snapshot
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ml-qlib
+          python -m koel.ml.snapshot export \
+            --dataset hybrid \
+            --output artifacts/ml-qlib/snapshot \
+            | tee artifacts/ml-qlib/snapshot.json
+
+      - name: Export Qlib-compatible CSE panel
+        run: |
+          set -euo pipefail
+          python -m koel.ml.qlib_dataset \
+            --snapshot artifacts/ml-qlib/snapshot \
+            --output artifacts/ml-qlib/raw \
+            --min-history 60 \
+            | tee artifacts/ml-qlib/qlib-export.json
+
+      - name: Fetch and verify Qlib 0.9.7 converter
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://raw.githubusercontent.com/microsoft/qlib/da920b7f954f48ab1bb64117c976710de198373e/scripts/dump_bin.py \
+            -o /tmp/qlib-0.9.7-dump_bin.py
+          echo "b8f34c57ce1ef4b1772f3909735e66058f21b25bd7ab8a5f16318822401fe53f  /tmp/qlib-0.9.7-dump_bin.py" \
+            | sha256sum -c -
+
+      - name: Build native Qlib binary store
+        run: |
+          set -euo pipefail
+          python /tmp/qlib-0.9.7-dump_bin.py dump_all \
+            --data_path artifacts/ml-qlib/raw/csv \
+            --qlib_dir artifacts/ml-qlib/provider \
+            --freq day \
+            --date_field_name date \
+            --file_suffix .csv \
+            --include_fields open,high,low,close,volume,factor,change,source_is_cse \
+            --max_workers 4
+          cp artifacts/ml-qlib/raw/instruments/cse_equities.txt \
+            artifacts/ml-qlib/provider/instruments/cse_equities.txt
+
+      - name: Validate Qlib provider
+        run: |
+          set -euo pipefail
+          python - <<'PY' | tee artifacts/ml-qlib/provider-smoke.json
+          import json
+          import qlib
+          from qlib.config import REG_US
+          from qlib.data import D
+
+          qlib.init(provider_uri="artifacts/ml-qlib/provider", region=REG_US)
+          calendar = D.calendar(freq="day")
+          instruments = D.instruments(market="cse_equities")
+          print(json.dumps({
+              "calendar_sessions": len(calendar),
+              "instrument_expression": str(instruments),
+              "first_session": str(calendar[0]) if len(calendar) else None,
+              "last_session": str(calendar[-1]) if len(calendar) else None,
+          }, sort_keys=True))
+          PY
+
+      - name: Upload Qlib parity artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-qlib-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ml-qlib/
+          if-no-files-found: warn
+          retention-days: 90

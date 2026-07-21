@@ -8,7 +8,7 @@ on:
       models:
         description: Comma-separated model families
         required: true
-        default: logistic,hgb_lmt,xgb_lmt,lgb_lmt,hgb_domain,xgb_domain,lgb_domain,hgb_two_stage,xgb_two_stage
+        default: logistic,hgb_lmt,xgb_lmt,lgb_lmt,hgb_domain,xgb_domain,lgb_domain,hgb_two_stage,xgb_two_stage,qlib_lgb_native,double_ensemble_native
         type: string
       folds:
         description: Number of nested outer folds

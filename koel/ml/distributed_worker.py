@@ -257,6 +257,14 @@ def _fit_predict_one(
 
     if model not in ALLOWED_MODELS:
         raise ValueError(f"unsupported model {model}")
+    if model == "qlib_lgb_native":
+        from koel.ml.challengers import predict_qlib_lightgbm
+
+        return predict_qlib_lightgbm(train, test, seed=seed)
+    if model == "double_ensemble_native":
+        from koel.ml.challengers import predict_native_double_ensemble
+
+        return predict_native_double_ensemble(train, test, seed=seed)
     if model.endswith("_two_stage"):
         return _fit_predict_two_stage(
             model=model,

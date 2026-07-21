@@ -12,6 +12,14 @@ from datetime import date
 from typing import Any
 
 from koel.ml.distributed import wilson_lower_bound
+from koel.ml.metrics import (
+    balanced_direction_accuracy,
+    brier_score,
+    cost_adjusted_top_bottom_spread,
+    expected_calibration_error,
+    matthews_direction_correlation,
+    mean_daily_rank_ic,
+)
 from koel.storage import Storage
 
 
@@ -30,6 +38,14 @@ class ShadowModelMetrics:
     sessions: int
     max_symbol_share: float
     max_session_share: float
+    rank_ic: float | None
+    rank_ic_sessions: int
+    balanced_accuracy: float | None
+    mcc: float | None
+    brier: float | None
+    ece: float | None
+    post_cost_mean_return: float | None
+    post_cost_sessions: int
     contract_met: bool
 
 
@@ -71,6 +87,60 @@ def summarize_shadow_rows(rows: list[dict[str, Any]]) -> list[ShadowModelMetrics
         max_session_share = (
             max(session_counts.values(), default=0) / len(scored) if scored else 0.0
         )
+        metric_rows = [
+            row
+            for row in scored
+            if isinstance(row.get("y_pred"), int | float)
+            and isinstance(row.get("y_real"), int | float)
+        ]
+        sessions_metric = [row["issued_at"] for row in metric_rows]
+        predictions = [float(row["y_pred"]) for row in metric_rows]
+        realized = [float(row["y_real"]) for row in metric_rows]
+        directions = [
+            1.0 if value > 0 else -1.0 if value < 0 else 0.0
+            for value in realized
+        ]
+        rank_ic, rank_ic_sessions = mean_daily_rank_ic(
+            sessions_metric,
+            predictions,
+            realized,
+            min_names=20,
+        ) if metric_rows else (None, 0)
+        balanced_accuracy = (
+            balanced_direction_accuracy(directions, predictions)
+            if metric_rows
+            else None
+        )
+        mcc = (
+            matthews_direction_correlation(directions, predictions)
+            if metric_rows
+            else None
+        )
+        probability_rows = [
+            row
+            for row in scored
+            if isinstance(row.get("confidence"), int | float)
+            and 0 <= float(row["confidence"]) <= 1
+        ]
+        correctness = [row.get("hit") is True for row in probability_rows]
+        correctness_probability = [
+            0.5 + 0.5 * float(row["confidence"]) for row in probability_rows
+        ]
+        brier = brier_score(correctness, correctness_probability)
+        ece = expected_calibration_error(correctness, correctness_probability)
+        spread = (
+            cost_adjusted_top_bottom_spread(
+                sessions_metric,
+                [str(row["symbol"]) for row in metric_rows],
+                predictions,
+                realized,
+                fraction=0.10,
+                cost_bps=112.0,
+                min_names=20,
+            )
+            if metric_rows
+            else None
+        )
         policy_sessions = {row.get("issued_at") for row in model_rows}
         eligible = sum(eligible_by_session.get(session, 0) for session in policy_sessions)
         coverage = len(model_rows) / eligible if eligible > 0 else None
@@ -106,6 +176,16 @@ def summarize_shadow_rows(rows: list[dict[str, Any]]) -> list[ShadowModelMetrics
                 sessions=len(session_counts),
                 max_symbol_share=max_symbol_share,
                 max_session_share=max_session_share,
+                rank_ic=rank_ic,
+                rank_ic_sessions=rank_ic_sessions,
+                balanced_accuracy=balanced_accuracy,
+                mcc=mcc,
+                brier=brier,
+                ece=ece,
+                post_cost_mean_return=(
+                    spread.mean_net_return if spread is not None else None
+                ),
+                post_cost_sessions=spread.sessions if spread is not None else 0,
                 contract_met=contract_met,
             )
         )
@@ -117,7 +197,8 @@ async def build_live_shadow_report(storage: Storage) -> list[ShadowModelMetrics]
         rows = await (
             await conn.execute(
                 """
-                SELECT model_id, model_version, symbol, issued_at, gate, scored, hit
+                SELECT model_id, model_version, symbol, issued_at, gate,
+                       scored, hit, y_pred, y_real, confidence
                 FROM forecast_outcomes
                 WHERE gate LIKE 'shadow_%'
                 ORDER BY model_version, issued_at, symbol

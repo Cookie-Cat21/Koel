@@ -91,3 +91,29 @@ def test_scored_flat_outcome_counts_as_miss() -> None:
     assert metrics.scored == 2
     assert metrics.correct == 1
     assert metrics.precision == 0.5
+
+
+def test_shadow_report_includes_rank_calibration_and_cost_metrics() -> None:
+    rows = [
+        {
+            "model_id": "rank-policy",
+            "model_version": "rank-instance",
+            "symbol": f"S{index:02d}",
+            "issued_at": date(2026, 1, 1),
+            "gate": "shadow_all",
+            "scored": True,
+            "hit": True,
+            "y_pred": float(index - 10),
+            "y_real": float(index - 10) / 100,
+            "confidence": 1.0,
+        }
+        for index in range(20)
+    ]
+    metrics = summarize_shadow_rows(rows)[0]
+    assert metrics.rank_ic == 1.0
+    assert metrics.rank_ic_sessions == 1
+    assert metrics.balanced_accuracy == 1.0
+    assert metrics.mcc == 1.0
+    assert metrics.brier == 0.0
+    assert metrics.ece == 0.0
+    assert metrics.post_cost_sessions == 1
