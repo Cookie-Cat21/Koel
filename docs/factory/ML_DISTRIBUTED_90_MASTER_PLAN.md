@@ -1,6 +1,6 @@
 # Distributed ML 90% master plan
 
-**Status:** execution foundation implemented; empirical target not yet proven  
+**Status:** execution foundation + local baseline complete; target not met  
 **Primary goal:** selective CSE direction precision, not always-on accuracy  
 **Compliance:** research signal only, always NFA
 
@@ -108,8 +108,9 @@ not create shared GPU memory or synchronously train one giant model.
 - [x] Test-only precision, coverage, concentration and Wilson bound.
 - [x] Reserved final lockbox.
 - [x] Manual GitHub Actions workflow with no promotion or forecast writes.
+- [x] Run the full six-fold local baseline and archive its honest failure.
 - [ ] Create `ML_DATABASE_URL` using a SELECT-only Postgres role.
-- [ ] Run the first distributed baseline and archive its report.
+- [ ] Reproduce the baseline through the GitHub Actions matrix.
 
 ### Phase B — point-in-time data repair
 
