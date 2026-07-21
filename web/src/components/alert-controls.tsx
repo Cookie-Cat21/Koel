@@ -40,6 +40,7 @@ import {
 import { toSafePositiveInt } from "@/lib/api/safe-int";
 import {
   ALERT_TYPES,
+  MA_CROSS_PERIODS,
   type AlertType,
   isAlertType,
   isMarketForceAlertType,
@@ -52,6 +53,7 @@ const TYPE_OPTIONS: { value: AlertType; label: string }[] = [
   { value: "price_above", label: "Above price" },
   { value: "price_below", label: "Below price" },
   { value: "daily_move", label: "Daily move %" },
+  { value: "ref_move", label: "Move % from reference" },
   { value: "disclosure", label: "New disclosure" },
   { value: "volume_spike", label: "Volume spike (× avg)" },
   { value: "volume_up", label: "Heavy volume + up" },
@@ -59,6 +61,9 @@ const TYPE_OPTIONS: { value: AlertType; label: string }[] = [
   { value: "crossing_volume", label: "Crossing volume (×)" },
   { value: "big_print", label: "Big print (shares)" },
   { value: "gap", label: "Open gap %" },
+  { value: "high_52w", label: "New 52-week high" },
+  { value: "low_52w", label: "New 52-week low" },
+  { value: "ma_cross", label: "MA cross (20/50/200)" },
   { value: "share_split", label: "Share split / consolidation" },
   { value: "buy_in", label: "Buy-in board" },
   { value: "non_compliance", label: "Non-compliance" },
@@ -88,6 +93,7 @@ type FieldErrors = {
   symbol?: string;
   type?: string;
   threshold?: string;
+  ref_price?: string;
   category?: string;
   form?: string;
 };
@@ -107,11 +113,13 @@ export function AlertCreateForm({
     initialType && ALERT_TYPES.includes(initialType) ? initialType : "price_above",
   );
   const [threshold, setThreshold] = useState("");
+  const [refPrice, setRefPrice] = useState("");
   const [category, setCategory] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
 
   const needsThreshold = isThresholdAlertType(type);
+  const needsRefPrice = type === "ref_move";
   const marketForced = isMarketForceAlertType(type);
   const showCategory = type === "disclosure";
   const showFilingMetricsNote = isFilingMetricsAlertType(type);
@@ -150,6 +158,7 @@ export function AlertCreateForm({
         symbol: string;
         type: AlertType;
         threshold?: number;
+        ref_price?: number;
         category?: string;
       } = { symbol: normalized ?? "", type };
 
@@ -157,9 +166,11 @@ export function AlertCreateForm({
         const raw = threshold.trim();
         if (!raw) {
           next.threshold =
-            thresholdLabel === "Percent"
-              ? "Enter a percent threshold (e.g. 5)."
-              : `Enter a ${thresholdLabel.toLowerCase()} threshold.`;
+            type === "ma_cross"
+              ? "Enter MA period 20, 50, or 200."
+              : thresholdLabel === "Percent"
+                ? "Enter a percent threshold (e.g. 5)."
+                : `Enter a ${thresholdLabel.toLowerCase()} threshold.`;
         } else {
           // Decimal-only via toFiniteNumber — Number("1e2") / Number("")→0
           // used to soft-accept sci-notation and empty thresholds.
@@ -168,7 +179,7 @@ export function AlertCreateForm({
             next.threshold = "Threshold must be a number.";
           } else if (n <= 0) {
             next.threshold =
-              type === "daily_move" || type === "gap"
+              type === "daily_move" || type === "gap" || type === "ref_move"
                 ? "Percent threshold must be greater than zero."
                 : type === "big_print"
                   ? "Share quantity must be greater than zero."
@@ -177,8 +188,30 @@ export function AlertCreateForm({
                     : "Threshold must be greater than zero.";
           } else if (n > MAX_ALERT_THRESHOLD) {
             next.threshold = "Threshold is too large.";
+          } else if (
+            type === "ma_cross" &&
+            !(MA_CROSS_PERIODS as readonly number[]).includes(n)
+          ) {
+            next.threshold = "MA period must be exactly 20, 50, or 200.";
           } else {
             body.threshold = n;
+          }
+        }
+        if (needsRefPrice) {
+          const rawRef = refPrice.trim();
+          if (!rawRef) {
+            next.ref_price = "Enter a reference price (e.g. 82.50).";
+          } else {
+            const refN = toFiniteNumber(rawRef);
+            if (refN == null) {
+              next.ref_price = "Reference price must be a number.";
+            } else if (refN <= 0) {
+              next.ref_price = "Reference price must be greater than zero.";
+            } else if (refN > MAX_ALERT_THRESHOLD) {
+              next.ref_price = "Reference price is too large.";
+            } else {
+              body.ref_price = refN;
+            }
           }
         }
       } else {
@@ -216,6 +249,8 @@ export function AlertCreateForm({
           setErrors({ symbol: msg });
         } else if (msg.toLowerCase().includes("threshold")) {
           setErrors({ threshold: msg });
+        } else if (msg.toLowerCase().includes("reference")) {
+          setErrors({ ref_price: msg });
         } else if (msg.toLowerCase().includes("category")) {
           setErrors({ category: msg });
         } else if (msg.toLowerCase().includes("type")) {
@@ -228,6 +263,7 @@ export function AlertCreateForm({
       }
       setSymbol("");
       setThreshold("");
+      setRefPrice("");
       setCategory("");
       toast.success(
         `Alert set for ${normalized}. Telegram will ping when it fires.`,
@@ -247,6 +283,7 @@ export function AlertCreateForm({
     errors.symbol ??
     errors.type ??
     errors.threshold ??
+    errors.ref_price ??
     errors.category ??
     null;
 
@@ -324,11 +361,16 @@ export function AlertCreateForm({
                   }
                   if (nextType === "disclosure") {
                     setThreshold("");
+                    setRefPrice("");
                   } else {
                     setCategory("");
                   }
+                  if (nextType !== "ref_move") {
+                    setRefPrice("");
+                  }
                   clearField("type");
                   clearField("threshold");
+                  clearField("ref_price");
                   clearField("category");
                 }}
               >
@@ -365,25 +407,58 @@ export function AlertCreateForm({
             Threshold / category
           </h3>
           {needsThreshold ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="alert_threshold">{thresholdLabel}</Label>
-              <Input
-                id="alert_threshold"
-                name="threshold"
-                className="h-10 font-mono"
-                inputMode="decimal"
-                placeholder={thresholdPlaceholder}
-                value={threshold}
-                onChange={(e) => {
-                  setThreshold(e.target.value);
-                  clearField("threshold");
-                }}
-                aria-invalid={errors.threshold ? true : undefined}
-                aria-describedby={
-                  errors.threshold ? "alert_form_error" : undefined
-                }
-                required
-              />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="alert_threshold">{thresholdLabel}</Label>
+                <Input
+                  id="alert_threshold"
+                  name="threshold"
+                  className="h-10 font-mono"
+                  inputMode="decimal"
+                  placeholder={thresholdPlaceholder}
+                  value={threshold}
+                  onChange={(e) => {
+                    setThreshold(e.target.value);
+                    clearField("threshold");
+                  }}
+                  aria-invalid={errors.threshold ? true : undefined}
+                  aria-describedby={
+                    errors.threshold ? "alert_form_error" : undefined
+                  }
+                  required
+                />
+              </div>
+              {needsRefPrice ? (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="alert_ref_price">Reference price</Label>
+                  <Input
+                    id="alert_ref_price"
+                    name="ref_price"
+                    className="h-10 font-mono"
+                    inputMode="decimal"
+                    placeholder="82.50"
+                    value={refPrice}
+                    onChange={(e) => {
+                      setRefPrice(e.target.value);
+                      clearField("ref_price");
+                    }}
+                    aria-invalid={errors.ref_price ? true : undefined}
+                    aria-describedby={
+                      errors.ref_price
+                        ? "alert_ref_hint alert_form_error"
+                        : "alert_ref_hint"
+                    }
+                    required
+                  />
+                  <p
+                    id="alert_ref_hint"
+                    className="text-xs text-muted-foreground"
+                  >
+                    % move is measured from this price (not avg cost — you
+                    supply the number).
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : showCategory ? (
             <div className="flex flex-col gap-1.5">
@@ -456,11 +531,13 @@ function thresholdFieldLabel(type: AlertType): string {
   if (type === "appetite_band") return "Appetite score";
   if (type === "foreign_flow") return "Foreign net (LKR)";
   if (type === "xd_soon" || type === "xd_digest") return "Days";
+  if (type === "ma_cross") return "MA period";
   if (
     type === "book_pressure" ||
     type === "usdlkr_move" ||
     type === "oil_move" ||
     type === "daily_move" ||
+    type === "ref_move" ||
     type === "gap" ||
     type.includes("_yoy_")
   ) {
@@ -483,11 +560,13 @@ function thresholdFieldPlaceholder(type: AlertType): string {
   if (type === "appetite_band") return "61";
   if (type === "foreign_flow") return "1000000";
   if (type === "xd_soon" || type === "xd_digest") return "7";
+  if (type === "ma_cross") return "50";
   if (
     type === "book_pressure" ||
     type === "usdlkr_move" ||
     type === "oil_move" ||
     type === "daily_move" ||
+    type === "ref_move" ||
     type === "gap" ||
     type.includes("_yoy_")
   ) {

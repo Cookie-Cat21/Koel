@@ -22,6 +22,10 @@ the same Postgres-backed watchlist, rules, and fire history.
 | Ask-heavy order book | Yes | Yes | Telegram | Uses public order-book totals. |
 | EPS above / below | Yes | Yes | Telegram | Financial metrics feature-flagged; dashboard metrics API exposes latest extracted rows. |
 | EPS / revenue / profit YoY | Yes | Yes | Telegram | Financial metrics feature-flagged; dashboard metrics API exposes YoY comparisons. |
+| New 52-week high | Yes (`high52`) | Yes | Telegram | One fire per ISO week; uses `daily_bars` prior range. |
+| New 52-week low | Yes (`low52`) | Yes | Telegram | One fire per ISO week; uses `daily_bars` prior range. |
+| MA cross (20/50/200) | Yes (`ma PERIOD`) | Yes | Telegram | Price crosses SMA from daily closes; rearm like price level. |
+| Reference-price % move | Yes (`move PCT from PRICE`) | Yes | Telegram | `%` from user-supplied `ref_price` (not avg cost / positions). One fire per Colombo day. |
 
 ## Dashboard-only operations
 

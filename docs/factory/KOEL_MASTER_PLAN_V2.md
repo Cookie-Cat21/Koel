@@ -1,12 +1,28 @@
 # koel Master Plan V2 — Win the CSE alert layer (July 2026)
 
-**Status:** Active — supersedes [KOEL_MASTER_PLAN.md](KOEL_MASTER_PLAN.md) (V1, which
-still says "Wave 6 next" and brands the product "Quiverly"; V1's fence tables remain
-valid history but this doc is the operating plan).
+**Status:** Active — Horizon 1 **implementation landed** on
+`cursor/koel-master-plan-v2-d6f5` (2026-07-21). Supersedes
+[KOEL_MASTER_PLAN.md](KOEL_MASTER_PLAN.md) (V1).
 **Authority:** [CLAUDE.md](../../CLAUDE.md) · [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) ·
 [TIJORI_CSE_PLAN.md](TIJORI_CSE_PLAN.md) · [COMMIT_FACTORY.md](COMMIT_FACTORY.md)
 **Research basis:** competitive + product-practice research run 2026-07-21 (summarized
 in §1–§2; sources inline).
+
+### Horizon 1 execution checklist (code)
+
+| Wave | Status | Notes |
+|---|---|---|
+| W1 AI brief verification gate | ✅ shipped | `koel/briefs/verify.py`; worker fails closed → title+link |
+| W2 52w / MA-cross / ref_move | ✅ shipped | migration `032`; bot + dash parity |
+| W3 NL alert creation | ✅ shipped | `koel/nl_alerts.py`; flag `AI_NL_ALERTS_ENABLED=0` |
+| W4 Button-first bot + deep links | ✅ shipped | `/start` keyboard; `?start=sym_` |
+| W5 Why-it-moved context | ✅ shipped | `koel/alert_context.py` on price fires |
+| W6 Provenance + degradation | ✅ shipped | `As of HH:MM SLT`; `koel/feed_health.py`; gap annotate |
+| W7+ (H2) | ⏳ next | public channel, digest-default, Sinhala, … |
+
+**Ops still required for W1 live:** set `AI_BRIEFS_ENABLED=1` + `AI_API_KEY` per
+`docs/runbooks/AI_BRIEFS_ENABLE.md` and soak. Optional: `TELEGRAM_STATUS_CHAT_ID`
+for degradation broadcasts; `AI_NL_ALERTS_ENABLED=1` for NL path.
 
 ---
 

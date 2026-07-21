@@ -182,6 +182,7 @@ export type AlertRuleRow = {
   symbol: string;
   type: string;
   threshold: number | null;
+  ref_price: number | null;
   category: string | null;
   active: boolean;
   armed: boolean;
@@ -194,6 +195,7 @@ function mapRule(row: {
   symbol: string;
   type: string;
   threshold: number | null;
+  ref_price?: number | null;
   category: string | null;
   active: boolean;
   armed: boolean;
@@ -214,6 +216,7 @@ function mapRule(row: {
     type: row.type,
     // Finite-only + abs magnitude cap — NaN/±Inf / ±absurd → null.
     threshold: cappedAlertThreshold(toFiniteNumber(row.threshold)),
+    ref_price: cappedAlertThreshold(toFiniteNumber(row.ref_price ?? null)),
     category: sanitizeDisclosureCategory(row.category),
     // Strict === true — Boolean("false")/1 must not mislabel rule state.
     active: row.active === true,
@@ -230,28 +233,31 @@ async function fetchActiveRule(
   alertType: AlertType,
   threshold: number | null,
   category: string | null,
+  refPrice: number | null = null,
 ): Promise<AlertRuleRow | null> {
   const result = await client.query<{
     id: string | number;
     symbol: string;
     type: string;
     threshold: number | null;
+    ref_price: number | null;
     category: string | null;
     active: boolean;
     armed: boolean;
     created_at: Date | string;
     muted_until: Date | string | null;
   }>(
-    `SELECT id, symbol, type, threshold, category, active, armed, created_at,
-            muted_until
+    `SELECT id, symbol, type, threshold, ref_price, category, active, armed,
+            created_at, muted_until
      FROM alert_rules
      WHERE user_id = $1 AND symbol = $2 AND type = $3
        AND COALESCE(threshold, -1) = COALESCE($4::double precision, -1)
        AND COALESCE(category, '') = COALESCE($5, '')
+       AND COALESCE(ref_price, -1) = COALESCE($6::double precision, -1)
        AND active
      ORDER BY id DESC
      LIMIT 1`,
-    [userId, symbol, alertType, threshold, category],
+    [userId, symbol, alertType, threshold, category, refPrice],
   );
   const row = result.rows[0];
   return row ? mapRule(row) : null;
@@ -271,6 +277,7 @@ function isUniqueViolation(err: unknown): boolean {
  * auto-watch, idempotent return-existing, armed=true on insert.
  * Stock must already exist (caller checks).
  * ``category`` is for disclosure rules only (substring filter); ignored otherwise.
+ * ``refPrice`` is for ref_move only; NULL otherwise.
  */
 export async function createAlertRule(
   userId: number,
@@ -278,12 +285,14 @@ export async function createAlertRule(
   alertType: AlertType,
   threshold: number | null,
   category: string | null = null,
+  refPrice: number | null = null,
 ): Promise<{ rule: AlertRuleRow; created: boolean }> {
   const pool = getPool();
   const client = await pool.connect();
   // Defense in depth: sanitize even if caller forgot (POST already sanitizes).
   const cat =
     alertType === "disclosure" ? sanitizeDisclosureCategory(category) : null;
+  const storedRef = alertType === "ref_move" ? refPrice : null;
   // MARKET halt is seeded by migration 009; other types require a known stock.
   try {
     await client.query("BEGIN");
@@ -302,6 +311,7 @@ export async function createAlertRule(
       alertType,
       threshold,
       cat,
+      storedRef,
     );
     if (existing) {
       await client.query("COMMIT");
@@ -314,17 +324,19 @@ export async function createAlertRule(
         symbol: string;
         type: string;
         threshold: number | null;
+        ref_price: number | null;
         category: string | null;
         active: boolean;
         armed: boolean;
         created_at: Date | string;
         muted_until: Date | string | null;
       }>(
-        `INSERT INTO alert_rules (user_id, symbol, type, threshold, category, active, armed)
-         VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)
-         RETURNING id, symbol, type, threshold, category, active, armed, created_at,
-                   muted_until`,
-        [userId, symbol, alertType, threshold, cat],
+        `INSERT INTO alert_rules
+           (user_id, symbol, type, threshold, category, ref_price, active, armed)
+         VALUES ($1, $2, $3, $4, $5, $6, TRUE, TRUE)
+         RETURNING id, symbol, type, threshold, ref_price, category, active, armed,
+                   created_at, muted_until`,
+        [userId, symbol, alertType, threshold, cat, storedRef],
       );
       const row = inserted.rows[0];
       if (!row) throw new Error("create_alert_rule returned no row");
@@ -344,6 +356,7 @@ export async function createAlertRule(
         alertType,
         threshold,
         cat,
+        storedRef,
       );
       await client.query("COMMIT");
       if (raced) return { rule: raced, created: false };
@@ -420,6 +433,7 @@ export async function muteAlert(
     symbol: string;
     type: string;
     threshold: number | null;
+    ref_price: number | null;
     category: string | null;
     active: boolean;
     armed: boolean;
@@ -429,8 +443,8 @@ export async function muteAlert(
     `UPDATE alert_rules
      SET muted_until = $1
      WHERE id = $2 AND user_id = $3
-     RETURNING id, symbol, type, threshold, category, active, armed, created_at,
-               muted_until`,
+     RETURNING id, symbol, type, threshold, ref_price, category, active, armed,
+               created_at, muted_until`,
     [mutedUntil, ruleId, userId],
   );
   const row = result.rows[0];

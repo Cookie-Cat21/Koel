@@ -53,6 +53,7 @@ type AlertsPayload = {
     symbol: string;
     type: string;
     threshold: number | null;
+    ref_price: number | null;
     category: string | null;
     active: boolean;
     armed: boolean;
@@ -102,11 +103,13 @@ export default async function AlertsPage({
           );
           if (!symbol) continue;
           const threshold = cappedAlertThreshold(toFiniteNumber(r.threshold));
+          const refPrice = cappedAlertThreshold(toFiniteNumber(r.ref_price));
           rules.push({
             id,
             symbol,
             type: r.type,
             threshold,
+            ref_price: refPrice,
             category: sanitizeDisclosureCategory(
               typeof r.category === "string" ? r.category : null,
             ),
@@ -296,6 +299,9 @@ export default async function AlertsPage({
                       #{rule.id} · {alertTypeLabel(rule.type)}
                       {rule.threshold != null
                         ? ` · ${formatNumber(rule.threshold)}`
+                        : ""}
+                      {rule.ref_price != null
+                        ? ` · from ${formatNumber(rule.ref_price)}`
                         : ""}
                       {rule.category ? ` · ${rule.category}` : ""}
                     </p>

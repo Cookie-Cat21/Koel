@@ -11,6 +11,7 @@ import { toSafePositiveInt } from "@/lib/api/safe-int";
 import { toIso } from "@/lib/api/time";
 import {
   isAlertType,
+  MA_CROSS_PERIODS,
   NOTICE_ALERT_TYPES,
   normalizeSymbol,
 } from "@/lib/api/symbol";
@@ -85,14 +86,15 @@ export async function GET(request: NextRequest) {
       symbol: string;
       type: string;
       threshold: number | null;
+      ref_price: number | null;
       category: string | null;
       active: boolean;
       armed: boolean;
       created_at: Date | string;
       muted_until: Date | string | null;
     }>(
-      `SELECT id, symbol, type, threshold, category, active, armed, created_at,
-              muted_until
+      `SELECT id, symbol, type, threshold, ref_price, category, active, armed,
+              created_at, muted_until
        FROM alert_rules
        WHERE ${clauses.join(" AND ")}
        ORDER BY id ASC
@@ -110,6 +112,7 @@ export async function GET(request: NextRequest) {
       if (!symbol) return [];
       // Finite + abs cap — upper-bound-only used to egress -1e308.
       const threshold = cappedAlertThreshold(toFiniteNumber(row.threshold));
+      const refPrice = cappedAlertThreshold(toFiniteNumber(row.ref_price));
       return [
         {
           id,
@@ -117,6 +120,7 @@ export async function GET(request: NextRequest) {
           type: row.type,
           // Finite-only + cap — NaN/±Inf / absurd magnitudes → null.
           threshold,
+          ref_price: refPrice,
           // Strip C0/C1 + cap — parity with bot storage read path.
           category: sanitizeDisclosureCategory(row.category),
           // Strict === true — Boolean("false") used to mislabel armed/active.
@@ -204,6 +208,16 @@ export async function POST(request: NextRequest) {
         "threshold is too large.",
       );
     }
+    if (
+      alertType === "ma_cross" &&
+      !(MA_CROSS_PERIODS as readonly number[]).includes(obj.threshold)
+    ) {
+      return jsonError(
+        400,
+        "validation_error",
+        "ma_cross threshold must be exactly 20, 50, or 200.",
+      );
+    }
     threshold = obj.threshold;
   }
 
@@ -221,6 +235,39 @@ export async function POST(request: NextRequest) {
     if (alertType === "disclosure") {
       category = sanitizeDisclosureCategory(obj.category);
     }
+  }
+
+  // ref_move requires a positive reference price; other types ignore it.
+  let refPrice: number | null = null;
+  if (alertType === "ref_move") {
+    if (typeof obj.ref_price !== "number" || !Number.isFinite(obj.ref_price)) {
+      return jsonError(
+        400,
+        "validation_error",
+        "ref_move requires a finite reference price.",
+      );
+    }
+    if (obj.ref_price <= 0) {
+      return jsonError(
+        400,
+        "validation_error",
+        "reference price must be a positive number.",
+      );
+    }
+    if (obj.ref_price > MAX_ALERT_THRESHOLD) {
+      return jsonError(
+        400,
+        "validation_error",
+        "reference price is too large.",
+      );
+    }
+    refPrice = obj.ref_price;
+  } else if (obj.ref_price !== undefined && obj.ref_price !== null) {
+    return jsonError(
+      400,
+      "validation_error",
+      "this alert type must not include a reference price.",
+    );
   }
 
   try {
@@ -244,6 +291,7 @@ export async function POST(request: NextRequest) {
       alertType,
       threshold,
       category,
+      refPrice,
     );
     return jsonOk(rule, created ? 201 : 200);
   } catch (err) {

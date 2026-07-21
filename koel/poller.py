@@ -35,6 +35,8 @@ from koel.adapters.cse import (
     normalize_company_name,
     resolve_announcement_symbol,
 )
+from koel.alert_context import build_price_fire_context
+from koel.bot_keyboards import fire_pause_keyboard
 from koel.briefs import briefs_enabled
 from koel.briefs.worker import claim_pending_briefs
 from koel.circuit import CircuitOpenError
@@ -71,7 +73,8 @@ from koel.storage import Storage
 log = get_logger(__name__)
 
 # bool kept for test AsyncMocks; production send returns SendResult.
-SendFunc = Callable[[int, str], Awaitable[SendResult | bool]]
+# Optional reply_markup kwarg (InlineKeyboardMarkup) when the callback supports it.
+SendFunc = Callable[..., Awaitable[SendResult | bool]]
 # Session try-lock for the CSE poll tick. Distinct from storage.BRIEF_CAP_LOCK_ID
 # (4_201_339) — do not unify; see docs/factory/passes/ADVISORY_LOCK_DEADLOCK.md.
 POLL_LOCK_ID = 4_201_337
@@ -190,6 +193,11 @@ class Poller:
         self.price_poll_ok: bool = True
         self.disclosure_poll_ok: bool = True
         self.lock_held_skip: bool = False
+        # Unofficial-feed honesty (LIVE/STALE/DEGRADED) — see koel/feed_health.py.
+        from koel.feed_health import FeedHealth
+
+        self.feed_health = FeedHealth()
+        self._feed_was_degraded = False
         # Watched symbols absent from the latest tradeSummary (E2-C06).
         self.watched_missing: list[str] = []
         # Last tradeSummary shape: empty HTTP-OK with a non-empty watchlist is
@@ -373,11 +381,14 @@ class Poller:
             if not ok:
                 if self.last_error is None:
                     self.last_error = "poll_degraded"
+                self.feed_health.record_fail()
             else:
                 self.last_error = None
+                self.feed_health.record_ok()
         except Exception as exc:
             self.last_tick_ok = False
             self.last_error = str(exc)
+            self.feed_health.record_fail()
             log.exception("poll_cycle_failed", error=str(exc))
         finally:
             self.price_poll_ok = price_ok
@@ -385,6 +396,11 @@ class Poller:
             self._queue_sends = False
             self.last_tick_at = datetime.now(UTC)
             await self.storage.advisory_unlock(POLL_LOCK_ID)
+            # Best-effort degradation / recovery notice to optional status chat.
+            try:
+                await self._maybe_broadcast_feed_notice()
+            except Exception:  # noqa: BLE001
+                log.exception("feed_notice_broadcast_failed")
 
         # CORE-004: Telegram I/O for this tick's new claims after unlock.
         # E2-C05: unsent drain uses row leases (SKIP LOCKED) — no advisory
@@ -734,6 +750,13 @@ class Poller:
             # Conflict claim skips disarm. Telegram send stays outside the txn.
             for event in filter_fireable(events):
                 t0 = datetime.now(UTC)
+                # W5/W6: attach snapshot provenance + optional "why it moved" line.
+                context_line = await build_price_fire_context(
+                    self.storage, symbol=stored.symbol, snapshot=stored
+                )
+                event = event.model_copy(
+                    update={"as_of": stored.ts, "context_line": context_line}
+                )
                 claimed = await self._claim_and_send(
                     event,
                     disarm=event.set_armed is False,
@@ -1827,6 +1850,21 @@ class Poller:
         # Wraps midnight: quiet from start..23 and 0..end-1
         return hour >= start or hour < end
 
+    async def _send_with_optional_markup(
+        self,
+        chat_id: int,
+        text: str,
+        *,
+        reply_markup: Any = None,
+    ) -> SendResult | bool:
+        """Call ``self.send``; omit reply_markup for 2-arg test/legacy callbacks."""
+        if reply_markup is None:
+            return await self.send(chat_id, text)
+        try:
+            return await self.send(chat_id, text, reply_markup=reply_markup)
+        except TypeError:
+            return await self.send(chat_id, text)
+
     async def _deliver_one(self, pending: PendingSend) -> None:
         """Send one claimed alert and update alert_log (OK / FAILED / DEFERRED)."""
         # Quiet hours (user prefs) — hold the row (message_sent=false) for retry;
@@ -1839,7 +1877,19 @@ class Poller:
                 log_id=pending.log_id,
             )
             return
-        result = _normalize_send_result(await self.send(pending.telegram_id, pending.message))
+        # Pause keyboard when mute storage exists; currently None (skip markup).
+        markup = (
+            fire_pause_keyboard(pending.rule_id)
+            if pending.rule_id is not None
+            else None
+        )
+        result = _normalize_send_result(
+            await self._send_with_optional_markup(
+                pending.telegram_id,
+                pending.message,
+                reply_markup=markup,
+            )
+        )
         symbol = pending.symbol
         if symbol is None and pending.event is not None:
             symbol = pending.event.symbol
@@ -2155,6 +2205,37 @@ class Poller:
         # Reject further fire-and-forget schedules (late shielded tick).
         self._background_closed = True
         log.info("poller_stopped")
+
+    async def _maybe_broadcast_feed_notice(self) -> None:
+        """Send degradation/recovery notices to ``TELEGRAM_STATUS_CHAT_ID`` if set.
+
+        Does not fan out to every user — that belongs to the public channel (H2).
+        """
+        import os
+
+        from koel.feed_health import FeedState
+
+        raw = os.getenv("TELEGRAM_STATUS_CHAT_ID", "")
+        if not isinstance(raw, str) or not raw.strip():
+            return
+        try:
+            chat_id = int(raw.strip())
+        except ValueError:
+            return
+        state = self.feed_health.state
+        if state in (FeedState.STALE, FeedState.DEGRADED):
+            if not self.feed_health.should_broadcast_notice():
+                return
+            msg = self.feed_health.degradation_message()
+            await self.send(chat_id, msg)
+            self.feed_health.mark_notice_sent()
+            self._feed_was_degraded = True
+            log.warning("feed_degradation_notice_sent", state=state.value)
+            return
+        if state == FeedState.LIVE and self._feed_was_degraded:
+            await self.send(chat_id, self.feed_health.recovery_message())
+            self._feed_was_degraded = False
+            log.info("feed_recovery_notice_sent")
 
 
 async def run_poller_forever(

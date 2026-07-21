@@ -133,7 +133,7 @@ async def test_catalog_all_bot_command_responses(capsys: pytest.CaptureFixture[s
     storage.upsert_stock = AsyncMock()
     storage.add_watch = AsyncMock()
     storage.create_alert_rule = AsyncMock(
-        side_effect=lambda user_id, symbol, alert_type, threshold, category=None: _rule(
+        side_effect=lambda user_id, symbol, alert_type, threshold, category=None, ref_price=None: _rule(
             rule_id=7,
             alert_type=alert_type,
             threshold=threshold,

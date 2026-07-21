@@ -8,8 +8,11 @@ import re
 from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_COLOMBO = ZoneInfo("Asia/Colombo")
 
 
 def _none_if_bool_numeric(value: Any) -> Any:
@@ -61,6 +64,15 @@ class AlertType(StrEnum):
     XD_DIGEST = "xd_digest"
     # Share split / consolidation (price-ratio cliff or CSE subdivision filing).
     SHARE_SPLIT = "share_split"
+    # Path / MA / reference-price alerts (daily_bars + live snapshot).
+    HIGH_52W = "high_52w"
+    LOW_52W = "low_52w"
+    MA_CROSS = "ma_cross"
+    REF_MOVE = "ref_move"
+
+
+# MA periods accepted for ma_cross (Fidelity-style set).
+MA_CROSS_PERIODS: frozenset[int] = frozenset({20, 50, 200})
 
 
 # Alert types that need a positive numeric threshold.
@@ -92,6 +104,8 @@ THRESHOLD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.OIL_MOVE,
         AlertType.XD_SOON,
         AlertType.XD_DIGEST,
+        AlertType.MA_CROSS,
+        AlertType.REF_MOVE,
     }
 )
 
@@ -145,6 +159,10 @@ PRICE_BOARD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.CROSSING_VOLUME,
         AlertType.GAP,
         AlertType.SHARE_SPLIT,
+        AlertType.HIGH_52W,
+        AlertType.LOW_52W,
+        AlertType.MA_CROSS,
+        AlertType.REF_MOVE,
     }
 )
 
@@ -155,6 +173,8 @@ NOTICE_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.NON_COMPLIANCE,
         AlertType.HALT,
         AlertType.SHARE_SPLIT,
+        AlertType.HIGH_52W,
+        AlertType.LOW_52W,
     }
 )
 
@@ -375,12 +395,14 @@ class AlertRule(BaseModel):
     # Disclosure rules only: optional case-insensitive substring filter on
     # Disclosure.category. None = match any category (backward compatible).
     category: str | None = None
+    # ref_move only: user-supplied reference price for % move.
+    ref_price: float | None = None
     active: bool = True
     armed: bool = True
     created_at: datetime | None = None
     muted_until: datetime | None = None
 
-    @field_validator("threshold", mode="before")
+    @field_validator("threshold", "ref_price", mode="before")
     @classmethod
     def _threshold_must_not_be_bool(cls, value: Any) -> Any:
         return _none_if_bool_numeric(value)
@@ -395,6 +417,7 @@ class AlertEvent(BaseModel):
     symbol: str
     type: AlertType
     threshold: float | None = None
+    ref_price: float | None = None
     trigger: str
     current_price: float | None = None
     disclosure_url: str | None = None
@@ -407,6 +430,15 @@ class AlertEvent(BaseModel):
     event_key: str
     # Optional arming update for sticky-above/below rules
     set_armed: bool | None = None
+    # Provenance / context for Telegram fires (W5/W6). Optional; formatters
+    # omit when unset. Never investment advice.
+    as_of: datetime | None = None
+    context_line: str | None = None
+
+    @field_validator("threshold", "ref_price", mode="before")
+    @classmethod
+    def _event_numeric_must_not_be_bool(cls, value: Any) -> Any:
+        return _none_if_bool_numeric(value)
 
 
 class PreviousPriceState(BaseModel):
@@ -421,12 +453,21 @@ class PreviousPriceState(BaseModel):
     avg_crossing_volume: float | None = None
     # Day-bucket keys already claimed for volume/gap activity rules.
     activity_fired_keys: set[str] = Field(default_factory=set)
+    # Prior 52-week extremes from daily_bars (excludes incomplete today).
+    high_52w: float | None = None
+    low_52w: float | None = None
+    # Simple moving averages of daily closes keyed by period (20 / 50 / 200).
+    sma_by_period: dict[int, float] = Field(default_factory=dict)
+    # Prior snapshot timestamp (for gap-aware %-move annotations).
+    prev_ts: datetime | None = None
 
     @field_validator(
         "price",
         "change_pct",
         "avg_volume",
         "avg_crossing_volume",
+        "high_52w",
+        "low_52w",
         mode="before",
     )
     @classmethod
@@ -765,12 +806,32 @@ def format_alert_message(
     dash_link = _dash_symbol_link(symbol)
     if dash_link:
         lines.append(dash_link)
+    # W5: one-line "why it moved" from Postgres facts (before brief / NFA).
+    raw_ctx = event.context_line
+    if isinstance(raw_ctx, str):
+        ctx = _CTRL_RE.sub("", raw_ctx).strip()
+        if len(ctx) > 120:
+            ctx = ctx[:119].rstrip() + "…"
+        if ctx:
+            lines.append(ctx)
     brief = filing_brief if filing_brief is not None else event.filing_brief
     budget = min(BRIEF_BODY_MAX, brief_budget_for_prefix(lines))
     brief_text = sanitize_brief_body(brief, max_len=budget) if budget > 0 else None
     if brief_text:
         lines.append("")
         lines.append(brief_text)
+    # W6: snapshot provenance stamp before NFA.
+    as_of = event.as_of
+    if isinstance(as_of, datetime):
+        try:
+            local = (
+                as_of.astimezone(_COLOMBO)
+                if as_of.tzinfo is not None
+                else as_of.replace(tzinfo=_COLOMBO)
+            )
+            lines.append(f"As of {local.strftime('%H:%M')} SLT")
+        except Exception:
+            pass
     lines.append("")
     lines.append(disclaimer())
     return _clamp_telegram_message("\n".join(lines))

@@ -1821,6 +1821,29 @@ class Storage:
         counted = _pg_count(_as_row(row).get("n"))
         return 0 if counted is None else counted
 
+    async def get_latest_disclosure(self, symbol: str) -> Disclosure | None:
+        """Most recent disclosure for ``symbol`` by ``published_at`` (fire context)."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return None
+        sym = symbol.strip().upper()
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT id, external_id, symbol, title, category, url, company_name,
+                           published_at, seen_at, pdf_url
+                    FROM disclosures
+                    WHERE symbol = %s
+                    ORDER BY published_at DESC NULLS LAST, id DESC
+                    LIMIT 1
+                    """,
+                    (sym,),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        return self._disclosure_from_row(_as_row(row))
+
     async def list_daily_bars(self, symbol: str) -> list[DailyBar]:
         """Return ascending daily bars for ``symbol``."""
         if not isinstance(symbol, str):
@@ -2152,6 +2175,9 @@ class Storage:
                         OR al.event_key LIKE 'voldown:%%'
                         OR al.event_key LIKE 'xvol:%%'
                         OR al.event_key LIKE 'gap:%%'
+                        OR al.event_key LIKE 'h52w:%%'
+                        OR al.event_key LIKE 'l52w:%%'
+                        OR al.event_key LIKE 'refmove:%%'
                       )
                     """,
                     (symbol,),
@@ -2205,6 +2231,9 @@ class Storage:
                         avg_volume = val
                     else:
                         avg_crossing = val
+
+        high_52w, low_52w, sma_by_period = await self._bar_path_metrics(symbol)
+
         if prev is None:
             return PreviousPriceState(
                 price=None,
@@ -2213,6 +2242,10 @@ class Storage:
                 avg_volume=avg_volume,
                 avg_crossing_volume=avg_crossing,
                 activity_fired_keys=activity_keys,
+                high_52w=high_52w,
+                low_52w=low_52w,
+                sma_by_period=sma_by_period,
+                prev_ts=None,
             )
         return PreviousPriceState(
             price=prev.price,
@@ -2221,7 +2254,37 @@ class Storage:
             avg_volume=avg_volume,
             avg_crossing_volume=avg_crossing,
             activity_fired_keys=activity_keys,
+            high_52w=high_52w,
+            low_52w=low_52w,
+            sma_by_period=sma_by_period,
+            prev_ts=prev.ts,
         )
+
+    async def _bar_path_metrics(
+        self, symbol: str
+    ) -> tuple[float | None, float | None, dict[int, float]]:
+        """Compute 52w high/low + SMA 20/50/200 from daily_bars (excludes today)."""
+        from koel.dividends import colombo_today
+        from koel.rules import sma, week52_range
+
+        bars = await self.list_daily_bars(symbol)
+        if not bars:
+            return None, None, {}
+        today = colombo_today()
+        # Prefer completed sessions only — today's bar may still be forming.
+        completed = [b for b in bars if b.trade_date < today]
+        # Keep ~260 trading days for SMA200 headroom.
+        window = completed[-260:] if len(completed) > 260 else completed
+        if not window:
+            return None, None, {}
+        high_52w, low_52w = week52_range(window)
+        closes = [b.price for b in window]
+        sma_by_period: dict[int, float] = {}
+        for period in (20, 50, 200):
+            val = sma(closes, period)
+            if val is not None and math.isfinite(val):
+                sma_by_period[period] = val
+        return high_52w, low_52w, sma_by_period
 
     async def upsert_big_print(self, print_: BigPrint) -> BigPrint:
         """Insert or return existing day-tape print; sets just_inserted."""
@@ -4693,13 +4756,17 @@ class Storage:
         alert_type: AlertType,
         threshold: float | None,
         category: str | None = None,
+        ref_price: float | None = None,
     ) -> AlertRule:
         """Create or return an identical active rule (idempotent under concurrency).
 
         Avoids deactivate-then-insert TOCTOU where a parallel caller could
         deactivate the rule id we already returned to the user.
         ``category`` is for disclosure rules only (substring filter); ignored otherwise.
+        ``ref_price`` is for ref_move only; ignored/NULL otherwise.
         """
+        from koel.domain import MA_CROSS_PERIODS
+
         # Fail closed — non-string symbol used to throw on .strip mid create.
         if not isinstance(symbol, str):
             raise ValueError("symbol must be a non-empty string")
@@ -4711,11 +4778,31 @@ class Storage:
             if alert_type == AlertType.DISCLOSURE
             else None
         )
+        # Persist ref_price only for ref_move; validate positive finite.
+        stored_ref: float | None = None
+        if alert_type == AlertType.REF_MOVE:
+            if (
+                isinstance(ref_price, bool)
+                or not isinstance(ref_price, (int, float))
+                or not math.isfinite(float(ref_price))
+                or float(ref_price) <= 0
+            ):
+                raise ValueError("ref_move requires a positive finite ref_price")
+            stored_ref = float(ref_price)
+            if threshold is None or not math.isfinite(float(threshold)) or float(threshold) <= 0:
+                raise ValueError("ref_move requires a positive finite threshold")
+        if alert_type == AlertType.MA_CROSS:
+            if threshold is None or not math.isfinite(float(threshold)):
+                raise ValueError("ma_cross requires period 20, 50, or 200")
+            period_f = float(threshold)
+            if period_f != int(period_f) or int(period_f) not in MA_CROSS_PERIODS:
+                raise ValueError("ma_cross requires period 20, 50, or 200")
+            threshold = float(int(period_f))
         await self.upsert_stock(symbol)
         await self.add_watch(user_id, symbol)
         async with self._pool.connection() as conn:
             existing = await self._fetch_active_rule(
-                conn, user_id, symbol, alert_type, threshold, cat
+                conn, user_id, symbol, alert_type, threshold, cat, stored_ref
             )
             if existing is not None:
                 return existing
@@ -4724,18 +4811,26 @@ class Storage:
                     await conn.execute(
                         """
                         INSERT INTO alert_rules
-                            (user_id, symbol, type, threshold, category, active, armed)
-                        VALUES (%s, %s, %s, %s, %s, TRUE, TRUE)
+                            (user_id, symbol, type, threshold, category, ref_price,
+                             active, armed)
+                        VALUES (%s, %s, %s, %s, %s, %s, TRUE, TRUE)
                         RETURNING id, user_id, symbol, type, threshold, category,
-                                  active, armed, created_at
+                                  ref_price, active, armed, created_at
                         """,
-                        (user_id, symbol, alert_type.value, threshold, cat),
+                        (
+                            user_id,
+                            symbol,
+                            alert_type.value,
+                            threshold,
+                            cat,
+                            stored_ref,
+                        ),
                     )
                 ).fetchone()
             except UniqueViolation:
                 await conn.rollback()
                 raced = await self._fetch_active_rule(
-                    conn, user_id, symbol, alert_type, threshold, cat
+                    conn, user_id, symbol, alert_type, threshold, cat, stored_ref
                 )
                 if raced is not None:
                     return raced
@@ -4968,6 +5063,7 @@ class Storage:
         alert_type: AlertType,
         threshold: float | None,
         category: str | None = None,
+        ref_price: float | None = None,
     ) -> AlertRule | None:
         row = await (
             await conn.execute(
@@ -4978,11 +5074,12 @@ class Storage:
                 WHERE ar.user_id = %s AND ar.symbol = %s AND ar.type = %s
                   AND COALESCE(ar.threshold, -1) = COALESCE(%s, -1)
                   AND COALESCE(ar.category, '') = COALESCE(%s, '')
+                  AND COALESCE(ar.ref_price, -1) = COALESCE(%s, -1)
                   AND ar.active
                 ORDER BY ar.id DESC
                 LIMIT 1
                 """,
-                (user_id, symbol, alert_type.value, threshold, category),
+                (user_id, symbol, alert_type.value, threshold, category, ref_price),
             )
         ).fetchone()
         if row is None:
@@ -5654,6 +5751,14 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
     raw_armed = row.get("armed", True)
     if not isinstance(raw_armed, bool):
         return None
+    raw_ref = row.get("ref_price")
+    ref_price: float | None
+    if raw_ref is None or isinstance(raw_ref, bool):
+        ref_price = None
+    elif isinstance(raw_ref, (int, float)) and math.isfinite(float(raw_ref)):
+        ref_price = float(raw_ref)
+    else:
+        ref_price = None
     return AlertRule(
         id=raw_id,
         user_id=raw_uid,
@@ -5662,6 +5767,7 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
         type=alert_type,
         threshold=row.get("threshold"),
         category=cat,
+        ref_price=ref_price,
         active=raw_active,
         armed=raw_armed,
         created_at=created,
