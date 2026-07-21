@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import math
+from bisect import bisect_right
 from dataclasses import dataclass
 from datetime import date
 
 from koel.domain import DailyBar
 from koel.ml.features import FEATURE_NAMES, labels_at, path_features
 from koel.storage import Storage
+
+FEATURE_LOOKBACK_BARS = 61
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,16 +64,59 @@ def build_samples(
     *,
     horizon: int,
     min_history: int = 60,
+    max_abs_return: float | None = None,
 ) -> list[Sample]:
-    """One sample per (symbol, t) with ≥ min_history bars and a future label."""
+    """Build samples without copying each symbol's full history per row.
+
+    When ``max_abs_return`` is set, samples whose feature or label window crosses
+    an unresolved price cliff are quarantined. Raw bars remain untouched.
+    """
+    if max_abs_return is not None and max_abs_return <= 0:
+        raise ValueError("max_abs_return must be positive")
+
     samples: list[Sample] = []
     for symbol, bars in series.items():
         ordered = sorted(bars, key=lambda b: b.trade_date)
         prices = [b.price for b in ordered]
         if len(prices) < min_history + horizon:
             continue
+        positive_volume_indices = [
+            index
+            for index, bar in enumerate(ordered)
+            if bar.volume is not None
+            and math.isfinite(bar.volume)
+            and bar.volume > 0
+        ]
+        bad_prefix: list[int] | None = None
+        if max_abs_return is not None:
+            bad_prefix = [0]
+            for i, price in enumerate(prices):
+                bad = False
+                if i > 0:
+                    previous = prices[i - 1]
+                    if previous == 0:
+                        bad = True
+                    else:
+                        move = (price / previous) - 1.0
+                        bad = not math.isfinite(move) or abs(move) > max_abs_return
+                bad_prefix.append(bad_prefix[-1] + int(bad))
         for i in range(min_history - 1, len(prices) - horizon):
-            window = ordered[: i + 1]
+            window_start = max(0, i - (FEATURE_LOOKBACK_BARS - 1))
+            volume_end = bisect_right(positive_volume_indices, i)
+            if volume_end >= 20:
+                window_start = min(
+                    window_start,
+                    positive_volume_indices[volume_end - 20],
+                )
+            if bad_prefix is not None:
+                first_transition = max(1, window_start + 1)
+                last_transition = i + horizon
+                if (
+                    bad_prefix[last_transition + 1] - bad_prefix[first_transition]
+                    > 0
+                ):
+                    continue
+            window = ordered[window_start : i + 1]
             feats = path_features(window)
             if feats is None:
                 continue

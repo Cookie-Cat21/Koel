@@ -70,6 +70,33 @@ def test_build_samples_no_future_in_features() -> None:
     assert match[0].x == mid.x
 
 
+def test_build_samples_bounded_window_matches_full_history_features() -> None:
+    bars = _bars([10.0 + i * 0.03 for i in range(140)])
+    samples = build_samples({"TEST.N0000": bars}, horizon=1, min_history=60)
+    chosen = samples[-10]
+    index = next(i for i, bar in enumerate(bars) if bar.trade_date == chosen.as_of)
+    full = path_features(bars[: index + 1])
+    assert full is not None
+    assert chosen.x == full.values
+
+
+def test_build_samples_quarantines_price_cliff_windows() -> None:
+    prices = [10.0 + i * 0.01 for i in range(150)]
+    prices[70:] = [price * 10 for price in prices[70:]]
+    bars = _bars(prices)
+    samples = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=60,
+        max_abs_return=0.50,
+    )
+    sample_dates = {sample.as_of for sample in samples}
+    assert bars[69].trade_date not in sample_dates  # label crosses the cliff
+    assert bars[70].trade_date not in sample_dates  # features contain the cliff
+    assert bars[129].trade_date not in sample_dates
+    assert bars[130].trade_date in sample_dates
+
+
 def test_sklearn_available_helper() -> None:
     from koel.ml import sklearn_available
 

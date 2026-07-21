@@ -1,0 +1,234 @@
+# Distributed, nested ML research. Manual only; never promotes or writes forecasts.
+# Required secret: ML_DATABASE_URL (SELECT-only Neon role strongly recommended).
+name: ml-train-v2
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Comma-separated model families
+        required: true
+        default: logistic,hgb_lmt,xgb_lmt
+        type: string
+      folds:
+        description: Number of nested outer folds
+        required: true
+        default: "6"
+        type: choice
+        options: ["3", "6"]
+      horizons:
+        description: Comma-separated trading-session horizons
+        required: true
+        default: "1"
+        type: string
+      seeds:
+        description: Seeds averaged inside each fold/model worker
+        required: true
+        default: "0,1,2"
+        type: string
+      target_precision:
+        description: Selective test precision target
+        required: true
+        default: "0.90"
+        type: string
+      min_precision_lcb:
+        description: Required one-sided 95% Wilson lower bound
+        required: true
+        default: "0.90"
+        type: string
+      min_coverage:
+        description: Minimum eligible test-row coverage
+        required: true
+        default: "0.01"
+        type: string
+      min_emits:
+        description: Minimum held-out emissions
+        required: true
+        default: "500"
+        type: string
+      min_symbols:
+        description: Minimum distinct held-out symbols
+        required: true
+        default: "80"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-train-v2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Freeze dataset and matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      snapshot_sha256: ${{ steps.snapshot.outputs.snapshot_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install snapshot tooling
+        run: pip install -e .
+
+      - name: Require read-only ML database secret
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_DATABASE_URL }}
+        run: |
+          if [ -z "${ML_DATABASE_URL}" ]; then
+            echo "::error::ML_DATABASE_URL is not set"
+            exit 1
+          fi
+
+      - name: Export immutable hybrid snapshot
+        id: snapshot
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_DATABASE_URL }}
+        run: |
+          python -m koel.ml.snapshot export \
+            --dataset hybrid \
+            --output artifacts/ml-train-v2/snapshot
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path("artifacts/ml-train-v2/snapshot/manifest.json").read_text()
+          )
+          print(f"snapshot_sha256={manifest['bars_sha256']}")
+          PY
+
+      - name: Build deterministic fan-out matrix
+        id: matrix
+        env:
+          MODELS: ${{ inputs.models }}
+          FOLDS: ${{ inputs.folds }}
+          HORIZONS: ${{ inputs.horizons }}
+          SEEDS: ${{ inputs.seeds }}
+        run: |
+          matrix="$(
+            python -m koel.ml.distributed matrix \
+              --models "$MODELS" \
+              --folds "$FOLDS" \
+              --horizons "$HORIZONS" \
+              --seeds "$SEEDS"
+          )"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+      - name: Upload frozen snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ml-train-v2/snapshot/
+          if-no-files-found: error
+          retention-days: 7
+
+  train:
+    name: Train ${{ matrix.shard_id }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 18
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ML dependencies
+        run: pip install -e ".[ml]"
+
+      - name: Download frozen snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: ml-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ml-train-v2/snapshot
+
+      - name: Train nested shard
+        env:
+          ML_WORKER_THREADS: "4"
+        run: |
+          mkdir -p artifacts/ml-train-v2/shards
+          python -m koel.ml.distributed_worker \
+            --snapshot artifacts/ml-train-v2/snapshot \
+            --output "artifacts/ml-train-v2/shards/${{ matrix.shard_id }}.predictions.jsonl.gz" \
+            --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
+            --shard-id "${{ matrix.shard_id }}" \
+            --model "${{ matrix.model }}" \
+            --outer-fold "${{ matrix.outer_fold }}" \
+            --outer-folds "${{ inputs.folds }}" \
+            --horizon "${{ matrix.horizon }}" \
+            --seeds "${{ matrix.seeds }}"
+
+      - name: Upload shard predictions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-shard-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard_id }}
+          path: artifacts/ml-train-v2/shards/
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    name: Fan-in nested evaluation
+    needs: [prepare, train]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install evaluation tooling
+        run: pip install -e .
+
+      - name: Download every prediction shard
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ml-shard-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: artifacts/ml-train-v2/shards
+          merge-multiple: true
+
+      - name: Aggregate calibration and test partitions
+        env:
+          MODELS: ${{ inputs.models }}
+          TARGET_PRECISION: ${{ inputs.target_precision }}
+          MIN_PRECISION_LCB: ${{ inputs.min_precision_lcb }}
+          MIN_COVERAGE: ${{ inputs.min_coverage }}
+          MIN_EMITS: ${{ inputs.min_emits }}
+          MIN_SYMBOLS: ${{ inputs.min_symbols }}
+        run: |
+          mkdir -p artifacts/ml-train-v2/report
+          python -m koel.ml.distributed aggregate \
+            --input-dir artifacts/ml-train-v2/shards \
+            --models "$MODELS" \
+            --target-precision "$TARGET_PRECISION" \
+            --min-precision-lcb "$MIN_PRECISION_LCB" \
+            --min-coverage "$MIN_COVERAGE" \
+            --min-emits "$MIN_EMITS" \
+            --min-symbols "$MIN_SYMBOLS" \
+            --output-json artifacts/ml-train-v2/report/result.json \
+            --output-markdown artifacts/ml-train-v2/report/result.md
+          cat artifacts/ml-train-v2/report/result.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evaluation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-train-v2-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ml-train-v2/report/
+          if-no-files-found: error
+          retention-days: 30
