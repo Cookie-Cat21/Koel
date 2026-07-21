@@ -6,6 +6,7 @@ import { HelpLink } from "@/components/help-link";
 import { EmptyState } from "@/components/empty-state";
 import { MoversBarList } from "@/components/kit/movers-bar-list";
 import { SectorHeatStrip } from "@/components/kit/sector-heat-strip";
+import { BrowseFilterBar } from "@/components/market/browse-filter-bar";
 import { BrowseTable } from "@/components/market/browse-table";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -30,14 +31,6 @@ import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { optionalPageSession } from "@/lib/auth/page-session";
-
-/** Exported for regression contract — used by movers a11y copy. */
-export function changeDirectionSr(pct: number | null): string {
-  if (pct == null) return "change unknown";
-  if (pct > 0) return "up ";
-  if (pct < 0) return "down ";
-  return "unchanged ";
-}
 
 export const dynamic = "force-dynamic";
 
@@ -388,45 +381,12 @@ export default async function MarketPage({
             </Button>
           </div>
 
-          <div
-            className="flex flex-wrap items-center gap-2"
-            aria-label="Light browse filters"
-          >
-            <Link
-              href={browseHref(q, 1, {
-                sector: sector || undefined,
-                hasEps: !hasEps,
-              })}
-              className={`rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
-                hasEps
-                  ? "border-foreground/30 bg-foreground/5 text-foreground"
-                  : "border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Has EPS
-            </Link>
-            {sector ? (
-              <Link
-                href={browseHref(q, 1, { hasEps })}
-                className="inline-flex max-w-[16rem] items-center gap-1.5 truncate rounded-md border border-foreground/30 bg-foreground/5 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                title={`Clear sector filter: ${sector}`}
-              >
-                <span className="truncate">Sector: {sector}</span>
-                <span aria-hidden="true" className="text-muted-foreground">
-                  ×
-                </span>
-                <span className="sr-only">Clear sector filter</span>
-              </Link>
-            ) : null}
-            {browseOnly ? (
-              <Link
-                href="/market"
-                className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-              >
-                Clear all
-              </Link>
-            ) : null}
-          </div>
+          <BrowseFilterBar
+            q={q}
+            sector={sector}
+            hasEps={hasEps}
+            browseHref={browseHref}
+          />
         </form>
 
         <p className="mt-3">

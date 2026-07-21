@@ -96,36 +96,41 @@ export function LwcPriceChart({
     const el = hostRef.current;
     if (!el || bars.length < 2) return;
 
-    const chart = createChart(el, {
-      autoSize: true,
-      layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "rgba(120, 120, 128, 1)",
-        attributionLogo: false,
-      },
-      grid: {
-        vertLines: { color: "rgba(120, 120, 128, 0.12)" },
-        horzLines: { color: "rgba(120, 120, 128, 0.12)" },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: { labelBackgroundColor: "rgba(80, 80, 90, 0.9)" },
-        horzLine: { labelBackgroundColor: "rgba(80, 80, 90, 0.9)" },
-      },
-      rightPriceScale: { borderVisible: false },
-      timeScale: {
-        borderVisible: false,
-        rightOffset: 4,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-      },
-      handleScroll: { mouseWheel: true, pressedMouseMove: true },
-      handleScale: {
-        axisPressedMouseMove: true,
-        mouseWheel: true,
-        pinch: true,
-      },
-    });
+    let chart: IChartApi;
+    try {
+      chart = createChart(el, {
+        autoSize: true,
+        layout: {
+          background: { type: ColorType.Solid, color: "transparent" },
+          textColor: "rgba(120, 120, 128, 1)",
+          attributionLogo: false,
+        },
+        grid: {
+          vertLines: { color: "rgba(120, 120, 128, 0.12)" },
+          horzLines: { color: "rgba(120, 120, 128, 0.12)" },
+        },
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: { labelBackgroundColor: "rgba(80, 80, 90, 0.9)" },
+          horzLine: { labelBackgroundColor: "rgba(80, 80, 90, 0.9)" },
+        },
+        rightPriceScale: { borderVisible: false },
+        timeScale: {
+          borderVisible: false,
+          rightOffset: 4,
+          fixLeftEdge: true,
+          fixRightEdge: true,
+        },
+        handleScroll: { mouseWheel: true, pressedMouseMove: true },
+        handleScale: {
+          axisPressedMouseMove: true,
+          mouseWheel: true,
+          pinch: true,
+        },
+      });
+    } catch {
+      return;
+    }
 
     const candles = chart.addSeries(CandlestickSeries, {
       upColor: "#059669",
@@ -138,17 +143,25 @@ export function LwcPriceChart({
 
     let volume: ISeriesApi<"Histogram"> | null = null;
     if (showVolume) {
-      volume = chart.addSeries(
-        HistogramSeries,
-        {
-          priceFormat: { type: "volume" },
-          priceScaleId: "volume",
-        },
-        1,
-      );
-      chart.priceScale("volume").applyOptions({
-        scaleMargins: { top: 0.8, bottom: 0 },
-      });
+      // Pane index 1 — LWC v5 requires paneIndex on priceScale() or the
+      // custom id is looked up on pane 0 and throws (takes down the page).
+      const volumePane = 1;
+      try {
+        volume = chart.addSeries(
+          HistogramSeries,
+          {
+            priceFormat: { type: "volume" },
+            priceScaleId: "volume",
+          },
+          volumePane,
+        );
+        chart.priceScale("volume", volumePane).applyOptions({
+          scaleMargins: { top: 0.15, bottom: 0 },
+        });
+      } catch {
+        // Volume pane is optional — keep candles if histogram scale fails.
+        volume = null;
+      }
     }
 
     const forecast = chart.addSeries(LineSeries, {

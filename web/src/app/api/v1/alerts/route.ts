@@ -22,7 +22,7 @@ import { activeAlertQuota, createAlertRule, getPool, getStock } from "@/lib/db";
 export const runtime = "nodejs";
 
 /** Cap alert_rules list — unbounded SELECT used to OOM SSR / balloon JSON. */
-export const MAX_ALERT_RULES = 500;
+const MAX_ALERT_RULES = 500;
 
 /**
  * GET /api/v1/alerts — session user's alert rules (active=true by default).

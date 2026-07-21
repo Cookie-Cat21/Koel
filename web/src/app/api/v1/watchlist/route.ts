@@ -16,7 +16,7 @@ import { addWatch, getPool, getStock } from "@/lib/db";
 export const runtime = "nodejs";
 
 /** Cap watchlist list — unbounded SELECT used to OOM SSR / balloon JSON. */
-export const MAX_WATCHLIST_ITEMS = 500;
+const MAX_WATCHLIST_ITEMS = 500;
 
 /**
  * GET /api/v1/watchlist — session user's symbols + latest price_snapshots join.
