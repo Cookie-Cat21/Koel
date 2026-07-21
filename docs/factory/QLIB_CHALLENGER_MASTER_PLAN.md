@@ -89,8 +89,10 @@ their source is not copied or distributed.
 
 - [x] Qlib-parameter LightGBM rank/regression baseline.
 - [x] Native DoubleEnsemble concept approximation.
-- [ ] Exact Qlib LightGBM run in isolated `pyqlib==0.9.7` workflow.
-- [ ] Exact Qlib DoubleEnsemble run.
+- [x] Exact Qlib LightGBM adapter and fold-0 smoke.
+- [x] Exact Qlib DoubleEnsemble adapter and fold-0 smoke.
+- [x] Isolated exact three-fold Qlib workflow.
+- [ ] Complete and review the exact three-fold workflow artifact.
 - [ ] Compare native and Qlib outputs on identical fold keys.
 - [ ] Add new prospective policy IDs only after offline gates pass.
 

@@ -50,4 +50,17 @@ Next:
 4. require positive post-cost lower-bound evidence before prospective policy
    registration.
 
+## Exact pinned-Qlib smoke
+
+`pyqlib==0.9.7` exact adapters and the isolated three-fold workflow are now
+implemented. Fold 0 completed successfully:
+
+| Exact challenger | RankIC | Balanced accuracy | MCC | Net mean @112 bps | Break-even cost |
+|---|---:|---:|---:|---:|---:|
+| Qlib `LGBModel` | 0.2046 | 0.5805 | 0.1591 | -1.47% | 64.3 bps |
+| Qlib `DEnsembleModel` | 0.1933 | 0.5703 | 0.1387 | -1.57% | 59.1 bps |
+
+This validates data/model interoperability, not promotion. The scheduled manual
+Qlib workflow will produce the complete exact three-fold report.
+
 Research only — not financial advice.
