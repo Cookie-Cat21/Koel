@@ -74,8 +74,8 @@ def predict_qlib_lightgbm(
     fit_kwargs = {}
     if valid_indices:
         fit_kwargs = {
-            "eval_X": [x_train[np.asarray(valid_indices)]],
-            "eval_y": [y_train[np.asarray(valid_indices)]],
+            "eval_X": x_train[np.asarray(valid_indices)],
+            "eval_y": y_train[np.asarray(valid_indices)],
             "callbacks": [lgb.early_stopping(50, verbose=False)],
         }
     model.fit(
