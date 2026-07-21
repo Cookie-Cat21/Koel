@@ -17,12 +17,15 @@ from koel.storage import Storage
 
 @dataclass(frozen=True, slots=True)
 class ShadowModelMetrics:
-    model_version: str
+    policy_id: str
+    instances: int
+    latest_model_version: str
     rows: int
     scored: int
     correct: int
     precision: float | None
     precision_lcb: float | None
+    coverage: float | None
     symbols: int
     sessions: int
     max_symbol_share: float
@@ -31,22 +34,29 @@ class ShadowModelMetrics:
 
 
 def summarize_shadow_rows(rows: list[dict[str, Any]]) -> list[ShadowModelMetrics]:
-    """Summarize non-partial prospective rows by immutable model version."""
-    by_model: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    """Summarize rolling immutable instances by fixed algorithm policy."""
+    by_policy: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         gate = str(row.get("gate") or "")
         if "partial" in gate:
             continue
-        by_model[str(row["model_version"])].append(row)
+        by_policy[str(row["model_id"])].append(row)
 
     out: list[ShadowModelMetrics] = []
-    for model_version, model_rows in sorted(by_model.items()):
-        scored = [
-            row
-            for row in model_rows
-            if bool(row.get("scored")) and isinstance(row.get("hit"), bool)
-        ]
-        correct = sum(1 for row in scored if row["hit"])
+    rows_per_policy_session = Counter(
+        (str(row["model_id"]), row.get("issued_at"))
+        for row in rows
+        if "partial" not in str(row.get("gate") or "")
+    )
+    eligible_by_session: dict[object, int] = {}
+    for (_policy_id, session), count in rows_per_policy_session.items():
+        eligible_by_session[session] = max(
+            eligible_by_session.get(session, 0),
+            count,
+        )
+    for policy_id, model_rows in sorted(by_policy.items()):
+        scored = [row for row in model_rows if bool(row.get("scored"))]
+        correct = sum(1 for row in scored if row.get("hit") is True)
         precision = correct / len(scored) if scored else None
         lcb = wilson_lower_bound(correct, len(scored)) if scored else None
         symbol_counts = Counter(str(row["symbol"]) for row in scored)
@@ -61,6 +71,9 @@ def summarize_shadow_rows(rows: list[dict[str, Any]]) -> list[ShadowModelMetrics
         max_session_share = (
             max(session_counts.values(), default=0) / len(scored) if scored else 0.0
         )
+        policy_sessions = {row.get("issued_at") for row in model_rows}
+        eligible = sum(eligible_by_session.get(session, 0) for session in policy_sessions)
+        coverage = len(model_rows) / eligible if eligible > 0 else None
         contract_met = (
             precision is not None
             and precision >= 0.90
@@ -69,17 +82,26 @@ def summarize_shadow_rows(rows: list[dict[str, Any]]) -> list[ShadowModelMetrics
             and len(scored) >= 500
             and len(symbol_counts) >= 80
             and len(session_counts) >= 60
+            and coverage is not None
+            and coverage >= 0.01
             and max_symbol_share <= 0.05
             and max_session_share <= 0.05
         )
         out.append(
             ShadowModelMetrics(
-                model_version=model_version,
+                policy_id=policy_id,
+                instances=len(
+                    {str(row["model_version"]) for row in model_rows}
+                ),
+                latest_model_version=max(
+                    str(row["model_version"]) for row in model_rows
+                ),
                 rows=len(model_rows),
                 scored=len(scored),
                 correct=correct,
                 precision=precision,
                 precision_lcb=lcb,
+                coverage=coverage,
                 symbols=len(symbol_counts),
                 sessions=len(session_counts),
                 max_symbol_share=max_symbol_share,
@@ -95,7 +117,7 @@ async def build_live_shadow_report(storage: Storage) -> list[ShadowModelMetrics]
         rows = await (
             await conn.execute(
                 """
-                SELECT model_version, symbol, issued_at, gate, scored, hit
+                SELECT model_id, model_version, symbol, issued_at, gate, scored, hit
                 FROM forecast_outcomes
                 WHERE gate LIKE 'shadow_%'
                 ORDER BY model_version, issued_at, symbol

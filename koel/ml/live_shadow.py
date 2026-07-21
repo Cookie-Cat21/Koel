@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -20,20 +21,28 @@ from koel.ml.dataset import Sample, build_samples
 from koel.ml.distributed_worker import _fit_predict_average
 from koel.ml.features import path_features
 from koel.ml.iterate import _enrich_cross_section
-from koel.ml.outcomes import OutcomeEmit, emit_outcome_rows
+from koel.ml.outcomes import OutcomeEmit, emit_shadow_outcome_rows
 from koel.ml.research_features import (
     build_research_bar_metadata,
     enrich_market_context,
     enrich_research_quality,
 )
 from koel.ml.research_fundamentals import enrich_fundamentals
-from koel.ml.snapshot import LoadedSnapshot, load_bar_snapshot
+from koel.ml.snapshot import (
+    LoadedSnapshot,
+    composite_snapshot_sha,
+    load_bar_snapshot,
+)
 from koel.storage import Storage
 
 COLOMBO = ZoneInfo("Asia/Colombo")
-MODEL_BASE = "shadow_abs_xgb2_context_v1"
-MODEL_SELECTIVE = "shadow_abs_xgb2_context_p005_v1"
-MODEL_PRESSURE = "shadow_abs_xgb2_context_book_v1"
+POLICY_MODELS = {
+    "shadow_policy_abs_xgb2_v1": "xgb_two_stage",
+    "shadow_policy_abs_hgb2_v1": "hgb_two_stage",
+    "shadow_policy_abs_xgb_domain_v1": "xgb_domain",
+}
+POLICY_SELECTIVE = "shadow_policy_abs_xgb2_p005_v1"
+POLICY_PRESSURE = "shadow_policy_abs_xgb2_pressure_v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,10 +51,11 @@ class LiveShadowResult:
     partial_session: bool
     board_rows: int
     eligible_symbols: int
-    base_emits: int
+    policy_emits: dict[str, int]
     selective_emits: int
     pressure_emits: int
     snapshot_sha256: str
+    instance_versions: dict[str, str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,6 +259,31 @@ def _confidence(score: float) -> float:
     return max(0.0, min(1.0, abs(score) * 2.0))
 
 
+def policy_instance_version(
+    *,
+    policy_id: str,
+    snapshot_sha256: str,
+    issue_session: date,
+    revision: str,
+    live_input_sha256: str = "",
+    partial: bool = False,
+) -> str:
+    """Immutable fitted-instance identity for one prequential issue."""
+    payload = {
+        "policy_id": policy_id,
+        "snapshot_sha256": snapshot_sha256,
+        "issue_session": issue_session.isoformat(),
+        "revision": revision,
+        "live_input_sha256": live_input_sha256,
+        "partial": partial,
+    }
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()[:16]
+    partial_tag = "_partial" if partial else ""
+    return f"{policy_id}__{issue_session.isoformat()}__{digest}{partial_tag}"
+
+
 async def run_live_shadow(
     *,
     storage: Storage,
@@ -277,43 +312,69 @@ async def run_live_shadow(
     )
     if len(train) < 100 or not latest:
         raise RuntimeError("insufficient training or live feature rows")
-    scores = _fit_predict_average(
-        model="xgb_two_stage",
-        train=train,
-        test=latest,
-        seeds=(0,),
+    snapshot_sha = composite_snapshot_sha(loaded.manifest)
+    revision = (
+        os.environ.get("GITHUB_SHA")
+        or os.environ.get("KOEL_MODEL_REVISION")
+        or "local"
     )
-    score_by_symbol = {
-        sample.symbol: score
-        for sample, score in zip(latest, scores, strict=True)
-        if score != 0 and math.isfinite(score)
-    }
-    suffix = "_partial" if partial else ""
-    base_version = MODEL_BASE + suffix
-    selective_version = MODEL_SELECTIVE + suffix
-    pressure_version = MODEL_PRESSURE + suffix
-
-    base_rows = [
-        OutcomeEmit(
-            model_id=MODEL_BASE,
-            model_version=base_version,
-            symbol=symbol,
-            issued_at=now.date(),
-            horizon_days=1,
-            y_pred=score,
-            confidence=_confidence(score),
-            gate="shadow_partial" if partial else "shadow_all",
-            regime_tag=f"live_shadow|partial={int(partial)}",
+    policy_emits: dict[str, int] = {}
+    instance_versions: dict[str, str] = {}
+    scores_by_policy: dict[str, dict[str, float]] = {}
+    for policy_id, model in POLICY_MODELS.items():
+        scores = _fit_predict_average(
+            model=model,
+            train=train,
+            test=latest,
+            seeds=(0,),
         )
-        for symbol, score in sorted(score_by_symbol.items())
-    ]
-    base_count = await emit_outcome_rows(storage, base_rows)
+        score_by_symbol = {
+            sample.symbol: score
+            for sample, score in zip(latest, scores, strict=True)
+            if score != 0 and math.isfinite(score)
+        }
+        scores_by_policy[policy_id] = score_by_symbol
+        instance_version = policy_instance_version(
+            policy_id=policy_id,
+            snapshot_sha256=snapshot_sha,
+            issue_session=now.date(),
+            revision=revision,
+            partial=partial,
+        )
+        instance_versions[policy_id] = instance_version
+        rows = [
+            OutcomeEmit(
+                model_id=policy_id,
+                model_version=instance_version,
+                symbol=symbol,
+                issued_at=now.date(),
+                horizon_days=1,
+                y_pred=score,
+                confidence=_confidence(score),
+                gate="shadow_partial" if partial else "shadow_all",
+                regime_tag=(
+                    f"live_shadow|policy={policy_id}|partial={int(partial)}"
+                    f"|snapshot={snapshot_sha[:12]}"
+                ),
+            )
+            for symbol, score in sorted(score_by_symbol.items())
+        ]
+        policy_emits[policy_id] = await emit_shadow_outcome_rows(storage, rows)
 
-    ranked = sorted(score_by_symbol.items(), key=lambda item: abs(item[1]), reverse=True)
+    xgb_scores = scores_by_policy["shadow_policy_abs_xgb2_v1"]
+    ranked = sorted(xgb_scores.items(), key=lambda item: abs(item[1]), reverse=True)
     selective_n = max(1, math.ceil(len(ranked) * 0.005))
+    selective_version = policy_instance_version(
+        policy_id=POLICY_SELECTIVE,
+        snapshot_sha256=snapshot_sha,
+        issue_session=now.date(),
+        revision=revision,
+        partial=partial,
+    )
+    instance_versions[POLICY_SELECTIVE] = selective_version
     selective_rows = [
         OutcomeEmit(
-            model_id=MODEL_SELECTIVE,
+            model_id=POLICY_SELECTIVE,
             model_version=selective_version,
             symbol=symbol,
             issued_at=now.date(),
@@ -325,11 +386,30 @@ async def run_live_shadow(
         )
         for symbol, score in ranked[:selective_n]
     ]
-    selective_count = await emit_outcome_rows(storage, selective_rows)
+    selective_count = await emit_shadow_outcome_rows(storage, selective_rows)
 
     pressure = await _latest_pressure_factors(storage)
+    pressure_payload = {
+        symbol: asdict(factors) for symbol, factors in sorted(pressure.items())
+    }
+    pressure_sha = hashlib.sha256(
+        json.dumps(
+            pressure_payload,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    pressure_version = policy_instance_version(
+        policy_id=POLICY_PRESSURE,
+        snapshot_sha256=snapshot_sha,
+        issue_session=now.date(),
+        revision=revision,
+        live_input_sha256=pressure_sha,
+        partial=partial,
+    )
+    instance_versions[POLICY_PRESSURE] = pressure_version
     pressure_rows = []
-    for symbol, score in sorted(score_by_symbol.items()):
+    for symbol, score in sorted(xgb_scores.items()):
         factors = pressure.get(symbol)
         if factors is None:
             continue
@@ -342,7 +422,7 @@ async def run_live_shadow(
         )
         pressure_rows.append(
             OutcomeEmit(
-                model_id=MODEL_PRESSURE,
+                model_id=POLICY_PRESSURE,
                 model_version=pressure_version,
                 symbol=symbol,
                 issued_at=now.date(),
@@ -359,16 +439,17 @@ async def run_live_shadow(
                 ),
             )
         )
-    pressure_count = await emit_outcome_rows(storage, pressure_rows)
+    pressure_count = await emit_shadow_outcome_rows(storage, pressure_rows)
     return LiveShadowResult(
         issued_at=now.date().isoformat(),
         partial_session=partial,
         board_rows=len(board),
         eligible_symbols=len(latest),
-        base_emits=base_count,
+        policy_emits=policy_emits,
         selective_emits=selective_count,
         pressure_emits=pressure_count,
-        snapshot_sha256=loaded.manifest.bars_sha256,
+        snapshot_sha256=snapshot_sha,
+        instance_versions=instance_versions,
     )
 
 

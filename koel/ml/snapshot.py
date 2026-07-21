@@ -97,6 +97,22 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def composite_snapshot_sha(manifest: SnapshotManifest) -> str:
+    """Digest every training-data component and schema identity."""
+    payload = {
+        "schema_version": manifest.schema_version,
+        "dataset": manifest.dataset,
+        "postgres_snapshot": manifest.postgres_snapshot,
+        "bars_sha256": manifest.bars_sha256,
+        "fundamentals_sha256": manifest.fundamentals_sha256,
+        "columns": manifest.columns,
+        "fundamentals_columns": manifest.fundamentals_columns,
+        "last_date": manifest.last_date,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _optional_float(value: Any) -> float | None:
     if value is None:
         return None

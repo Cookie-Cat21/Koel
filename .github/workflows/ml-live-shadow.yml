@@ -45,6 +45,7 @@ jobs:
         env:
           ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
+          set -euo pipefail
           mkdir -p artifacts/ml-live-shadow
           python -m koel.ml.live_capture \
             --cycles 1 \
@@ -52,10 +53,19 @@ jobs:
             --include-daily-summary \
             | tee artifacts/ml-live-shadow/capture.jsonl
 
+      - name: Score matured prior shadow outcomes
+        env:
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m koel ml-score-outcomes \
+            | tee artifacts/ml-live-shadow/scoring.log
+
       - name: Freeze post-close training snapshot
         env:
           ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
+          set -euo pipefail
           python -m koel.ml.snapshot export \
             --dataset hybrid \
             --output artifacts/ml-live-shadow/snapshot \
@@ -65,23 +75,18 @@ jobs:
         env:
           ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
+          set -euo pipefail
           python -m koel.ml.live_shadow \
             --snapshot artifacts/ml-live-shadow/snapshot \
             --min-history 60 \
             --max-flat-fraction 0.40 \
             | tee artifacts/ml-live-shadow/shadow.json
 
-      - name: Score matured prior shadow outcomes
-        env:
-          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
-        run: |
-          python -m koel ml-score-outcomes \
-            | tee artifacts/ml-live-shadow/scoring.log
-
       - name: Evaluate prospective standards
         env:
           ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
+          set -euo pipefail
           python -m koel.ml.live_shadow_report \
             | tee artifacts/ml-live-shadow/standards.json
 
@@ -92,7 +97,7 @@ jobs:
           name: ml-live-shadow-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ml-live-shadow/
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 90
 
       - name: Job summary
         if: always()

@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 
 from koel.domain import DailyBar, PriceSnapshot
-from koel.ml.live_shadow import append_live_board, summarize_pressure_factors
+from koel.ml.live_shadow import (
+    append_live_board,
+    policy_instance_version,
+    summarize_pressure_factors,
+)
 
 
 def test_append_live_board_replaces_session_and_ignores_unknown_symbols() -> None:
@@ -74,3 +78,20 @@ def test_pressure_summary_combines_book_and_signed_volume() -> None:
     assert factors.book_persistence == 0.5
     assert factors.book_slope == -0.5
     assert factors.signed_volume_proxy == 1.0
+
+
+def test_policy_instance_version_binds_snapshot_and_revision() -> None:
+    kwargs = {
+        "policy_id": "policy-v1",
+        "snapshot_sha256": "a" * 64,
+        "issue_session": date(2026, 7, 21),
+        "revision": "abc123",
+    }
+    first = policy_instance_version(**kwargs)
+    assert first == policy_instance_version(**kwargs)
+    assert first != policy_instance_version(
+        **{**kwargs, "snapshot_sha256": "b" * 64}
+    )
+    assert first != policy_instance_version(
+        **{**kwargs, "revision": "def456"}
+    )

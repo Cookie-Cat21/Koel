@@ -127,6 +127,61 @@ async def emit_outcome_rows(
     return len(rows_out)
 
 
+async def emit_shadow_outcome_rows(
+    storage: Storage,
+    emits: list[OutcomeEmit],
+) -> int:
+    """Insert immutable prospective shadows; conflicts never rewrite evidence."""
+    if not emits:
+        return 0
+    if any(not str(emit.gate or "").startswith("shadow_") for emit in emits):
+        raise ValueError("shadow outcome gates must start with 'shadow_'")
+    calendar = await market_calendar(storage)
+    inserted = 0
+    async with storage._pool.connection() as conn:
+        for emit in emits:
+            if (
+                not isinstance(emit.symbol, str)
+                or not emit.symbol.strip()
+                or emit.horizon_days < 1
+                or not math.isfinite(emit.y_pred)
+            ):
+                continue
+            realized = _add_trading_days(
+                emit.issued_at,
+                emit.horizon_days,
+                calendar,
+            )
+            row = await (
+                await conn.execute(
+                    """
+                    INSERT INTO forecast_outcomes (
+                        model_id, model_version, symbol, issued_at, horizon_days,
+                        y_pred, confidence, gate, realized_at, regime_tag
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (
+                        model_version, symbol, issued_at, horizon_days
+                    ) DO NOTHING
+                    RETURNING id
+                    """,
+                    (
+                        emit.model_id,
+                        emit.model_version,
+                        emit.symbol.strip().upper(),
+                        emit.issued_at,
+                        int(emit.horizon_days),
+                        float(emit.y_pred),
+                        emit.confidence,
+                        emit.gate,
+                        realized,
+                        emit.regime_tag,
+                    ),
+                )
+            ).fetchone()
+            inserted += int(row is not None)
+    return inserted
+
+
 def _nth_session_after(
     start: date, n: int, dates_sorted: list[date]
 ) -> date | None:

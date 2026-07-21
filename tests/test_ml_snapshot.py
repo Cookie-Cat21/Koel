@@ -13,6 +13,7 @@ from koel.ml.snapshot import (
     BAR_COLUMNS,
     FUNDAMENTAL_COLUMNS,
     SNAPSHOT_SCHEMA_VERSION,
+    composite_snapshot_sha,
     load_bar_snapshot,
 )
 
@@ -108,6 +109,9 @@ def test_snapshot_load_verifies_and_reconstructs_bars(tmp_path) -> None:
     assert [bar.source_period for bar in loaded.series["A.N0000"]] == [0, 5]
     assert len(loaded.fundamentals["A.N0000"]) == 1
     assert loaded.fundamentals["A.N0000"][0].eps_delta_pct == 25.0
+    digest = composite_snapshot_sha(loaded.manifest)
+    assert len(digest) == 64
+    assert digest == composite_snapshot_sha(loaded.manifest)
 
 
 def test_snapshot_rejects_tampering(tmp_path) -> None:
