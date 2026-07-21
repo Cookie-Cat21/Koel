@@ -1,6 +1,11 @@
 # Quiverly Master Plan — Maximum inside the fence
 
-**Status:** Active — Waves 1–5 implemented on `cursor/wire-koel-brand-assets-0a71` (2026-07-14). Phased P1–P5 still gated.  
+> **Superseded (2026-07-21):** the operating plan is now
+> [KOEL_MASTER_PLAN_V2.md](KOEL_MASTER_PLAN_V2.md), grounded in July 2026
+> competitive research. This V1 doc remains as fence/capability history; its
+> constraint tables (§1, §3) still apply.
+
+**Status:** Superseded by V2 — Waves 1–5 implemented on `cursor/wire-koel-brand-assets-0a71` (2026-07-14). Phased P1–P5 still gated.  
 **Authority:** [CLAUDE.md](../../CLAUDE.md) · [DASH_CAKE_CHERRY.md](DASH_CAKE_CHERRY.md) · [FINANCE_DASH_INSPIRATION.md](../brand/FINANCE_DASH_INSPIRATION.md) · [COMMIT_FACTORY.md](COMMIT_FACTORY.md)  
 **Competitive edge program (vs CSEPal):** [KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md](KOEL_EDGE_VS_CSEPal_MASTER_PLAN.md) — 30-loop agentic catch-up without becoming a screener.  
 **Supersedes operating one-liner in** [KOEL_HORIZON.md](KOEL_HORIZON.md) §1 (horizon score targets still apply)
