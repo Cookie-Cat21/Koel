@@ -30,6 +30,7 @@ def make_rule(
     type: AlertType = AlertType.PRICE_ABOVE,
     threshold: float | None = 100.0,
     category: str | None = None,
+    ref_price: float | None = None,
     active: bool = True,
     armed: bool = True,
     created_at: datetime | None = None,
@@ -42,6 +43,7 @@ def make_rule(
         type=type,
         threshold=threshold,
         category=category,
+        ref_price=ref_price,
         active=active,
         armed=armed,
         created_at=created_at,
@@ -76,11 +78,19 @@ def make_previous(
     price: float | None = 95.0,
     change_pct: float | None = None,
     move_fired_keys: set[str] | None = None,
+    activity_fired_keys: set[str] | None = None,
+    high_52w: float | None = None,
+    low_52w: float | None = None,
+    sma_by_period: dict[int, float] | None = None,
 ) -> PreviousPriceState:
     return PreviousPriceState(
         price=price,
         change_pct=change_pct,
         move_fired_keys=move_fired_keys or set(),
+        activity_fired_keys=activity_fired_keys or set(),
+        high_52w=high_52w,
+        low_52w=low_52w,
+        sma_by_period=sma_by_period or {},
     )
 
 

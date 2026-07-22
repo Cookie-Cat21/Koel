@@ -198,19 +198,16 @@ async function testEmptyBoardReturnsEmptyItems(): Promise<void> {
   );
 }
 
-async function testSessionRequired(): Promise<void> {
+async function testSessionOptional(): Promise<void> {
   installDbPool();
   process.env.DASH_SESSION_SECRET = SECRET;
+  // Public market browse — session optional.
   const res = await symbolsGet(
     new NextRequest("http://127.0.0.1/api/v1/symbols", { method: "GET" }),
   );
+  assert(res.status === 200, `no session → 200, got ${res.status}`);
   const body = await readBody(res);
-  assert(res.status === 401, `no session → 401, got ${res.status}`);
-  const code =
-    typeof body.error === "object" && body.error !== null
-      ? body.error.code
-      : body.error;
-  assert(code === "unauthorized", `expected unauthorized, got ${code}`);
+  assert(body.error === undefined, `expected no error body, got ${JSON.stringify(body)}`);
 }
 
 
@@ -379,7 +376,7 @@ async function main(): Promise<void> {
   await testInvalidLimitFallsBackToDefault();
   await testSortWhitelist();
   await testEmptyBoardReturnsEmptyItems();
-  await testSessionRequired();
+  await testSessionOptional();
   await testGetDoesNotRequireCsrf();
   await testLikeMetacharEscape();
   await testQueryLengthCapAndOffsetClamp();

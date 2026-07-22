@@ -174,6 +174,16 @@ export function alertTypeLabel(type: unknown): string {
       return "XD soon";
     case "xd_digest":
       return "XD digest";
+    case "share_split":
+      return "Share split";
+    case "high_52w":
+      return "52-week high";
+    case "low_52w":
+      return "52-week low";
+    case "ma_cross":
+      return "MA cross";
+    case "ref_move":
+      return "Ref move";
     default:
       // Fail closed — never echo unknown / hostile type strings into the UI.
       return "Unknown";
@@ -244,6 +254,16 @@ export function alertTypeBotHint(type: unknown): string {
       return "/alert SYMBOL xd soon DAYS";
     case "xd_digest":
       return "/alert MARKET xd_digest DAYS";
+    case "share_split":
+      return "/alert SYMBOL split";
+    case "high_52w":
+      return "/alert SYMBOL high52";
+    case "low_52w":
+      return "/alert SYMBOL low52";
+    case "ma_cross":
+      return "/alert SYMBOL ma 20|50|200";
+    case "ref_move":
+      return "/alert SYMBOL move PCT from PRICE";
     default:
       return "";
   }

@@ -570,8 +570,8 @@ async def test_create_alert_rule_existing_and_insert() -> None:
         "armed": True,
         "created_at": datetime(2026, 7, 11, 6, 0, 0, tzinfo=UTC),
     }
-    # upsert_stock, add_watch (upsert+insert), _fetch_active_rule → existing
-    conn = _Conn([None, None, None, existing])
+    # upsert, add_watch(upsert+insert+prefs), _fetch_active_rule → existing
+    conn = _Conn([None, None, None, None, existing])
     store = _store(conn)
     rule = await store.create_alert_rule(3, "JKH.N0000", AlertType.PRICE_ABOVE, 100.0)
     assert rule.id == 9
@@ -586,8 +586,8 @@ async def test_create_alert_rule_existing_and_insert() -> None:
         "armed": True,
         "created_at": "2026-07-11T06:00:00+00:00",
     }
-    # upsert, add_watch x2 executes, fetch None, insert, user telegram
-    conn2 = _Conn([None, None, None, None, inserted, {"telegram_id": 1001}])
+    # upsert, add_watch(upsert+insert+prefs), fetch None, insert, user telegram
+    conn2 = _Conn([None, None, None, None, None, inserted, {"telegram_id": 1001}])
     store2 = _store(conn2)
     rule2 = await store2.create_alert_rule(3, "JKH.N0000", AlertType.PRICE_BELOW, 50.0)
     assert rule2.id == 10 and rule2.telegram_id == 1001
@@ -608,8 +608,8 @@ async def test_create_alert_rule_unique_violation_races_to_existing() -> None:
     }
     conn = _Conn()
     conn.rollback = AsyncMock()  # type: ignore[attr-defined]
-    # upsert, add_watch x2, fetch None, UniqueViolation, fetch raced
-    conn._results = [None, None, None, None, UniqueViolation("dup"), raced]
+    # upsert, add_watch(upsert+insert+prefs), fetch None, UniqueViolation, raced
+    conn._results = [None, None, None, None, None, UniqueViolation("dup"), raced]
     store = _store(conn)
     rule = await store.create_alert_rule(3, "JKH.N0000", AlertType.DAILY_MOVE, 5.0)
     assert rule.id == 11
@@ -807,7 +807,7 @@ async def test_create_alert_rule_disclosure_with_category() -> None:
         "armed": True,
         "created_at": "2026-07-11T06:00:00+00:00",
     }
-    conn = _Conn([None, None, None, None, inserted, {"telegram_id": 1001}])
+    conn = _Conn([None, None, None, None, None, inserted, {"telegram_id": 1001}])
     store = _store(conn)
     rule = await store.create_alert_rule(
         3, "JKH.N0000", AlertType.DISCLOSURE, None, category="Financial"

@@ -13,11 +13,13 @@ from zoneinfo import ZoneInfo
 
 from koel.domain import (
     FILING_METRICS_ALERT_TYPES,
+    MA_CROSS_PERIODS,
     YOY_ALERT_TYPES,
     AlertEvent,
     AlertRule,
     AlertType,
     BigPrint,
+    DailyBar,
     Disclosure,
     MarketNotice,
     OrderBookSnapshot,
@@ -59,6 +61,73 @@ def crossed_below(prev: float | None, curr: float, threshold: float) -> bool:
     if prev is None or not (_finite(prev) and _finite(curr) and _finite(threshold)):
         return False
     return prev > threshold >= curr
+
+
+def sma(closes: list[float], period: int) -> float | None:
+    """Simple moving average of the last ``period`` closes; None if short/bad."""
+    if not isinstance(period, int) or isinstance(period, bool) or period <= 0:
+        return None
+    if len(closes) < period:
+        return None
+    window = closes[-period:]
+    total = 0.0
+    for c in window:
+        if not _finite(c):
+            return None
+        total += float(c)
+    return total / float(period)
+
+
+def week52_range(
+    bars: list[DailyBar],
+) -> tuple[float | None, float | None]:
+    """Return (high_52w, low_52w) from up to the last 252 sessions.
+
+    Uses each bar's high/low when finite, else close (``price``). Empty /
+    insufficient input → (None, None).
+    """
+    if not bars:
+        return None, None
+    window = bars[-252:] if len(bars) > 252 else bars
+    highs: list[float] = []
+    lows: list[float] = []
+    for bar in window:
+        hi = bar.high if _finite(bar.high) else bar.price
+        lo = bar.low if _finite(bar.low) else bar.price
+        if _finite(hi):
+            highs.append(float(hi))
+        if _finite(lo):
+            lows.append(float(lo))
+    if not highs or not lows:
+        return None, None
+    return max(highs), min(lows)
+
+
+def _event_key_iso_week(prefix: str, rule: AlertRule, snapshot: PriceSnapshot) -> str | None:
+    """One fire per ISO week (Asia/Colombo calendar) — e.g. h52w:{id}:{YYYY-Www}."""
+    try:
+        day = snapshot.ts.astimezone(_COLOMBO).date()
+    except (OverflowError, ValueError, OSError):
+        return None
+    from koel.dividends import iso_week_key
+
+    return f"{prefix}:{rule.id}:{iso_week_key(day)}"
+
+
+def _event_key_ma_cross(
+    rule: AlertRule, snapshot: PriceSnapshot, *, side: str, period: int
+) -> str:
+    if snapshot.id is not None:
+        return f"ma:{rule.id}:{side}:{period}:s{snapshot.id}"
+    minute = snapshot.ts.strftime("%Y%m%d%H%M")
+    return f"ma:{rule.id}:{side}:{period}:{minute}:{snapshot.price:g}"
+
+
+def _pct_from_ref(price: float | None, ref: float | None) -> float | None:
+    """Percent move of ``price`` vs user reference (fail closed on bad inputs)."""
+    if not (_finite(price) and _finite(ref)) or ref == 0:
+        return None
+    return ((float(price) - float(ref)) / float(ref)) * 100.0
 
 
 def _event_key_price(rule: AlertRule, snapshot: PriceSnapshot) -> str:
@@ -277,6 +346,17 @@ def evaluate_price_rules(
                 continue
             if abs(prev_pct) < thr <= abs(pct):
                 direction = "up" if pct >= 0 else "down"
+                trigger = (
+                    f"daily move {direction} {pct:.2f}% (threshold {thr:.2f}%)"
+                )
+                # Gap-aware annotation when the prior tick was a long time ago.
+                try:
+                    from koel.feed_health import annotate_move_trigger, gap_seconds
+
+                    gap = gap_seconds(previous.prev_ts, snapshot.ts)
+                    trigger = annotate_move_trigger(trigger, gap_sec=gap)
+                except Exception:  # noqa: BLE001 — never break eval on annotate
+                    pass
                 events.append(
                     AlertEvent(
                         rule_id=rule.id,
@@ -285,7 +365,7 @@ def evaluate_price_rules(
                         symbol=rule.symbol,
                         type=rule.type,
                         threshold=thr,
-                        trigger=f"daily move {direction} {pct:.2f}% (threshold {thr:.2f}%)",
+                        trigger=trigger,
                         current_price=curr,
                         snapshot_id=snapshot.id,
                         event_key=key,
@@ -457,6 +537,173 @@ def evaluate_price_rules(
                 )
             )
 
+        elif rule.type == AlertType.HIGH_52W:
+            prior_high = previous.high_52w
+            if not _finite(prior_high) or prior_high is None:
+                continue
+            key = _event_key_iso_week("h52w", rule, snapshot)
+            if key is None or key in previous.activity_fired_keys:
+                continue
+            # Crossing: current makes a new high; previous was not already above.
+            if not _finite(prev_price) or prev_price is None:
+                continue
+            if curr > prior_high and prev_price <= prior_high:
+                events.append(
+                    AlertEvent(
+                        rule_id=rule.id,
+                        user_id=rule.user_id,
+                        telegram_id=rule.telegram_id,
+                        symbol=rule.symbol,
+                        type=rule.type,
+                        threshold=None,
+                        trigger=(
+                            f"new 52-week high {curr:.2f} "
+                            f"(prior {prior_high:.2f})"
+                        ),
+                        current_price=curr,
+                        snapshot_id=snapshot.id,
+                        event_key=key,
+                    )
+                )
+
+        elif rule.type == AlertType.LOW_52W:
+            prior_low = previous.low_52w
+            if not _finite(prior_low) or prior_low is None:
+                continue
+            key = _event_key_iso_week("l52w", rule, snapshot)
+            if key is None or key in previous.activity_fired_keys:
+                continue
+            if not _finite(prev_price) or prev_price is None:
+                continue
+            if curr < prior_low and prev_price >= prior_low:
+                events.append(
+                    AlertEvent(
+                        rule_id=rule.id,
+                        user_id=rule.user_id,
+                        telegram_id=rule.telegram_id,
+                        symbol=rule.symbol,
+                        type=rule.type,
+                        threshold=None,
+                        trigger=(
+                            f"new 52-week low {curr:.2f} "
+                            f"(prior {prior_low:.2f})"
+                        ),
+                        current_price=curr,
+                        snapshot_id=snapshot.id,
+                        event_key=key,
+                    )
+                )
+
+        elif rule.type == AlertType.MA_CROSS:
+            if rule.threshold is None or not math.isfinite(rule.threshold):
+                continue
+            # Period must be exactly 20 / 50 / 200 (no fractional periods).
+            period_f = rule.threshold
+            if period_f != int(period_f):
+                continue
+            period = int(period_f)
+            if period not in MA_CROSS_PERIODS:
+                continue
+            ma = previous.sma_by_period.get(period)
+            if not _finite(ma) or ma is None:
+                continue
+            if rule.armed and crossed_above(prev_price, curr, ma):
+                events.append(
+                    AlertEvent(
+                        rule_id=rule.id,
+                        user_id=rule.user_id,
+                        telegram_id=rule.telegram_id,
+                        symbol=rule.symbol,
+                        type=rule.type,
+                        threshold=float(period),
+                        trigger=(
+                            f"price crossed above {period}-day MA ({ma:.2f})"
+                        ),
+                        current_price=curr,
+                        snapshot_id=snapshot.id,
+                        event_key=_event_key_ma_cross(
+                            rule, snapshot, side="above", period=period
+                        ),
+                        set_armed=False,
+                    )
+                )
+            elif rule.armed and crossed_below(prev_price, curr, ma):
+                events.append(
+                    AlertEvent(
+                        rule_id=rule.id,
+                        user_id=rule.user_id,
+                        telegram_id=rule.telegram_id,
+                        symbol=rule.symbol,
+                        type=rule.type,
+                        threshold=float(period),
+                        trigger=(
+                            f"price crossed below {period}-day MA ({ma:.2f})"
+                        ),
+                        current_price=curr,
+                        snapshot_id=snapshot.id,
+                        event_key=_event_key_ma_cross(
+                            rule, snapshot, side="below", period=period
+                        ),
+                        set_armed=False,
+                    )
+                )
+            elif not rule.armed and (curr < ma or curr > ma):
+                # Rearm once price is strictly on either side of the MA
+                # (ready for the next cross either way).
+                events.append(
+                    AlertEvent(
+                        rule_id=rule.id,
+                        user_id=rule.user_id,
+                        telegram_id=rule.telegram_id,
+                        symbol=rule.symbol,
+                        type=rule.type,
+                        threshold=float(period),
+                        trigger="rearm",
+                        current_price=curr,
+                        snapshot_id=snapshot.id,
+                        event_key=f"rearm:{rule.id}:{snapshot.id}",
+                        set_armed=True,
+                    )
+                )
+
+        elif rule.type == AlertType.REF_MOVE:
+            if rule.threshold is None or not math.isfinite(rule.threshold):
+                continue
+            ref = rule.ref_price
+            if not _finite(ref) or ref is None or ref <= 0:
+                continue
+            thr = abs(rule.threshold)
+            pct = _pct_from_ref(curr, ref)
+            if not _finite(pct):
+                continue
+            key = _event_key_day("refmove", rule, snapshot)
+            if key is None or key in previous.activity_fired_keys:
+                continue
+            prev_pct = _pct_from_ref(prev_price, ref)
+            if not _finite(prev_pct):
+                # Baseline only — do not fire on first observation / already-exceeded.
+                continue
+            if abs(prev_pct) < thr <= abs(pct):
+                direction = "up" if pct >= 0 else "down"
+                events.append(
+                    AlertEvent(
+                        rule_id=rule.id,
+                        user_id=rule.user_id,
+                        telegram_id=rule.telegram_id,
+                        symbol=rule.symbol,
+                        type=rule.type,
+                        threshold=thr,
+                        ref_price=float(ref),
+                        trigger=(
+                            f"ref move {direction} {pct:.2f}% from {ref:.2f} "
+                            f"(threshold {thr:.2f}%)"
+                        ),
+                        current_price=curr,
+                        snapshot_id=snapshot.id,
+                        event_key=key,
+                    )
+                )
+
     return events
 
 
@@ -611,6 +858,7 @@ def evaluate_disclosure_rules(
     *,
     disclosure: Disclosure,
     rules: list[AlertRule],
+    category_prefs_by_user: dict[int, list[str]] | None = None,
 ) -> list[AlertEvent]:
     """Fire disclosure rules for newly seen announcements on watched symbols.
 
@@ -618,8 +866,12 @@ def evaluate_disclosure_rules(
     backfill never floods Telegram. Missing rule.created_at fails closed (no fire).
     Undated CSE rows (Unix-epoch published_at) and empty external_id never fire.
     Optional rule.category filters by case-insensitive substring on disclosure.category.
+    When rule.category is empty, optional per-user ``category_prefs_by_user``
+    allow-list (Tijori-style tags) gates fires; empty prefs = unrestricted.
     Weird / unconvertible timestamps fail closed (never raise).
     """
+    from koel.filing_categories import classify_filing, filing_tag_allowed
+
     events: list[AlertEvent] = []
     if not isinstance(disclosure.external_id, str) or not disclosure.external_id.strip():
         return events
@@ -629,6 +881,11 @@ def evaluate_disclosure_rules(
     # Adapter stamps missing/non-positive createdDate as Unix epoch — never fire.
     if published <= datetime(1970, 1, 1, tzinfo=UTC):
         return events
+    filing_tag = classify_filing(
+        category=disclosure.category if isinstance(disclosure.category, str) else None,
+        title=disclosure.title if isinstance(disclosure.title, str) else None,
+    )
+    prefs_map = category_prefs_by_user if isinstance(category_prefs_by_user, dict) else {}
     for rule in rules:
         if _rule_inactive_or_muted(rule, as_of=published):
             continue
@@ -646,6 +903,17 @@ def evaluate_disclosure_rules(
             continue
         if not _disclosure_category_matches(rule, disclosure):
             continue
+        # User-level category prefs only apply when the rule has no category needle.
+        rule_cat = rule.category if isinstance(rule.category, str) else None
+        if not (rule_cat and rule_cat.strip()):
+            user_prefs = prefs_map.get(rule.user_id)
+            if not filing_tag_allowed(filing_tag, user_prefs):
+                continue
+        # Results-day packaging: clearer trigger when tag is results.
+        if filing_tag == "results":
+            trigger = f"results-day filing: {disclosure.title}"
+        else:
+            trigger = f"new disclosure: {disclosure.title}"
         events.append(
             AlertEvent(
                 rule_id=rule.id,
@@ -654,7 +922,7 @@ def evaluate_disclosure_rules(
                 symbol=rule.symbol,
                 type=rule.type,
                 threshold=None,
-                trigger=f"new disclosure: {disclosure.title}",
+                trigger=trigger,
                 current_price=None,
                 disclosure_url=disclosure.url,
                 disclosure_title=disclosure.title,

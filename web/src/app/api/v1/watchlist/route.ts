@@ -16,7 +16,7 @@ import { addWatch, getPool, getStock } from "@/lib/db";
 export const runtime = "nodejs";
 
 /** Cap watchlist list — unbounded SELECT used to OOM SSR / balloon JSON. */
-export const MAX_WATCHLIST_ITEMS = 500;
+const MAX_WATCHLIST_ITEMS = 500;
 
 /**
  * GET /api/v1/watchlist — session user's symbols + latest price_snapshots join.
@@ -123,6 +123,39 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await addWatch(gated.session.user_id, symbol);
+    // Auto-5% band: if user enabled watchlist_auto_move_pct, arm daily_move.
+    try {
+      const pool = getPool();
+      const pref = await pool.query<{ watchlist_auto_move_pct: number | null }>(
+        `SELECT watchlist_auto_move_pct FROM users WHERE id = $1`,
+        [gated.session.user_id],
+      );
+      const pct = pref.rows[0]?.watchlist_auto_move_pct;
+      if (
+        typeof pct === "number" &&
+        Number.isFinite(pct) &&
+        pct > 0 &&
+        pct <= 50
+      ) {
+        const existing = await pool.query(
+          `SELECT id FROM alert_rules
+            WHERE user_id = $1 AND symbol = $2 AND type = 'daily_move'
+              AND threshold = $3 AND active IS TRUE
+            LIMIT 1`,
+          [gated.session.user_id, symbol, pct],
+        );
+        if (!existing.rows[0]) {
+          await pool.query(
+            `INSERT INTO alert_rules
+               (user_id, symbol, type, threshold, active, armed)
+             VALUES ($1, $2, 'daily_move', $3, TRUE, TRUE)`,
+            [gated.session.user_id, symbol, pct],
+          );
+        }
+      }
+    } catch (err) {
+      console.error("watchlist auto-move sync failed", err);
+    }
     return jsonOk(
       {
         symbol,

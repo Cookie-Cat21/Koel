@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import AsyncIterator, Sequence
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime
 from time import perf_counter
 from typing import Any, cast
@@ -143,6 +143,144 @@ class Storage:
                     updated_at = now()
                 """,
                 (symbol, name, sector, stock_id),
+            )
+
+    async def list_symbols_missing_issuer_profile(self) -> list[str]:
+        """Listed stocks with daily bars but no ``issuer_profiles`` row."""
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT DISTINCT s.symbol
+                    FROM stocks s
+                    INNER JOIN daily_bars d ON d.symbol = s.symbol
+                    LEFT JOIN issuer_profiles p ON p.symbol = s.symbol
+                    WHERE p.symbol IS NULL
+                      AND s.symbol NOT IN ('ASPI', 'SNP_SL20')
+                    ORDER BY s.symbol
+                    """
+                )
+            ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            raw = row.get("symbol")
+            if isinstance(raw, str) and raw.strip():
+                out.append(raw.strip().upper())
+        return out
+
+    async def upsert_issuer_profile(self, row: dict[str, Any]) -> None:
+        """Upsert CSE registry fields into ``issuer_profiles``."""
+        sym_raw = row.get("symbol")
+        if not isinstance(sym_raw, str) or not sym_raw.strip():
+            return
+        symbol = sym_raw.strip().upper()
+        top_posts = row.get("top_posts")
+        if isinstance(top_posts, (dict, list)):
+            import json as _json
+
+            top_posts_json = _json.dumps(top_posts)
+        elif isinstance(top_posts, str) and top_posts.strip():
+            top_posts_json = top_posts
+        else:
+            top_posts_json = "[]"
+
+        def _text(key: str, cap: int) -> str | None:
+            val = row.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()[:cap]
+            return None
+
+        def _num(key: str) -> float | None:
+            val = row.get(key)
+            if isinstance(val, bool) or not isinstance(val, int | float):
+                return None
+            f = float(val)
+            return f if math.isfinite(f) else None
+
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                """
+                INSERT INTO issuer_profiles (
+                    symbol, isin, board_type, founded, fin_year_end, quoted_date,
+                    website, email, phone, address, auditors, secretaries,
+                    business_summary, beta_aspi, beta_sl20, beta_period,
+                    market_cap_pct, shares_issued, par_value, foreign_pct,
+                    logo_path, top_posts, updated_at
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s::jsonb, now()
+                )
+                ON CONFLICT (symbol) DO UPDATE SET
+                    isin = COALESCE(EXCLUDED.isin, issuer_profiles.isin),
+                    board_type = COALESCE(EXCLUDED.board_type, issuer_profiles.board_type),
+                    founded = COALESCE(EXCLUDED.founded, issuer_profiles.founded),
+                    fin_year_end = COALESCE(
+                        EXCLUDED.fin_year_end, issuer_profiles.fin_year_end
+                    ),
+                    quoted_date = COALESCE(
+                        EXCLUDED.quoted_date, issuer_profiles.quoted_date
+                    ),
+                    website = COALESCE(EXCLUDED.website, issuer_profiles.website),
+                    email = COALESCE(EXCLUDED.email, issuer_profiles.email),
+                    phone = COALESCE(EXCLUDED.phone, issuer_profiles.phone),
+                    address = COALESCE(EXCLUDED.address, issuer_profiles.address),
+                    auditors = COALESCE(EXCLUDED.auditors, issuer_profiles.auditors),
+                    secretaries = COALESCE(
+                        EXCLUDED.secretaries, issuer_profiles.secretaries
+                    ),
+                    business_summary = COALESCE(
+                        EXCLUDED.business_summary, issuer_profiles.business_summary
+                    ),
+                    beta_aspi = COALESCE(EXCLUDED.beta_aspi, issuer_profiles.beta_aspi),
+                    beta_sl20 = COALESCE(EXCLUDED.beta_sl20, issuer_profiles.beta_sl20),
+                    beta_period = COALESCE(
+                        EXCLUDED.beta_period, issuer_profiles.beta_period
+                    ),
+                    market_cap_pct = COALESCE(
+                        EXCLUDED.market_cap_pct, issuer_profiles.market_cap_pct
+                    ),
+                    shares_issued = COALESCE(
+                        EXCLUDED.shares_issued, issuer_profiles.shares_issued
+                    ),
+                    par_value = COALESCE(EXCLUDED.par_value, issuer_profiles.par_value),
+                    foreign_pct = COALESCE(
+                        EXCLUDED.foreign_pct, issuer_profiles.foreign_pct
+                    ),
+                    logo_path = COALESCE(EXCLUDED.logo_path, issuer_profiles.logo_path),
+                    top_posts = CASE
+                        WHEN EXCLUDED.top_posts = '[]'::jsonb
+                        THEN issuer_profiles.top_posts
+                        ELSE EXCLUDED.top_posts
+                    END,
+                    updated_at = now()
+                """,
+                (
+                    symbol,
+                    _text("isin", 32),
+                    _text("board_type", 64),
+                    _text("founded", 32),
+                    _text("fin_year_end", 32),
+                    _text("quoted_date", 64),
+                    _text("website", 256),
+                    _text("email", 256),
+                    _text("phone", 128),
+                    _text("address", 512),
+                    _text("auditors", 256),
+                    _text("secretaries", 512),
+                    _text("business_summary", 2000),
+                    _num("beta_aspi"),
+                    _num("beta_sl20"),
+                    _text("beta_period", 32),
+                    _num("market_cap_pct"),
+                    _num("shares_issued"),
+                    _num("par_value"),
+                    _num("foreign_pct"),
+                    _text("logo_path", 512),
+                    top_posts_json,
+                ),
             )
 
     async def list_stock_names(self) -> list[tuple[str, str]]:
@@ -1738,6 +1876,101 @@ class Storage:
         # for comparison against symbol ret * 100 below in score job.
         return pct
 
+    async def latest_index_snapshots(
+        self,
+        codes: Sequence[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Latest row per index code (ASPI / SNP_SL20 by default)."""
+        default_codes = ("ASPI", "SNP_SL20")
+        if codes is None:
+            wanted = list(default_codes)
+        else:
+            wanted = []
+            for raw in codes:
+                if not isinstance(raw, str) or not raw.strip():
+                    continue
+                code = raw.strip().upper()
+                if code and code not in wanted:
+                    wanted.append(code)
+            if not wanted:
+                return []
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT DISTINCT ON (code)
+                           code, name, value, change, change_pct, ts
+                      FROM index_snapshots
+                     WHERE code = ANY(%s)
+                     ORDER BY code ASC, ts DESC
+                    """,
+                    (wanted,),
+                )
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in _as_rows(rows):
+            raw_code = row.get("code")
+            if not isinstance(raw_code, str) or not raw_code.strip():
+                continue
+            code = raw_code.strip().upper()
+            value = row.get("value")
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                continue
+            if not math.isfinite(float(value)):
+                continue
+            change = row.get("change")
+            change_pct = row.get("change_pct")
+            if isinstance(change, bool) or (
+                change is not None and not isinstance(change, int | float)
+            ):
+                change = None
+            if isinstance(change_pct, bool) or (
+                change_pct is not None and not isinstance(change_pct, int | float)
+            ):
+                change_pct = None
+            out.append(
+                {
+                    "code": code,
+                    "name": row.get("name") if isinstance(row.get("name"), str) else None,
+                    "value": float(value),
+                    "change": float(change)
+                    if isinstance(change, int | float)
+                    and not isinstance(change, bool)
+                    and math.isfinite(float(change))
+                    else None,
+                    "change_pct": float(change_pct)
+                    if isinstance(change_pct, int | float)
+                    and not isinstance(change_pct, bool)
+                    and math.isfinite(float(change_pct))
+                    else None,
+                    "ts": row.get("ts"),
+                }
+            )
+        # Stable order: ASPI, SNP_SL20, then others alpha.
+        order = {c: i for i, c in enumerate(wanted)}
+        out.sort(key=lambda r: (order.get(str(r["code"]), 99), str(r["code"])))
+        return out
+
+    async def count_disclosures_published_since(self, since: datetime) -> int:
+        """Market-wide disclosure count with ``published_at >= since``."""
+        if not isinstance(since, datetime):
+            return 0
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT COUNT(*)::int AS n
+                      FROM disclosures
+                     WHERE published_at >= %s
+                    """,
+                    (since,),
+                )
+            ).fetchone()
+        if row is None:
+            return 0
+        counted = _pg_count(_as_row(row).get("n"))
+        return 0 if counted is None else counted
+
     async def count_notices_since(self, symbol: str, *, since: datetime) -> int:
         """Count buy-in / non-compliance / halt notices for ``symbol`` since."""
         by_type = await self.count_notices_by_type_since(symbol, since=since)
@@ -1820,6 +2053,29 @@ class Storage:
             return 0
         counted = _pg_count(_as_row(row).get("n"))
         return 0 if counted is None else counted
+
+    async def get_latest_disclosure(self, symbol: str) -> Disclosure | None:
+        """Most recent disclosure for ``symbol`` by ``published_at`` (fire context)."""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return None
+        sym = symbol.strip().upper()
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT id, external_id, symbol, title, category, url, company_name,
+                           published_at, seen_at, pdf_url
+                    FROM disclosures
+                    WHERE symbol = %s
+                    ORDER BY published_at DESC NULLS LAST, id DESC
+                    LIMIT 1
+                    """,
+                    (sym,),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        return self._disclosure_from_row(_as_row(row))
 
     async def list_daily_bars(self, symbol: str) -> list[DailyBar]:
         """Return ascending daily bars for ``symbol``."""
@@ -2152,6 +2408,9 @@ class Storage:
                         OR al.event_key LIKE 'voldown:%%'
                         OR al.event_key LIKE 'xvol:%%'
                         OR al.event_key LIKE 'gap:%%'
+                        OR al.event_key LIKE 'h52w:%%'
+                        OR al.event_key LIKE 'l52w:%%'
+                        OR al.event_key LIKE 'refmove:%%'
                       )
                     """,
                     (symbol,),
@@ -2205,6 +2464,9 @@ class Storage:
                         avg_volume = val
                     else:
                         avg_crossing = val
+
+        high_52w, low_52w, sma_by_period = await self._bar_path_metrics(symbol)
+
         if prev is None:
             return PreviousPriceState(
                 price=None,
@@ -2213,6 +2475,10 @@ class Storage:
                 avg_volume=avg_volume,
                 avg_crossing_volume=avg_crossing,
                 activity_fired_keys=activity_keys,
+                high_52w=high_52w,
+                low_52w=low_52w,
+                sma_by_period=sma_by_period,
+                prev_ts=None,
             )
         return PreviousPriceState(
             price=prev.price,
@@ -2221,7 +2487,37 @@ class Storage:
             avg_volume=avg_volume,
             avg_crossing_volume=avg_crossing,
             activity_fired_keys=activity_keys,
+            high_52w=high_52w,
+            low_52w=low_52w,
+            sma_by_period=sma_by_period,
+            prev_ts=prev.ts,
         )
+
+    async def _bar_path_metrics(
+        self, symbol: str
+    ) -> tuple[float | None, float | None, dict[int, float]]:
+        """Compute 52w high/low + SMA 20/50/200 from daily_bars (excludes today)."""
+        from koel.dividends import colombo_today
+        from koel.rules import sma, week52_range
+
+        bars = await self.list_daily_bars(symbol)
+        if not bars:
+            return None, None, {}
+        today = colombo_today()
+        # Prefer completed sessions only — today's bar may still be forming.
+        completed = [b for b in bars if b.trade_date < today]
+        # Keep ~260 trading days for SMA200 headroom.
+        window = completed[-260:] if len(completed) > 260 else completed
+        if not window:
+            return None, None, {}
+        high_52w, low_52w = week52_range(window)
+        closes = [b.price for b in window]
+        sma_by_period: dict[int, float] = {}
+        for period in (20, 50, 200):
+            val = sma(closes, period)
+            if val is not None and math.isfinite(val):
+                sma_by_period[period] = val
+        return high_52w, low_52w, sma_by_period
 
     async def upsert_big_print(self, print_: BigPrint) -> BigPrint:
         """Insert or return existing day-tape print; sets just_inserted."""
@@ -4589,6 +4885,9 @@ class Storage:
                 """,
                 (user_id, symbol),
             )
+        # Groww/Robinhood-style auto-% band: create daily_move if enabled.
+        with suppress(Exception):
+            await self.ensure_auto_move_for_symbol(user_id, symbol)
 
     async def remove_watch(self, user_id: int, symbol: str) -> bool:
         # Fail closed — non-string symbol used to throw on .strip mid remove.
@@ -4693,13 +4992,17 @@ class Storage:
         alert_type: AlertType,
         threshold: float | None,
         category: str | None = None,
+        ref_price: float | None = None,
     ) -> AlertRule:
         """Create or return an identical active rule (idempotent under concurrency).
 
         Avoids deactivate-then-insert TOCTOU where a parallel caller could
         deactivate the rule id we already returned to the user.
         ``category`` is for disclosure rules only (substring filter); ignored otherwise.
+        ``ref_price`` is for ref_move only; ignored/NULL otherwise.
         """
+        from koel.domain import MA_CROSS_PERIODS
+
         # Fail closed — non-string symbol used to throw on .strip mid create.
         if not isinstance(symbol, str):
             raise ValueError("symbol must be a non-empty string")
@@ -4711,11 +5014,31 @@ class Storage:
             if alert_type == AlertType.DISCLOSURE
             else None
         )
+        # Persist ref_price only for ref_move; validate positive finite.
+        stored_ref: float | None = None
+        if alert_type == AlertType.REF_MOVE:
+            if (
+                isinstance(ref_price, bool)
+                or not isinstance(ref_price, (int, float))
+                or not math.isfinite(float(ref_price))
+                or float(ref_price) <= 0
+            ):
+                raise ValueError("ref_move requires a positive finite ref_price")
+            stored_ref = float(ref_price)
+            if threshold is None or not math.isfinite(float(threshold)) or float(threshold) <= 0:
+                raise ValueError("ref_move requires a positive finite threshold")
+        if alert_type == AlertType.MA_CROSS:
+            if threshold is None or not math.isfinite(float(threshold)):
+                raise ValueError("ma_cross requires period 20, 50, or 200")
+            period_f = float(threshold)
+            if period_f != int(period_f) or int(period_f) not in MA_CROSS_PERIODS:
+                raise ValueError("ma_cross requires period 20, 50, or 200")
+            threshold = float(int(period_f))
         await self.upsert_stock(symbol)
         await self.add_watch(user_id, symbol)
         async with self._pool.connection() as conn:
             existing = await self._fetch_active_rule(
-                conn, user_id, symbol, alert_type, threshold, cat
+                conn, user_id, symbol, alert_type, threshold, cat, stored_ref
             )
             if existing is not None:
                 return existing
@@ -4724,18 +5047,26 @@ class Storage:
                     await conn.execute(
                         """
                         INSERT INTO alert_rules
-                            (user_id, symbol, type, threshold, category, active, armed)
-                        VALUES (%s, %s, %s, %s, %s, TRUE, TRUE)
+                            (user_id, symbol, type, threshold, category, ref_price,
+                             active, armed)
+                        VALUES (%s, %s, %s, %s, %s, %s, TRUE, TRUE)
                         RETURNING id, user_id, symbol, type, threshold, category,
-                                  active, armed, created_at
+                                  ref_price, active, armed, created_at
                         """,
-                        (user_id, symbol, alert_type.value, threshold, cat),
+                        (
+                            user_id,
+                            symbol,
+                            alert_type.value,
+                            threshold,
+                            cat,
+                            stored_ref,
+                        ),
                     )
                 ).fetchone()
             except UniqueViolation:
                 await conn.rollback()
                 raced = await self._fetch_active_rule(
-                    conn, user_id, symbol, alert_type, threshold, cat
+                    conn, user_id, symbol, alert_type, threshold, cat, stored_ref
                 )
                 if raced is not None:
                     return raced
@@ -4960,6 +5291,357 @@ class Storage:
             )
         return out
 
+    async def list_market_movers(self, *, limit: int = 5) -> list[dict[str, Any]]:
+        """Market-wide symbols sorted by |change_pct| from latest poller snaps."""
+        if isinstance(limit, int) and not isinstance(limit, bool):
+            lim = max(1, min(limit, 20))
+        else:
+            lim = 5
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    WITH latest AS (
+                        SELECT DISTINCT ON (ps.symbol)
+                               ps.symbol, ps.price, ps.change_pct, ps.ts
+                          FROM price_snapshots ps
+                         WHERE ps.source = 'poller'
+                           AND ps.symbol <> 'MARKET'
+                           AND ps.symbol NOT IN ('ASPI', 'SNP_SL20')
+                         ORDER BY ps.symbol ASC, ps.ts DESC, ps.id DESC
+                    )
+                    SELECT symbol, price, change_pct, ts
+                      FROM latest
+                     WHERE change_pct IS NOT NULL
+                     ORDER BY ABS(change_pct) DESC NULLS LAST, symbol ASC
+                     LIMIT %s
+                    """,
+                    (lim,),
+                )
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            if not isinstance(sym, str) or not sym.strip():
+                continue
+            out.append(
+                {
+                    "symbol": sym.strip().upper(),
+                    "price": row.get("price"),
+                    "change_pct": row.get("change_pct"),
+                    "ts": row.get("ts"),
+                }
+            )
+        return out
+
+    async def get_user_preferences(self, user_id: int) -> dict[str, Any] | None:
+        """Return digest / quiet-hours / locale / habit prefs for ``user_id``."""
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return None
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT digest_enabled, quiet_hours_start, quiet_hours_end,
+                           alert_quota_max, locale,
+                           watchlist_auto_move_pct, disclosure_category_prefs,
+                           tv_webhook_token
+                      FROM users
+                     WHERE id = %s
+                    """,
+                    (user_id,),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        r = _as_row(row)
+        digest = r.get("digest_enabled")
+        if not isinstance(digest, bool):
+            digest = False
+
+        def _hour(v: object) -> int | None:
+            if v is None:
+                return None
+            if isinstance(v, bool) or not isinstance(v, int):
+                return None
+            return v if 0 <= v <= 23 else None
+
+        quota = r.get("alert_quota_max")
+        if isinstance(quota, bool) or not isinstance(quota, int) or quota < 0:
+            quota = 100
+        from koel.filing_categories import normalize_filing_tags
+        from koel.i18n import normalize_locale
+
+        auto_pct = r.get("watchlist_auto_move_pct")
+        if isinstance(auto_pct, bool) or not isinstance(auto_pct, (int, float)):
+            auto_move: float | None = None
+        else:
+            try:
+                auto_f = float(auto_pct)
+            except (TypeError, ValueError):
+                auto_move = None
+            else:
+                auto_move = auto_f if math.isfinite(auto_f) and 0 < auto_f <= 50 else None
+        token = r.get("tv_webhook_token")
+        token_s = token.strip() if isinstance(token, str) and token.strip() else None
+
+        return {
+            "digest_enabled": digest,
+            "quiet_hours_start": _hour(r.get("quiet_hours_start")),
+            "quiet_hours_end": _hour(r.get("quiet_hours_end")),
+            "alert_quota_max": quota,
+            "locale": normalize_locale(r.get("locale")),
+            "watchlist_auto_move_pct": auto_move,
+            "disclosure_category_prefs": normalize_filing_tags(
+                r.get("disclosure_category_prefs")
+            ),
+            "tv_webhook_token": token_s,
+        }
+
+    async def get_user_locale(self, user_id: int) -> str:
+        """Return ``en``/``si`` for ``user_id``; missing/bad → ``en``."""
+        prefs = await self.get_user_preferences(user_id)
+        if not isinstance(prefs, dict):
+            return "en"
+        from koel.i18n import normalize_locale
+
+        return normalize_locale(prefs.get("locale"))
+
+    async def set_user_locale(self, user_id: int, locale: str) -> None:
+        """Persist locale ``en``/``si`` only; other values are ignored."""
+        from koel.i18n import parse_language_arg
+
+        parsed = parse_language_arg(locale)
+        if parsed is None:
+            return
+        await self.update_user_preferences(user_id, locale=parsed)
+
+    async def update_user_preferences(
+        self,
+        user_id: int,
+        *,
+        digest_enabled: bool | None = None,
+        locale: str | None = None,
+        watchlist_auto_move_pct: float | None | object = ...,
+        disclosure_category_prefs: list[str] | None = None,
+        rotate_tv_webhook_token: bool = False,
+        clear_tv_webhook_token: bool = False,
+    ) -> dict[str, Any] | None:
+        """Patch user prefs (digest / locale / habit); returns fresh prefs.
+
+        ``watchlist_auto_move_pct``: omit to leave unchanged; ``None`` clears;
+        positive finite ≤50 sets the band. When set/cleared, auto-syncs
+        ``daily_move`` rules for the watchlist.
+        """
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return None
+        sets: list[str] = []
+        params: list[Any] = []
+        if digest_enabled is not None:
+            if not isinstance(digest_enabled, bool):
+                return None
+            sets.append("digest_enabled = %s")
+            params.append(digest_enabled)
+        if locale is not None:
+            from koel.i18n import parse_language_arg
+
+            parsed = parse_language_arg(locale)
+            if parsed is None:
+                return None
+            sets.append("locale = %s")
+            params.append(parsed)
+        sync_auto_move = False
+        auto_move_value: float | None = None
+        if watchlist_auto_move_pct is not ...:
+            if watchlist_auto_move_pct is None:
+                sets.append("watchlist_auto_move_pct = NULL")
+                sync_auto_move = True
+                auto_move_value = None
+            elif (
+                isinstance(watchlist_auto_move_pct, bool)
+                or not isinstance(watchlist_auto_move_pct, (int, float))
+            ):
+                return None
+            else:
+                pct = float(watchlist_auto_move_pct)
+                if not math.isfinite(pct) or pct <= 0 or pct > 50:
+                    return None
+                sets.append("watchlist_auto_move_pct = %s")
+                params.append(pct)
+                sync_auto_move = True
+                auto_move_value = pct
+        if disclosure_category_prefs is not None:
+            from koel.filing_categories import normalize_filing_tags
+
+            tags = normalize_filing_tags(disclosure_category_prefs)
+            sets.append("disclosure_category_prefs = %s")
+            params.append(tags)
+        if clear_tv_webhook_token:
+            sets.append("tv_webhook_token = NULL")
+        elif rotate_tv_webhook_token:
+            import secrets
+
+            sets.append("tv_webhook_token = %s")
+            params.append(secrets.token_urlsafe(24))
+        if not sets:
+            return await self.get_user_preferences(user_id)
+        params.append(user_id)
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    f"""
+                    UPDATE users
+                       SET {", ".join(sets)}
+                     WHERE id = %s
+                    RETURNING id
+                    """,
+                    tuple(params),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        if sync_auto_move:
+            await self.sync_watchlist_auto_move_rules(
+                user_id, pct=auto_move_value
+            )
+        return await self.get_user_preferences(user_id)
+
+    async def disclosure_category_prefs_for_users(
+        self, user_ids: list[int]
+    ) -> dict[int, list[str]]:
+        """Map user_id → filing category allow-list (empty = unrestricted)."""
+        from koel.filing_categories import normalize_filing_tags
+
+        ids = sorted(
+            {
+                u
+                for u in user_ids
+                if isinstance(u, int) and not isinstance(u, bool) and u > 0
+            }
+        )
+        if not ids:
+            return {}
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT id, disclosure_category_prefs
+                      FROM users
+                     WHERE id = ANY(%s)
+                    """,
+                    (ids,),
+                )
+            ).fetchall()
+        out: dict[int, list[str]] = {}
+        for row in rows:
+            r = _as_row(row)
+            uid = r.get("id")
+            if isinstance(uid, bool) or not isinstance(uid, int):
+                continue
+            out[uid] = normalize_filing_tags(r.get("disclosure_category_prefs"))
+        return out
+
+    async def sync_watchlist_auto_move_rules(
+        self, user_id: int, *, pct: float | None
+    ) -> int:
+        """Ensure daily_move rules match watchlist for auto-% band.
+
+        When ``pct`` is None, deactivates rules tagged via category
+        ``auto_watchlist_move`` is not used — we match type=daily_move with
+        the previous band by deactivating all daily_move that equal the
+        stored band is hard; instead: when enabling, upsert daily_move at
+        ``pct`` for every watch; when clearing, deactivate daily_move rules
+        whose threshold matches common auto bands (3/5/10) only if the
+        note... Simpler: deactivate all active daily_move for user when
+        clearing; when setting, create/return daily_move at pct for each
+        watch (idempotent create_alert_rule).
+        """
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return 0
+        if pct is None:
+            async with self._pool.connection() as conn:
+                cur = await conn.execute(
+                    """
+                    UPDATE alert_rules
+                       SET active = FALSE
+                     WHERE user_id = %s
+                       AND type = %s
+                       AND active IS TRUE
+                       AND threshold IN (3, 5, 10)
+                    """,
+                    (user_id, AlertType.DAILY_MOVE.value),
+                )
+                return int(getattr(cur, "rowcount", 0) or 0)
+        if (
+            isinstance(pct, bool)
+            or not isinstance(pct, (int, float))
+            or not math.isfinite(float(pct))
+            or float(pct) <= 0
+            or float(pct) > 50
+        ):
+            return 0
+        band = float(pct)
+        symbols = await self.list_watchlist(user_id)
+        n = 0
+        for symbol in symbols:
+            try:
+                await self.create_alert_rule(
+                    user_id, symbol, AlertType.DAILY_MOVE, band
+                )
+                n += 1
+            except Exception:
+                continue
+        return n
+
+    async def ensure_auto_move_for_symbol(self, user_id: int, symbol: str) -> None:
+        """If user has auto-move band, upsert daily_move for ``symbol``."""
+        prefs = await self.get_user_preferences(user_id)
+        if not prefs:
+            return
+        pct = prefs.get("watchlist_auto_move_pct")
+        if (
+            isinstance(pct, bool)
+            or not isinstance(pct, (int, float))
+            or not math.isfinite(float(pct))
+            or float(pct) <= 0
+        ):
+            return
+        await self.create_alert_rule(
+            user_id, symbol, AlertType.DAILY_MOVE, float(pct)
+        )
+
+    async def find_user_by_tv_webhook_token(
+        self, token: str
+    ) -> dict[str, Any] | None:
+        """Resolve inbound TradingView webhook token → user row."""
+        if not isinstance(token, str) or not token.strip():
+            return None
+        tok = token.strip()
+        if len(tok) < 16 or len(tok) > 128:
+            return None
+        async with self._pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    """
+                    SELECT id, telegram_id
+                      FROM users
+                     WHERE tv_webhook_token = %s
+                     LIMIT 1
+                    """,
+                    (tok,),
+                )
+            ).fetchone()
+        if row is None:
+            return None
+        r = _as_row(row)
+        tid = r.get("telegram_id")
+        uid = r.get("id")
+        if isinstance(uid, bool) or not isinstance(uid, int):
+            return None
+        if isinstance(tid, bool) or not isinstance(tid, int) or tid <= 0:
+            return None
+        return {"id": uid, "telegram_id": tid}
+
     async def _fetch_active_rule(
         self,
         conn: Any,
@@ -4968,6 +5650,7 @@ class Storage:
         alert_type: AlertType,
         threshold: float | None,
         category: str | None = None,
+        ref_price: float | None = None,
     ) -> AlertRule | None:
         row = await (
             await conn.execute(
@@ -4978,11 +5661,12 @@ class Storage:
                 WHERE ar.user_id = %s AND ar.symbol = %s AND ar.type = %s
                   AND COALESCE(ar.threshold, -1) = COALESCE(%s, -1)
                   AND COALESCE(ar.category, '') = COALESCE(%s, '')
+                  AND COALESCE(ar.ref_price, -1) = COALESCE(%s, -1)
                   AND ar.active
                 ORDER BY ar.id DESC
                 LIMIT 1
                 """,
-                (user_id, symbol, alert_type.value, threshold, category),
+                (user_id, symbol, alert_type.value, threshold, category, ref_price),
             )
         ).fetchone()
         if row is None:
@@ -5654,6 +6338,14 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
     raw_armed = row.get("armed", True)
     if not isinstance(raw_armed, bool):
         return None
+    raw_ref = row.get("ref_price")
+    ref_price: float | None
+    if raw_ref is None or isinstance(raw_ref, bool):
+        ref_price = None
+    elif isinstance(raw_ref, (int, float)) and math.isfinite(float(raw_ref)):
+        ref_price = float(raw_ref)
+    else:
+        ref_price = None
     return AlertRule(
         id=raw_id,
         user_id=raw_uid,
@@ -5662,6 +6354,7 @@ def _row_to_rule(row: dict[str, Any]) -> AlertRule | None:
         type=alert_type,
         threshold=row.get("threshold"),
         category=cat,
+        ref_price=ref_price,
         active=raw_active,
         armed=raw_armed,
         created_at=created,

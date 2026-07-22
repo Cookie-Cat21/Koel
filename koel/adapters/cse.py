@@ -341,6 +341,12 @@ class SymbolInfo(BaseModel):
     hiTrade: float | None = None
     lowTrade: float | None = None
     marketCap: float | None = None
+    marketCapPercentage: float | None = None
+    isin: str | None = None
+    quantityIssued: float | None = None
+    parValue: float | None = None
+    foreignPercentage: float | None = None
+    issueDate: str | None = None
 
     @field_validator(
         "id",
@@ -354,8 +360,25 @@ class SymbolInfo(BaseModel):
         "hiTrade",
         "lowTrade",
         "marketCap",
+        "marketCapPercentage",
+        "quantityIssued",
+        "parValue",
+        "foreignPercentage",
         mode="before",
     )
+    @classmethod
+    def _reject_bool_numeric(cls, value: Any) -> Any:
+        return _reject_bool_numeric_value(value)
+
+
+class SymbolBetaInfo(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    triASIBetaValue: float | None = None
+    betaValueSPSL: float | None = None
+    triASIBetaPeriod: str | int | None = None
+
+    @field_validator("triASIBetaValue", "betaValueSPSL", mode="before")
     @classmethod
     def _reject_bool_numeric(cls, value: Any) -> Any:
         return _reject_bool_numeric_value(value)
@@ -365,6 +388,8 @@ class CompanyInfoResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     reqSymbolInfo: SymbolInfo
+    reqSymbolBetaInfo: SymbolBetaInfo | None = None
+    reqLogo: dict[str, Any] | None = None
 
 
 class AnnouncementRow(BaseModel):
@@ -1610,6 +1635,77 @@ class CSEClient:
         # CircuitOpenError and transport errors propagate (do not swallow)
         return cast(PriceSnapshot | None, await self._guarded("companyInfoSummery", _call))
 
+    async def fetch_company_info_bundle(self, symbol: str) -> dict[str, Any] | None:
+        """``POST /companyInfoSummery`` — quote identity + beta + logo path.
+
+        Returns a flat dict for ``issuer_profiles`` upsert (not a PriceSnapshot).
+        """
+        if not isinstance(symbol, str):
+            return None
+        symbol = symbol.strip().upper()
+        if not symbol:
+            return None
+
+        async def _call() -> dict[str, Any] | None:
+            raw = await self._request(
+                "POST",
+                "/companyInfoSummery",
+                data={"symbol": symbol},
+                log_context={"symbol": symbol},
+            )
+            try:
+                parsed = CompanyInfoResponse.model_validate(raw)
+            except ValidationError as exc:
+                log.error(
+                    "cse_schema_error",
+                    endpoint="companyInfoSummery",
+                    symbol=symbol,
+                    error=str(exc),
+                )
+                return None
+            info = parsed.reqSymbolInfo
+            beta = parsed.reqSymbolBetaInfo
+            logo_path: str | None = None
+            if isinstance(parsed.reqLogo, dict):
+                path = parsed.reqLogo.get("path")
+                if isinstance(path, str) and path.strip():
+                    logo_path = path.strip()[:512]
+            period: str | None = None
+            if beta is not None and beta.triASIBetaPeriod is not None:
+                period = str(beta.triASIBetaPeriod).strip()[:32] or None
+            isin = (
+                info.isin.strip().upper()[:32]
+                if isinstance(info.isin, str) and info.isin.strip()
+                else None
+            )
+            issue = (
+                info.issueDate.strip()[:64]
+                if isinstance(info.issueDate, str) and info.issueDate.strip()
+                else None
+            )
+            return {
+                "symbol": symbol,
+                "isin": isin,
+                "quoted_date": issue,
+                "market_cap_pct": _finite_or_none(info.marketCapPercentage),
+                "shares_issued": _finite_or_none(info.quantityIssued),
+                "par_value": _finite_or_none(info.parValue),
+                "foreign_pct": _finite_or_none(info.foreignPercentage),
+                "beta_aspi": (
+                    _finite_or_none(beta.triASIBetaValue) if beta else None
+                ),
+                "beta_sl20": (
+                    _finite_or_none(beta.betaValueSPSL) if beta else None
+                ),
+                "beta_period": period,
+                "logo_path": logo_path,
+            }
+
+        return cast(
+            dict[str, Any] | None,
+            await self._guarded("companyInfoSummery", _call),
+        )
+
     async def fetch_announcements_for_symbol(
         self,
         symbol: str,
@@ -2072,19 +2168,63 @@ class CSEClient:
 
             sector: str | None = None
             name: str | None = None
+            board_type: str | None = None
+            founded: str | None = None
+            fin_year_end: str | None = None
+            website: str | None = None
+            email: str | None = None
+            phone: str | None = None
+            address: str | None = None
+            auditors: str | None = None
+            secretaries: str | None = None
             summary = raw.get("reqComSumInfo")
             if isinstance(summary, list) and summary and isinstance(summary[0], dict):
-                sec = summary[0].get("sector")
+                row0 = summary[0]
+
+                def _s(key: str, cap: int) -> str | None:
+                    val = row0.get(key)
+                    if isinstance(val, str) and val.strip():
+                        return val.strip()[:cap]
+                    return None
+
+                sec = row0.get("sector")
                 if isinstance(sec, str) and sec.strip():
                     sector = sec.strip()[:128]
-                nm = summary[0].get("name") or summary[0].get("companyName")
+                nm = row0.get("name") or row0.get("companyName")
                 if isinstance(nm, str) and nm.strip():
                     name = nm.strip()[:200]
+                board_type = _s("boardType", 64)
+                founded = _s("established", 32)
+                # CSE encodes FY end as month number string e.g. "2" → keep raw.
+                fin_year_end = _s("finYearEnd", 32)
+                website = _s("web", 256)
+                email = _s("email1", 256)
+                phone = _s("tel1", 128)
+                address = _s("registeredOffice", 512) or _s("registerOffice", 512)
+                auditors = _s("auditors", 256)
+                secretaries = _s("secretaries", 512)
+
+            business_summary: str | None = None
+            biz = raw.get("infoCompanyBusinessSummary")
+            if isinstance(biz, list) and biz and isinstance(biz[0], dict):
+                body = biz[0].get("body") or biz[0].get("title")
+                if isinstance(body, str) and body.strip():
+                    business_summary = body.strip()[:2000]
 
             return {
                 "symbol": sym,
                 "sector": sector,
                 "name": name,
+                "board_type": board_type,
+                "founded": founded,
+                "fin_year_end": fin_year_end,
+                "website": website,
+                "email": email,
+                "phone": phone,
+                "address": address,
+                "auditors": auditors,
+                "secretaries": secretaries,
+                "business_summary": business_summary,
                 "top_posts": _row_list("topPosts"),
                 "directors": _row_list("infoCompanyDirector"),
                 "key_executives": _row_list("infoCompanyKeyExecutive"),

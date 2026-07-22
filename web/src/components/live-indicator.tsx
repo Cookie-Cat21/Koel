@@ -42,7 +42,7 @@ export function LiveIndicator({
         ) : null}
         <span className={cn("relative inline-flex h-2 w-2 rounded-full", dots[tone])} />
       </span>
-      {label}
+      <span suppressHydrationWarning>{label}</span>
     </span>
   );
 }

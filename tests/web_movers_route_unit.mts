@@ -291,13 +291,14 @@ async function testLimitClampAndInvalidFallback(): Promise<void> {
   }
 }
 
-async function testSessionRequiredAndNoCsrf(): Promise<void> {
+async function testSessionOptionalAndNoCsrf(): Promise<void> {
   installDbPool();
   process.env.DASH_SESSION_SECRET = SECRET;
+  // Public market browse — session optional (parity symbols list).
   const bare = await moversGet(
     new NextRequest("http://127.0.0.1/api/v1/market/movers", { method: "GET" }),
   );
-  assert(bare.status === 401, `no session → 401, got ${bare.status}`);
+  assert(bare.status === 200, `no session → 200, got ${bare.status}`);
 
   const withSession = await moversGet(makeRequest("limit=1"));
   assert(withSession.status === 200, `GET without CSRF must 200, got ${withSession.status}`);
@@ -396,7 +397,7 @@ async function main(): Promise<void> {
   await testDirectionDownSignFilter();
   await testInvalidDirectionRejected();
   await testLimitClampAndInvalidFallback();
-  await testSessionRequiredAndNoCsrf();
+  await testSessionOptionalAndNoCsrf();
   await testDbErrorDoesNotDiscloseInternals();
   await testFiniteEgressAndNoQFilter();
   await testCaseInsensitiveDirection();

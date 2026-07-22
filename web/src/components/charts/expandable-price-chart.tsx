@@ -12,8 +12,24 @@ import {
 } from "react";
 
 import { CandlestickChart } from "@/components/charts/candlestick-chart";
+import {
+  ChartActiveStrip,
+  ChartSegmentButton,
+  ChartSegmentGroup,
+  ChartShortcutsHint,
+  ChartToggleChip,
+} from "@/components/charts/chart-workbench-controls";
+import {
+  LwcPriceChart,
+  type ChartDrawMode,
+  type ChartSeriesStyle,
+  type KoelUserDrawing,
+} from "@/components/charts/lwc-price-chart";
+import { TradingViewEmbed } from "@/components/charts/tradingview-embed";
 import { SparklineWithForecast } from "@/components/sparkline-with-forecast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toTradingViewSymbol } from "@/lib/tradingview-symbol";
 import {
   type ChartRangeKey,
   type DailyBarPoint,
@@ -28,6 +44,18 @@ import {
 } from "@/lib/api/daily-bars";
 import { isSafeClientApiPath } from "@/lib/api/client-fetch";
 import { toFiniteNumber } from "@/lib/api/finite-number";
+import {
+  buildDisclosureMarkers,
+  buildFireMarkers,
+  buildThresholdLines,
+  type ChartAlertFireEvent,
+  type ChartAlertThreshold,
+  type ChartDisclosureEvent,
+} from "@/lib/charts/koel-chart-events";
+import {
+  DEFAULT_INDICATORS,
+  type KoelIndicatorFlags,
+} from "@/lib/charts/koel-indicators";
 import { formatCompactNumber, formatNumber, formatPct } from "@/lib/format";
 
 type Point = { ts: string | null; price: number | null | undefined };
@@ -38,7 +66,8 @@ const REALTIME_MS = 20_000;
 /**
  * Compact candlesticks (daily path) + expand → full range dialog.
  * 1D builds OHLC from realtime ticks when available; longer ranges use
- * ``daily_bars``. Compact view prefers candles over the old sparkline.
+ * ``daily_bars``. Expand Layer A adds koel-native overlays TradingView
+ * won't: CSE disclosures, Telegram fires, armed price alert lines.
  */
 export function ExpandablePriceChart({
   symbol,
@@ -58,6 +87,8 @@ export function ExpandablePriceChart({
    * chrome — keeps ASPI/SL20 cards from looking like broken mini terminals.
    */
   compact = false,
+  /** SSR disclosures for chart pins (symbol pages). */
+  initialDisclosures = null,
 }: {
   symbol: string;
   points: Point[];
@@ -71,14 +102,30 @@ export function ExpandablePriceChart({
   initialRange?: ChartRangeKey;
   seriesKind?: "symbol" | "index";
   compact?: boolean;
+  initialDisclosures?: ChartDisclosureEvent[] | null;
 }) {
   const titleId = useId();
   const forecastToggleId = useId();
   const [open, setOpen] = useState(Boolean(initialOpen));
+  /** koel = LWC on Postgres; tv = optional TradingView embed (power users). */
+  const [chartLayer, setChartLayer] = useState<"koel" | "tv">("koel");
   const [range, setRange] = useState<ChartRangeKey>(initialRange);
+  const tvAvailable =
+    seriesKind === "symbol" && toTradingViewSymbol(symbol) != null;
   const [bars, setBars] = useState<DailyBarPoint[] | null>(
     initialBars && initialBars.length > 0 ? initialBars : null,
   );
+  const [showDisclosures, setShowDisclosures] = useState(true);
+  const [showFires, setShowFires] = useState(true);
+  const [showAlertLines, setShowAlertLines] = useState(true);
+  const [fireEvents, setFireEvents] = useState<ChartAlertFireEvent[]>([]);
+  const [alertRules, setAlertRules] = useState<ChartAlertThreshold[]>([]);
+  /** TradingView-inspired workbench controls (Layer A). */
+  const [seriesStyle, setSeriesStyle] = useState<ChartSeriesStyle>("candle");
+  const [indicators, setIndicators] =
+    useState<KoelIndicatorFlags>(DEFAULT_INDICATORS);
+  const [drawMode, setDrawMode] = useState<ChartDrawMode>("none");
+  const [drawings, setDrawings] = useState<KoelUserDrawing[]>([]);
   const compactDaily = useMemo(() => {
     const src = bars ?? initialBars;
     if (!src || src.length < 2) return null;
@@ -331,6 +378,89 @@ export function ExpandablePriceChart({
     };
   }, [open, range, fetchTicks, fetchDaily, initialBars]);
 
+  // Fetch Telegram fires + armed rules when expand opens (symbol only).
+  useEffect(() => {
+    if (!open || seriesKind !== "symbol") return;
+    let cancelled = false;
+    const run = async () => {
+      const histPath = `/api/v1/alerts/history?symbol=${encodeURIComponent(symbol)}&limit=40`;
+      const rulesPath = `/api/v1/alerts?symbol=${encodeURIComponent(symbol)}&active=true`;
+      if (!isSafeClientApiPath(histPath) || !isSafeClientApiPath(rulesPath)) {
+        return;
+      }
+      try {
+        const [histRes, rulesRes] = await Promise.all([
+          fetch(histPath, {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+          }),
+          fetch(rulesPath, {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+          }),
+        ]);
+        if (cancelled) return;
+        if (histRes.ok) {
+          const body: unknown = await histRes.json();
+          const raw =
+            body != null &&
+            typeof body === "object" &&
+            !Array.isArray(body) &&
+            Array.isArray((body as { events?: unknown }).events)
+              ? (body as { events: unknown[] }).events
+              : [];
+          const events: ChartAlertFireEvent[] = [];
+          for (const row of raw) {
+            if (row == null || typeof row !== "object" || Array.isArray(row)) {
+              continue;
+            }
+            const r = row as Record<string, unknown>;
+            events.push({
+              id: typeof r.id === "number" || typeof r.id === "string" ? r.id : events.length,
+              type: typeof r.type === "string" ? r.type : "alert",
+              fired_at: typeof r.fired_at === "string" ? r.fired_at : null,
+              message_text:
+                typeof r.message_text === "string" ? r.message_text : null,
+            });
+          }
+          setFireEvents(events);
+        }
+        if (rulesRes.ok) {
+          const body: unknown = await rulesRes.json();
+          const raw =
+            body != null &&
+            typeof body === "object" &&
+            !Array.isArray(body) &&
+            Array.isArray((body as { rules?: unknown }).rules)
+              ? (body as { rules: unknown[] }).rules
+              : [];
+          const rules: ChartAlertThreshold[] = [];
+          for (const row of raw) {
+            if (row == null || typeof row !== "object" || Array.isArray(row)) {
+              continue;
+            }
+            const r = row as Record<string, unknown>;
+            const thr = toFiniteNumber(r.threshold);
+            if (thr == null) continue;
+            rules.push({
+              id: typeof r.id === "number" || typeof r.id === "string" ? r.id : rules.length,
+              type: typeof r.type === "string" ? r.type : "",
+              threshold: thr,
+              active: r.active !== false,
+            });
+          }
+          setAlertRules(rules);
+        }
+      } catch {
+        /* overlays optional */
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, symbol, seriesKind]);
+
   useEffect(() => {
     if (!open || range !== "1D") return;
     let cancelled = false;
@@ -359,7 +489,45 @@ export function ExpandablePriceChart({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      // Ignore when typing in inputs (none in dialog today — fail closed).
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      ) {
+        return;
+      }
+      if (chartLayer !== "koel") return;
+      const rangeKeys: Record<string, ChartRangeKey> = {
+        "1": "1D",
+        "2": "1M",
+        "3": "3M",
+        "4": "6M",
+        "5": "1Y",
+      };
+      if (rangeKeys[e.key]) {
+        e.preventDefault();
+        setRange(rangeKeys[e.key]!);
+        return;
+      }
+      if (seriesKind !== "symbol") return;
+      const k = e.key.toLowerCase();
+      if (k === "d") {
+        e.preventDefault();
+        setShowDisclosures((v) => !v);
+      } else if (k === "f") {
+        e.preventDefault();
+        setShowFires((v) => !v);
+      } else if (k === "a") {
+        e.preventDefault();
+        setShowAlertLines((v) => !v);
+      }
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -371,7 +539,7 @@ export function ExpandablePriceChart({
       document.body.style.overflow = prevOverflow;
       trigger?.focus();
     };
-  }, [open]);
+  }, [open, chartLayer, seriesKind]);
 
   // Thin / multi-day tick piles: prefer recent daily OHLC until the latest
   // Colombo session has enough prints for a real intraday chart.
@@ -427,6 +595,35 @@ export function ExpandablePriceChart({
       sessions: chartBars.length,
     };
   }, [chartBars]);
+
+  const koelMarkers = useMemo(() => {
+    if (seriesKind !== "symbol" || !chartBars || chartBars.length < 2) {
+      return [];
+    }
+    // Event pins only on calendar daily bars — intraday tick candles lack
+    // YYYY-MM-DD keys that match disclosure / fire dates.
+    if (range === "1D" && !oneDayUsingDaily) return [];
+    const dates = chartBars.map((b) => b.trade_date);
+    const discs = showDisclosures
+      ? buildDisclosureMarkers(initialDisclosures ?? [], dates)
+      : [];
+    const fires = showFires ? buildFireMarkers(fireEvents, dates) : [];
+    return [...discs, ...fires];
+  }, [
+    seriesKind,
+    chartBars,
+    range,
+    oneDayUsingDaily,
+    showDisclosures,
+    showFires,
+    initialDisclosures,
+    fireEvents,
+  ]);
+
+  const koelPriceLines = useMemo(() => {
+    if (seriesKind !== "symbol" || !showAlertLines) return [];
+    return buildThresholdLines(alertRules);
+  }, [seriesKind, showAlertLines, alertRules]);
 
   const compactBars = compactDaily ?? compactIntraday;
   const heroFrom =
@@ -573,7 +770,10 @@ export function ExpandablePriceChart({
                   </p>
                 ) : null}
                 {range === "1D" && intradayReady ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1.5 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                  >
                     <span
                       className="size-1.5 animate-pulse rounded-full bg-emerald-500"
                       aria-hidden
@@ -582,12 +782,12 @@ export function ExpandablePriceChart({
                     {lastRefresh
                       ? ` · ${new Date(lastRefresh).toLocaleTimeString()}`
                       : ""}
-                  </span>
+                  </Badge>
                 ) : null}
                 {oneDayUsingDaily ? (
-                  <span className="inline-flex items-center rounded-full border border-border/70 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Few ticks · showing recent daily
-                  </span>
+                  <Badge variant="outline" className="text-muted-foreground">
+                    Few ticks · recent daily
+                  </Badge>
                 ) : null}
               </div>
               <Button
@@ -602,63 +802,228 @@ export function ExpandablePriceChart({
               </Button>
             </div>
 
-            {/* Toolbar — segmented range control + forecast toggle */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/40 px-5 py-2.5">
-              <div
-                role="group"
-                aria-label="Chart range"
-                className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/60 p-0.5"
-              >
-                {RANGES.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRange(r)}
-                    aria-pressed={range === r}
-                    className={
-                      range === r
-                        ? "rounded-md bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm"
-                        : "rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    }
-                  >
-                    {r}
-                  </button>
-                ))}
+            {/* Toolbar — HyperUI segments + koel overlay chips */}
+            <div className="flex shrink-0 flex-col gap-2 border-b border-border/40 px-5 py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {tvAvailable ? (
+                    <ChartSegmentGroup label="Chart source">
+                      <ChartSegmentButton
+                        pressed={chartLayer === "koel"}
+                        onClick={() => setChartLayer("koel")}
+                      >
+                        koel
+                      </ChartSegmentButton>
+                      <ChartSegmentButton
+                        pressed={chartLayer === "tv"}
+                        onClick={() => setChartLayer("tv")}
+                        title="External TradingView chart — often delayed."
+                      >
+                        TradingView
+                      </ChartSegmentButton>
+                    </ChartSegmentGroup>
+                  ) : null}
+                  {chartLayer === "koel" ? (
+                    <ChartSegmentGroup label="Chart range">
+                      {RANGES.map((r) => (
+                        <ChartSegmentButton
+                          key={r}
+                          pressed={range === r}
+                          onClick={() => setRange(r)}
+                        >
+                          {r}
+                        </ChartSegmentButton>
+                      ))}
+                    </ChartSegmentGroup>
+                  ) : null}
+                  {chartLayer === "koel" ? (
+                    <ChartSegmentGroup label="Chart style">
+                      {(
+                        [
+                          ["candle", "Candles"],
+                          ["line", "Line"],
+                          ["area", "Area"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ChartSegmentButton
+                          key={key}
+                          pressed={seriesStyle === key}
+                          onClick={() => setSeriesStyle(key)}
+                        >
+                          {label}
+                        </ChartSegmentButton>
+                      ))}
+                    </ChartSegmentGroup>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {chartLayer === "koel" && seriesKind === "symbol" ? (
+                    <>
+                      <ChartToggleChip
+                        pressed={showDisclosures}
+                        onClick={() => setShowDisclosures((v) => !v)}
+                        tone="amber"
+                        count={initialDisclosures?.length ?? 0}
+                        title="CSE disclosure pins (D)"
+                      >
+                        Disclosures
+                      </ChartToggleChip>
+                      <ChartToggleChip
+                        pressed={showFires}
+                        onClick={() => setShowFires((v) => !v)}
+                        tone="violet"
+                        count={fireEvents.length}
+                        title="Telegram alert fires (F)"
+                      >
+                        Fires
+                      </ChartToggleChip>
+                      <ChartToggleChip
+                        pressed={showAlertLines}
+                        onClick={() => setShowAlertLines((v) => !v)}
+                        tone="emerald"
+                        count={
+                          alertRules.filter(
+                            (r) =>
+                              r.active &&
+                              (r.type === "price_above" ||
+                                r.type === "price_below"),
+                          ).length
+                        }
+                        title="Armed price thresholds (A)"
+                      >
+                        Alert lines
+                      </ChartToggleChip>
+                    </>
+                  ) : null}
+                  {chartLayer === "koel" && forecastPrices.length > 0 ? (
+                    <ChartToggleChip
+                      id={forecastToggleId}
+                      pressed={showForecast}
+                      onClick={() => setShowForecast((v) => !v)}
+                      tone="sky"
+                      title="Stored model forecast overlay — research only, NFA."
+                    >
+                      Forecast
+                    </ChartToggleChip>
+                  ) : chartLayer === "koel" ? (
+                    <span
+                      id={forecastToggleId}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border/70 px-2.5 py-1.5 text-xs text-muted-foreground"
+                      title="No stored model forecast for this symbol."
+                    >
+                      Forecast unavailable
+                    </span>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  id={forecastToggleId}
-                  type="button"
-                  aria-pressed={showForecast}
-                  disabled={forecastPrices.length === 0}
-                  onClick={() => setShowForecast((v) => !v)}
-                  title={
-                    forecastPrices.length === 0
-                      ? "No stored model forecast for this symbol."
-                      : "Overlay the stored model forecast (dashed). Research only — not financial advice."
-                  }
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                    showForecast && forecastPrices.length > 0
-                      ? "border-sky-500/40 bg-sky-500/10 text-sky-800 dark:text-sky-200"
-                      : "border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span
-                    className={`h-0 w-4 border-t-2 border-dashed ${
-                      showForecast && forecastPrices.length > 0
-                        ? "border-sky-600 dark:border-sky-400"
-                        : "border-muted-foreground/60"
-                    }`}
-                    aria-hidden
-                  />
-                  Forecast
-                  {forecastPrices.length === 0 ? " — none" : ""}
-                </button>
-              </div>
+              {chartLayer === "koel" ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ChartSegmentGroup label="Drawing tools">
+                      {(
+                        [
+                          ["none", "Cursor"],
+                          ["hline", "H-line"],
+                          ["trend", "Trend"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ChartSegmentButton
+                          key={key}
+                          pressed={drawMode === key}
+                          onClick={() => setDrawMode(key)}
+                        >
+                          {label}
+                        </ChartSegmentButton>
+                      ))}
+                      <ChartSegmentButton
+                        pressed={false}
+                        onClick={() => {
+                          setDrawings([]);
+                          setDrawMode("none");
+                        }}
+                        title="Clear session drawings"
+                      >
+                        Clear
+                        {drawings.length > 0 ? ` · ${drawings.length}` : ""}
+                      </ChartSegmentButton>
+                    </ChartSegmentGroup>
+                    <div
+                      role="group"
+                      aria-label="Indicators"
+                      className="flex flex-wrap items-center gap-1"
+                    >
+                      {(
+                        [
+                          ["sma20", "SMA 20"],
+                          ["sma50", "SMA 50"],
+                          ["ema12", "EMA 12"],
+                          ["bb", "BB"],
+                          ["rsi", "RSI"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ChartToggleChip
+                          key={key}
+                          pressed={indicators[key]}
+                          onClick={() =>
+                            setIndicators((prev) => ({
+                              ...prev,
+                              [key]: !prev[key],
+                            }))
+                          }
+                          tone="neutral"
+                        >
+                          {label}
+                        </ChartToggleChip>
+                      ))}
+                    </div>
+                  </div>
+                  <ChartShortcutsHint />
+                </div>
+              ) : null}
             </div>
+            {chartLayer === "koel" ? (
+              <ChartActiveStrip
+                chips={[
+                  { key: "range", label: range, tone: "neutral" },
+                  { key: "style", label: seriesStyle, tone: "neutral" },
+                  ...(showDisclosures && seriesKind === "symbol"
+                    ? [{ key: "disc", label: "Disclosures", tone: "amber" as const }]
+                    : []),
+                  ...(showFires && seriesKind === "symbol"
+                    ? [{ key: "fires", label: "Fires", tone: "violet" as const }]
+                    : []),
+                  ...(showAlertLines && seriesKind === "symbol"
+                    ? [
+                        {
+                          key: "alerts",
+                          label: "Alert lines",
+                          tone: "emerald" as const,
+                        },
+                      ]
+                    : []),
+                  ...(
+                    [
+                      ["sma20", "SMA20"],
+                      ["sma50", "SMA50"],
+                      ["ema12", "EMA12"],
+                      ["bb", "BB"],
+                      ["rsi", "RSI"],
+                    ] as const
+                  )
+                    .filter(([k]) => indicators[k])
+                    .map(([k, label]) => ({
+                      key: k,
+                      label,
+                      tone: "neutral" as const,
+                    })),
+                  ...(showForecast && forecastPrices.length > 0
+                    ? [{ key: "fc", label: "Forecast", tone: "sky" as const }]
+                    : []),
+                ]}
+              />
+            ) : null}
 
-            {/* Window stats — O/H/L/C over the selected range */}
-            {windowStats ? (
+            {chartLayer === "koel" && windowStats ? (
               <dl className="flex shrink-0 flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-border/40 px-5 py-2 font-mono text-xs tabular-nums">
                 {seriesKind === "index" ? (
                   <>
@@ -720,9 +1085,10 @@ export function ExpandablePriceChart({
               </dl>
             ) : null}
 
-            {/* Chart area — centered aspect box so candles aren't stretched */}
             <div className="flex min-h-0 flex-1 flex-col px-5 pt-3 pb-4">
-              {loading ? (
+              {chartLayer === "tv" && tvAvailable ? (
+                <TradingViewEmbed symbol={symbol} className="min-h-0 flex-1" />
+              ) : loading ? (
                 <div
                   className="flex min-h-0 flex-1 flex-col gap-2.5"
                   role="status"
@@ -753,31 +1119,32 @@ export function ExpandablePriceChart({
                   </p>
                 </div>
               ) : (
-                <CandlestickChart
-                  bars={chartBars}
-                  fill
-                  fitWidth
+                <LwcPriceChart
+                  bars={
+                    seriesKind === "index"
+                      ? chartBars.slice(
+                          -Math.min(
+                            90,
+                            sessionsForRange(range === "1D" ? "3M" : range),
+                          ),
+                        )
+                      : chartBars.slice(
+                          -(range === "1D" && oneDayUsingDaily
+                            ? 40
+                            : displayCandlesForRange(range)),
+                        )
+                  }
                   showForecast={showForecast}
                   forecastPrices={forecastPrices}
-                  variant={seriesKind === "index" ? "close" : "auto"}
-                  maxCandles={
-                    seriesKind === "index"
-                      ? // Cap so close→close aggregates stay thick on ASPI scale.
-                        Math.min(90, sessionsForRange(range === "1D" ? "3M" : range))
-                      : range === "1D" && oneDayUsingDaily
-                        ? 40
-                        : displayCandlesForRange(range)
-                  }
+                  showVolume={seriesKind !== "index"}
+                  markers={koelMarkers}
+                  priceLines={koelPriceLines}
+                  seriesStyle={seriesStyle}
+                  indicators={indicators}
+                  drawMode={drawMode}
+                  drawings={drawings}
+                  onDrawingsChange={setDrawings}
                   className="min-h-0 flex-1"
-                  footnote={
-                    seriesKind === "index"
-                      ? undefined
-                      : range === "1D"
-                        ? oneDayUsingDaily
-                          ? `Only ${sessionTicks.length} session tick${sessionTicks.length === 1 ? "" : "s"} — showing last ${chartBars.length} daily sessions · research only`
-                          : `${sessionTicks.length} session ticks → ${chartBars.length} intraday candles · research only`
-                        : undefined
-                  }
                 />
               )}
             </div>

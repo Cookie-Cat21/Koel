@@ -22,6 +22,10 @@ the same Postgres-backed watchlist, rules, and fire history.
 | Ask-heavy order book | Yes | Yes | Telegram | Uses public order-book totals. |
 | EPS above / below | Yes | Yes | Telegram | Financial metrics feature-flagged; dashboard metrics API exposes latest extracted rows. |
 | EPS / revenue / profit YoY | Yes | Yes | Telegram | Financial metrics feature-flagged; dashboard metrics API exposes YoY comparisons. |
+| New 52-week high | Yes (`high52`) | Yes | Telegram | One fire per ISO week; uses `daily_bars` prior range. |
+| New 52-week low | Yes (`low52`) | Yes | Telegram | One fire per ISO week; uses `daily_bars` prior range. |
+| MA cross (20/50/200) | Yes (`ma PERIOD`) | Yes | Telegram | Price crosses SMA from daily closes; rearm like price level. |
+| Reference-price % move | Yes (`move PCT from PRICE`) | Yes | Telegram | `%` from user-supplied `ref_price` (not avg cost / positions). One fire per Colombo day. |
 
 ## Dashboard-only operations
 
@@ -30,7 +34,7 @@ the same Postgres-backed watchlist, rules, and fire history.
 | Alert quota | Abuse guard | `users.alert_quota_max` caps active dashboard alert creates. |
 | Test fire | Audit-only dry run | Inserts `[dry-run]` `alert_log` row; no Telegram send. |
 | Mute | Temporary suppression | Dashboard PATCH writes `alert_rules.muted_until`; the rule engine skips future-dated mutes. |
-| User preferences | Delivery settings | Dashboard settings reads/writes `digest_enabled`, `quiet_hours_start`, and `quiet_hours_end`. |
+| User preferences | Delivery settings | Dashboard settings reads/writes `digest_enabled`, `quiet_hours_start`, and `quiet_hours_end`. Bot `/language` sets `users.locale` (`en`/`si`) for alert templates (W9); dash locale UI not required for v1. |
 
 ## Runtime notes
 

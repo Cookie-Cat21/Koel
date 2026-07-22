@@ -81,6 +81,7 @@ def _category_create_side_effect() -> AsyncMock:
         alert_type: AlertType,
         threshold: float | None,
         category: str | None = None,
+        ref_price: float | None = None,
     ) -> AlertRule:
         return AlertRule(
             id=11,
@@ -90,6 +91,7 @@ def _category_create_side_effect() -> AsyncMock:
             type=alert_type,
             threshold=threshold,
             category=category,
+            ref_price=ref_price,
         )
 
     return AsyncMock(side_effect=_create)

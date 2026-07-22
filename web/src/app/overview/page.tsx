@@ -594,7 +594,12 @@ export default async function OverviewPage() {
                 What sectors show
               </HelpLink>
             </div>
-            <SectorHeatStrip items={sectors} />
+            <SectorHeatStrip
+              items={sectors}
+              hrefForSector={(name) =>
+                `/market?sector=${encodeURIComponent(name)}`
+              }
+            />
           </section>
         ) : null}
 

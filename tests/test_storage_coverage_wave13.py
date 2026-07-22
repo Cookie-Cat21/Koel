@@ -90,8 +90,8 @@ async def test_get_latest_ready_brief_non_string_brief() -> None:
 async def test_create_alert_rule_unique_violation_reraise_when_race_lost() -> None:
     conn = _Conn()
     conn.rollback = AsyncMock()  # type: ignore[attr-defined]
-    # upsert, add_watch x2, fetch None, UniqueViolation, fetch None → raise
-    conn._results = [None, None, None, None, UniqueViolation("dup"), None]
+    # upsert, add_watch(upsert+insert+prefs), fetch None, UniqueViolation, None
+    conn._results = [None, None, None, None, None, UniqueViolation("dup"), None]
     store = _store(conn)
     with pytest.raises(UniqueViolation):
         await store.create_alert_rule(3, "JKH.N0000", AlertType.DAILY_MOVE, 5.0)

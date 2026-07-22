@@ -1,7 +1,8 @@
 """Telegram bot — the only user-facing surface for v1.
 
 Commands: /start, /help, /primer, /watch, /unwatch, /alert, /cancel, /myalerts,
-/mywatchlist, /brief. Alert dispatch happens from the poller via notify.send_message.
+/mywatchlist, /brief, /language. Alert dispatch happens from the poller via
+notify.send_message.
 """
 
 from __future__ import annotations
@@ -11,13 +12,30 @@ import os
 import re
 import time
 from collections import defaultdict, deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from koel.adapters.cse import CSEClient, allowed_filing_url
+from koel.bot_keyboards import (
+    DIGEST_ENABLED_CONFIRM,
+    DIGEST_OFFER_TEXT,
+    WATCH_HELP_TEXT,
+    digest_offer_keyboard,
+    nl_confirm_keyboard,
+    start_menu_keyboard,
+    watch_confirm_keyboard,
+)
 from koel.briefs import briefs_enabled
 from koel.domain import (
     _CTRL_RE,
@@ -35,12 +53,30 @@ from koel.domain import (
     sanitize_disclosure_category,
     truncate_disclosure_title,
 )
+from koel.i18n import parse_language_arg, t
 from koel.logging_setup import get_logger
+from koel.nl_alerts import (
+    NLParsedAlert,
+    decode_nl_confirm_payload,
+    encode_nl_confirm_payload,
+    nl_alerts_enabled,
+    nl_confirm_text,
+    parse_alert_natural_language,
+    parse_alert_with_optional_llm,
+)
 from koel.storage import Storage
+
+# Shared reply callback used by /watch + NL confirm paths.
+ReplyText = Callable[..., Awaitable[Any]]
 
 log = get_logger(__name__)
 
 SYMBOL_RE = re.compile(r"^[A-Za-z0-9]{1,12}(\.[A-Za-z0-9]{1,8})?$")
+# Deep-link payloads from t.me/<bot>?start=sym_JKH.N0000 / watch_<SYMBOL>.
+START_DEEP_RE = re.compile(
+    r"^(?:sym|watch)_([A-Za-z0-9]{1,12}(?:\.[A-Za-z0-9]{1,8})?)$",
+    re.IGNORECASE,
+)
 
 # Per telegram_id sliding-window timestamps (monotonic seconds). No DB.
 _cmd_timestamps: dict[int, deque[float]] = defaultdict(deque)
@@ -55,6 +91,7 @@ ALERT_USAGE = (
     "/alert SYMBOL above PRICE\n"
     "/alert SYMBOL below PRICE\n"
     "/alert SYMBOL move PERCENT\n"
+    "/alert SYMBOL move PERCENT from PRICE\n"
     "/alert SYMBOL disclosure [CATEGORY]\n"
     "/alert SYMBOL eps above|below X\n"
     "/alert SYMBOL eps yoy above|below PCT\n"
@@ -79,6 +116,9 @@ ALERT_USAGE = (
     "/alert SYMBOL xd DAYS\n"
     "/alert MARKET xd_digest DAYS\n"
     "/alert SYMBOL split\n"
+    "/alert SYMBOL high52\n"
+    "/alert SYMBOL low52\n"
+    "/alert SYMBOL ma 20|50|200\n"
     "Example: /alert JKH.N0000 volume 5\n"
     f"{disclaimer()}"
 )
@@ -185,7 +225,7 @@ HELP_TEXT = (
     "/alert SYMBOL move PERCENT\n"
     "/alert SYMBOL disclosure [CATEGORY]\n"
     "/cancel ALERT_ID\n"
-    "/myalerts — active only · /mywatchlist · /brief SYMBOL · /primer\n"
+    "/myalerts — active only · /mywatchlist · /brief · /language · /primer\n"
     "Browse dash thin UI; scenarios disabled (Phase 3 stub).\n"
     "Disclosure alerts: new filings after the rule only "
     "(missing publish time → no fire; CATEGORY = category substring; "
@@ -219,6 +259,7 @@ class ParsedAlert:
     alert_type: AlertType
     threshold: float | None
     category: str | None = None
+    ref_price: float | None = None
 
 
 def normalize_symbol(raw: str) -> str | None:
@@ -276,6 +317,26 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
         return None, ALERT_USAGE
     kind = args[1].lower()
     if kind in ("above", "below", "move"):
+        # Reference-price move: /alert SYMBOL move PERCENT from PRICE
+        if (
+            kind == "move"
+            and len(args) == 5
+            and isinstance(args[3], str)
+            and args[3].lower() == "from"
+        ):
+            percent = _parse_threshold_token(args[2])
+            ref = _parse_threshold_token(args[4])
+            if percent is None:
+                return None, (
+                    "Percent must be a positive finite number. "
+                    f"Example: /alert SAMP.N0000 move 5 from 82.50\n{ALERT_USAGE}"
+                )
+            if ref is None:
+                return None, (
+                    "Reference price must be a positive finite number. "
+                    f"Example: /alert SAMP.N0000 move 5 from 82.50\n{ALERT_USAGE}"
+                )
+            return ParsedAlert(AlertType.REF_MOVE, percent, ref_price=ref), None
         if len(args) < 3:
             return None, (
                 f"Almost — need a number after {kind}. "
@@ -417,6 +478,12 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
         "split": AlertType.SHARE_SPLIT,
         "share_split": AlertType.SHARE_SPLIT,
         "subdivision": AlertType.SHARE_SPLIT,
+        "high52": AlertType.HIGH_52W,
+        "high_52w": AlertType.HIGH_52W,
+        "52whigh": AlertType.HIGH_52W,
+        "low52": AlertType.LOW_52W,
+        "low_52w": AlertType.LOW_52W,
+        "52wlow": AlertType.LOW_52W,
     }
     if kind in notice_kinds:
         if len(args) > 2:
@@ -425,6 +492,33 @@ def parse_alert_args(args: list[str]) -> tuple[ParsedAlert | None, str | None]:
                 f"Example: /alert JKH.N0000 {kind}\n{ALERT_USAGE}"
             )
         return ParsedAlert(notice_kinds[kind], None), None
+
+    # MA cross: /alert SYMBOL ma 20|50|200
+    if kind in ("ma", "macross", "ma_cross"):
+        from koel.domain import MA_CROSS_PERIODS
+
+        if len(args) < 3:
+            return None, (
+                "Almost — need a MA period after ma (20, 50, or 200). "
+                f"Example: /alert JKH.N0000 ma 50\n{ALERT_USAGE}"
+            )
+        if len(args) > 3:
+            return None, (
+                "Unexpected extra text after ma period. "
+                f"Example: /alert JKH.N0000 ma 50\n{ALERT_USAGE}"
+            )
+        threshold = _parse_threshold_token(args[2])
+        if threshold is None:
+            return None, (
+                "MA period must be 20, 50, or 200. "
+                f"Example: /alert JKH.N0000 ma 50\n{ALERT_USAGE}"
+            )
+        if threshold != int(threshold) or int(threshold) not in MA_CROSS_PERIODS:
+            return None, (
+                "MA period must be exactly 20, 50, or 200. "
+                f"Example: /alert JKH.N0000 ma 50\n{ALERT_USAGE}"
+            )
+        return ParsedAlert(AlertType.MA_CROSS, float(int(threshold))), None
 
     # MARKET tape / context regime alerts (symbol must be MARKET).
     regime_kinds = {
@@ -501,13 +595,359 @@ async def _lookup_symbol(cse: CSEClient, symbol: str) -> tuple[str, PriceSnapsho
     return ("ok", info)
 
 
+def parse_start_deep_link(args: list[str] | None) -> str | None:
+    """Return normalized CSE symbol from ``sym_<SYMBOL>`` / ``watch_<SYMBOL>``."""
+    if not args:
+        return None
+    raw = args[0]
+    if not isinstance(raw, str):
+        return None
+    match = START_DEEP_RE.match(raw.strip())
+    if match is None:
+        return None
+    return normalize_symbol(match.group(1))
+
+
+def format_myalerts_text(rules: list[Any]) -> str:
+    """Shared body for /myalerts and menu:myalerts."""
+    if not rules:
+        return (
+            "No active alerts yet. Try:\n"
+            "/alert JKH.N0000 above 100\n"
+            "/alert JKH.N0000 below 90\n"
+            "/alert JKH.N0000 move 5\n"
+            "/alert JKH.N0000 disclosure\n"
+            "/alert JKH.N0000 volume 5\n"
+            "/alert JKH.N0000 disclosure Financial\n"
+            f"{disclaimer()}"
+        )
+    lines = ["Your alerts:"]
+    for r in rules:
+        # Fail closed — non-string DB symbols used to throw on re.sub mid /myalerts.
+        sym_raw = r.symbol if isinstance(r.symbol, str) else ""
+        sym = _CTRL_RE.sub("", sym_raw).strip() or "?"
+        if r.type == AlertType.DISCLOSURE:
+            cat = sanitize_disclosure_category(r.category)
+            if cat:
+                lines.append(f"#{r.id} {sym} disclosure {cat}")
+            else:
+                lines.append(f"#{r.id} {sym} disclosure")
+        elif r.type in NOTICE_ALERT_TYPES:
+            label = {
+                AlertType.BUY_IN: "buyin",
+                AlertType.NON_COMPLIANCE: "noncompliance",
+                AlertType.HALT: "halt",
+                AlertType.SHARE_SPLIT: "split",
+                AlertType.HIGH_52W: "high52",
+                AlertType.LOW_52W: "low52",
+            }.get(r.type, r.type.value)
+            lines.append(f"#{r.id} {sym} {label}")
+        else:
+            # Null / non-finite threshold must not TypeError the whole handler
+            # (corrupt DB row / legacy insert); show "?" and keep listing.
+            thr = r.threshold
+            thr_s = f"{thr:g}" if thr is not None and math.isfinite(thr) else "?"
+            if r.type == AlertType.DAILY_MOVE:
+                lines.append(f"#{r.id} {sym} move {thr_s}%")
+            elif r.type == AlertType.REF_MOVE:
+                ref = r.ref_price
+                ref_s = f"{ref:g}" if ref is not None and math.isfinite(ref) else "?"
+                lines.append(f"#{r.id} {sym} move {thr_s}% from {ref_s}")
+            elif r.type == AlertType.MA_CROSS:
+                lines.append(f"#{r.id} {sym} ma {thr_s}")
+            elif r.type == AlertType.PRICE_ABOVE:
+                lines.append(f"#{r.id} {sym} above {thr_s}")
+            elif r.type == AlertType.PRICE_BELOW:
+                lines.append(f"#{r.id} {sym} below {thr_s}")
+            elif r.type == AlertType.VOLUME_SPIKE:
+                lines.append(f"#{r.id} {sym} volume {thr_s}x")
+            elif r.type == AlertType.VOLUME_UP:
+                lines.append(f"#{r.id} {sym} volup {thr_s}x")
+            elif r.type == AlertType.VOLUME_DOWN:
+                lines.append(f"#{r.id} {sym} voldown {thr_s}x")
+            elif r.type == AlertType.CROSSING_VOLUME:
+                lines.append(f"#{r.id} {sym} crossing {thr_s}x")
+            elif r.type == AlertType.BIG_PRINT:
+                lines.append(f"#{r.id} {sym} print {thr_s}")
+            elif r.type == AlertType.GAP:
+                lines.append(f"#{r.id} {sym} gap {thr_s}%")
+            elif r.type == AlertType.BID_HEAVY:
+                lines.append(f"#{r.id} {sym} bidheavy {thr_s}x")
+            elif r.type == AlertType.ASK_HEAVY:
+                lines.append(f"#{r.id} {sym} askheavy {thr_s}x")
+            elif r.type == AlertType.XD_SOON:
+                lines.append(f"#{r.id} {sym} xd {thr_s}d")
+            elif r.type == AlertType.XD_DIGEST:
+                lines.append(f"#{r.id} {sym} xd_digest {thr_s}d")
+            else:
+                lines.append(f"#{r.id} {sym} {r.type.value} {thr_s}")
+    # Category disclosure rules share a symbol with any-disclosure rules; the
+    # numeric id from this list is the only way to cancel one filter.
+    lines.append("")
+    lines.append("Cancel with /cancel ALERT_ID")
+    lines.append("")
+    lines.append(disclaimer())
+    return _clamp_telegram_message("\n".join(lines))
+
+
+def format_mywatchlist_text(symbols: list[Any]) -> str:
+    """Shared body for /mywatchlist and menu:mywatchlist."""
+    if not symbols:
+        return (
+            "Watchlist empty. Add a CSE symbol with /watch SYMBOL.\n"
+            "Example: /watch JKH.N0000"
+        )
+    clean = [
+        # Fail closed — non-string watchlist rows used to throw on re.sub.
+        _CTRL_RE.sub("", s if isinstance(s, str) else "").strip() or "?"
+        for s in symbols
+    ]
+    return _clamp_telegram_message("Watchlist:\n" + "\n".join(clean))
+
+
+async def _maybe_offer_digest(
+    storage: Storage,
+    user_id: int | None,
+    message: Any,
+) -> None:
+    """W8: offer daily close digest when prefs exist and digest is off (default)."""
+    if user_id is None or message is None:
+        return
+    getter = getattr(storage, "get_user_preferences", None)
+    if not callable(getter):
+        return
+    try:
+        prefs = await getter(user_id)
+    except Exception:
+        log.exception("digest_offer_prefs_lookup_failed", user_id=user_id)
+        return
+    if not isinstance(prefs, dict):
+        return
+    if prefs.get("digest_enabled") is not False:
+        return
+    await message.reply_text(
+        DIGEST_OFFER_TEXT, reply_markup=digest_offer_keyboard()
+    )
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if await _rate_limited(update, context):
         return
     storage: Storage = context.application.bot_data["storage"]
-    await _user_id(storage, update)
-    if update.effective_message:
-        await update.effective_message.reply_text(START_TEXT)
+    user_id = await _user_id(storage, update)
+    if not update.effective_message:
+        return
+    await update.effective_message.reply_text(
+        START_TEXT, reply_markup=start_menu_keyboard()
+    )
+    await _maybe_offer_digest(storage, user_id, update.effective_message)
+    deep_symbol = parse_start_deep_link(context.args)
+    if deep_symbol is not None:
+        await update.effective_message.reply_text(
+            f"Watch {deep_symbol}? Use /watch {deep_symbol}",
+            reply_markup=watch_confirm_keyboard(deep_symbol),
+        )
+
+
+async def _do_watch_for_user(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    symbol: str,
+    reply: ReplyText,
+) -> None:
+    """Shared /watch + watch:{symbol} callback path. ``reply`` is awaitable text sender."""
+    storage: Storage = context.application.bot_data["storage"]
+    cse: CSEClient = context.application.bot_data["cse"]
+    status, info = await _lookup_symbol(cse, symbol)
+    if status == "upstream":
+        await reply(watch_upstream_error(symbol))
+        return
+    if status == "not_found":
+        await reply(f"Couldn't find {symbol} on cse.lk. Check the ticker and try again.")
+        return
+    assert info is not None
+    user_id = await _user_id(storage, update)
+    assert user_id is not None
+    await storage.upsert_stock(symbol, info.name)
+    await storage.add_watch(user_id, symbol)
+    await reply(f"Watching {symbol}. Set an alert with /alert.\n{disclaimer()}")
+
+
+async def on_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Inline-keyboard callbacks for /start menu and deep-link watch confirm."""
+    query = update.callback_query
+    if query is None:
+        return
+    # Always ack immediately so Telegram stops the spinner.
+    await query.answer()
+    if await _rate_limited(update, context):
+        return
+    data = query.data if isinstance(query.data, str) else ""
+    message = query.message
+    # Fail closed for inaccessible / missing messages. Avoid isinstance(Message)
+    # so unit tests can use AsyncMock message objects.
+    if message is None or not hasattr(message, "reply_text"):
+        return
+
+    async def _reply(text: str, **kwargs: Any) -> None:
+        await message.reply_text(text, **kwargs)
+
+    if data == "menu:watch_help":
+        await _reply(WATCH_HELP_TEXT)
+        return
+    if data == "menu:help":
+        await _reply(HELP_TEXT)
+        return
+    if data == "menu:myalerts":
+        storage: Storage = context.application.bot_data["storage"]
+        user_id = await _user_id(storage, update)
+        if user_id is None:
+            return
+        rules = await storage.list_alerts(user_id)
+        await _reply(format_myalerts_text(rules))
+        return
+    if data == "menu:mywatchlist":
+        storage = context.application.bot_data["storage"]
+        user_id = await _user_id(storage, update)
+        if user_id is None:
+            return
+        symbols = await storage.list_watchlist(user_id)
+        await _reply(format_mywatchlist_text(symbols))
+        return
+    if data.startswith("watch:"):
+        symbol = normalize_symbol(data.removeprefix("watch:"))
+        if symbol is None:
+            await _reply(BAD_SYMBOL_HINT)
+            return
+        await _do_watch_for_user(update, context, symbol=symbol, reply=_reply)
+        return
+    if data == "nlcancel":
+        await _reply(f"Cancelled — no alert created.\n{disclaimer()}")
+        return
+    if data.startswith("nlok:"):
+        nl = decode_nl_confirm_payload(data)
+        if nl is None:
+            await _reply(f"That confirm link expired or was invalid.\n{disclaimer()}")
+            return
+        await _create_alert_from_nl(update, context, nl=nl, reply=_reply)
+        return
+    if data == "prefs:digest_on":
+        storage = context.application.bot_data["storage"]
+        user_id = await _user_id(storage, update)
+        if user_id is None:
+            return
+        updater = getattr(storage, "update_user_preferences", None)
+        if not callable(updater):
+            await _reply(
+                f"Couldn't update preferences right now. Try again later.\n{disclaimer()}"
+            )
+            return
+        try:
+            prefs = await updater(user_id, digest_enabled=True)
+        except Exception:
+            log.exception("digest_prefs_enable_failed", user_id=user_id)
+            await _reply(
+                f"Couldn't enable the daily summary. Try again later.\n{disclaimer()}"
+            )
+            return
+        if not isinstance(prefs, dict) or prefs.get("digest_enabled") is not True:
+            await _reply(
+                f"Couldn't enable the daily summary. Try again later.\n{disclaimer()}"
+            )
+            return
+        await _reply(DIGEST_ENABLED_CONFIRM)
+        return
+    # pause:/resume: reserved until Storage exposes mute/unmute.
+
+
+async def _create_alert_from_nl(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    nl: NLParsedAlert,
+    reply: ReplyText,
+) -> None:
+    """Create an alert from a confirmed NL parse (deterministic engine after confirm)."""
+    from koel.nl_alerts import describe_nl_alert
+
+    storage: Storage = context.application.bot_data["storage"]
+    cse: CSEClient = context.application.bot_data["cse"]
+    symbol = normalize_symbol(nl.symbol)
+    if symbol is None:
+        await reply(BAD_SYMBOL_HINT)
+        return
+    alert_type = nl.alert_type
+    threshold = nl.threshold
+    ref_price = nl.ref_price
+    if alert_type in MARKET_REGIME_ALERT_TYPES:
+        symbol = MARKET_SYMBOL
+        await storage.upsert_stock(
+            MARKET_SYMBOL, "Colombo Stock Exchange (market-wide)"
+        )
+    else:
+        status, info = await _lookup_symbol(cse, symbol)
+        if status == "upstream":
+            await reply(watch_upstream_error(symbol))
+            return
+        if status == "not_found":
+            await reply(
+                f"Couldn't find {symbol} on cse.lk. Check the ticker and try again."
+            )
+            return
+        assert info is not None
+        await storage.upsert_stock(symbol, info.name)
+    user_id = await _user_id(storage, update)
+    if user_id is None:
+        return
+    # Auto-watch so the poller evaluates the new rule.
+    if symbol != MARKET_SYMBOL:
+        await storage.add_watch(user_id, symbol)
+    rule = await storage.create_alert_rule(
+        user_id,
+        symbol,
+        alert_type,
+        threshold,
+        category=None,
+        ref_price=ref_price,
+    )
+    await reply(
+        f"Alert #{rule.id} set: {describe_nl_alert(nl)}.\n{disclaimer()}"
+    )
+
+
+async def cmd_nl_free_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Flag-gated free-text NL alert path (e.g. "alert me when JKH drops 5%")."""
+    if not nl_alerts_enabled():
+        return
+    if await _rate_limited(update, context):
+        return
+    message = update.effective_message
+    if message is None or not isinstance(message.text, str):
+        return
+    text = message.text.strip()
+    if not text or text.startswith("/"):
+        return
+    # Only engage on alert-shaped sentences to avoid eating casual chat.
+    lowered = text.lower()
+    if not any(
+        k in lowered
+        for k in (
+            "alert",
+            "tell me",
+            "notify",
+            "ping me",
+            "when ",
+            "drops",
+            "above",
+            "below",
+            "disclosure",
+            "52",
+        )
+    ):
+        return
+    await _user_id(context.application.bot_data["storage"], update)
+    await _offer_nl_confirm(message, text, use_llm=True)
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -529,34 +969,25 @@ async def cmd_primer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if await _rate_limited(update, context):
         return
-    storage: Storage = context.application.bot_data["storage"]
-    cse: CSEClient = context.application.bot_data["cse"]
     if not update.effective_message:
         return
     if not context.args:
-        await update.effective_message.reply_text("Usage: /watch SYMBOL\nExample: /watch JKH.N0000")
-        return
-    symbol = normalize_symbol(context.args[0])
-    if symbol is None:
-        await update.effective_message.reply_text(BAD_SYMBOL_HINT)
-        return
-    status, info = await _lookup_symbol(cse, symbol)
-    if status == "upstream":
-        await update.effective_message.reply_text(watch_upstream_error(symbol))
-        return
-    if status == "not_found":
         await update.effective_message.reply_text(
-            f"Couldn't find {symbol} on cse.lk. Check the ticker and try again."
+            "Usage: /watch SYMBOL\nExample: /watch JKH.N0000"
         )
         return
-    assert info is not None
-    user_id = await _user_id(storage, update)
-    assert user_id is not None
-    await storage.upsert_stock(symbol, info.name)
-    await storage.add_watch(user_id, symbol)
-    await update.effective_message.reply_text(
-        f"Watching {symbol}. Set an alert with /alert.\n{disclaimer()}"
-    )
+    symbol = normalize_symbol(context.args[0])
+    msg = update.effective_message
+    if msg is None:
+        return
+    if symbol is None:
+        await msg.reply_text(BAD_SYMBOL_HINT)
+        return
+
+    async def _reply(text: str, **kwargs: Any) -> None:
+        await msg.reply_text(text, **kwargs)
+
+    await _do_watch_for_user(update, context, symbol=symbol, reply=_reply)
 
 
 async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -598,6 +1029,24 @@ async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
 
 
+async def _offer_nl_confirm(
+    message: Any, text: str, *, use_llm: bool = False
+) -> bool:
+    """If NL parse succeeds, offer confirm keyboard. Returns True when offered."""
+    if use_llm:
+        nl = await parse_alert_with_optional_llm(text)
+    else:
+        nl = parse_alert_natural_language(text)
+    if nl is None:
+        return False
+    payload = encode_nl_confirm_payload(nl)
+    keyboard = nl_confirm_keyboard(payload) if payload else None
+    if keyboard is None:
+        return False
+    await message.reply_text(nl_confirm_text(nl), reply_markup=keyboard)
+    return True
+
+
 async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if await _rate_limited(update, context):
         return
@@ -609,17 +1058,32 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not args:
         await update.effective_message.reply_text(ALERT_USAGE)
         return
+    # Free-text / NL path: when the first token isn't a symbol, or structured
+    # parse fails, try natural-language → confirm keyboard (flag-gated).
     symbol = normalize_symbol(args[0])
     if symbol is None:
+        if nl_alerts_enabled():
+            joined = " ".join(a for a in args if isinstance(a, str))
+            if await _offer_nl_confirm(
+                update.effective_message, joined, use_llm=True
+            ):
+                return
         await update.effective_message.reply_text(BAD_SYMBOL_HINT)
         return
     parsed, err = parse_alert_args(args)
     if err is not None or parsed is None:
+        if nl_alerts_enabled():
+            joined = " ".join(a for a in args if isinstance(a, str))
+            if await _offer_nl_confirm(
+                update.effective_message, joined, use_llm=True
+            ):
+                return
         await update.effective_message.reply_text(err or ALERT_USAGE)
         return
     alert_type = parsed.alert_type
     threshold = parsed.threshold
     category = parsed.category
+    ref_price = parsed.ref_price
 
     # xd_digest is MARKET-scoped only — normalize any ticker to MARKET.
     if alert_type == AlertType.XD_DIGEST:
@@ -636,7 +1100,12 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             MARKET_SYMBOL, "Colombo Stock Exchange (market-wide)"
         )
         rule = await storage.create_alert_rule(
-            user_id, symbol, alert_type, threshold, category=category
+            user_id,
+            symbol,
+            alert_type,
+            threshold,
+            category=category,
+            ref_price=ref_price,
         )
         if alert_type == AlertType.HALT:
             msg = f"Alert #{rule.id} set: market halt/notice alerts.\n{disclaimer()}"
@@ -689,7 +1158,12 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     assert user_id is not None
     await storage.upsert_stock(symbol, info.name)
     rule = await storage.create_alert_rule(
-        user_id, symbol, alert_type, threshold, category=category
+        user_id,
+        symbol,
+        alert_type,
+        threshold,
+        category=category,
+        ref_price=ref_price,
     )
 
     thr_s = f"{threshold:g}" if threshold is not None and math.isfinite(threshold) else "?"
@@ -701,6 +1175,17 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             desc = f"new disclosure for {symbol}"
     elif alert_type == AlertType.DAILY_MOVE:
         desc = f"{symbol} daily move ≥ {thr_s}%"
+    elif alert_type == AlertType.REF_MOVE:
+        ref_s = (
+            f"{ref_price:g}"
+            if ref_price is not None and math.isfinite(ref_price)
+            else (
+                f"{rule.ref_price:g}"
+                if rule.ref_price is not None and math.isfinite(rule.ref_price)
+                else "?"
+            )
+        )
+        desc = f"{symbol} move ≥ {thr_s}% from {ref_s} (one ping per day)"
     elif alert_type == AlertType.PRICE_ABOVE:
         desc = f"{symbol} crosses above {thr_s}"
     elif alert_type == AlertType.PRICE_BELOW:
@@ -759,6 +1244,12 @@ async def cmd_alert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{symbol} possible share split / consolidation "
             "(price-ratio cliff or CSE subdivision filing)"
         )
+    elif alert_type == AlertType.HIGH_52W:
+        desc = f"{symbol} new 52-week high (max one ping per week)"
+    elif alert_type == AlertType.LOW_52W:
+        desc = f"{symbol} new 52-week low (max one ping per week)"
+    elif alert_type == AlertType.MA_CROSS:
+        desc = f"{symbol} crosses {thr_s}-day moving average"
     else:
         desc = f"{symbol} alert"
 
@@ -845,77 +1336,7 @@ async def cmd_myalerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user_id = await _user_id(storage, update)
     assert user_id is not None
     rules = await storage.list_alerts(user_id)
-    if not rules:
-        await update.effective_message.reply_text(
-            "No active alerts yet. Try:\n"
-            "/alert JKH.N0000 above 100\n"
-            "/alert JKH.N0000 below 90\n"
-            "/alert JKH.N0000 move 5\n"
-            "/alert JKH.N0000 disclosure\n"
-            "/alert JKH.N0000 volume 5\n"
-            "/alert JKH.N0000 disclosure Financial\n"
-            f"{disclaimer()}"
-        )
-        return
-    lines = ["Your alerts:"]
-    for r in rules:
-        # Fail closed — non-string DB symbols used to throw on re.sub mid /myalerts.
-        sym_raw = r.symbol if isinstance(r.symbol, str) else ""
-        sym = _CTRL_RE.sub("", sym_raw).strip() or "?"
-        if r.type == AlertType.DISCLOSURE:
-            cat = sanitize_disclosure_category(r.category)
-            if cat:
-                lines.append(f"#{r.id} {sym} disclosure {cat}")
-            else:
-                lines.append(f"#{r.id} {sym} disclosure")
-        elif r.type in NOTICE_ALERT_TYPES:
-            label = {
-                AlertType.BUY_IN: "buyin",
-                AlertType.NON_COMPLIANCE: "noncompliance",
-                AlertType.HALT: "halt",
-                AlertType.SHARE_SPLIT: "split",
-            }.get(r.type, r.type.value)
-            lines.append(f"#{r.id} {sym} {label}")
-        else:
-            # Null / non-finite threshold must not TypeError the whole handler
-            # (corrupt DB row / legacy insert); show "?" and keep listing.
-            thr = r.threshold
-            thr_s = f"{thr:g}" if thr is not None and math.isfinite(thr) else "?"
-            if r.type == AlertType.DAILY_MOVE:
-                lines.append(f"#{r.id} {sym} move {thr_s}%")
-            elif r.type == AlertType.PRICE_ABOVE:
-                lines.append(f"#{r.id} {sym} above {thr_s}")
-            elif r.type == AlertType.PRICE_BELOW:
-                lines.append(f"#{r.id} {sym} below {thr_s}")
-            elif r.type == AlertType.VOLUME_SPIKE:
-                lines.append(f"#{r.id} {sym} volume {thr_s}x")
-            elif r.type == AlertType.VOLUME_UP:
-                lines.append(f"#{r.id} {sym} volup {thr_s}x")
-            elif r.type == AlertType.VOLUME_DOWN:
-                lines.append(f"#{r.id} {sym} voldown {thr_s}x")
-            elif r.type == AlertType.CROSSING_VOLUME:
-                lines.append(f"#{r.id} {sym} crossing {thr_s}x")
-            elif r.type == AlertType.BIG_PRINT:
-                lines.append(f"#{r.id} {sym} print {thr_s}")
-            elif r.type == AlertType.GAP:
-                lines.append(f"#{r.id} {sym} gap {thr_s}%")
-            elif r.type == AlertType.BID_HEAVY:
-                lines.append(f"#{r.id} {sym} bidheavy {thr_s}x")
-            elif r.type == AlertType.ASK_HEAVY:
-                lines.append(f"#{r.id} {sym} askheavy {thr_s}x")
-            elif r.type == AlertType.XD_SOON:
-                lines.append(f"#{r.id} {sym} xd {thr_s}d")
-            elif r.type == AlertType.XD_DIGEST:
-                lines.append(f"#{r.id} {sym} xd_digest {thr_s}d")
-            else:
-                lines.append(f"#{r.id} {sym} {r.type.value} {thr_s}")
-    # Category disclosure rules share a symbol with any-disclosure rules; the
-    # numeric id from this list is the only way to cancel one filter.
-    lines.append("")
-    lines.append("Cancel with /cancel ALERT_ID")
-    lines.append("")
-    lines.append(disclaimer())
-    await update.effective_message.reply_text(_clamp_telegram_message("\n".join(lines)))
+    await update.effective_message.reply_text(format_myalerts_text(rules))
 
 
 async def cmd_mywatchlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -927,19 +1348,7 @@ async def cmd_mywatchlist(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = await _user_id(storage, update)
     assert user_id is not None
     symbols = await storage.list_watchlist(user_id)
-    if not symbols:
-        await update.effective_message.reply_text(
-            "Watchlist empty. Add a CSE symbol with /watch SYMBOL.\nExample: /watch JKH.N0000"
-        )
-        return
-    clean = [
-        # Fail closed — non-string watchlist rows used to throw on re.sub.
-        _CTRL_RE.sub("", s if isinstance(s, str) else "").strip() or "?"
-        for s in symbols
-    ]
-    await update.effective_message.reply_text(
-        _clamp_telegram_message("Watchlist:\n" + "\n".join(clean))
-    )
+    await update.effective_message.reply_text(format_mywatchlist_text(symbols))
 
 
 def format_brief_lookup_reply(
@@ -991,6 +1400,48 @@ def format_brief_lookup_reply(
     lines.append("")
     lines.append(disclaimer())
     return _clamp_telegram_message("\n".join(lines))
+
+
+async def cmd_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """W9: set per-user alert language (en | si)."""
+    if await _rate_limited(update, context):
+        return
+    if not update.effective_message:
+        return
+    storage: Storage = context.application.bot_data["storage"]
+    user_id = await _user_id(storage, update)
+    if user_id is None:
+        return
+    args = context.args or []
+    if not args:
+        try:
+            current = await storage.get_user_locale(user_id)
+        except Exception:
+            log.exception("language_prefs_lookup_failed", user_id=user_id)
+            current = "en"
+        await update.effective_message.reply_text(
+            t("bot.language_usage", current, current=current)
+        )
+        return
+    parsed = parse_language_arg(args[0])
+    if parsed is None:
+        try:
+            current = await storage.get_user_locale(user_id)
+        except Exception:
+            current = "en"
+        await update.effective_message.reply_text(
+            t("bot.language_usage", current, current=current)
+        )
+        return
+    try:
+        await storage.set_user_locale(user_id, parsed)
+    except Exception:
+        log.exception("language_prefs_update_failed", user_id=user_id)
+        await update.effective_message.reply_text(
+            f"Couldn't update language right now. Try again later.\n{disclaimer()}"
+        )
+        return
+    await update.effective_message.reply_text(t("bot.language_set", parsed))
 
 
 async def cmd_brief(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1070,5 +1521,16 @@ def build_application(
     app.add_handler(CommandHandler("myalerts", cmd_myalerts))
     app.add_handler(CommandHandler("mywatchlist", cmd_mywatchlist))
     app.add_handler(CommandHandler("brief", cmd_brief))
+    app.add_handler(CommandHandler("language", cmd_language))
+    app.add_handler(
+        CallbackQueryHandler(
+            on_callback_query,
+            pattern=r"^(menu:|watch:|nlok:|nlcancel)",
+        )
+    )
+    # Free-text NL alerts (off unless AI_NL_ALERTS_ENABLED=1).
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_nl_free_text)
+    )
     app.add_error_handler(on_error)
     return app

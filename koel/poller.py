@@ -19,7 +19,7 @@ import random
 import signal
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -35,8 +35,11 @@ from koel.adapters.cse import (
     normalize_company_name,
     resolve_announcement_symbol,
 )
+from koel.alert_context import build_price_fire_context
+from koel.bot_keyboards import fire_pause_keyboard
 from koel.briefs import briefs_enabled
 from koel.briefs.worker import claim_pending_briefs
+from koel.channel_posts import build_close_summary, build_open_pulse
 from koel.circuit import CircuitOpenError
 from koel.config import Settings
 from koel.digest import maybe_run_eod_digest
@@ -71,7 +74,8 @@ from koel.storage import Storage
 log = get_logger(__name__)
 
 # bool kept for test AsyncMocks; production send returns SendResult.
-SendFunc = Callable[[int, str], Awaitable[SendResult | bool]]
+# Optional reply_markup kwarg (InlineKeyboardMarkup) when the callback supports it.
+SendFunc = Callable[..., Awaitable[SendResult | bool]]
 # Session try-lock for the CSE poll tick. Distinct from storage.BRIEF_CAP_LOCK_ID
 # (4_201_339) — do not unify; see docs/factory/passes/ADVISORY_LOCK_DEADLOCK.md.
 POLL_LOCK_ID = 4_201_337
@@ -190,6 +194,11 @@ class Poller:
         self.price_poll_ok: bool = True
         self.disclosure_poll_ok: bool = True
         self.lock_held_skip: bool = False
+        # Unofficial-feed honesty (LIVE/STALE/DEGRADED) — see koel/feed_health.py.
+        from koel.feed_health import FeedHealth
+
+        self.feed_health = FeedHealth()
+        self._feed_was_degraded = False
         # Watched symbols absent from the latest tradeSummary (E2-C06).
         self.watched_missing: list[str] = []
         # Last tradeSummary shape: empty HTTP-OK with a non-empty watchlist is
@@ -224,6 +233,11 @@ class Poller:
         # After shutdown finishes draining background work, reject new schedules
         # so a shielded late tick cannot race storage.close() (wave4).
         self._background_closed = False
+        # Public channel posts (W7): process-lifetime once/day Colombo dates.
+        self._channel_open_sent_on: date | None = None
+        self._channel_close_sent_on: date | None = None
+        # W9: per-tick user locale cache (user_id → en|si).
+        self._locale_cache: dict[int, str] = {}
 
     def pdf_enrich_health_snapshot(self) -> dict[str, int]:
         """In-memory PDF enrich queue counters for health details."""
@@ -266,8 +280,42 @@ class Poller:
                     error=str(result),
                 )
 
+    async def _locale_for_user(self, user_id: int) -> str:
+        """Resolve alert locale for ``user_id``; fail soft to ``en``; cache per tick."""
+        from koel.i18n import normalize_locale
+
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+            return "en"
+        cached = self._locale_cache.get(user_id)
+        if cached is not None:
+            return cached
+        locale = "en"
+        try:
+            getter = getattr(self.storage, "get_user_locale", None)
+            if callable(getter):
+                raw = await getter(user_id)
+                locale = normalize_locale(raw)
+        except Exception:
+            log.exception("user_locale_lookup_failed", user_id=user_id)
+            locale = "en"
+        self._locale_cache[user_id] = locale
+        return locale
+
+    async def _format_alert(
+        self,
+        event: AlertEvent,
+        *,
+        filing_brief: str | None = None,
+    ) -> str:
+        """``format_alert_message`` with per-user locale (W9)."""
+        locale = await self._locale_for_user(event.user_id)
+        return format_alert_message(
+            event, filing_brief=filing_brief, locale=locale
+        )
+
     async def run_once(self, *, force: bool = False) -> list[AlertEvent]:
         """Single poll cycle. Returns events claimed (delivered after unlock)."""
+        self._locale_cache.clear()
         now = datetime.now(UTC)
         if not force and not is_market_open(now, self.settings):
             log.info("poll_skipped_outside_hours", now=now.isoformat())
@@ -290,6 +338,11 @@ class Poller:
                     )
             except Exception:
                 log.exception("eod_digest_tick_failed")
+            # Public channel close summary (W7) — same EOD window path.
+            try:
+                await self._maybe_post_channel_close(now=now)
+            except Exception:
+                log.exception("channel_close_post_failed")
             self.last_tick_at = datetime.now(UTC)
             self._schedule_brief_drain()
             return []
@@ -373,11 +426,14 @@ class Poller:
             if not ok:
                 if self.last_error is None:
                     self.last_error = "poll_degraded"
+                self.feed_health.record_fail()
             else:
                 self.last_error = None
+                self.feed_health.record_ok()
         except Exception as exc:
             self.last_tick_ok = False
             self.last_error = str(exc)
+            self.feed_health.record_fail()
             log.exception("poll_cycle_failed", error=str(exc))
         finally:
             self.price_poll_ok = price_ok
@@ -385,6 +441,11 @@ class Poller:
             self._queue_sends = False
             self.last_tick_at = datetime.now(UTC)
             await self.storage.advisory_unlock(POLL_LOCK_ID)
+            # Best-effort degradation / recovery notice to optional status chat.
+            try:
+                await self._maybe_broadcast_feed_notice()
+            except Exception:  # noqa: BLE001
+                log.exception("feed_notice_broadcast_failed")
 
         # CORE-004: Telegram I/O for this tick's new claims after unlock.
         # E2-C05: unsent drain uses row leases (SKIP LOCKED) — no advisory
@@ -395,6 +456,12 @@ class Poller:
             await self._retry_unsent_with_lock()
         except Exception as exc:
             log.exception("poll_deliver_failed", error=str(exc))
+        # Public channel open pulse (W7): first successful tick past 09:35 SLT.
+        if self.last_tick_ok:
+            try:
+                await self._maybe_post_channel_open(now=now)
+            except Exception:
+                log.exception("channel_open_post_failed")
         self._schedule_pdf_enrichment(pdf_enrich)
         self._schedule_brief_drain()
         return fired
@@ -734,6 +801,13 @@ class Poller:
             # Conflict claim skips disarm. Telegram send stays outside the txn.
             for event in filter_fireable(events):
                 t0 = datetime.now(UTC)
+                # W5/W6: attach snapshot provenance + optional "why it moved" line.
+                context_line = await build_price_fire_context(
+                    self.storage, symbol=stored.symbol, snapshot=stored
+                )
+                event = event.model_copy(
+                    update={"as_of": stored.ts, "context_line": context_line}
+                )
                 claimed = await self._claim_and_send(
                     event,
                     disarm=event.set_armed is False,
@@ -850,7 +924,23 @@ class Poller:
                         error=str(exc),
                     )
                     continue
-                events = evaluate_disclosure_rules(disclosure=stored, rules=symbol_rules)
+                prefs_by_user: dict[int, list[str]] = {}
+                try:
+                    prefs_by_user = (
+                        await self.storage.disclosure_category_prefs_for_users(
+                            [r.user_id for r in symbol_rules]
+                        )
+                    )
+                except Exception as exc:
+                    log.warning(
+                        "disclosure_category_prefs_lookup_failed",
+                        error=str(exc),
+                    )
+                events = evaluate_disclosure_rules(
+                    disclosure=stored,
+                    rules=symbol_rules,
+                    category_prefs_by_user=prefs_by_user,
+                )
                 for event in filter_fireable(events):
                     claimed = await self._claim_and_send(event)
                     if claimed:
@@ -1478,7 +1568,6 @@ class Poller:
             )
 
     async def _run_metrics_job(self, disclosure_id: int, symbol: str) -> None:
-        from koel.domain import format_alert_message
         from koel.metrics import MetricsSettings
         from koel.metrics.worker import process_disclosure_metrics
 
@@ -1504,7 +1593,7 @@ class Poller:
         if not result.events:
             return
         for event in result.events:
-            text = format_alert_message(event)
+            text = await self._format_alert(event)
             shadow_only = cfg.metrics_shadow_mode and (
                 (
                     event.type.value in ("eps_above", "eps_below")
@@ -1546,7 +1635,6 @@ class Poller:
         from koel.domain import (
             AlertEvent,
             AlertType,
-            format_alert_message,
             format_yoy_comparison_block,
         )
 
@@ -1570,14 +1658,14 @@ class Poller:
                 symbol=rule.symbol,
                 type=AlertType.DISCLOSURE,
                 threshold=None,
-                trigger=f"filing metrics YoY for {disc.title}",
+                trigger=f"results-day metrics: {disc.title}",
                 disclosure_url=disc.url or disc.pdf_url,
                 disclosure_title=disc.title,
                 disclosure_id=disc.id,
                 filing_brief=block,
                 event_key=f"yoy_append:{rule.id}:{disc.id}",
             )
-            text = format_alert_message(event)
+            text = await self._format_alert(event)
             alert_id = await self.storage.claim_alert(event, text)
             if alert_id is None:
                 continue
@@ -1772,7 +1860,7 @@ class Poller:
         present (fail-soft — missing/pending briefs do not block the push).
         """
         filing_brief = await self._ready_filing_brief_for(event)
-        message = format_alert_message(event, filing_brief=filing_brief)
+        message = await self._format_alert(event, filing_brief=filing_brief)
         if disarm:
             log_id = await self.storage.claim_and_disarm(event, message)
         else:
@@ -1827,6 +1915,21 @@ class Poller:
         # Wraps midnight: quiet from start..23 and 0..end-1
         return hour >= start or hour < end
 
+    async def _send_with_optional_markup(
+        self,
+        chat_id: int,
+        text: str,
+        *,
+        reply_markup: Any = None,
+    ) -> SendResult | bool:
+        """Call ``self.send``; omit reply_markup for 2-arg test/legacy callbacks."""
+        if reply_markup is None:
+            return await self.send(chat_id, text)
+        try:
+            return await self.send(chat_id, text, reply_markup=reply_markup)
+        except TypeError:
+            return await self.send(chat_id, text)
+
     async def _deliver_one(self, pending: PendingSend) -> None:
         """Send one claimed alert and update alert_log (OK / FAILED / DEFERRED)."""
         # Quiet hours (user prefs) — hold the row (message_sent=false) for retry;
@@ -1839,7 +1942,19 @@ class Poller:
                 log_id=pending.log_id,
             )
             return
-        result = _normalize_send_result(await self.send(pending.telegram_id, pending.message))
+        # Pause keyboard when mute storage exists; currently None (skip markup).
+        markup = (
+            fire_pause_keyboard(pending.rule_id)
+            if pending.rule_id is not None
+            else None
+        )
+        result = _normalize_send_result(
+            await self._send_with_optional_markup(
+                pending.telegram_id,
+                pending.message,
+                reply_markup=markup,
+            )
+        )
         symbol = pending.symbol
         if symbol is None and pending.event is not None:
             symbol = pending.event.symbol
@@ -2155,6 +2270,109 @@ class Poller:
         # Reject further fire-and-forget schedules (late shielded tick).
         self._background_closed = True
         log.info("poller_stopped")
+
+    def _public_channel_id(self) -> int | None:
+        """Optional ``TELEGRAM_PUBLIC_CHANNEL_ID`` (negative for channels)."""
+        raw = os.getenv("TELEGRAM_PUBLIC_CHANNEL_ID", "")
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        try:
+            chat_id = int(raw.strip())
+        except ValueError:
+            return None
+        # Telegram channels/supergroups are typically negative; allow any nonzero.
+        if chat_id == 0:
+            return None
+        return chat_id
+
+    async def _maybe_post_channel_open(self, *, now: datetime) -> None:
+        """Once/day open pulse after first successful tick past 09:35 SLT."""
+        chat_id = self._public_channel_id()
+        if chat_id is None:
+            return
+        tz = ZoneInfo(self.settings.market_tz)
+        local = now.astimezone(tz) if now.tzinfo else now.replace(tzinfo=tz)
+        if local.weekday() >= 5:
+            return
+        if local.time() < time(9, 35):
+            return
+        on_date = local.date()
+        if self._channel_open_sent_on == on_date:
+            return
+        body = await build_open_pulse(self.storage)
+        if not isinstance(body, str) or not body.strip():
+            return
+        result = _normalize_send_result(await self.send(chat_id, body))
+        if result is SendResult.OK:
+            self._channel_open_sent_on = on_date
+            log.info("channel_open_pulse_sent", chat_id=chat_id, on_date=on_date.isoformat())
+        else:
+            log.warning(
+                "channel_open_pulse_send_failed",
+                chat_id=chat_id,
+                result=str(result),
+            )
+
+    async def _maybe_post_channel_close(self, *, now: datetime) -> None:
+        """Once/day close summary after 14:30 SLT (EOD / off-hours path)."""
+        chat_id = self._public_channel_id()
+        if chat_id is None:
+            return
+        tz = ZoneInfo(self.settings.market_tz)
+        local = now.astimezone(tz) if now.tzinfo else now.replace(tzinfo=tz)
+        if local.weekday() >= 5:
+            return
+        if local.time() < time(14, 30):
+            return
+        on_date = local.date()
+        if self._channel_close_sent_on == on_date:
+            return
+        body = await build_close_summary(self.storage, now=local)
+        if not isinstance(body, str) or not body.strip():
+            return
+        result = _normalize_send_result(await self.send(chat_id, body))
+        if result is SendResult.OK:
+            self._channel_close_sent_on = on_date
+            log.info(
+                "channel_close_summary_sent",
+                chat_id=chat_id,
+                on_date=on_date.isoformat(),
+            )
+        else:
+            log.warning(
+                "channel_close_summary_send_failed",
+                chat_id=chat_id,
+                result=str(result),
+            )
+
+    async def _maybe_broadcast_feed_notice(self) -> None:
+        """Send degradation/recovery notices to ``TELEGRAM_STATUS_CHAT_ID`` if set.
+
+        Does not fan out to every user — that belongs to the public channel (H2).
+        """
+        from koel.feed_health import FeedState
+
+        raw = os.getenv("TELEGRAM_STATUS_CHAT_ID", "")
+        if not isinstance(raw, str) or not raw.strip():
+            return
+        try:
+            chat_id = int(raw.strip())
+        except ValueError:
+            return
+        state = self.feed_health.state
+        if state in (FeedState.STALE, FeedState.DEGRADED):
+            if not self.feed_health.should_broadcast_notice():
+                return
+            msg = self.feed_health.degradation_message()
+            await self.send(chat_id, msg)
+            self.feed_health.mark_notice_sent()
+            self._feed_was_degraded = True
+            log.warning("feed_degradation_notice_sent", state=state.value)
+            return
+        if state == FeedState.LIVE and self._feed_was_degraded:
+            await self.send(chat_id, self.feed_health.recovery_message())
+            self._feed_was_degraded = False
+            log.info("feed_recovery_notice_sent")
 
 
 async def run_poller_forever(

@@ -8,8 +8,11 @@ import re
 from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_COLOMBO = ZoneInfo("Asia/Colombo")
 
 
 def _none_if_bool_numeric(value: Any) -> Any:
@@ -61,6 +64,15 @@ class AlertType(StrEnum):
     XD_DIGEST = "xd_digest"
     # Share split / consolidation (price-ratio cliff or CSE subdivision filing).
     SHARE_SPLIT = "share_split"
+    # Path / MA / reference-price alerts (daily_bars + live snapshot).
+    HIGH_52W = "high_52w"
+    LOW_52W = "low_52w"
+    MA_CROSS = "ma_cross"
+    REF_MOVE = "ref_move"
+
+
+# MA periods accepted for ma_cross (Fidelity-style set).
+MA_CROSS_PERIODS: frozenset[int] = frozenset({20, 50, 200})
 
 
 # Alert types that need a positive numeric threshold.
@@ -92,6 +104,8 @@ THRESHOLD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.OIL_MOVE,
         AlertType.XD_SOON,
         AlertType.XD_DIGEST,
+        AlertType.MA_CROSS,
+        AlertType.REF_MOVE,
     }
 )
 
@@ -145,6 +159,10 @@ PRICE_BOARD_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.CROSSING_VOLUME,
         AlertType.GAP,
         AlertType.SHARE_SPLIT,
+        AlertType.HIGH_52W,
+        AlertType.LOW_52W,
+        AlertType.MA_CROSS,
+        AlertType.REF_MOVE,
     }
 )
 
@@ -155,6 +173,8 @@ NOTICE_ALERT_TYPES: frozenset[AlertType] = frozenset(
         AlertType.NON_COMPLIANCE,
         AlertType.HALT,
         AlertType.SHARE_SPLIT,
+        AlertType.HIGH_52W,
+        AlertType.LOW_52W,
     }
 )
 
@@ -375,12 +395,14 @@ class AlertRule(BaseModel):
     # Disclosure rules only: optional case-insensitive substring filter on
     # Disclosure.category. None = match any category (backward compatible).
     category: str | None = None
+    # ref_move only: user-supplied reference price for % move.
+    ref_price: float | None = None
     active: bool = True
     armed: bool = True
     created_at: datetime | None = None
     muted_until: datetime | None = None
 
-    @field_validator("threshold", mode="before")
+    @field_validator("threshold", "ref_price", mode="before")
     @classmethod
     def _threshold_must_not_be_bool(cls, value: Any) -> Any:
         return _none_if_bool_numeric(value)
@@ -395,6 +417,7 @@ class AlertEvent(BaseModel):
     symbol: str
     type: AlertType
     threshold: float | None = None
+    ref_price: float | None = None
     trigger: str
     current_price: float | None = None
     disclosure_url: str | None = None
@@ -407,6 +430,15 @@ class AlertEvent(BaseModel):
     event_key: str
     # Optional arming update for sticky-above/below rules
     set_armed: bool | None = None
+    # Provenance / context for Telegram fires (W5/W6). Optional; formatters
+    # omit when unset. Never investment advice.
+    as_of: datetime | None = None
+    context_line: str | None = None
+
+    @field_validator("threshold", "ref_price", mode="before")
+    @classmethod
+    def _event_numeric_must_not_be_bool(cls, value: Any) -> Any:
+        return _none_if_bool_numeric(value)
 
 
 class PreviousPriceState(BaseModel):
@@ -421,12 +453,21 @@ class PreviousPriceState(BaseModel):
     avg_crossing_volume: float | None = None
     # Day-bucket keys already claimed for volume/gap activity rules.
     activity_fired_keys: set[str] = Field(default_factory=set)
+    # Prior 52-week extremes from daily_bars (excludes incomplete today).
+    high_52w: float | None = None
+    low_52w: float | None = None
+    # Simple moving averages of daily closes keyed by period (20 / 50 / 200).
+    sma_by_period: dict[int, float] = Field(default_factory=dict)
+    # Prior snapshot timestamp (for gap-aware %-move annotations).
+    prev_ts: datetime | None = None
 
     @field_validator(
         "price",
         "change_pct",
         "avg_volume",
         "avg_crossing_volume",
+        "high_52w",
+        "low_52w",
         mode="before",
     )
     @classmethod
@@ -696,27 +737,31 @@ def format_price_lkr(price: float) -> str:
     return f"{price:.2f}"
 
 
-def brief_budget_for_prefix(prefix_lines: list[str]) -> int:
+def brief_budget_for_prefix(
+    prefix_lines: list[str],
+    *,
+    nfa: str | None = None,
+) -> int:
     """Chars available for a brief body under Telegram's hard cap.
 
     Prefix is everything before the brief; reserves blank lines around the
     brief (when present) plus the NFA disclaimer.
     """
-    nfa = disclaimer()
+    nfa_text = nfa if isinstance(nfa, str) and nfa else disclaimer()
     # join(prefix) + "\\n\\n" + brief + "\\n\\n" + nfa
-    fixed = len("\n".join(prefix_lines)) + 2 + 2 + len(nfa)
+    fixed = len("\n".join(prefix_lines)) + 2 + 2 + len(nfa_text)
     return max(0, TELEGRAM_SAFE_MAX - 1 - fixed)
 
 
-def _clamp_telegram_message(msg: str) -> str:
+def _clamp_telegram_message(msg: str, *, nfa: str | None = None) -> str:
     """Hard cap Telegram body length while keeping the NFA suffix."""
     if len(msg) < TELEGRAM_SAFE_MAX:
         return msg
-    nfa = disclaimer()
-    suffix = "\n\n" + nfa
+    nfa_text = nfa if isinstance(nfa, str) and nfa else disclaimer()
+    suffix = "\n\n" + nfa_text
     head = msg
-    if nfa in msg:
-        head = msg[: msg.rfind(nfa)].rstrip()
+    if nfa_text in msg:
+        head = msg[: msg.rfind(nfa_text)].rstrip()
     budget = max(1, TELEGRAM_SAFE_MAX - 1 - len(suffix))
     if len(head) > budget:
         head = head[: budget - 1].rstrip() + "…"
@@ -727,6 +772,7 @@ def format_alert_message(
     event: AlertEvent,
     *,
     filing_brief: str | None = None,
+    locale: str = "en",
 ) -> str:
     """Render a Telegram alert body. Always ends with NFA.
 
@@ -738,9 +784,16 @@ def format_alert_message(
     hostile/huge LLM string cannot blow past Telegram's 4096 limit.
     Symbol / trigger are control-stripped; prices use compact formatting;
     the final body is hard-clamped under Telegram's 4096 limit.
+
+    ``locale`` selects structural labels / NFA (W9). Trigger *content* stays
+    English for v1. Unknown locales fail closed to English.
     """
     # Lazy import: adapters.cse imports domain at module load.
     from koel.adapters.cse import allowed_filing_url
+    from koel.i18n import normalize_locale, t
+
+    loc = normalize_locale(locale)
+    nfa_text = t("alert.nfa", loc)
 
     # Fail closed — non-string symbol/trigger used to throw on re.sub mid
     # Telegram alert egress (parity dead-letter / brief-followup).
@@ -749,11 +802,13 @@ def format_alert_message(
     symbol = _CTRL_RE.sub("", raw_symbol).strip() or "?"
     trigger = _CTRL_RE.sub("", raw_trigger).strip() or "alert"
     lines = [
-        f"🔔 {symbol}",
-        f"Trigger: {trigger}",
+        t("alert.header", loc, symbol=symbol),
+        t("alert.trigger", loc, trigger=trigger),
     ]
     if event.current_price is not None:
-        lines.append(f"Price: {format_price_lkr(event.current_price)} LKR")
+        lines.append(
+            t("alert.price", loc, price=format_price_lkr(event.current_price))
+        )
     if event.disclosure_title:
         title = truncate_disclosure_title(event.disclosure_title)
         if title:
@@ -765,15 +820,35 @@ def format_alert_message(
     dash_link = _dash_symbol_link(symbol)
     if dash_link:
         lines.append(dash_link)
+    # W5: one-line "why it moved" from Postgres facts (before brief / NFA).
+    raw_ctx = event.context_line
+    if isinstance(raw_ctx, str):
+        ctx = _CTRL_RE.sub("", raw_ctx).strip()
+        if len(ctx) > 120:
+            ctx = ctx[:119].rstrip() + "…"
+        if ctx:
+            lines.append(ctx)
     brief = filing_brief if filing_brief is not None else event.filing_brief
-    budget = min(BRIEF_BODY_MAX, brief_budget_for_prefix(lines))
+    budget = min(BRIEF_BODY_MAX, brief_budget_for_prefix(lines, nfa=nfa_text))
     brief_text = sanitize_brief_body(brief, max_len=budget) if budget > 0 else None
     if brief_text:
         lines.append("")
         lines.append(brief_text)
+    # W6: snapshot provenance stamp before NFA.
+    as_of = event.as_of
+    if isinstance(as_of, datetime):
+        try:
+            local = (
+                as_of.astimezone(_COLOMBO)
+                if as_of.tzinfo is not None
+                else as_of.replace(tzinfo=_COLOMBO)
+            )
+            lines.append(t("alert.as_of", loc, time=local.strftime("%H:%M")))
+        except Exception:
+            pass
     lines.append("")
-    lines.append(disclaimer())
-    return _clamp_telegram_message("\n".join(lines))
+    lines.append(nfa_text)
+    return _clamp_telegram_message("\n".join(lines), nfa=nfa_text)
 
 
 def format_dead_letter_notify(symbol: str, attempts: int) -> str:

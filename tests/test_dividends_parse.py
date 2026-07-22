@@ -88,7 +88,7 @@ async def test_cmd_alert_xd_confirm_and_digest_normalizes_market() -> None:
     storage.ensure_user = AsyncMock(return_value=1)
     storage.upsert_stock = AsyncMock()
     storage.create_alert_rule = AsyncMock(
-        side_effect=lambda uid, sym, atype, thr, category=None: AlertRule(
+        side_effect=lambda uid, sym, atype, thr, category=None, ref_price=None: AlertRule(
             id=11,
             user_id=uid,
             telegram_id=9,
@@ -97,6 +97,7 @@ async def test_cmd_alert_xd_confirm_and_digest_normalizes_market() -> None:
             threshold=thr,
             active=True,
             category=category,
+            ref_price=ref_price,
         )
     )
     cse = AsyncMock()
