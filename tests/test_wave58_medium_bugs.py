@@ -61,7 +61,7 @@ def test_history_message_typeof_guard() -> None:
     ).read_text(encoding="utf-8")
     assert "raw: unknown" in source
     chunk = source.split("function sanitizeHistoryMessage")[1].split(
-        "export function deriveDeliveryStatus"
+        "function deriveDeliveryStatus"
     )[0]
     assert 'typeof raw !== "string"' in chunk
 

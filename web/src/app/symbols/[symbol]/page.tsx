@@ -17,7 +17,9 @@ import {
 } from "@/components/kit/filing-metrics-panel";
 import { FilingSnapshotStrip } from "@/components/kit/filing-snapshot-strip";
 import { FundamentalsStrip } from "@/components/kit/fundamentals-strip";
+import { IssuerIdentityStrip } from "@/components/kit/issuer-identity-strip";
 import { PeriodReturnsStrip } from "@/components/kit/period-returns-strip";
+import { SessionQuoteStrip } from "@/components/kit/session-quote-strip";
 import { SymbolCompareChart } from "@/components/kit/symbol-compare-chart";
 import { TechLabelsStrip } from "@/components/kit/tech-labels-strip";
 import { computeFundamentals } from "@/lib/api/fundamentals";
@@ -66,19 +68,16 @@ import {
 import {
   loadSymbolPageDisclosures,
   loadSymbolPageEquity,
+  loadSymbolPageIssuerProfile,
   loadSymbolPageMetrics,
   loadSymbolPageStock,
+  type SymbolPageIssuerProfile,
 } from "@/lib/db/symbol-page-data";
 import {
   estimateDividendYieldPct,
   formatDividendDate,
 } from "@/lib/dividends";
-import {
-  formatCompactNumber,
-  formatNumber,
-  formatPct,
-  formatTs,
-} from "@/lib/format";
+import { formatNumber, formatPct, formatTs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +121,12 @@ type SymbolPayload = {
     change: number | null;
     change_pct: number | null;
     volume: number | null;
+    previous_close: number | null;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    trade_count: number | null;
+    turnover: number | null;
     ts: string | null;
   } | null;
 };
@@ -295,8 +300,9 @@ export default async function SymbolDetailPage({
   let latestBrief: LatestBrief | null = null;
   let filingQuality: FilingQualitySummary | null = null;
   let dividendEvents: DividendEvent[] = [];
+  let issuerProfile: SymbolPageIssuerProfile | null = null;
 
-  const [stockResult, discResult, metricsResult, equityResult, dividendResult, snapRes, compareRes, watchRes, forecastRes, dailyBarsRes, metricsApiRes] =
+  const [stockResult, discResult, metricsResult, equityResult, dividendResult, issuerResult, snapRes, compareRes, watchRes, forecastRes, dailyBarsRes, metricsApiRes] =
     await Promise.all([
       loadSymbolPageStock(symbol)
         .then((row) => ({ ok: true as const, row }))
@@ -316,6 +322,9 @@ export default async function SymbolDetailPage({
       loadDividendEventsForSymbol(symbol)
         .then((items) => ({ ok: true as const, items }))
         .catch(() => ({ ok: false as const, items: [] as DividendEvent[] })),
+      loadSymbolPageIssuerProfile(symbol)
+        .then((row) => ({ ok: true as const, row }))
+        .catch(() => ({ ok: false as const, row: null })),
       serverApiGet(`/api/v1/symbols/${encoded}/snapshots?limit=180`),
       compareQs ? serverApiGet(compareQs) : Promise.resolve(null),
       serverApiGet("/api/v1/watchlist"),
@@ -374,10 +383,19 @@ export default async function SymbolDetailPage({
             change: stockResult.row.last.change,
             change_pct: stockResult.row.last.change_pct,
             volume: stockResult.row.last.volume,
+            previous_close: stockResult.row.last.previous_close,
+            open: stockResult.row.last.open,
+            high: stockResult.row.last.high,
+            low: stockResult.row.last.low,
+            trade_count: stockResult.row.last.trade_count,
+            turnover: stockResult.row.last.turnover,
             ts: stockResult.row.last.ts,
           }
         : null,
   };
+  if (issuerResult.ok) {
+    issuerProfile = issuerResult.row;
+  }
 
   if (discResult.ok) {
     discs = { items: discResult.items };
@@ -773,6 +791,12 @@ export default async function SymbolDetailPage({
                 initialOpen={expandChart}
                 initialBars={initialDailyBars}
                 initialRange={initialChartRange}
+                initialDisclosures={discs.items.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  published_at: item.published_at,
+                  url: item.url,
+                }))}
                 className="w-full max-w-none"
               />
             ) : snapsFailed ? (
@@ -791,38 +815,22 @@ export default async function SymbolDetailPage({
           </div>
         </div>
         {data.last ? (
-          <dl
-            className={`grid grid-cols-2 gap-px border-t border-border/60 bg-border/40 ${
-              data.market_cap != null ? "sm:grid-cols-3" : ""
-            }`}
-          >
-            <Stat
-              label="Prev close"
-              value={
+          <SessionQuoteStrip
+            quote={{
+              previous_close: data.last.previous_close,
+              open: data.last.open,
+              high: data.last.high,
+              low: data.last.low,
+              volume: data.last.volume,
+              trade_count: data.last.trade_count,
+              turnover: data.last.turnover,
+              market_cap: data.market_cap,
+              derived_prev_close:
                 data.last.change == null
-                  ? "—"
-                  : formatNumber(data.last.price - data.last.change)
-              }
-              mono
-            />
-            <Stat
-              label="Volume"
-              value={
-                data.last.volume == null
-                  ? "—"
-                  : formatNumber(Math.round(data.last.volume), 0)
-              }
-              mono
-            />
-            {data.market_cap != null ? (
-              <Stat
-                label="Market cap"
-                value={formatCompactNumber(data.market_cap)}
-                mono
-                className="col-span-2 sm:col-span-1"
-              />
-            ) : null}
-          </dl>
+                  ? null
+                  : data.last.price - data.last.change,
+            }}
+          />
         ) : null}
         <PeriodReturnsStrip
           returns={periodReturns}
@@ -845,6 +853,8 @@ export default async function SymbolDetailPage({
           />
         ) : null}
       </section>
+
+      <IssuerIdentityStrip profile={issuerProfile} />
 
       {!data.last ? (
         <EmptyState
@@ -1036,30 +1046,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <NfaFooter />
-    </div>
-  );
-}
-
-/** Label/value cell inside the quote card's hairline-divided stat strip. */
-function Stat({
-  label,
-  value,
-  className,
-  mono,
-}: {
-  label: string;
-  value: string;
-  className?: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className={`min-w-0 bg-background px-4 py-3 ${className ?? ""}`}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd
-        className={`mt-0.5 truncate text-lg font-medium tabular-nums ${mono ? "font-mono" : ""}`}
-      >
-        {value}
-      </dd>
     </div>
   );
 }

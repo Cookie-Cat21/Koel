@@ -124,7 +124,7 @@ def test_help_text_lists_alert_syntax_and_nfa() -> None:
     assert "[CATEGORY]" in HELP_TEXT
     assert "/cancel ALERT_ID" in HELP_TEXT
     assert "/myalerts — active only" in HELP_TEXT
-    assert "/brief SYMBOL" in HELP_TEXT
+    assert "/brief" in HELP_TEXT
     assert "Browse dash" in HELP_TEXT
     assert "scenarios disabled" in HELP_TEXT
     assert "optional AI brief" in HELP_TEXT

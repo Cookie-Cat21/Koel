@@ -39,10 +39,18 @@ export function PriceRefresh({
 }) {
   const router = useRouter();
   const period = clampInterval(intervalMs);
-  const [now, setNow] = useState(() => Date.now());
-  const [marketOpen, setMarketOpen] = useState(() => isMarketSessionOpen());
+  // null until mount — relative labels use Date.now() and must not SSR,
+  // or Next DevTools reports hydration Issues (Stale 35m vs 36m).
+  const [now, setNow] = useState<number | null>(null);
+  const [marketOpen, setMarketOpen] = useState(true);
 
   useEffect(() => {
+    // Defer first paint clock so we don't setState sync in the effect body
+    // (react-hooks/set-state-in-effect) while still avoiding SSR hydration skew.
+    const boot = window.setTimeout(() => {
+      setNow(Date.now());
+      setMarketOpen(isMarketSessionOpen());
+    }, 0);
     const tick = window.setInterval(() => {
       router.refresh();
       setNow(Date.now());
@@ -53,6 +61,7 @@ export function PriceRefresh({
       setMarketOpen(isMarketSessionOpen());
     }, 1_000);
     return () => {
+      window.clearTimeout(boot);
       window.clearInterval(tick);
       window.clearInterval(age);
     };
@@ -61,7 +70,11 @@ export function PriceRefresh({
   let tone: "ok" | "stale" | "down" | "closed" = "ok";
   let label = "Refreshing";
   const snapshotAt = lastSnapshotAt;
-  if (!marketOpen) {
+  if (now == null) {
+    // Stable SSR + first paint — same on server and client.
+    tone = "ok";
+    label = typeof snapshotAt === "string" && snapshotAt ? "Updated" : "Refreshing";
+  } else if (!marketOpen) {
     // Outside session hours, aged ticks are expected — calm closed tone.
     tone = "closed";
     if (typeof snapshotAt === "string" && snapshotAt) {
@@ -104,9 +117,8 @@ export function PriceRefresh({
     }
   }
 
-  // Age label uses Date.now() — suppress hydration mismatch vs SSR clock.
   return (
-    <span aria-live="polite" suppressHydrationWarning>
+    <span aria-live="polite">
       <LiveIndicator label={label} tone={tone} className="shrink-0" />
     </span>
   );

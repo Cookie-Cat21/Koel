@@ -6,6 +6,7 @@ import { HelpLink } from "@/components/help-link";
 import { EmptyState } from "@/components/empty-state";
 import { MoversBarList } from "@/components/kit/movers-bar-list";
 import { SectorHeatStrip } from "@/components/kit/sector-heat-strip";
+import { BrowseFilterBar } from "@/components/market/browse-filter-bar";
 import { BrowseTable } from "@/components/market/browse-table";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { NfaFooter } from "@/components/nfa-footer";
@@ -30,14 +31,6 @@ import { serverApiGet } from "@/lib/api/server-fetch";
 import { normalizeSymbol } from "@/lib/api/symbol";
 import { toIso } from "@/lib/api/time";
 import { optionalPageSession } from "@/lib/auth/page-session";
-
-/** Exported for regression contract — used by movers a11y copy. */
-export function changeDirectionSr(pct: number | null): string {
-  if (pct == null) return "change unknown";
-  if (pct > 0) return "up ";
-  if (pct < 0) return "down ";
-  return "unchanged ";
-}
 
 export const dynamic = "force-dynamic";
 
@@ -341,88 +334,62 @@ export default async function MarketPage({
         ) : null}
 
         <form
-          className="mt-6 flex flex-wrap gap-2"
+          className="mt-6 flex flex-col gap-3"
           method="get"
           action="/market"
           role="search"
         >
-          <label className="sr-only" htmlFor="market_q">
-            Search symbols by ticker or name
-          </label>
-          <input
-            id="market_q"
-            name="q"
-            type="search"
-            defaultValue={q}
-            maxLength={MAX_MARKET_Q_LENGTH}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="Symbol or name"
-            className="min-w-[12rem] flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          <div className="flex flex-wrap gap-2">
+            <label className="sr-only" htmlFor="market_q">
+              Search symbols by ticker or name
+            </label>
+            <input
+              id="market_q"
+              name="q"
+              type="search"
+              defaultValue={q}
+              maxLength={MAX_MARKET_Q_LENGTH}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Symbol or name"
+              className="min-w-[12rem] flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            />
+            <label className="sr-only" htmlFor="market_sector">
+              Filter by sector
+            </label>
+            <select
+              id="market_sector"
+              name="sector"
+              defaultValue={sector}
+              className="min-w-[11rem] max-w-[18rem] rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              aria-label="Filter by sector"
+            >
+              <option value="">All sectors</option>
+              {[...(sectorItems ?? [])]
+                .map((item) => item.name)
+                .filter((name, i, arr) => arr.indexOf(name) === i)
+                .sort((a, b) => a.localeCompare(b))
+                .map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+            </select>
+            {hasEps ? <input type="hidden" name="has_eps" value="1" /> : null}
+            <Button type="submit" variant="outline">
+              Apply
+            </Button>
+          </div>
+
+          <BrowseFilterBar
+            q={q}
+            sector={sector}
+            hasEps={hasEps}
+            browseHref={browseHref}
           />
-          {sector ? (
-            <input type="hidden" name="sector" value={sector} />
-          ) : null}
-          {hasEps ? <input type="hidden" name="has_eps" value="1" /> : null}
-          <Button type="submit" variant="outline">
-            Search
-          </Button>
         </form>
 
-        <div
-          className="mt-4 flex flex-wrap items-center gap-2"
-          aria-label="Light browse filters"
-        >
-          <Link
-            href={browseHref(q, 1, { hasEps })}
-            className={`rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
-              !sector
-                ? "border-foreground/30 bg-foreground/5 text-foreground"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            All sectors
-          </Link>
-          {(sectorItems ?? []).slice(0, 12).map((item) => {
-            const active =
-              sector.length > 0 &&
-              sector.toUpperCase() === item.name.toUpperCase();
-            return (
-              <Link
-                key={item.sector_id}
-                href={browseHref(q, 1, {
-                  sector: item.name,
-                  hasEps,
-                })}
-                className={`max-w-[12rem] truncate rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
-                  active
-                    ? "border-foreground/30 bg-foreground/5 text-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground"
-                }`}
-                title={item.name}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-          <Link
-            href={browseHref(q, 1, {
-              sector: sector || undefined,
-              hasEps: !hasEps,
-            })}
-            className={`rounded-md border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
-              hasEps
-                ? "border-foreground/30 bg-foreground/5 text-foreground"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Has EPS
-          </Link>
-        </div>
-
-        <p className="mt-3">
-          <NfaInline />
-        </p>
+        <NfaInline className="mt-3" />
 
         {!browseOnly && gainerItems !== null && loserItems !== null ? (
           <section className="mt-8" aria-labelledby="top-movers-heading">
@@ -478,11 +445,15 @@ export default async function MarketPage({
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               CSE sector index change from the latest poll — soft heat strip,
-              not a trading terminal board. Use the chips above to filter the
-              table.
+              not a trading terminal board. Tap a sector to filter the table.
             </p>
             <div className="mt-4">
-              <SectorHeatStrip items={sectorItems} />
+              <SectorHeatStrip
+                items={sectorItems}
+                hrefForSector={(name) =>
+                  browseHref(q, 1, { sector: name, hasEps })
+                }
+              />
             </div>
           </section>
         ) : null}
@@ -502,7 +473,7 @@ export default async function MarketPage({
             title="No symbols yet"
             description={
               browseOnly
-                ? "No symbols matched that filter. Clear search or sector / Has EPS chips, or browse again after the next market update."
+                ? "No symbols matched that filter. Clear search or sector / Has EPS, or browse again after the next market update."
                 : "No snapshot data yet. On the host, run make tick (or leave poller/both running) to seed browse, then refresh. Open Health if this persists."
             }
             action={

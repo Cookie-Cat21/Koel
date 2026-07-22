@@ -466,6 +466,7 @@ async def test_cmd_alert_disclosure_category() -> None:
         alert_type: AlertType,
         threshold: float | None,
         category: str | None = None,
+        ref_price: float | None = None,
     ) -> AlertRule:
         return AlertRule(
             id=9,
@@ -475,6 +476,7 @@ async def test_cmd_alert_disclosure_category() -> None:
             type=alert_type,
             threshold=threshold,
             category=category,
+            ref_price=ref_price,
         )
 
     storage.create_alert_rule = AsyncMock(side_effect=_create)

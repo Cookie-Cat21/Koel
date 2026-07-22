@@ -68,6 +68,10 @@ export const ALERT_TYPES = [
   "xd_soon",
   "xd_digest",
   "share_split",
+  "high_52w",
+  "low_52w",
+  "ma_cross",
+  "ref_move",
 ] as const;
 
 /** Alert types that require a positive numeric threshold (parity Python). */
@@ -98,6 +102,8 @@ export const THRESHOLD_ALERT_TYPES = [
   "oil_move",
   "xd_soon",
   "xd_digest",
+  "ma_cross",
+  "ref_move",
 ] as const;
 
 /** Notice-style alerts with no threshold (bid/ask need thresholds — not here). */
@@ -107,7 +113,12 @@ export const NOTICE_ALERT_TYPES = [
   "non_compliance",
   "halt",
   "share_split",
+  "high_52w",
+  "low_52w",
 ] as const;
+
+/** MA periods accepted for ma_cross (parity koel.domain.MA_CROSS_PERIODS). */
+export const MA_CROSS_PERIODS = [20, 50, 200] as const;
 
 /** Market-wide regime alerts — symbol forced to MARKET (parity bot). */
 export const MARKET_FORCE_ALERT_TYPES = [

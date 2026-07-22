@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 /** Cap fire-history message bodies so hostile DB text cannot balloon JSON. */
 export const HISTORY_MESSAGE_TEXT_MAX = 4_000;
 /** Bound OFFSET — same soft ceiling as market browse (no unbounded scans). */
-export const MAX_HISTORY_OFFSET = 10_000;
+const MAX_HISTORY_OFFSET = 10_000;
 
 const CTRL_RE = /[\u0000-\u001F\u007F-\u009F]/g;
 
@@ -40,7 +40,7 @@ function sanitizeHistoryMessage(
  * Derive delivery_status per API_CONTRACT_V1 (alert_log delivery-state).
  * Do not collapse delivered-unmarked into "sent" — that lies about message_sent.
  */
-export function deriveDeliveryStatus(row: {
+function deriveDeliveryStatus(row: {
   message_sent: boolean;
   dead_lettered: boolean;
   delivery_attempted_ok: boolean;

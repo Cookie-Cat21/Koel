@@ -109,10 +109,10 @@ def test_myalerts_mywatchlist_symbol_isinstance_guards() -> None:
         assert (_CTRL_RE.sub("", sym_raw).strip() or "?") == "?"
 
     src = (ROOT / "koel" / "bot.py").read_text(encoding="utf-8")
-    alerts = src.split("Your alerts:")[1].split("async def cmd_mywatchlist")[0]
+    alerts = src.split("Your alerts:")[1].split("def format_mywatchlist_text")[0]
     assert "isinstance(r.symbol, str)" in alerts
-    watch = src.split("async def cmd_mywatchlist")[1].split(
-        "def format_brief_lookup_reply"
+    watch = src.split("def format_mywatchlist_text")[1].split(
+        "async def _maybe_offer_digest"
     )[0]
     assert "isinstance(s, str)" in watch
 

@@ -143,6 +143,33 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         answer:
           "Those pages use a silent soft reload about every 60 seconds (SoftPageRefresh) with no age chip. Price-led pages show the LiveIndicator aged off the newest snapshot instead.",
       },
+      {
+        question: "What is the Session strip (day range, trades, turnover)?",
+        answer:
+          "Under the chart, koel shows a denser session board from the latest stored price snapshot: previous close, open, day high–low, share volume, trade count, turnover, and market cap when present.\n\nThese are research labels from Postgres (poller / CSE quote summary fields) — not a live order book. Empty cells mean that field was null on the last tick.",
+      },
+    ],
+  },
+  {
+    id: "symbol-issuer",
+    title: "Issuer identity (ISIN, beta, contact)",
+    summary: "CSE issuer registry fields koel stores in Postgres.",
+    items: [
+      {
+        question: "Where do ISIN, beta, and board type come from?",
+        answer:
+          "Public CSE company JSON (quote summary + issuer profile): ISIN, shares issued, par, market-cap %, beta vs ASPI / S&P SL20, board type, founded, contact, auditors, secretaries, business summary, and top posts.\n\nkoel caches them in `issuer_profiles` via `issuer-profile-backfill`. The dash reads Postgres only — it never calls the exchange site.",
+      },
+      {
+        question: "Is beta a trading signal?",
+        answer:
+          "No. Beta chips are CSE-published research labels for the stated period — not financial advice and not a koel forecast.",
+      },
+      {
+        question: "Why is issuer empty on some symbols?",
+        answer:
+          "Backfill has not run yet, CSE returned empty (indexes like ASPI), or the symbol is new. Ops: `python3 -m koel issuer-profile-backfill --force --limit N`.",
+      },
     ],
   },
   {
@@ -153,7 +180,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Candles vs sparkline?",
         answer:
-          "When koel has enough daily bars, the company hero shows daily OHLC candlesticks (expand for more ranges). If daily path history is thin (under 2 bars), it falls back to a tick sparkline from stored snapshots.\n\nEmpty chart copy about path-backfill means daily bars are not stored yet — not that the company has no price forever.",
+          "When koel has enough daily bars, the company hero shows daily OHLC candlesticks (expand for more ranges). Expand opens an interactive koel chart (Lightweight Charts — crosshair, pan, zoom) on Postgres path data. On company symbols you can also switch to an optional TradingView tab for drawings/indicators (external, often delayed — koel alerts still use koel data).\n\nIf daily path history is thin (under 2 bars), the hero falls back to a tick sparkline. Empty chart copy about path-backfill means daily bars are not stored yet — not that the company has no price forever."
       },
       {
         question: "What do 1D / 1M / 3M / 6M / 1Y mean?",
@@ -402,7 +429,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "How do search, sector chips, and Has EPS work?",
         answer:
-          "Search matches symbol or name. Sector chips filter to that exact sector string. Has EPS keeps names with a successful filing_metrics extract and a non-null basic EPS — a research extract filter, not a quality tip.\n\nWhen any of search / sector / Has EPS is on, Browse switches to a filtered table mode: Top movers and the full sector chip cloud hide so the list stays focused.",
+          "Search matches symbol or name. The sector dropdown filters to that exact sector string (also available by tapping a sector on the heat strip). Has EPS keeps names with a successful filing_metrics extract and a non-null basic EPS — a research extract filter, not a quality tip.\n\nWhen any of search / sector / Has EPS is on, Browse switches to a filtered table mode: Top movers and the sector strip hide so the list stays focused.",
       },
       {
         question: "How is the table sorted and paginated?",

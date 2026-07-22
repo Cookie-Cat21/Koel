@@ -167,6 +167,9 @@ class Settings:
     # SECTOR_BACKFILL_ENABLED=1 — allow companyProfile → stocks.sector ingest.
     sector_backfill_enabled: bool = False
     sector_backfill_sleep_seconds: float = 0.35
+    # ISSUER_PROFILE_BACKFILL_ENABLED=1 — ISIN/beta/contact into issuer_profiles.
+    issuer_profile_backfill_enabled: bool = False
+    issuer_profile_backfill_sleep_seconds: float = 0.4
     # NOTICES_BACKFILL_ENABLED=1 — allow ops CLI to seed market_notices.
     notices_backfill_enabled: bool = False
     # HYBRID_BACKFILL_ENABLED=1 — Yahoo+CSE splice into hybrid_daily_bars
@@ -216,6 +219,7 @@ class Settings:
         sectors_raw = _env_str("SECTORS_INGEST", "0")
         path_bf_raw = _env_str("PATH_BACKFILL_ENABLED", "0")
         sector_bf_raw = _env_str("SECTOR_BACKFILL_ENABLED", "0")
+        issuer_bf_raw = _env_str("ISSUER_PROFILE_BACKFILL_ENABLED", "0")
         notices_bf_raw = _env_str("NOTICES_BACKFILL_ENABLED", "0")
         hybrid_bf_raw = _env_str("HYBRID_BACKFILL_ENABLED", "0")
         ml_fc_raw = _env_str("ML_FORECAST_ENABLED", "0")
@@ -277,6 +281,10 @@ class Settings:
             sector_backfill_enabled=sector_bf_raw.strip() == "1",
             sector_backfill_sleep_seconds=_nonneg_float(
                 "SECTOR_BACKFILL_SLEEP_SECONDS", 0.35
+            ),
+            issuer_profile_backfill_enabled=issuer_bf_raw.strip() == "1",
+            issuer_profile_backfill_sleep_seconds=_nonneg_float(
+                "ISSUER_PROFILE_BACKFILL_SLEEP_SECONDS", 0.4
             ),
             notices_backfill_enabled=notices_bf_raw.strip() == "1",
             hybrid_backfill_enabled=hybrid_bf_raw.strip() == "1",

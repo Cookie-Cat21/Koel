@@ -83,8 +83,35 @@ export type SymbolPageStock = {
     change: number | null;
     change_pct: number | null;
     volume: number | null;
+    previous_close: number | null;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    trade_count: number | null;
+    turnover: number | null;
     ts: string | null;
   } | null;
+};
+
+export type SymbolPageIssuerProfile = {
+  isin: string | null;
+  board_type: string | null;
+  founded: string | null;
+  fin_year_end: string | null;
+  website: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  auditors: string | null;
+  secretaries: string | null;
+  business_summary: string | null;
+  beta_aspi: number | null;
+  beta_sl20: number | null;
+  beta_period: string | null;
+  market_cap_pct: number | null;
+  shares_issued: number | null;
+  par_value: number | null;
+  top_posts: { name: string; role: string }[];
 };
 
 export type SymbolPageEquity = {
@@ -150,10 +177,17 @@ export async function loadSymbolPageStock(
     change: number | null;
     change_pct: number | null;
     volume: number | null;
+    previous_close: number | null;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    trade_count: number | null;
+    turnover: number | null;
     market_cap: number | null;
     ts: Date | string;
   }>(
-    `SELECT price, change, change_pct, volume, market_cap, ts
+    `SELECT price, change, change_pct, volume, previous_close, open, high, low,
+            trade_count, turnover, market_cap, ts
      FROM price_snapshots
      WHERE symbol = $1
      ORDER BY ts DESC
@@ -168,6 +202,12 @@ export async function loadSymbolPageStock(
           change: toFiniteNumber(snap.rows[0].change),
           change_pct: toFiniteNumber(snap.rows[0].change_pct),
           volume: toFiniteNumber(snap.rows[0].volume),
+          previous_close: toFiniteNumber(snap.rows[0].previous_close),
+          open: toFiniteNumber(snap.rows[0].open),
+          high: toFiniteNumber(snap.rows[0].high),
+          low: toFiniteNumber(snap.rows[0].low),
+          trade_count: toFiniteNumber(snap.rows[0].trade_count),
+          turnover: toFiniteNumber(snap.rows[0].turnover),
           ts: toIso(snap.rows[0].ts),
         };
   return {
@@ -180,6 +220,88 @@ export async function loadSymbolPageStock(
         : toFiniteNumber(snap.rows[0].market_cap),
     last,
   };
+}
+
+function parseTopPosts(raw: unknown): { name: string; role: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { name: string; role: string }[] = [];
+  for (const row of raw) {
+    if (out.length >= 8) break;
+    if (row == null || typeof row !== "object" || Array.isArray(row)) continue;
+    const r = row as Record<string, unknown>;
+    const name = sanitizeDisclosureText(
+      typeof r.name === "string" ? r.name : null,
+      200,
+    );
+    if (!name) continue;
+    const role = sanitizeDisclosureText(
+      typeof r.role === "string" ? r.role : null,
+      200,
+    );
+    out.push({ name, role: role ?? "" });
+  }
+  return out;
+}
+
+export async function loadSymbolPageIssuerProfile(
+  symbol: string,
+): Promise<SymbolPageIssuerProfile | null> {
+  const pool = getPool();
+  try {
+    const result = await pool.query<{
+      isin: string | null;
+      board_type: string | null;
+      founded: string | null;
+      fin_year_end: string | null;
+      website: string | null;
+      email: string | null;
+      phone: string | null;
+      address: string | null;
+      auditors: string | null;
+      secretaries: string | null;
+      business_summary: string | null;
+      beta_aspi: number | null;
+      beta_sl20: number | null;
+      beta_period: string | null;
+      market_cap_pct: number | null;
+      shares_issued: number | null;
+      par_value: number | null;
+      top_posts: unknown;
+    }>(
+      `SELECT isin, board_type, founded, fin_year_end, website, email, phone,
+              address, auditors, secretaries, business_summary,
+              beta_aspi, beta_sl20, beta_period, market_cap_pct,
+              shares_issued, par_value, top_posts
+         FROM issuer_profiles
+        WHERE symbol = $1`,
+      [symbol],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      isin: sanitizeDisclosureText(row.isin, 32),
+      board_type: sanitizeDisclosureText(row.board_type, 64),
+      founded: sanitizeDisclosureText(row.founded, 32),
+      fin_year_end: sanitizeDisclosureText(row.fin_year_end, 32),
+      website: sanitizeDisclosureText(row.website, 256),
+      email: sanitizeDisclosureText(row.email, 256),
+      phone: sanitizeDisclosureText(row.phone, 128),
+      address: sanitizeDisclosureText(row.address, 512),
+      auditors: sanitizeDisclosureText(row.auditors, 256),
+      secretaries: sanitizeDisclosureText(row.secretaries, 512),
+      business_summary: sanitizeDisclosureText(row.business_summary, 2000),
+      beta_aspi: toFiniteNumber(row.beta_aspi),
+      beta_sl20: toFiniteNumber(row.beta_sl20),
+      beta_period: sanitizeDisclosureText(row.beta_period, 32),
+      market_cap_pct: toFiniteNumber(row.market_cap_pct),
+      shares_issued: toFiniteNumber(row.shares_issued),
+      par_value: toFiniteNumber(row.par_value),
+      top_posts: parseTopPosts(row.top_posts),
+    };
+  } catch {
+    // Table missing before migrate — fail closed to null (page still renders).
+    return null;
+  }
 }
 
 /** Honest equity / NAV extract from ownership graph — medium/high only. */

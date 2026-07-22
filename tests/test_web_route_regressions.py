@@ -510,11 +510,15 @@ def test_market_page_fence_no_screener_or_quote_board() -> None:
     assert "movers-gainers-heading" in market_src
     assert "movers-losers-heading" in market_src
     assert "Watch" in movers_kit and "</span>" in movers_kit
-    assert "title={item.name}" in market_src
+    # Sector filter: native <select> with all sectors (not a chip-only strip).
+    assert 'id="market_sector"' in market_src
+    assert 'name="sector"' in market_src
+    assert "All sectors" in market_src
     assert 'role="status"' in market_src
     assert "changeDirectionSr" in market_src or "changeDirectionSr" in movers_kit
     assert "MoversBarList" in market_src
     assert "SectorHeatStrip" in market_src
+    assert "hrefForSector" in market_src
 
 
 def test_scenarios_dash_stub_page() -> None:

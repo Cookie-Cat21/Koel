@@ -19,12 +19,14 @@ const primaryLinks = [
   { href: "/overview", label: "Overview" },
   { href: "/market", label: "Browse" },
   { href: "/watchlist", label: "Watchlist" },
+  { href: "/activity", label: "Activity" },
   { href: "/alerts", label: "Alerts" },
-  { href: "/signals", label: "Signals" },
 ] as const satisfies readonly NavLink[];
 
 /** Research / ops — folded under More so the bar stays readable. */
 const moreLinks = [
+  { href: "/events", label: "Events" },
+  { href: "/signals", label: "Signals" },
   { href: "/appetite", label: "Appetite" },
   { href: "/context", label: "Context" },
   { href: "/people", label: "People" },

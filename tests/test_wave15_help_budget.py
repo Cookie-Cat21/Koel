@@ -107,7 +107,7 @@ def test_help_still_lists_core_commands_inside_budget() -> None:
         "[CATEGORY]",
         "/cancel ALERT_ID",
         "/myalerts — active only",
-        "/brief SYMBOL",
+        "/brief",
         "/primer",
         "optional AI brief",
         "Disclosure alerts:",

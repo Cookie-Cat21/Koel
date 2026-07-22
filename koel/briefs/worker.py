@@ -26,6 +26,7 @@ from koel.adapters.cse import allowed_cdn_pdf_url
 from koel.briefs import BriefSettings, BriefStatus, briefs_enabled, build_brief_prompt
 from koel.briefs.extract import CdnPdfPermanentError, extract_pdf_text, fetch_cdn_pdf
 from koel.briefs.provider import BriefProvider, make_brief_provider
+from koel.briefs.verify import brief_numbers_verified
 from koel.domain import format_brief_followup, resolve_positive_int_cap
 from koel.notify import SendResult
 
@@ -185,13 +186,15 @@ async def _input_text_for_row(
     *,
     cfg: BriefSettings,
     client: httpx.AsyncClient,
-) -> str:
-    """Build provider input: CDN PDF extract when ``pdf_url`` set, else title.
+) -> tuple[str, str]:
+    """Build provider input + raw source text for number verification.
 
-    When ``pdf_url`` is set, a failed CDN fetch raises ``BriefCdnTransientError``
-    so the drain requeues ``pending`` (no daily-cap burn) instead of a silent
-    title-only summarize or a permanent ``failed``. Non-allowlisted hosts and
-    permanent CDN faults (oversized / redirect) raise a plain ``RuntimeError``
+    Returns ``(prompt, source_text)`` where ``source_text`` is the raw extracted
+    PDF text or the title-only body — not the prompt wrapper. When ``pdf_url``
+    is set, a failed CDN fetch raises ``BriefCdnTransientError`` so the drain
+    requeues ``pending`` (no daily-cap burn) instead of a silent title-only
+    summarize or a permanent ``failed``. Non-allowlisted hosts and permanent
+    CDN faults (oversized / redirect) raise a plain ``RuntimeError``
     (permanent fail). Empty extract after a successful fetch still falls back
     to title (image-only PDFs).
     """
@@ -219,23 +222,26 @@ async def _input_text_for_row(
             raise BriefCdnTransientError(f"CDN PDF fetch failed for {url!r}")
         extracted = extract_pdf_text(raw)
         if extracted:
-            return build_brief_prompt(
+            prompt = build_brief_prompt(
                 symbol=symbol or "UNKNOWN",
                 title=title or "Filing",
                 extracted_text=extracted,
                 max_chars=max_chars,
             )
+            return prompt, extracted
         log.info(
             "brief_pdf_text_empty",
             disclosure_id=row.get("disclosure_id"),
             pdf_url=pdf_url,
         )
-    return build_brief_prompt(
+    source_text = _title_only_input_text(row)
+    prompt = build_brief_prompt(
         symbol=symbol or "UNKNOWN",
         title=title or "Filing",
-        extracted_text=_title_only_input_text(row),
+        extracted_text=source_text,
         max_chars=max_chars,
     )
+    return prompt, source_text
 
 
 async def _notify_brief_followups(
@@ -537,8 +543,23 @@ async def claim_pending_briefs(
                         continue
                     disclosure_id = raw_did
                     try:
-                        text = await _input_text_for_row(row, cfg=cfg, client=http)
+                        text, source_text = await _input_text_for_row(
+                            row, cfg=cfg, client=http
+                        )
                         brief = await prov.summarize(text)
+                        if not brief_numbers_verified(brief, source_text):
+                            await storage.mark_brief_failed(
+                                disclosure_id,
+                                error="number_verification_failed",
+                                model=cfg.model,
+                            )
+                            log.warning(
+                                "brief_number_verify_failed",
+                                disclosure_id=disclosure_id,
+                                model=cfg.model,
+                            )
+                            processed += 1
+                            continue
                         marked = await storage.mark_brief_ready(
                             disclosure_id,
                             brief=brief,
