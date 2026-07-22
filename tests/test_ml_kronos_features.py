@@ -16,9 +16,19 @@ import pytest
 
 from koel.ml.dataset import Sample
 from koel.ml.features import FEATURE_NAMES
-from koel.ml.gpu_challengers import _reconstruct_price_path
+from koel.ml.gpu_challengers import _reconstruct_price_path, predict_kronos_features
 
 _INDEX = {name: position for position, name in enumerate(FEATURE_NAMES)}
+
+
+@pytest.fixture(autouse=True)
+def _require_pandas() -> None:
+    # Run-time (not collection-time) skip: a module-level importorskip would
+    # surface as a collection skip even under `-m integration`, tripping the
+    # migrate job's no-skips gate. Every test here needs pandas at run time
+    # (the reconstruction helper builds a DataFrame); the end-to-end test
+    # additionally gates on torch/lightgbm/huggingface_hub inside its body.
+    pytest.importorskip("pandas")
 
 
 def _make_sample(symbol: str, as_of: date, *, ret_1d: float, log_price: float) -> Sample:
@@ -65,18 +75,6 @@ def test_reconstruct_price_path_is_deterministic_per_sample() -> None:
     assert first.equals(second)
 
 
-torch = pytest.importorskip("torch")
-pytest.importorskip("lightgbm")
-huggingface_hub = pytest.importorskip("huggingface_hub")
-
-try:
-    from koel.ml.gpu_challengers import predict_kronos_features
-
-    _KRONOS_AVAILABLE = True
-except Exception:  # pragma: no cover - import-time guard only
-    _KRONOS_AVAILABLE = False
-
-
 def _synthetic_samples(days: int, symbols: int, start: date) -> list[Sample]:
     out = []
     for day in range(days):
@@ -93,8 +91,15 @@ def _synthetic_samples(days: int, symbols: int, start: date) -> list[Sample]:
     return out
 
 
-@pytest.mark.skipif(not _KRONOS_AVAILABLE, reason="Kronos adapter unavailable")
 def test_kronos_features_end_to_end_is_deterministic() -> None:
+    # Run-time (not collection-time) skips: module-level importorskip would
+    # surface as a collection skip even under `-m integration`, tripping the
+    # migrate job's no-skips gate. Only this end-to-end test needs the heavy
+    # stack; the reconstruction tests above must keep running without it.
+    pytest.importorskip("torch")
+    pytest.importorskip("lightgbm")
+    pytest.importorskip("huggingface_hub")
+
     train = _synthetic_samples(30, 4, date(2024, 7, 1))
     test = _synthetic_samples(5, 4, date(2024, 7, 1) + timedelta(days=30))
     kwargs = dict(seed=3, sample_count=4, pred_len=1)

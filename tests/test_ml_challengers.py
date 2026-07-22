@@ -13,7 +13,13 @@ from koel.ml.challengers import (
 )
 from koel.ml.dataset import Sample
 
-pytest.importorskip("lightgbm")
+
+@pytest.fixture(autouse=True)
+def _require_lightgbm() -> None:
+    # Run-time (not collection-time) skip: a module-level importorskip would
+    # surface as a collection skip even under `-m integration`, tripping the
+    # migrate job's no-skips gate for a suite these tests aren't part of.
+    pytest.importorskip("lightgbm")
 
 
 def _samples(days: int) -> list[Sample]:

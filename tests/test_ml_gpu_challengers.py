@@ -8,11 +8,18 @@ from datetime import date, timedelta
 import pytest
 
 from koel.ml.dataset import Sample
+from koel.ml.gpu_challengers import predict_master, predict_qlib_tra
 
-torch = pytest.importorskip("torch")
-pytest.importorskip("qlib")
 
-from koel.ml.gpu_challengers import predict_master, predict_qlib_tra  # noqa: E402
+@pytest.fixture(autouse=True)
+def _require_gpu_stack() -> None:
+    # Run-time (not collection-time) skip: a module-level importorskip would
+    # surface as a collection skip even under `-m integration`, tripping the
+    # migrate job's no-skips gate for a suite these tests aren't part of.
+    # Importing koel.ml.gpu_challengers itself is safe without torch/qlib --
+    # it lazy-imports every heavy dependency inside the function bodies.
+    pytest.importorskip("torch")
+    pytest.importorskip("qlib")
 
 
 def _samples(days: int, symbols: int = 6, start: date = date(2020, 1, 1)) -> list[Sample]:
