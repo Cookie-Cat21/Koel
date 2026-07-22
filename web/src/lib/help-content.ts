@@ -904,7 +904,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Near-realtime — how fresh is “fresh”?",
         answer:
-          "koel is poll-interval near-realtime, not exchange co-lo. Expect updates on the order of the poller interval during the session, then quiet after the close until the next open (unless someone forces a tick).",
+          "koel is near-realtime, not exchange co-lo. The poller bulk-refreshes the full board via tradeSummary on its interval, and can also keep a CSE STOMP/SockJS socket (indexes, session summary, day-tape, short share-price slice) for livelier tape. Quiet after the close until the next open (unless someone forces a tick).",
       },
       {
         question: "Snapshot age vs tick age?",

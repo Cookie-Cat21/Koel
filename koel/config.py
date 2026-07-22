@@ -157,6 +157,11 @@ class Settings:
     # SECTORS_INGEST=1 — optional POST /allSectors → sectors table persist.
     # Default off (0); thin GET /api/v1/sectors reads Postgres only.
     sectors_ingest: bool = False
+    # CSE_STOMP_ENABLED=1 — long-lived SockJS/STOMP session to cse.lk /api/ws
+    # for live indexes, status/summary, day-tape, today-sharePrice slice.
+    # Default on; set 0 to disable. Full-board alerts still use tradeSummary.
+    cse_stomp_enabled: bool = True
+    cse_stomp_ws_url: str = "https://www.cse.lk/api/ws"
     # PATH_BACKFILL_ENABLED=1 — allow scheduled/ops daily path ingest into
     # daily_bars via companyChartDataByStock. Default 0. CLI may --force.
     path_backfill_enabled: bool = False
@@ -217,6 +222,9 @@ class Settings:
         log_raw = _env_str("LOG_LEVEL", "INFO")
         bulk_raw = _env_str("DISCLOSURE_BULK_FEED", "0")
         sectors_raw = _env_str("SECTORS_INGEST", "0")
+        # Default on — official-site live topics; set 0 to disable.
+        stomp_raw = _env_str("CSE_STOMP_ENABLED", "1")
+        stomp_ws = _env_str("CSE_STOMP_WS_URL", "https://www.cse.lk/api/ws")
         path_bf_raw = _env_str("PATH_BACKFILL_ENABLED", "0")
         sector_bf_raw = _env_str("SECTOR_BACKFILL_ENABLED", "0")
         issuer_bf_raw = _env_str("ISSUER_PROFILE_BACKFILL_ENABLED", "0")
@@ -273,6 +281,12 @@ class Settings:
             disclosure_bulk_feed=bulk_raw.strip() == "1",
             snapshot_retention_days=max(0, _int("SNAPSHOT_RETENTION_DAYS", 0)),
             sectors_ingest=sectors_raw.strip() == "1",
+            cse_stomp_enabled=stomp_raw.strip() != "0",
+            cse_stomp_ws_url=(
+                stomp_ws.strip().rstrip("/")
+                if stomp_ws.strip()
+                else "https://www.cse.lk/api/ws"
+            ),
             path_backfill_enabled=path_bf_raw.strip() == "1",
             path_backfill_period=path_period,
             path_backfill_sleep_seconds=_nonneg_float(

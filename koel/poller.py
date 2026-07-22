@@ -69,6 +69,7 @@ from koel.rules import (
     evaluate_xd_soon_rules,
     filter_fireable,
 )
+from koel.stomp_ingest import StompIngestState, handle_stomp_message
 from koel.storage import Storage
 
 log = get_logger(__name__)
@@ -238,6 +239,9 @@ class Poller:
         self._channel_close_sent_on: date | None = None
         # W9: per-tick user locale cache (user_id → en|si).
         self._locale_cache: dict[int, str] = {}
+        # Optional CSE STOMP live feed (indexes / status / day-tape slice).
+        self._stomp_client: Any | None = None
+        self.stomp_state = StompIngestState()
 
     def pdf_enrich_health_snapshot(self) -> dict[str, int]:
         """In-memory PDF enrich queue counters for health details."""
@@ -2179,12 +2183,45 @@ class Poller:
         )
         scheduler.start()
         self._scheduler = scheduler
+        self._start_stomp()
         log.info(
             "poller_started",
             interval=self.settings.poll_interval_seconds,
             tz=self.settings.market_tz,
+            stomp=bool(getattr(self.settings, "cse_stomp_enabled", False)),
         )
         return scheduler
+
+    def _start_stomp(self) -> None:
+        """Start long-lived CSE STOMP client when enabled (fail-soft)."""
+        if not bool(getattr(self.settings, "cse_stomp_enabled", False)):
+            return
+        if self._stomp_client is not None:
+            return
+        try:
+            from koel.adapters.cse_stomp import CseStompClient
+        except Exception as exc:  # pragma: no cover
+            log.warning("cse_stomp_import_failed", error=str(exc)[:200])
+            return
+
+        async def _on_message(destination: str, payload: Any) -> None:
+            await handle_stomp_message(
+                self.storage, self.stomp_state, destination, payload
+            )
+
+        client = CseStompClient(
+            http_base=getattr(
+                self.settings, "cse_stomp_ws_url", "https://www.cse.lk/api/ws"
+            ),
+            on_message=_on_message,
+        )
+        self._stomp_client = client
+        try:
+            client.start()
+            log.info("cse_stomp_started")
+        except Exception as exc:
+            self._stomp_client = None
+            log.warning("cse_stomp_start_failed", error=str(exc)[:200])
 
     async def _drain_background_on_shutdown(self) -> None:
         """Await PDF enrich + brief drain without cancelling them on timeout.
@@ -2248,6 +2285,13 @@ class Poller:
         if self._scheduler is not None:
             self._scheduler.shutdown(wait=False)
             self._scheduler = None
+        stomp = self._stomp_client
+        self._stomp_client = None
+        if stomp is not None:
+            try:
+                await asyncio.wait_for(stomp.stop(), timeout=5)
+            except Exception:
+                log.warning("cse_stomp_stop_timeout_or_error")
         tick = self._tick_task
         if tick is not None and not tick.done():
             try:
