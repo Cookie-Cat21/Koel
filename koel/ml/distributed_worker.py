@@ -265,6 +265,50 @@ def _fit_predict_one(
         from koel.ml.challengers import predict_native_double_ensemble
 
         return predict_native_double_ensemble(train, test, seed=seed)
+    if model == "ridge_return":
+        from koel.ml.cpu_challengers import predict_ridge_return
+
+        return predict_ridge_return(train, test, seed=seed)
+    if model == "hgb_regressor":
+        from koel.ml.cpu_challengers import predict_hgb_regressor
+
+        return predict_hgb_regressor(train, test, seed=seed)
+    if model == "xgb_regressor":
+        from koel.ml.cpu_challengers import predict_xgb_regressor
+
+        return predict_xgb_regressor(train, test, seed=seed)
+    if model == "hgb_bagged":
+        from koel.ml.cpu_challengers import predict_hgb_bagged
+
+        return predict_hgb_bagged(train, test, seed=seed)
+    if model == "hgb_deep":
+        from koel.ml.cpu_challengers import predict_hgb_deep
+
+        return predict_hgb_deep(train, test, seed=seed)
+    if model == "hgb_weighted":
+        from koel.ml.cpu_challengers import predict_hgb_weighted
+
+        return predict_hgb_weighted(train, test, seed=seed)
+    if model == "xgb_rank_pairwise":
+        from koel.ml.cpu_challengers import predict_xgb_rank_pairwise
+
+        return predict_xgb_rank_pairwise(train, test, seed=seed)
+    if model == "xgb_rank_ndcg":
+        from koel.ml.cpu_challengers import predict_xgb_rank_ndcg
+
+        return predict_xgb_rank_ndcg(train, test, seed=seed)
+    if model == "lgb_lambdarank":
+        from koel.ml.cpu_challengers import predict_lgb_lambdarank
+
+        return predict_lgb_lambdarank(train, test, seed=seed)
+    if model == "blend_de_lgb":
+        from koel.ml.cpu_challengers import predict_blend_de_lgb
+
+        return predict_blend_de_lgb(train, test, seed=seed)
+    if model == "blend_de_ridge":
+        from koel.ml.cpu_challengers import predict_blend_de_ridge
+
+        return predict_blend_de_ridge(train, test, seed=seed)
     if model in {"qlib_lgb_exact", "qlib_double_ensemble_exact"}:
         from koel.ml.qlib_exact import predict_exact_qlib
 
