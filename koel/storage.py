@@ -1909,9 +1909,10 @@ class Storage:
             ).fetchall()
         out: list[dict[str, Any]] = []
         for row in _as_rows(rows):
-            code = row.get("code")
-            if not isinstance(code, str) or not code.strip():
+            raw_code = row.get("code")
+            if not isinstance(raw_code, str) or not raw_code.strip():
                 continue
+            code = raw_code.strip().upper()
             value = row.get("value")
             if isinstance(value, bool) or not isinstance(value, int | float):
                 continue
@@ -1929,7 +1930,7 @@ class Storage:
                 change_pct = None
             out.append(
                 {
-                    "code": code.strip().upper(),
+                    "code": code,
                     "name": row.get("name") if isinstance(row.get("name"), str) else None,
                     "value": float(value),
                     "change": float(change)

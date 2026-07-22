@@ -12,10 +12,11 @@ import os
 import re
 import time
 from collections import defaultdict, deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from telegram import Update
+from telegram import Message, Update
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -64,6 +65,9 @@ from koel.nl_alerts import (
     parse_alert_with_optional_llm,
 )
 from koel.storage import Storage
+
+# Shared reply callback used by /watch + NL confirm paths.
+ReplyText = Callable[..., Awaitable[Any]]
 
 log = get_logger(__name__)
 
@@ -750,7 +754,7 @@ async def _do_watch_for_user(
     context: ContextTypes.DEFAULT_TYPE,
     *,
     symbol: str,
-    reply,
+    reply: ReplyText,
 ) -> None:
     """Shared /watch + watch:{symbol} callback path. ``reply`` is awaitable text sender."""
     storage: Storage = context.application.bot_data["storage"]
@@ -781,7 +785,7 @@ async def on_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
     data = query.data if isinstance(query.data, str) else ""
     message = query.message
-    if message is None:
+    if not isinstance(message, Message):
         return
 
     async def _reply(text: str, **kwargs: Any) -> None:
@@ -860,7 +864,7 @@ async def _create_alert_from_nl(
     context: ContextTypes.DEFAULT_TYPE,
     *,
     nl: NLParsedAlert,
-    reply,
+    reply: ReplyText,
 ) -> None:
     """Create an alert from a confirmed NL parse (deterministic engine after confirm)."""
     from koel.nl_alerts import describe_nl_alert
@@ -971,12 +975,15 @@ async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     symbol = normalize_symbol(context.args[0])
+    msg = update.effective_message
+    if msg is None:
+        return
     if symbol is None:
-        await update.effective_message.reply_text(BAD_SYMBOL_HINT)
+        await msg.reply_text(BAD_SYMBOL_HINT)
         return
 
     async def _reply(text: str, **kwargs: Any) -> None:
-        await update.effective_message.reply_text(text, **kwargs)
+        await msg.reply_text(text, **kwargs)
 
     await _do_watch_for_user(update, context, symbol=symbol, reply=_reply)
 

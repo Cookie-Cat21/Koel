@@ -192,7 +192,7 @@ async def _run_both(settings: Settings) -> None:
     bot = Bot(settings.telegram_bot_token)
 
     async def send(
-        chat_id: int, text: str, *, reply_markup=None
+        chat_id: int, text: str, *, reply_markup: object | None = None
     ) -> SendResult:
         # Lock is released before Telegram I/O (CORE-004) — honor RetryAfter.
         return await send_message(
@@ -255,7 +255,7 @@ async def _run_poller(settings: Settings) -> None:
     bot = Bot(settings.telegram_bot_token)
 
     async def send(
-        chat_id: int, text: str, *, reply_markup=None
+        chat_id: int, text: str, *, reply_markup: object | None = None
     ) -> SendResult:
         # Lock is released before Telegram I/O (CORE-004) — honor RetryAfter.
         return await send_message(
@@ -1708,7 +1708,7 @@ def main(argv: list[str] | None = None) -> None:
             bot = Bot(settings.telegram_bot_token)
 
             async def send(
-                chat_id: int, text: str, *, reply_markup=None
+                chat_id: int, text: str, *, reply_markup: object | None = None
             ) -> SendResult:
                 return await send_message(
                     bot,
@@ -2066,7 +2066,7 @@ def main(argv: list[str] | None = None) -> None:
             bot = Bot(settings.telegram_bot_token)
 
             async def send(
-                chat_id: int, text: str, *, reply_markup=None
+                chat_id: int, text: str, *, reply_markup: object | None = None
             ) -> SendResult:
                 return await send_message(
                     bot,
