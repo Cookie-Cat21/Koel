@@ -74,7 +74,13 @@ CHALLENGERS: tuple[ChallengerSpec, ...] = (
         compute="gpu",
         target="rank_return",
         policy_id="shadow_policy_rank_tra_v1",
-        status="scaffolded",
+        status="implemented_offline",
+        blocker=(
+            "evaluated three-fold h1 2026-07-22: RankIC 0.1369 pooled, "
+            "below DoubleEnsemble baseline (0.2526); spread not computable "
+            "(tied scores every session) -- rejected, see "
+            "docs/experiments/GPU_CHALLENGER_20260722.md"
+        ),
     ),
     ChallengerSpec(
         key="master",
@@ -85,7 +91,13 @@ CHALLENGERS: tuple[ChallengerSpec, ...] = (
         compute="gpu",
         target="rank_return",
         policy_id="shadow_policy_rank_master_v1",
-        status="scaffolded",
+        status="blocked",
+        blocker=(
+            "adapter implemented and unit-tested, but OOM at hybrid-dataset "
+            "scale (dense per-segment window tensor, ~2.5GB/fold) on all "
+            "three folds -- not yet evaluated, see "
+            "docs/experiments/GPU_CHALLENGER_20260722.md section 3"
+        ),
     ),
     ChallengerSpec(
         key="stockmixer",
@@ -120,7 +132,14 @@ CHALLENGERS: tuple[ChallengerSpec, ...] = (
         compute="gpu",
         target="feature_generator",
         policy_id="shadow_policy_rank_kronos_v1",
-        status="scaffolded",
+        status="implemented_evaluation_in_progress",
+        blocker=(
+            "adapter implemented and unit-tested (koel/ml/gpu_challengers.py"
+            "::predict_kronos_features); full three-fold h1 run in progress "
+            "as of 2026-07-22, see "
+            "docs/experiments/GPU_CHALLENGER_20260722.md section 4 -- "
+            "update this status once that run completes"
+        ),
     ),
     ChallengerSpec(
         key="tlob",

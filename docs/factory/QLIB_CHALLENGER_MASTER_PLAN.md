@@ -103,18 +103,43 @@ stress is negative and the export is not yet corporate-action adjusted.
 
 ### Phase 3 — GPU sequence challengers
 
-- [ ] TRA through pinned Qlib.
-- [ ] MASTER pinned MIT adapter.
+- [x] TRA through pinned Qlib -- implemented (`koel/ml/gpu_challengers.py`
+      ::predict_qlib_tra), evaluated three-fold h1 on an RTX 3050
+      2026-07-22: RankIC 0.1369 pooled, below the DoubleEnsemble baseline
+      (0.2526); rejected. See
+      `docs/experiments/GPU_CHALLENGER_20260722.md`.
+- [x] MASTER pinned MIT adapter -- implemented and unit-tested, but blocked
+      at full hybrid-dataset scale by an OOM bug in this adapter's window
+      construction (all three folds failed identically); not yet evaluated.
+      See `docs/experiments/GPU_CHALLENGER_20260722.md` section 3 for the
+      root cause and recommended fix.
 - [ ] StockMixer/Stockformer clean-room adapters only after license clearance.
-- [ ] Shared 64/128/256-session tensor and missingness masks.
-- [ ] Same prediction artifact and evaluation contract.
+- [ ] Shared 64/128/256-session tensor and missingness masks -- **deviation**:
+      implemented with `seq_len=20` for both TRA and MASTER instead, scaled
+      down for the RTX 3050's 6GB VRAM and CSE's much smaller instrument
+      universe versus this doc's original 16-24GB GPU assumption.
+- [x] Same prediction artifact and evaluation contract -- both adapters
+      dispatch through the existing `ALLOWED_MODELS`/`_fit_predict_one`/
+      `Prediction` schema unchanged.
 
 ### Phase 4 — foundation feature challenger
 
-- [ ] Kronos mini/base frozen checkpoint.
-- [ ] Record checkpoint and pretraining cutoff hashes.
-- [ ] Use median return, quantile width and embeddings as ranker features.
-- [ ] Do not treat “93% RankIC improvement” as accuracy.
+- [x] Kronos mini/base frozen checkpoint -- Kronos-mini implemented
+      (`koel/ml/gpu_challengers.py::predict_kronos_features`, vendored
+      architecture in `koel/ml/vendor/kronos/`); full three-fold h1
+      evaluation in progress as of 2026-07-22, see
+      `docs/experiments/GPU_CHALLENGER_20260722.md` section 4 for interim
+      status -- update this line once that run completes.
+- [x] Record checkpoint and pretraining cutoff hashes -- HF snapshots
+      `f4e68697d9d5aed55cef5c96aabc3376bcad9f81` (Kronos-mini) and
+      `26966d0035065a0cae0ebad7af8ece35bc1fb51c` (Kronos-Tokenizer-2k);
+      June 2024 pretraining cutoff documented as a contamination boundary.
+- [x] Use median return, quantile width and p(up) as ranker features (fed
+      into the existing, unmodified LightGBM challenger) -- upstream
+      embeddings were not additionally pursued in this pass.
+- [x] Do not treat "93% RankIC improvement" as accuracy -- this report makes
+      no such claim; results are reported as RankIC/BA/MCC/cost-adjusted
+      spread only.
 
 ### Phase 5 — prospective policy tournament
 

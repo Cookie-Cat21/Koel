@@ -38,6 +38,9 @@ ALLOWED_MODELS = (
     "double_ensemble_native",
     "qlib_lgb_exact",
     "qlib_double_ensemble_exact",
+    "qlib_tra",
+    "master",
+    "kronos_features",
 )
 PARTITIONS = ("calibration", "test")
 TARGETS = ("absolute", "relative")

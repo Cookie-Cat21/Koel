@@ -278,6 +278,18 @@ def _fit_predict_one(
             provider_uri=provider_uri,
             seed=seed,
         )
+    if model == "qlib_tra":
+        from koel.ml.gpu_challengers import predict_qlib_tra
+
+        return predict_qlib_tra(train, test, seed=seed)
+    if model == "master":
+        from koel.ml.gpu_challengers import predict_master
+
+        return predict_master(train, test, seed=seed)
+    if model == "kronos_features":
+        from koel.ml.gpu_challengers import predict_kronos_features
+
+        return predict_kronos_features(train, test, seed=seed)
     if model.endswith("_two_stage"):
         return _fit_predict_two_stage(
             model=model,
