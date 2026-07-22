@@ -385,13 +385,21 @@ def phase_nested_deep(
     ]
     report: dict[str, Any] = {"fold_rows": fold_rows}
     if artifacts:
-        ensembled = ensemble_artifacts(artifacts, mode="calibration_select")
-        contract = SuccessContract()
-        report["nested_evaluation"] = evaluate_nested_ensemble(
-            ensembled,
-            contract=contract,
-            ensemble_mode="calibration_select",
-        )
+        # Ensemble equal-blend across models for the selective contract; per-model
+        # pooled metrics below are the primary ranking scoreboard.
+        try:
+            ensembled = ensemble_artifacts(
+                artifacts,
+                expected_models=tuple(models),
+            )
+            contract = SuccessContract()
+            report["nested_evaluation"] = evaluate_nested_ensemble(
+                ensembled,
+                contract=contract,
+                ensemble_mode="equal",
+            )
+        except Exception as exc:  # noqa: BLE001 - keep per-model even if blend fails
+            report["nested_evaluation_error"] = f"{type(exc).__name__}: {exc}"
         # Per-model pooled test RankIC
         per_model: dict[str, Any] = {}
         for model in models:
@@ -645,6 +653,93 @@ def phase_lgb_10k_screen(
     return payload
 
 
+def _aggregate_existing_nested(
+    *,
+    shards_dir: Path,
+    models: tuple[str, ...],
+    horizon: int,
+) -> dict[str, Any]:
+    """Rebuild nested report from already-written shard artifacts."""
+    from koel.ml.distributed import load_prediction_artifact
+
+    artifacts = [
+        load_prediction_artifact(path)
+        for path in sorted(shards_dir.glob("*.predictions.jsonl.gz"))
+    ]
+    fold_rows = [
+        {
+            "model": art.spec.model,
+            "outer_fold": art.spec.outer_fold,
+            "horizon": art.spec.horizon,
+            "target": art.spec.target,
+            "artifact": str(shards_dir / f"{art.spec.shard_id}.predictions.jsonl.gz"),
+        }
+        for art in artifacts
+    ]
+    report: dict[str, Any] = {"fold_rows": fold_rows, "resumed": True}
+    if artifacts:
+        try:
+            ensembled = ensemble_artifacts(artifacts, expected_models=models)
+            report["nested_evaluation"] = evaluate_nested_ensemble(
+                ensembled,
+                contract=SuccessContract(),
+                ensemble_mode="equal",
+            )
+        except Exception as exc:  # noqa: BLE001
+            report["nested_evaluation_error"] = f"{type(exc).__name__}: {exc}"
+        per_model: dict[str, Any] = {}
+        for model in models:
+            model_arts = [a for a in artifacts if a.spec.model == model]
+            if not model_arts:
+                continue
+            test_as_of: list[date] = []
+            test_symbols: list[str] = []
+            test_scores: list[float] = []
+            test_y: list[float] = []
+            test_dir: list[float] = []
+            for art in model_arts:
+                for prediction in art.predictions:
+                    if prediction.partition != "test" or prediction.y_ret is None:
+                        continue
+                    test_as_of.append(prediction.as_of)
+                    test_symbols.append(prediction.symbol)
+                    test_scores.append(prediction.score)
+                    test_y.append(prediction.y_ret)
+                    test_dir.append(float(prediction.y_dir))
+            rank_ic, sessions = mean_daily_rank_ic(test_as_of, test_scores, test_y)
+            spread_rows = [
+                Sample(
+                    symbol=symbol,
+                    as_of=as_of,
+                    x=(0.0,),
+                    y_ret=y_ret,
+                    y_dir=y_dir,
+                    horizon=horizon,
+                )
+                for symbol, as_of, y_ret, y_dir in zip(
+                    test_symbols,
+                    test_as_of,
+                    test_y,
+                    test_dir,
+                    strict=True,
+                )
+            ]
+            per_model[model] = {
+                "rank_ic": rank_ic,
+                "sessions": sessions,
+                "n_rows": len(test_scores),
+                "balanced_accuracy": balanced_direction_accuracy(test_dir, test_scores),
+                "mcc": matthews_direction_correlation(test_dir, test_scores),
+                "spread_112": _spread(spread_rows, test_scores, cost_bps=112.0),
+                "spread_30": _spread(spread_rows, test_scores, cost_bps=30.0),
+                "beats_baseline": (
+                    rank_ic is not None and rank_ic > BASELINE_RANK_IC
+                ),
+            }
+        report["per_model_pooled"] = per_model
+    return report
+
+
 def run_exhaust(
     *,
     snapshot_dir: Path,
@@ -661,6 +756,7 @@ def run_exhaust(
     hyper_workers: int = 1,
     skip_hyper: bool = False,
     models: tuple[str, ...] | None = None,
+    resume: bool = False,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     run_id = f"cpu-exhaust-{int(time.time())}"
@@ -678,49 +774,67 @@ def run_exhaust(
     if unknown:
         raise ValueError(f"unsupported models: {', '.join(unknown)}")
 
-    screen = phase_family_screen(
-        samples=samples,
-        metadata=metadata,
-        dates=dates,
-        models=chosen_models,
-        horizon=horizon,
-        target=target,
-        snapshot_sha=snapshot_sha,
-        run_id=run_id,
-        output_dir=output_dir,
-        evaluation_domain=evaluation_domain,
-        max_flat_fraction=max_flat_fraction,
-        workers=4,
-    )
-    (output_dir / "phase_family_screen.json").write_text(
-        json.dumps(screen, indent=2, default=str) + "\n",
-        encoding="utf-8",
-    )
-    survivors = [
-        row["model"]
-        for row in screen
-        if row.get("calibration", {}).get("rank_ic") is not None
-    ][:screen_top_k]
-    # Always keep the known champion in the deep set.
-    if "double_ensemble_native" not in survivors:
-        survivors.append("double_ensemble_native")
-    print(f"[exhaust] deep survivors: {survivors}", flush=True)
+    screen_path = output_dir / "phase_family_screen.json"
+    nested_shards = output_dir / "nested"
+    if resume and screen_path.exists() and nested_shards.exists():
+        screen = json.loads(screen_path.read_text(encoding="utf-8"))
+        survivors = [
+            row["model"]
+            for row in screen
+            if row.get("calibration", {}).get("rank_ic") is not None
+        ][:screen_top_k]
+        if "double_ensemble_native" not in survivors:
+            survivors.append("double_ensemble_native")
+        print(f"[exhaust] resume: aggregating nested for {survivors}", flush=True)
+        nested = _aggregate_existing_nested(
+            shards_dir=nested_shards,
+            models=tuple(survivors),
+            horizon=horizon,
+        )
+    else:
+        screen = phase_family_screen(
+            samples=samples,
+            metadata=metadata,
+            dates=dates,
+            models=chosen_models,
+            horizon=horizon,
+            target=target,
+            snapshot_sha=snapshot_sha,
+            run_id=run_id,
+            output_dir=output_dir,
+            evaluation_domain=evaluation_domain,
+            max_flat_fraction=max_flat_fraction,
+            workers=4,
+        )
+        screen_path.write_text(
+            json.dumps(screen, indent=2, default=str) + "\n",
+            encoding="utf-8",
+        )
+        survivors = [
+            row["model"]
+            for row in screen
+            if row.get("calibration", {}).get("rank_ic") is not None
+        ][:screen_top_k]
+        # Always keep the known champion in the deep set.
+        if "double_ensemble_native" not in survivors:
+            survivors.append("double_ensemble_native")
+        print(f"[exhaust] deep survivors: {survivors}", flush=True)
 
-    nested = phase_nested_deep(
-        samples=samples,
-        metadata=metadata,
-        dates=dates,
-        models=tuple(survivors),
-        horizon=horizon,
-        target=target,
-        snapshot_sha=snapshot_sha,
-        run_id=run_id,
-        output_dir=output_dir,
-        evaluation_domain=evaluation_domain,
-        max_flat_fraction=max_flat_fraction,
-        outer_folds=nested_folds,
-        seeds=nested_seeds,
-    )
+        nested = phase_nested_deep(
+            samples=samples,
+            metadata=metadata,
+            dates=dates,
+            models=tuple(survivors),
+            horizon=horizon,
+            target=target,
+            snapshot_sha=snapshot_sha,
+            run_id=run_id,
+            output_dir=output_dir,
+            evaluation_domain=evaluation_domain,
+            max_flat_fraction=max_flat_fraction,
+            outer_folds=nested_folds,
+            seeds=nested_seeds,
+        )
     (output_dir / "phase_nested_deep.json").write_text(
         json.dumps(nested, indent=2, default=str) + "\n",
         encoding="utf-8",
@@ -860,6 +974,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hyper-workers", type=int, default=1)
     parser.add_argument("--skip-hyper", action="store_true")
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Reuse phase_family_screen.json + nested/*.predictions.jsonl.gz",
+    )
+    parser.add_argument(
         "--models",
         default="",
         help="Optional comma-separated subset; default = full CPU_EXHAUST_MODELS",
@@ -887,6 +1006,7 @@ def main(argv: list[str] | None = None) -> int:
         hyper_workers=args.hyper_workers,
         skip_hyper=args.skip_hyper,
         models=models,
+        resume=args.resume,
     )
     return 0
 

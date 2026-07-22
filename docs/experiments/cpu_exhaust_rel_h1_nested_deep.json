@@ -1,0 +1,195 @@
+{
+  "resumed": true,
+  "nested_evaluation": {
+    "schema_version": 2,
+    "ensemble_mode": "equal",
+    "contract_met": false,
+    "checks": {
+      "point_precision": false,
+      "precision_lcb": false,
+      "emits": false,
+      "symbols": false,
+      "coverage": false,
+      "fold_stability": false,
+      "symbol_concentration": false,
+      "emit_days": false,
+      "session_concentration": false
+    },
+    "contract": {
+      "target_precision": 0.9,
+      "min_precision_lcb": 0.9,
+      "confidence_level": 0.95,
+      "min_emits": 500,
+      "min_symbols": 80,
+      "min_coverage": 0.01,
+      "min_fold_precision": 0.85,
+      "min_fold_pass_fraction": 0.6666666666666666,
+      "max_symbol_share": 0.05,
+      "min_calibration_emits": 50,
+      "min_calibration_lcb": 0.8,
+      "calibration_coverages": [
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1
+      ],
+      "min_emit_days": 60,
+      "max_session_share": 0.05,
+      "min_fold_emits": 30
+    },
+    "summary": {
+      "test_rows": 17529,
+      "emits": 68,
+      "hits": 55,
+      "precision": 0.8088235294117647,
+      "precision_lcb": 0.7191830475882544,
+      "coverage": 0.003879285755034514,
+      "symbols": 41,
+      "emit_days": 34,
+      "max_symbol_share": 0.08823529411764706,
+      "max_session_share": 0.08823529411764706,
+      "domain_counts": {
+        "cse": 68
+      },
+      "flat_outcomes": 0,
+      "rank_ic": 0.28535493548106683,
+      "rank_ic_sessions": 117,
+      "balanced_accuracy": 0.5877654384742911,
+      "mcc": 0.18648455111908982,
+      "post_cost_mean_return": -0.009323330134487775,
+      "post_cost_sessions": 117,
+      "stable_folds": 0,
+      "folds": 3
+    },
+    "folds": [
+      {
+        "outer_fold": 0,
+        "horizon": 1,
+        "calibration_rows": 5070,
+        "test_rows": 5876,
+        "selected_models": [],
+        "threshold": null,
+        "calibration_gate": null,
+        "emits": 0,
+        "hits": 0,
+        "precision": null,
+        "coverage": 0.0
+      },
+      {
+        "outer_fold": 1,
+        "horizon": 1,
+        "calibration_rows": 5840,
+        "test_rows": 5751,
+        "selected_models": [
+          "hgb_two_stage",
+          "hgb_lmt",
+          "xgb_lmt",
+          "hgb_bagged",
+          "hgb_deep",
+          "xgb_two_stage",
+          "double_ensemble_native"
+        ],
+        "threshold": 0.23474095677025855,
+        "calibration_gate": {
+          "threshold": 0.23474095677025855,
+          "emits": 59,
+          "hits": 55,
+          "precision": 0.9322033898305084,
+          "precision_lcb": 0.8573048176858382,
+          "coverage": 0.010102739726027397,
+          "requested_coverage": 0.01
+        },
+        "emits": 68,
+        "hits": 55,
+        "precision": 0.8088235294117647,
+        "coverage": 0.011824030603373326
+      },
+      {
+        "outer_fold": 2,
+        "horizon": 1,
+        "calibration_rows": 5731,
+        "test_rows": 5902,
+        "selected_models": [],
+        "threshold": null,
+        "calibration_gate": null,
+        "emits": 0,
+        "hits": 0,
+        "precision": null,
+        "coverage": 0.0
+      }
+    ]
+  },
+  "per_model_pooled": {
+    "hgb_two_stage": {
+      "rank_ic": 0.28162883327742366,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5856958758771035,
+      "mcc": 0.17866853770799931,
+      "spread_112": -0.008819545319200569,
+      "spread_30": 0.018508852508043412,
+      "beats_baseline": true
+    },
+    "hgb_lmt": {
+      "rank_ic": 0.28055121804913574,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5839918296160529,
+      "mcc": 0.17479680486520216,
+      "spread_112": -0.011307993196409929,
+      "spread_30": 0.016505335753842096,
+      "beats_baseline": true
+    },
+    "xgb_lmt": {
+      "rank_ic": 0.2835631898576337,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5857090697553355,
+      "mcc": 0.1721258167814549,
+      "spread_112": -0.010219267946711035,
+      "spread_30": 0.01766291420162496,
+      "beats_baseline": true
+    },
+    "hgb_bagged": {
+      "rank_ic": 0.2748352360643766,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5760435659064758,
+      "mcc": 0.180133048738895,
+      "spread_112": -0.010330447666141778,
+      "spread_30": 0.017763974080203047,
+      "beats_baseline": true
+    },
+    "hgb_deep": {
+      "rank_ic": 0.27475156503309517,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5757495679753397,
+      "mcc": 0.18010531070305452,
+      "spread_112": -0.010297648559137028,
+      "spread_30": 0.01791313945626637,
+      "beats_baseline": true
+    },
+    "xgb_two_stage": {
+      "rank_ic": 0.28612534061984274,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5881527716166426,
+      "mcc": 0.17710936483616152,
+      "spread_112": -0.007805351088871844,
+      "spread_30": 0.019202052718147348,
+      "beats_baseline": true
+    },
+    "double_ensemble_native": {
+      "rank_ic": 0.2566437510536177,
+      "sessions": 117,
+      "n_rows": 17529,
+      "balanced_accuracy": 0.5777122421944139,
+      "mcc": 0.15375862902562826,
+      "spread_112": -0.004372545353669138,
+      "spread_30": 0.02226941278790439,
+      "beats_baseline": true
+    }
+  }
+}
