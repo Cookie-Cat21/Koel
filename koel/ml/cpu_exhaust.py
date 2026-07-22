@@ -511,7 +511,7 @@ def phase_lgb_10k_screen(
         min_train_days=250,
     )
     domain = None if evaluation_domain == "all" else evaluation_domain
-    train = _rows_for_dates(
+    train_full = _rows_for_dates(
         samples,
         split.calibration_train_dates,
         metadata=metadata,
@@ -530,20 +530,30 @@ def phase_lgb_10k_screen(
         domain=domain,
         max_flat_fraction=max_flat_fraction,
     )
+    # Chronological tail subsample for the 10k ranking screen only — winners
+    # below are re-fit on the full calibration_train. Caps wall-clock so the
+    # predeclared 10k grid is actually finishable on a 4-core CPU box.
+    screen_train_cap = 40_000
+    if len(train_full) > screen_train_cap:
+        ordered = sorted(train_full, key=lambda sample: (sample.as_of, sample.symbol))
+        train_screen = ordered[-screen_train_cap:]
+    else:
+        train_screen = train_full
     grid = lgb_hyperparam_grid(limit=limit)
     output_dir.mkdir(parents=True, exist_ok=True)
     print(
         f"[10k] screening {len(grid)} LightGBM configs on calibration "
-        f"(train={len(train)} cal={len(calibration)} test={len(test)}) "
-        f"workers={workers}",
+        f"(train_full={len(train_full)} train_screen={len(train_screen)} "
+        f"cal={len(calibration)} test={len(test)}) workers={workers}",
         flush=True,
     )
     payloads = [
         {
-            "train": train,
+            "train": train_screen,
             "calibration": calibration,
             "config": config,
             "seed": seed,
+            "n_estimators": 80,
         }
         for config in grid
     ]
@@ -556,7 +566,7 @@ def phase_lgb_10k_screen(
         for index, payload in enumerate(payloads, start=1):
             row = _lgb_screen_worker(payload)
             rows.append(row)
-            if index % 25 == 0 or index == len(payloads):
+            if index == 1 or index % 50 == 0 or index == len(payloads):
                 best = max(
                     (
                         r.get("calibration", {}).get("rank_ic")
@@ -566,7 +576,8 @@ def phase_lgb_10k_screen(
                     default=None,
                 )
                 print(
-                    f"[10k] {index}/{len(payloads)} done; best_cal_RankIC={best}",
+                    f"[10k] {index}/{len(payloads)} done; best_cal_RankIC={best} "
+                    f"last={row.get('seconds'):.2f}s",
                     flush=True,
                 )
     else:
@@ -574,8 +585,9 @@ def phase_lgb_10k_screen(
         with ProcessPoolExecutor(max_workers=workers) as pool:
             futures = [pool.submit(_lgb_screen_worker, payload) for payload in payloads]
             for index, future in enumerate(as_completed(futures), start=1):
-                rows.append(future.result())
-                if index % 25 == 0 or index == len(payloads):
+                row = future.result()
+                rows.append(row)
+                if index == 1 or index % 50 == 0 or index == len(payloads):
                     best = max(
                         (
                             r.get("calibration", {}).get("rank_ic")
@@ -585,7 +597,8 @@ def phase_lgb_10k_screen(
                         default=None,
                     )
                     print(
-                        f"[10k] {index}/{len(payloads)} done; best_cal_RankIC={best}",
+                        f"[10k] {index}/{len(payloads)} done; best_cal_RankIC={best} "
+                        f"last={row.get('seconds'):.2f}s",
                         flush=True,
                     )
 
@@ -605,7 +618,7 @@ def phase_lgb_10k_screen(
         config = winner["config"]
         try:
             scores = predict_lgb_tuned(
-                train,
+                train_full,
                 evaluation_rows,
                 seed=seed,
                 n_estimators=600,
