@@ -25,6 +25,14 @@ export const MAX_SIGNAL_REASONS = 8;
 /** Prefer current research model for the leaderboard. */
 export const SIGNAL_BOARD_MODEL = "path_v5";
 
+/**
+ * Ignore tip ``as_of`` days with fewer scored symbols than this.
+ * Protects the board from thin sessions / ``score-signals --limit 2`` smokes
+ * that would otherwise become ``MAX(as_of)`` and hide the full leaderboard.
+ * Falls back to the sparse tip only when no denser board exists.
+ */
+export const MIN_SIGNAL_BOARD_SIZE = 20;
+
 export type SignalRow = {
   symbol: string;
   name: string | null;
@@ -71,22 +79,46 @@ function asDateIso(raw: unknown): string | null {
   return null;
 }
 
+/** Pick current + prior board tips, skipping sparse ``as_of`` groups. */
+export function pickBoardAsOfDates(
+  rows: { as_of: string | null; n: number }[],
+  minSize: number = MIN_SIGNAL_BOARD_SIZE,
+): { asOf: string | null; priorAsOf: string | null } {
+  const ordered = rows
+    .map((r) => ({
+      as_of: r.as_of,
+      n: Number.isFinite(r.n) ? Math.trunc(r.n) : 0,
+    }))
+    .filter((r): r is { as_of: string; n: number } => r.as_of != null)
+    .sort((a, b) => (a.as_of < b.as_of ? 1 : a.as_of > b.as_of ? -1 : 0));
+
+  const dense = ordered.filter((r) => r.n >= minSize);
+  const chosen = dense.length > 0 ? dense : ordered;
+  return {
+    asOf: chosen[0]?.as_of ?? null,
+    priorAsOf: chosen[1]?.as_of ?? null,
+  };
+}
+
 async function queryBoardAsOfDates(
   pool: Pool,
   modelVersion: string,
 ): Promise<{ asOf: string | null; priorAsOf: string | null }> {
-  const result = await pool.query<{ as_of: Date | string }>(
-    `SELECT as_of
+  const result = await pool.query<{ as_of: Date | string; n: number | string }>(
+    `SELECT as_of, COUNT(*)::int AS n
        FROM symbol_scores
       WHERE model_version = $1
       GROUP BY as_of
       ORDER BY as_of DESC
-      LIMIT 2`,
+      LIMIT 40`,
     [modelVersion],
   );
-  const asOf = result.rows[0] ? asDateIso(result.rows[0].as_of) : null;
-  const priorAsOf = result.rows[1] ? asDateIso(result.rows[1].as_of) : null;
-  return { asOf, priorAsOf };
+  return pickBoardAsOfDates(
+    result.rows.map((row) => ({
+      as_of: asDateIso(row.as_of),
+      n: typeof row.n === "number" ? row.n : Number(row.n),
+    })),
+  );
 }
 
 async function queryScoresForAsOf(

@@ -1,5 +1,6 @@
-# Daily Signal Board scoring — writes symbol_scores for the latest path tip
-# so the dash can show leaderboard rank Δ vs the prior as_of day.
+# Daily Signal Board scoring — writes symbol_scores for one pinned tip day
+# (MAX bar date across the batch, or --as-of) so the dash leaderboard does
+# not fragment to a 1–2 row board after thin sessions / limit smokes.
 #
 # Requires repo secret: DATABASE_URL.
 # Daily after CSE close. Optional pause: vars.KOEL_DAILY_OPS=0.

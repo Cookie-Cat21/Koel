@@ -737,7 +737,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What is Spoke coverage on the page?",
         answer:
-          "A count of how many loaded rows are Spoke vs Silent (board load is capped). Selective coverage is a research filter rate — not a hit-rate promise for tomorrow. Empty board usually means path backfill / score-signals has not landed yet.",
+          "A count of how many loaded rows are Spoke vs Silent (board load is capped). Selective coverage is a research filter rate — not a hit-rate promise for tomorrow. Empty board usually means path backfill / score-signals has not landed yet. A 1–2 row board after a smoke run is skipped automatically — the dash prefers the latest dense tip day.",
       },
     ],
   },

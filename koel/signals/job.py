@@ -38,6 +38,28 @@ def _bars_as_of(bars: list[DailyBar], as_of: date | None) -> list[DailyBar]:
     return [b for b in bars if b.trade_date <= as_of]
 
 
+def _board_as_of(
+    bars_by_symbol: dict[str, list[DailyBar]],
+    *,
+    as_of: date | None,
+) -> date | None:
+    """Single leaderboard tip day for a score batch.
+
+    Historical ``--as-of`` runs already pin every row to that day. Live tip
+    runs must do the same — otherwise only names whose last bar equals the
+    newest trade date land on ``MAX(as_of)``, and Signal Board shows a
+    1–2 row leaderboard after a thin session or ``--limit`` smoke.
+    """
+    if as_of is not None:
+        return as_of
+    tip: date | None = None
+    for bars in bars_by_symbol.values():
+        for bar in bars:
+            if tip is None or bar.trade_date > tip:
+                tip = bar.trade_date
+    return tip
+
+
 def _window_return_from_bars(bars: list[DailyBar], n: int = 20) -> float | None:
     """n-session return from daily bars."""
     ordered = sorted(bars, key=lambda b: b.trade_date)
@@ -163,8 +185,11 @@ async def run_signal_score_job(
     skipped = 0
     forecasts = 0
     peer_cache: dict[str, float | None] = {}
+    # One board tip for the whole batch (live + historical) so the dash
+    # leaderboard does not fragment across last-trade dates.
+    board_day = _board_as_of(bars_by_symbol, as_of=as_of)
     # Anchor disclosure window to the score tip (or clock for live runs).
-    tip_day = as_of or datetime.now(UTC).date()
+    tip_day = board_day or datetime.now(UTC).date()
     since = datetime(tip_day.year, tip_day.month, tip_day.day, tzinfo=UTC) - timedelta(
         days=30
     )
@@ -245,9 +270,9 @@ async def run_signal_score_job(
         if result is None:
             skipped += 1
             continue
-        # Historical --as-of runs pin the snapshot day so the board does not
-        # fragment across last-trade dates for idle symbols.
-        write_as_of = as_of if as_of is not None else result.as_of
+        # Pin every row to the batch tip (see ``_board_as_of``). Fall back to
+        # the symbol's last bar only if the batch somehow had no dates.
+        write_as_of = board_day if board_day is not None else result.as_of
         await storage.upsert_symbol_score(
             symbol=result.symbol,
             as_of=write_as_of,
@@ -279,7 +304,7 @@ async def run_signal_score_job(
         symbols_skipped=skipped,
         forecasts_written=forecasts,
         model_version=model_version,
-        as_of=as_of.isoformat() if as_of is not None else None,
+        as_of=board_day.isoformat() if board_day is not None else None,
     )
     log.info("signal_score_job_done", **asdict(out))
     return out

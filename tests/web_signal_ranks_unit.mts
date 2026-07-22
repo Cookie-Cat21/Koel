@@ -1,5 +1,5 @@
 /**
- * Signal Board rank Δ helpers.
+ * Signal Board rank Δ helpers + sparse-board tip picker.
  * Invoked via npx tsx from web/ after staging.
  */
 import assert from "node:assert/strict";
@@ -9,6 +9,7 @@ import {
   ranksBySymbol,
   sortByScoreDesc,
 } from "./src/lib/api/signal-ranks.ts";
+import { pickBoardAsOfDates } from "./src/lib/api/signals.ts";
 
 function testSortAndRanks() {
   const rows = [
@@ -80,7 +81,38 @@ function testEmptyPrior() {
   });
 }
 
+function testPickBoardSkipsSparseTip() {
+  const picked = pickBoardAsOfDates(
+    [
+      { as_of: "2026-07-20", n: 2 },
+      { as_of: "2026-07-17", n: 293 },
+      { as_of: "2026-07-16", n: 273 },
+    ],
+    20,
+  );
+  assert.deepEqual(picked, {
+    asOf: "2026-07-17",
+    priorAsOf: "2026-07-16",
+  });
+}
+
+function testPickBoardFallsBackWhenAllSparse() {
+  const picked = pickBoardAsOfDates(
+    [
+      { as_of: "2026-07-20", n: 2 },
+      { as_of: "2026-07-19", n: 1 },
+    ],
+    20,
+  );
+  assert.deepEqual(picked, {
+    asOf: "2026-07-20",
+    priorAsOf: "2026-07-19",
+  });
+}
+
 testSortAndRanks();
 testRankDeltas();
 testEmptyPrior();
+testPickBoardSkipsSparseTip();
+testPickBoardFallsBackWhenAllSparse();
 console.log("WEB_SIGNAL_RANKS_UNIT_OK");

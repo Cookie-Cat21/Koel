@@ -8,7 +8,7 @@ from koel.domain import DailyBar
 from koel.scenarios.guardrails import contains_buy_sell_language
 from koel.signals.eval import evaluate_walk_forward
 from koel.signals.forecast import forecast_path
-from koel.signals.job import _bars_as_of, _percentile_ranks
+from koel.signals.job import _bars_as_of, _board_as_of, _percentile_ranks
 from koel.signals.score import MODEL_VERSION, ExtraFactors, score_symbol_path
 
 
@@ -201,6 +201,29 @@ def test_bars_as_of_truncates_and_passthrough() -> None:
     assert len(cut) == 5
     assert all(b.trade_date <= date(2026, 7, 5) for b in cut)
     assert _bars_as_of(bars, date(2026, 6, 30)) == []
+
+
+def test_board_as_of_pins_live_tip_across_symbols() -> None:
+    """Live runs must share MAX(last bar), not per-symbol tips."""
+    early = _bars([10.0 + i for i in range(8)], start=date(2026, 7, 1))
+    late = [
+        DailyBar(
+            symbol="AAF.N0000",
+            trade_date=date(2026, 7, 1) + timedelta(days=i),
+            price=10.0 + i,
+            high=None,
+            low=None,
+            open=None,
+            volume=1_000.0,
+            source_period=5,
+            bar_ts=datetime(2026, 7, 1, 18, 30, tzinfo=UTC) + timedelta(days=i),
+        )
+        for i in range(12)
+    ]
+    by_symbol = {"JKH.N0000": early, "AAF.N0000": late}
+    assert _board_as_of(by_symbol, as_of=None) == date(2026, 7, 12)
+    assert _board_as_of(by_symbol, as_of=date(2026, 7, 5)) == date(2026, 7, 5)
+    assert _board_as_of({}, as_of=None) is None
 
 
 def test_walk_forward_eval_runs() -> None:
