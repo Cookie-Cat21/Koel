@@ -7,9 +7,16 @@
 #
 # Research scores only — not financial advice. Postgres + CSE path bars only.
 
+# ops: push-path catch-up enabled
 name: score-signals
 
 on:
+  # Catch-up when this workflow file lands on main (Health checklist
+  # matches by workflow name; agents cannot workflow_dispatch).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/score-signals.yml"
   workflow_dispatch:
     inputs:
       as_of:
@@ -34,6 +41,7 @@ jobs:
     timeout-minutes: 90
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4

@@ -6,9 +6,16 @@
 # intraday cadence (Vercel has no long-lived poller; this is the board writer).
 # Not financial advice.
 
+# ops: push-path catch-up enabled
 name: market-tick
 
 on:
+  # Catch-up when this workflow file lands on main (Health checklist
+  # matches by workflow name; agents cannot workflow_dispatch).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/market-tick.yml"
   workflow_dispatch:
   schedule:
     # Intraday board refresh during CSE hours (09:30–14:30 SLT ≈ 04:00–09:00 UTC),
@@ -27,6 +34,7 @@ jobs:
     timeout-minutes: 45
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4

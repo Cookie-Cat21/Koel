@@ -4,9 +4,16 @@
 #
 # Research meter only — not financial advice.
 
+# ops: push-path catch-up enabled
 name: appetite-backfill
 
 on:
+  # Catch-up when this workflow file lands on main (Health checklist
+  # matches by workflow name; agents cannot workflow_dispatch).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/appetite-backfill.yml"
   workflow_dispatch:
   schedule:
     # Daily ~17:15 Asia/Colombo (11:45 UTC) — after CSE close + score-signals.
@@ -22,6 +29,7 @@ jobs:
     timeout-minutes: 90
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4

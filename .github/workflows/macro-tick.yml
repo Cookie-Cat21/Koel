@@ -8,9 +8,16 @@
 #
 # Research context only — not financial advice.
 
+# ops: push-path catch-up enabled
 name: macro-tick
 
 on:
+  # Catch-up when this workflow file lands on main (Health checklist
+  # matches by workflow name; agents cannot workflow_dispatch).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/macro-tick.yml"
   workflow_dispatch:
   schedule:
     # Daily ~08:15 Asia/Colombo (02:45 UTC).
@@ -27,6 +34,7 @@ jobs:
     # Schedule always runs unless MACRO_TICK=0 or KOEL_OPS_PAUSE=1.
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       (vars.MACRO_TICK != '0' && vars.KOEL_OPS_PAUSE != '1')
     steps:
       - uses: actions/checkout@v4
