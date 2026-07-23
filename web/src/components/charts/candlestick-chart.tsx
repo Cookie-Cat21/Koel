@@ -632,10 +632,14 @@ export function CandlestickChart({
       </div>
       {footnote === "" || (minimal && footnote == null) ? null : (
         <p className="mt-2.5 shrink-0 text-xs leading-relaxed text-muted-foreground">
-          {footnote ??
-            (closeCandles
-              ? `${rawBars.length} daily closes${aggregated ? ` → ${n} candles` : ""} · close→close (CSE has no session OHLC) · ${formatNumber(first.close)} → ${formatNumber(last.close)} · research only`
-              : `${rawBars.length} sessions${aggregated ? ` → ${n} ${lineMode ? "points" : "candles"}` : ""}${lineMode ? " · step path (tick-size name)" : ""} · close ${formatNumber(first.close)} → ${formatNumber(last.close)} · ${upN} up / ${downN} down${flatN ? ` / ${flatN} flat` : ""}${fc.length > 0 ? " · dashed = model forecast" : ""} · research only`)}
+          {lineMode
+            ? // Penny / thin-tick CSE names: auto step path — say so even when
+              // the parent passes a generic “Daily OHLC” footnote.
+              `Step path (not candles) — last price under LKR 3 with mostly flat daily ticks, so OHLC candles look like noise. Expand still opens real candles. Close ${formatNumber(first.close)} → ${formatNumber(last.close)}. Research only.`
+            : (footnote ??
+              (closeCandles
+                ? `${rawBars.length} daily closes${aggregated ? ` → ${n} candles` : ""} · close→close (CSE has no session OHLC) · ${formatNumber(first.close)} → ${formatNumber(last.close)} · research only`
+                : `${rawBars.length} sessions${aggregated ? ` → ${n} candles` : ""} · close ${formatNumber(first.close)} → ${formatNumber(last.close)} · ${upN} up / ${downN} down${flatN ? ` / ${flatN} flat` : ""}${fc.length > 0 ? " · dashed = model forecast" : ""} · research only`))}
         </p>
       )}
     </div>
