@@ -194,3 +194,22 @@ horizon only. See `CPU_EXHAUST_REL_H3_20260723.md`.
 2. W2 **liq_v3** nested (flat-only filter, no ADV floor) — in flight.
 3. Keep RankIC champion (`xgb_two_stage` 0.2861) as research score only until
    contract + post-cost gates pass without persistence-only construction.
+
+
+## Horizon h3 cost find (2026-07-23)
+
+Offline nested relative/**h3** (split snapshot): RankIC still below h1 champion
+(`xgb_two_stage` 0.2285 vs 0.2861). Selective 90% **not met** (hgb near-miss
+91 emits / LCB 0.597).
+
+**New cost-positive construction on h3 scores:**
+
+| Model | Variant | Net@112 | Gross | Turnover | Sessions |
+|---|---|---:|---:|---:|---:|
+| `double_ensemble_native` | `weekly_5_sessions_top_bottom_05` | **+0.27%** | 1.03% | 0.340 | 111 |
+| `xgb_two_stage` | same | +0.04% | 0.87% | 0.370 | 111 |
+
+Proposed review-only Loop 0 ID (not wired yet):
+`shadow_policy_rank_de_h3_weekly_v1` — relative/h3 DE + weekly 5-session
+top/bottom 5% book. Does **not** replace h1 DE-persist (+0.49%) or clear
+selective 90%. See `CPU_EXHAUST_REL_H3_20260723.md` / post summary.

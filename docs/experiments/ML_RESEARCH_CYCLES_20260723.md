@@ -255,3 +255,13 @@ matrix; W5 only after new `matrix_id` materiality; W6 dossier **not** started �
 
 Research only — not financial advice.
 
+
+### Cycle — h3 nested: RankIC down, weekly DE +net@112 (2026-07-23)
+
+- Evidence: `CPU_EXHAUST_REL_H3_*`, `/tmp/cpu-post-rel-h3/`
+- RankIC best 0.2285 < h1 champion — horizon does not beat h1 score quality
+- Selective: unmet (hgb 91/0.681/LCB 0.597)
+- Cost: DE `weekly_5_sessions_top_bottom_05` **+0.27%** net@112 (offline)
+- Proposed shadow ID (unwired): `shadow_policy_rank_de_h3_weekly_v1`
+- Next: wire h3 weekly shadow after h1 DE-persist receipts accumulate; liq_v3 in flight
+
