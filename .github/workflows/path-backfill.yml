@@ -4,9 +4,16 @@
 #
 # Polite CSE JSON only — not financial advice.
 
+# ops: push-path catch-up enabled
 name: path-backfill
 
 on:
+  # Catch-up when this workflow file lands on main (Health checklist
+  # matches by workflow name; agents cannot workflow_dispatch).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/path-backfill.yml"
   workflow_dispatch:
     inputs:
       limit:
@@ -27,6 +34,7 @@ jobs:
     timeout-minutes: 120
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4
