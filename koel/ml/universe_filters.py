@@ -37,6 +37,14 @@ LIQ_FILTER_V2 = FilterManifest(
     version="v2",
 )
 
+LIQ_FILTER_V3 = FilterManifest(
+    name="liq_v3",
+    min_adv20=0.0,
+    max_flat_fraction_60=0.40,
+    min_cse_sessions_60=5,
+    version="v3",
+)
+
 _CSE_FRACTION_60_INDEX = RESEARCH_FEATURE_NAMES.index("cse_fraction_60")
 
 
@@ -67,6 +75,21 @@ def passes_liq_filter_v2(
         bars_up_to_as_of,
         metadata_row=metadata_row,
         manifest=LIQ_FILTER_V2,
+    )
+
+
+def passes_liq_filter_v3(
+    symbol: str,
+    bars_up_to_as_of: list[DailyBar],
+    *,
+    metadata_row: ResearchBarMetadata | None = None,
+) -> bool:
+    """Return whether ``symbol`` passes LIQ_FILTER_V3 using visible bars only."""
+    return _passes_filter(
+        symbol,
+        bars_up_to_as_of,
+        metadata_row=metadata_row,
+        manifest=LIQ_FILTER_V3,
     )
 
 
@@ -109,9 +132,10 @@ def _passes_filter(
     ordered = _visible_symbol_bars(symbol, bars_up_to_as_of)
     if not ordered:
         return False
-    adv = _adv20(ordered)
-    if not math.isfinite(adv) or adv < manifest.min_adv20:
-        return False
+    if manifest.min_adv20 > 0:
+        adv = _adv20(ordered)
+        if not math.isfinite(adv) or adv < manifest.min_adv20:
+            return False
     flat_fraction = _flat_fraction_60(ordered, metadata_row=metadata_row)
     if (
         not math.isfinite(flat_fraction)

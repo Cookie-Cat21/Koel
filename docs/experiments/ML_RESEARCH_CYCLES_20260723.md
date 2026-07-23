@@ -210,6 +210,27 @@ W3 h5 nested artifacts before W5 search.
 - Champions unchanged; SuccessContract **still unmet**
 
 
+### Cycle — W2 liq_v2 universe filter killed (2026-07-23)
+
+- Evidence: `UNIVERSE_FILTER_LIQ_V2_NESTED_20260723.md`, `cpu_exhaust_rel_h1_liqv2_summary.json`
+- Filter: ADV20 ≥100, flat60 ≤0.50, min CSE sessions 10
+- Sample collapse: 636455 → 35328 rows (−94.4%); **below 100k floor**
+- All trio nested complete (unlike liq_v1 screen fails)
+- RankIC best: xgb 0.2136 vs frozen 0.2861
+- Selective: 0 emits; cost best DE weekly −0.34% net@112
+- Verdict: liq_v2 **killed**; recommend **liq_v3** (no ADV floor, flat≤0.40, CSE≥5)
+- Champions unchanged; SuccessContract **still unmet**
+
+### Cycle — W3 relative/h3 nested complete (2026-07-23)
+
+- Evidence: `CPU_EXHAUST_REL_H3_20260723.md`, `cpu_exhaust_rel_h3_summary.json`
+- RankIC best: xgb_two_stage 0.2285; hgb 0.2192; DE 0.1901
+- Selective: hgb near-miss 91 emits / LCB 0.597 — contract unmet
+- Cost best: DE weekly_5 +0.27% net@112 (h3 horizon only)
+- Verdict: h3 lever **exhausted** (like h5); no Goal A/B unlock
+- Champions unchanged; SuccessContract **still unmet**
+
+
 ## Status block — W0–W4 ledger (2026-07-23 evening)
 
 **Promotion still blocked.** Champions unchanged: RankIC `xgb_two_stage` rel/h1
@@ -221,13 +242,16 @@ W3 h5 nested artifacts before W5 search.
 | W0 DE-persist shadow | Wired + report row; partial canary **14 legs** only — need **≥60 non-partial** sessions |
 | W1 fpv1 nested | **Killed** — RankIC Δ **−0.0007**; no W1 materiality |
 | W2 liq_v1 | **Killed** — 93% sample collapse; 0 selective emits |
+| W2 liq_v2 | **Killed** — 94% sample collapse (35k rows); 0 selective emits |
+| W2 liq_v3 | **In flight** — flat-only filter, no ADV floor |
 | fp+liq combo | **Killed** with liq_v1 |
 | W3 h5 | **Done, no unlock** — RankIC ~0.17; selective 0; cost negative |
+| W3 h3 | **Done, no unlock** — RankIC 0.2285; selective 0; h3 cost +0.27% non-transferable |
 | W4 CSE-only | **Killed** — ~1y history insufficient for nested splits |
 
-**In flight / next:** h3 nested; liq_v2 softer filter; Goal A selective-90% chase on
-any improving matrix; W5 only after new `matrix_id` materiality; W6 dossier **not**
-started — **not truly exhausted** (E7–E8 open).
+**In flight / next:** liq_v3 nested; Goal A selective-90% chase on any improving
+matrix; W5 only after new `matrix_id` materiality; W6 dossier **not** started —
+**not truly exhausted** (E7–E8 open).
 
 Research only — not financial advice.
 

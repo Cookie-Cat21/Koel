@@ -12,9 +12,11 @@ from koel.ml.research_features import ResearchBarMetadata
 from koel.ml.universe_filters import (
     LIQ_FILTER_V1,
     LIQ_FILTER_V2,
+    LIQ_FILTER_V3,
     filter_samples,
     passes_liq_filter_v1,
     passes_liq_filter_v2,
+    passes_liq_filter_v3,
 )
 
 
@@ -131,6 +133,21 @@ def test_passes_liq_filter_v2_accepts_milder_adv20_than_v1() -> None:
 
     assert passes_liq_filter_v2("TEST.N0000", bars)
     assert not passes_liq_filter_v1("TEST.N0000", bars)
+
+
+def test_liq_filter_v3_manifest_thresholds_are_frozen() -> None:
+    assert LIQ_FILTER_V3.name == "liq_v3"
+    assert LIQ_FILTER_V3.version == "v3"
+    assert LIQ_FILTER_V3.min_adv20 == pytest.approx(0.0)
+    assert LIQ_FILTER_V3.max_flat_fraction_60 == pytest.approx(0.40)
+    assert LIQ_FILTER_V3.min_cse_sessions_60 == 5
+
+
+def test_passes_liq_filter_v3_skips_adv_floor() -> None:
+    bars = _bars(count=60, volumes=[0.0] * 60)
+
+    assert passes_liq_filter_v3("TEST.N0000", bars)
+    assert not passes_liq_filter_v2("TEST.N0000", bars)
 
 
 def test_passes_liq_filter_v1_uses_optional_metadata_flat_fraction() -> None:

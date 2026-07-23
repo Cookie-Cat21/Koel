@@ -1,6 +1,6 @@
 # ML champion table
 
-Updated: 2026-07-23 (W2 liq_v1 + fp+liq killed; CSE-only killed; champions unchanged)
+Updated: 2026-07-23 (W2 liq_v2 killed; h3 exhausted; liq_v3 started)
 
 Source artifacts:
 
@@ -23,7 +23,11 @@ Source artifacts:
 - `docs/experiments/cpu_improve_6k_harvest.json`
 - `docs/experiments/SELECTIVE_GATES_20260723.md`
 - `docs/experiments/ENSEMBLE_STACK_20260723.md`
-- `docs/factory/ML_EXHAUST_TO_CONTRACT_MASTER_PLAN.md`
+- `docs/experiments/UNIVERSE_FILTER_LIQ_V2_NESTED_20260723.md`
+- `docs/experiments/cpu_exhaust_rel_h1_liqv2_summary.json`
+- `docs/experiments/CPU_EXHAUST_REL_H3_20260723.md`
+- `docs/experiments/cpu_exhaust_rel_h3_summary.json`
+- `docs/experiments/UNIVERSE_FILTER_LIQ_V3_SPEC.md`
 - `docs/runbooks/ML_LIVE_SHADOW.md`
 
 ## Current champions (score quality)
@@ -112,8 +116,8 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
 | 3 | Selective gate mining | **exhausted** | 90% contract unreachable offline |
 | 4 | Ensembles/stacking | **exhausted** | best RankIC 0.2858 (−0.0003 vs champion); no net gain |
 | 5 | New features | **fpv1 nested done — no materiality** | RankIC Δ −0.0007 best; W1 thresholds **not fired** |
-| 5b | Universe filter W2 | **liq_v1 + fp+liq killed — universe collapse** | samples −93.5%; xgb/hgb fail; DE RankIC 0.18; 0 selective emits; W2 exit **not met** |
-| 6 | Horizons/targets | absolute/h1 done; **h5 nested started (W3)** | no `cpu_exhaust_rel_h5_summary.json` yet |
+| 5b | Universe filter W2 | **liq_v1 + fp+liq + liq_v2 killed — universe collapse** | v1 −93.5%; v2 −94.4% (35k rows); 0 selective emits; W2 exit **not met**; **liq_v3 in flight** |
+| 6 | Horizons/targets | absolute/h1 done; **h3 + h5 exhausted** | h3 RankIC 0.2285; h5 0.1735; no Goal A/B unlock |
 | — | Improve-loop 6×1000 | **exhausted** | best RankIC 0.2746; no pos112 |
 
 ## Research cycle — W1 feature pack v1 (2026-07-23)
@@ -162,20 +166,31 @@ Relative/h1 baseline trio on Postgres CSE-only export (`dataset=cse`,
 `not enough history for requested nested split`. No RankIC, selective, or
 cost numbers. See `CSE_ONLY_NESTED_20260723.md`. Champions unchanged.
 
+## W2 universe filter liq_v2 (2026-07-23) — killed
+
+Nested relative/h1 with `--universe-filter liq_v2` (`UNIVERSE_FILTER_LIQ_V2_NESTED_20260723.md`).
+
+| Model | Frozen RankIC | liq_v2 RankIC | Selective (best) | Best net@112 |
+|---|---:|---:|---|---:|
+| `xgb_two_stage` | 0.2861 | 0.2136 | 0 emits | −0.42% |
+| `double_ensemble_native` | 0.2566 | 0.1783 | 0 emits | −0.34% |
+
+Filter removes **94.4%** of samples (636 455 → 35 328); below 100 k floor. W2 kill
+criteria fired. Next: `liq_v3` flat-only manifest (`UNIVERSE_FILTER_LIQ_V3_SPEC.md`).
+Champions unchanged.
+
+## Horizon h3 (2026-07-23) — exhausted
+
+Relative/h3 nested on split snapshot: RankIC champ `xgb_two_stage` **0.2285**
+(−0.0576 vs h1 0.2861). Selective: hgb near-miss 91 emits / LCB 0.597 — **contract
+unmet**. Best cost: DE `weekly_5_sessions_top_bottom_05` **+0.27%** net@112 on h3
+horizon only. See `CPU_EXHAUST_REL_H3_20260723.md`.
+
 ## Next concrete actions
 
 1. Loop 0: accumulate prospective receipts for wired
    `shadow_policy_rank_de_persist_v1` (DE persist, split-adjusted +0.49%
    offline); monitor `live_shadow_report` — contract unchanged.
-2. Loop 0 shadow receipts for wired `shadow_policy_rank_de_persist_v1`; W2 liq_v1
-   preset retired pending relaxed manifest; h5 exhausted (no unlock).
+2. W2 **liq_v3** nested (flat-only filter, no ADV floor) — in flight.
 3. Keep RankIC champion (`xgb_two_stage` 0.2861) as research score only until
    contract + post-cost gates pass without persistence-only construction.
-
-
-## Horizon h5 (2026-07-23)
-
-Relative/h5 nested on split snapshot: RankIC champ `xgb_two_stage` **0.1735**
-(well below h1 0.2861). Selective gates: **0 emits**. Best cost variant still
-**negative** net@112 (−0.56% DE persist_exit_15). Horizon lever does not unlock
-Goal A/B on this matrix. See `CPU_EXHAUST_REL_H5_20260723.md`.
