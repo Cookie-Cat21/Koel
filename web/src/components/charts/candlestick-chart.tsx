@@ -194,6 +194,9 @@ export function CandlestickChart({
   const h = fitWidth && !pack ? frame.h : chartHeight ?? (fitWidth ? 280 : 520);
   const MIN_SLOT = 5;
   const PACK_SLOT = 11;
+  // When fitWidth divides a wide card by a short series (e.g. 8 intraday
+  // ticks), candles become fat blocks. Cap pitch and center instead.
+  const MAX_COMFORT_SLOT = 14;
   const frameW = Math.max(padL + padR + 40, frame.w);
   const innerW = frameW - padL - padR;
   const slotCap =
@@ -202,22 +205,26 @@ export function CandlestickChart({
     maxSlot >= MIN_SLOT
       ? maxSlot
       : null;
+  const filledSlot = Math.max(MIN_SLOT, innerW / Math.max(1, totalSlots));
+  const autoComfort =
+    fitWidth && !pack && slotCap == null && filledSlot > MAX_COMFORT_SLOT;
   // Comfort pitch: fixed candle width (no JS measure). SVG keeps its aspect
   // ratio inside the card so wide viewports cannot fatten/stretch bodies.
-  const comfortPitch = slotCap != null && fitWidth && !pack;
+  const comfortPitch =
+    autoComfort || (slotCap != null && fitWidth && !pack);
   const slot = pack
     ? PACK_SLOT
     : comfortPitch
-      ? slotCap
+      ? (slotCap ?? MAX_COMFORT_SLOT)
       : fitWidth
-        ? Math.max(MIN_SLOT, innerW / totalSlots)
+        ? filledSlot
         : 18;
   const usedPlot = totalSlots * slot;
   const contentW = padL + padR + usedPlot;
   const drawPadL = padL;
   const drawPadR = padR;
   // Wider slots → thicker bodies so ranges fill without looking like sparse ticks.
-  const bodyRatio = pack || comfortPitch ? 0.82 : fitWidth ? 0.84 : 0.72;
+  const bodyRatio = pack || comfortPitch ? 0.72 : fitWidth ? 0.84 : 0.72;
   const bodyW = pack || fitWidth
     ? Math.max(3.5, Math.min(slot * bodyRatio, slot - 0.75))
     : 13;

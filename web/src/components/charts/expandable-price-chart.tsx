@@ -690,6 +690,13 @@ export function ExpandablePriceChart({
             bars={compactBars}
             maxCandles={compact ? 64 : HERO_DISPLAY_CANDLES}
             fitWidth
+            // Sparse intraday (few ticks) must not stretch card-wide — pack
+            // at a fixed pitch and center (auto-comfort also caps fitWidth).
+            pack={
+              !compactDaily &&
+              compactBars.length > 0 &&
+              compactBars.length < 24
+            }
             chartHeight={compact ? 176 : 220}
             minimal={compact}
             variant={seriesKind === "index" ? "close" : "auto"}
