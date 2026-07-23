@@ -11,6 +11,7 @@ import pytest
 
 from koel.ml.snapshot import (
     BAR_COLUMNS,
+    CORPORATE_ACTION_COLUMNS,
     FUNDAMENTAL_COLUMNS,
     SNAPSHOT_SCHEMA_VERSION,
     composite_snapshot_sha,
@@ -71,6 +72,10 @@ def _write_snapshot(path: Path) -> None:
         for row in fundamental_rows:
             handle.write(json.dumps(row, separators=(",", ":")) + "\n")
     fundamentals_digest = hashlib.sha256(fundamentals_path.read_bytes()).hexdigest()
+    corporate_actions_path = path / "corporate_actions.jsonl.gz"
+    with gzip.open(corporate_actions_path, mode="wt", encoding="utf-8") as handle:
+        pass
+    corporate_actions_digest = hashlib.sha256(corporate_actions_path.read_bytes()).hexdigest()
     manifest = {
         "schema_version": SNAPSHOT_SCHEMA_VERSION,
         "dataset": "hybrid",
@@ -82,6 +87,11 @@ def _write_snapshot(path: Path) -> None:
         "fundamentals_sha256": fundamentals_digest,
         "fundamentals_rows": 1,
         "fundamentals_columns": list(FUNDAMENTAL_COLUMNS),
+        "corporate_actions_file": corporate_actions_path.name,
+        "corporate_actions_sha256": corporate_actions_digest,
+        "corporate_actions_rows": 0,
+        "corporate_actions_columns": list(CORPORATE_ACTION_COLUMNS),
+        "price_adjustment": "none",
         "columns": list(BAR_COLUMNS),
         "rows": 2,
         "symbols": 1,
@@ -109,6 +119,8 @@ def test_snapshot_load_verifies_and_reconstructs_bars(tmp_path) -> None:
     assert [bar.source_period for bar in loaded.series["A.N0000"]] == [0, 5]
     assert len(loaded.fundamentals["A.N0000"]) == 1
     assert loaded.fundamentals["A.N0000"][0].eps_delta_pct == 25.0
+    assert loaded.manifest.price_adjustment == "none"
+    assert loaded.corporate_actions == {}
     digest = composite_snapshot_sha(loaded.manifest)
     assert len(digest) == 64
     assert digest == composite_snapshot_sha(loaded.manifest)
@@ -121,3 +133,32 @@ def test_snapshot_rejects_tampering(tmp_path) -> None:
         handle.write(b"tampered")
     with pytest.raises(ValueError, match="SHA-256"):
         load_bar_snapshot(snapshot)
+
+
+def test_snapshot_loads_split_actions_and_sha(tmp_path) -> None:
+    snapshot = tmp_path / "snapshot"
+    _write_snapshot(snapshot)
+    action_row = [
+        "A.N0000",
+        "2025-01-03",
+        "split",
+        1,
+        2,
+        "price_ratio",
+        "hash1",
+    ]
+    actions_path = snapshot / "corporate_actions.jsonl.gz"
+    with gzip.open(actions_path, mode="wt", encoding="utf-8") as handle:
+        handle.write(json.dumps(action_row, separators=(",", ":")) + "\n")
+    manifest_path = snapshot / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["price_adjustment"] = "split"
+    manifest["corporate_actions_rows"] = 1
+    manifest["corporate_actions_sha256"] = hashlib.sha256(actions_path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    loaded = load_bar_snapshot(snapshot)
+
+    assert loaded.manifest.price_adjustment == "split"
+    assert len(loaded.corporate_actions["A.N0000"]) == 1
+    assert loaded.corporate_actions["A.N0000"][0].ratio_to == 2

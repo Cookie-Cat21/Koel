@@ -10,15 +10,18 @@ import json
 import math
 import os
 from collections import defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from koel.corporate_actions import CorporateAction
 from koel.domain import DailyBar
+from koel.ml.adjustments import validate_price_adjustment
 from koel.storage import Storage
 
-SNAPSHOT_SCHEMA_VERSION = 2
+SNAPSHOT_SCHEMA_VERSION = 3
+SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = (2, SNAPSHOT_SCHEMA_VERSION)
 BAR_COLUMNS = (
     "symbol",
     "trade_date",
@@ -43,6 +46,15 @@ FUNDAMENTAL_COLUMNS = (
     "revenue_delta_pct",
     "profit_delta_pct",
     "match_quality",
+)
+CORPORATE_ACTION_COLUMNS = (
+    "symbol",
+    "effective_date",
+    "kind",
+    "ratio_from",
+    "ratio_to",
+    "source",
+    "raw_hash",
 )
 
 
@@ -80,6 +92,11 @@ class SnapshotManifest:
     last_date: str | None
     source_rows: dict[str, int]
     quality: dict[str, int | float | None]
+    price_adjustment: str = "none"
+    corporate_actions_file: str = "corporate_actions.jsonl.gz"
+    corporate_actions_sha256: str = ""
+    corporate_actions_rows: int = 0
+    corporate_actions_columns: tuple[str, ...] = CORPORATE_ACTION_COLUMNS
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +104,7 @@ class LoadedSnapshot:
     manifest: SnapshotManifest
     series: dict[str, list[DailyBar]]
     fundamentals: dict[str, list[FundamentalEvent]]
+    corporate_actions: dict[str, list[CorporateAction]] = field(default_factory=dict)
 
 
 def _sha256(path: Path) -> str:
@@ -105,8 +123,11 @@ def composite_snapshot_sha(manifest: SnapshotManifest) -> str:
         "postgres_snapshot": manifest.postgres_snapshot,
         "bars_sha256": manifest.bars_sha256,
         "fundamentals_sha256": manifest.fundamentals_sha256,
+        "corporate_actions_sha256": manifest.corporate_actions_sha256,
         "columns": manifest.columns,
         "fundamentals_columns": manifest.fundamentals_columns,
+        "corporate_actions_columns": manifest.corporate_actions_columns,
+        "price_adjustment": manifest.price_adjustment,
         "last_date": manifest.last_date,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -125,14 +146,17 @@ async def export_bar_snapshot(
     *,
     dataset: str,
     output_dir: Path,
+    price_adjustment: str = "none",
 ) -> SnapshotManifest:
     """Export one repeatable-read DB view to deterministic gzip JSONL."""
     if dataset not in {"cse", "hybrid"}:
         raise ValueError("dataset must be 'cse' or 'hybrid'")
+    price_adjustment = validate_price_adjustment(price_adjustment)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     bars_path = output_dir / "bars.jsonl.gz"
     fundamentals_path = output_dir / "fundamentals.jsonl.gz"
+    corporate_actions_path = output_dir / "corporate_actions.jsonl.gz"
     manifest_path = output_dir / "manifest.json"
     if dataset == "hybrid":
         query = """
@@ -171,9 +195,16 @@ async def export_bar_snapshot(
           AND d.published_at IS NOT NULL
         ORDER BY fm.symbol, d.published_at, fm.id
     """
+    corporate_actions_query = """
+        SELECT symbol, effective_date, kind, ratio_from, ratio_to, source, raw_hash
+        FROM corporate_actions
+        WHERE kind IN ('split', 'consolidation')
+        ORDER BY symbol, effective_date, kind, ratio_from, ratio_to, source
+    """
 
     rows = 0
     fundamentals_rows = 0
+    corporate_actions_rows = 0
     symbols: set[str] = set()
     first_date: date | None = None
     last_date: date | None = None
@@ -191,9 +222,7 @@ async def export_bar_snapshot(
         gzip.GzipFile(fileobj=raw_handle, mode="wb", mtime=0) as compressed,
     ):
         async with storage._pool.connection() as conn, conn.transaction():
-            await conn.execute(
-                "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"
-            )
+            await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
             snapshot_row = await (
                 await conn.execute("SELECT txid_current_snapshot() AS snapshot")
             ).fetchone()
@@ -233,23 +262,19 @@ async def export_bar_snapshot(
                         int(row["source_period"]),
                         row["bar_ts"].isoformat(),
                     )
-                    encoded = json.dumps(
-                        payload, separators=(",", ":"), allow_nan=False
-                    ).encode("utf-8")
+                    encoded = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode(
+                        "utf-8"
+                    )
                     compressed.write(encoded + b"\n")
 
                     rows += 1
                     symbols.add(symbol)
                     source_rows[source] += 1
                     first_date = (
-                        trade_date
-                        if first_date is None or trade_date < first_date
-                        else first_date
+                        trade_date if first_date is None or trade_date < first_date else first_date
                     )
                     last_date = (
-                        trade_date
-                        if last_date is None or trade_date > last_date
-                        else last_date
+                        trade_date if last_date is None or trade_date > last_date else last_date
                     )
 
             with (
@@ -307,6 +332,39 @@ async def export_bar_snapshot(
                         )
                         fundamentals_rows += 1
 
+            with (
+                corporate_actions_path.open("wb") as action_handle,
+                gzip.GzipFile(
+                    fileobj=action_handle,
+                    mode="wb",
+                    mtime=0,
+                ) as action_gzip,
+            ):
+                if price_adjustment == "split":
+                    async with conn.cursor(name="ml_corporate_actions_export") as cursor:
+                        await cursor.execute(corporate_actions_query)
+                        async for raw in cursor:
+                            row = dict(raw)
+                            effective_date = row["effective_date"]
+                            payload = (
+                                str(row["symbol"]).strip().upper(),
+                                effective_date.isoformat(),
+                                str(row["kind"]),
+                                int(row["ratio_from"]),
+                                int(row["ratio_to"]),
+                                str(row.get("source") or ""),
+                                (str(row["raw_hash"]) if row.get("raw_hash") is not None else None),
+                            )
+                            action_gzip.write(
+                                json.dumps(
+                                    payload,
+                                    separators=(",", ":"),
+                                    allow_nan=False,
+                                ).encode("utf-8")
+                                + b"\n"
+                            )
+                            corporate_actions_rows += 1
+
     manifest = SnapshotManifest(
         schema_version=SNAPSHOT_SCHEMA_VERSION,
         dataset=dataset,
@@ -318,6 +376,11 @@ async def export_bar_snapshot(
         fundamentals_sha256=_sha256(fundamentals_path),
         fundamentals_rows=fundamentals_rows,
         fundamentals_columns=FUNDAMENTAL_COLUMNS,
+        corporate_actions_file=corporate_actions_path.name,
+        corporate_actions_sha256=_sha256(corporate_actions_path),
+        corporate_actions_rows=corporate_actions_rows,
+        corporate_actions_columns=CORPORATE_ACTION_COLUMNS,
+        price_adjustment=price_adjustment,
         columns=BAR_COLUMNS,
         rows=rows,
         symbols=len(symbols),
@@ -359,21 +422,29 @@ def load_bar_snapshot(snapshot_dir: Path) -> LoadedSnapshot:
         first_date=raw_manifest.get("first_date"),
         last_date=raw_manifest.get("last_date"),
         source_rows={
-            str(key): int(value)
-            for key, value in dict(raw_manifest["source_rows"]).items()
+            str(key): int(value) for key, value in dict(raw_manifest["source_rows"]).items()
         },
-        quality={
-            str(key): value for key, value in dict(raw_manifest["quality"]).items()
-        },
+        quality={str(key): value for key, value in dict(raw_manifest["quality"]).items()},
+        price_adjustment=validate_price_adjustment(
+            str(raw_manifest.get("price_adjustment") or "none")
+        ),
+        corporate_actions_file=str(
+            raw_manifest.get("corporate_actions_file") or "corporate_actions.jsonl.gz"
+        ),
+        corporate_actions_sha256=str(raw_manifest.get("corporate_actions_sha256") or ""),
+        corporate_actions_rows=int(raw_manifest.get("corporate_actions_rows") or 0),
+        corporate_actions_columns=tuple(
+            raw_manifest.get("corporate_actions_columns") or CORPORATE_ACTION_COLUMNS
+        ),
     )
-    if manifest.schema_version != SNAPSHOT_SCHEMA_VERSION:
-        raise ValueError(
-            f"unsupported snapshot schema version {manifest.schema_version}"
-        )
+    if manifest.schema_version not in SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS:
+        raise ValueError(f"unsupported snapshot schema version {manifest.schema_version}")
     if manifest.columns != BAR_COLUMNS:
         raise ValueError("snapshot columns do not match the current schema")
     if manifest.fundamentals_columns != FUNDAMENTAL_COLUMNS:
         raise ValueError("fundamentals columns do not match the current schema")
+    if manifest.corporate_actions_columns != CORPORATE_ACTION_COLUMNS:
+        raise ValueError("corporate action columns do not match the current schema")
 
     bars_path = snapshot_dir / manifest.bars_file
     actual_sha = _sha256(bars_path)
@@ -382,6 +453,12 @@ def load_bar_snapshot(snapshot_dir: Path) -> LoadedSnapshot:
     fundamentals_path = snapshot_dir / manifest.fundamentals_file
     if _sha256(fundamentals_path) != manifest.fundamentals_sha256:
         raise ValueError("fundamentals snapshot SHA-256 mismatch")
+    corporate_actions_path = snapshot_dir / manifest.corporate_actions_file
+    if (
+        manifest.corporate_actions_sha256
+        and _sha256(corporate_actions_path) != manifest.corporate_actions_sha256
+    ):
+        raise ValueError("corporate actions snapshot SHA-256 mismatch")
 
     series: dict[str, list[DailyBar]] = defaultdict(list)
     rows = 0
@@ -407,9 +484,7 @@ def load_bar_snapshot(snapshot_dir: Path) -> LoadedSnapshot:
             )
             rows += 1
     if rows != manifest.rows:
-        raise ValueError(
-            f"snapshot row count mismatch: expected {manifest.rows}, got {rows}"
-        )
+        raise ValueError(f"snapshot row count mismatch: expected {manifest.rows}, got {rows}")
     if len(series) != manifest.symbols:
         raise ValueError(
             f"snapshot symbol count mismatch: expected {manifest.symbols}, got {len(series)}"
@@ -420,12 +495,8 @@ def load_bar_snapshot(snapshot_dir: Path) -> LoadedSnapshot:
     with gzip.open(fundamentals_path, mode="rt", encoding="utf-8") as handle:
         for line in handle:
             values = json.loads(line)
-            if not isinstance(values, list) or len(values) != len(
-                FUNDAMENTAL_COLUMNS
-            ):
-                raise ValueError(
-                    f"invalid fundamentals row at line {fundamental_rows + 1}"
-                )
+            if not isinstance(values, list) or len(values) != len(FUNDAMENTAL_COLUMNS):
+                raise ValueError(f"invalid fundamentals row at line {fundamental_rows + 1}")
             row = dict(zip(FUNDAMENTAL_COLUMNS, values, strict=True))
             symbol = str(row["symbol"])
             fundamentals[symbol].append(
@@ -444,9 +515,7 @@ def load_bar_snapshot(snapshot_dir: Path) -> LoadedSnapshot:
                     eps_delta_pct=_optional_float(row["eps_delta_pct"]),
                     revenue_delta_pct=_optional_float(row["revenue_delta_pct"]),
                     profit_delta_pct=_optional_float(row["profit_delta_pct"]),
-                    match_quality=(
-                        str(row["match_quality"]) if row["match_quality"] else None
-                    ),
+                    match_quality=(str(row["match_quality"]) if row["match_quality"] else None),
                 )
             )
             fundamental_rows += 1
@@ -455,10 +524,42 @@ def load_bar_snapshot(snapshot_dir: Path) -> LoadedSnapshot:
             "fundamentals row count mismatch: "
             f"expected {manifest.fundamentals_rows}, got {fundamental_rows}"
         )
+    corporate_actions: dict[str, list[CorporateAction]] = defaultdict(list)
+    corporate_action_rows = 0
+    if corporate_actions_path.exists():
+        with gzip.open(corporate_actions_path, mode="rt", encoding="utf-8") as handle:
+            for line in handle:
+                values = json.loads(line)
+                if not isinstance(values, list) or len(values) != len(CORPORATE_ACTION_COLUMNS):
+                    raise ValueError(
+                        f"invalid corporate action row at line {corporate_action_rows + 1}"
+                    )
+                row = dict(zip(CORPORATE_ACTION_COLUMNS, values, strict=True))
+                symbol = str(row["symbol"]).strip().upper()
+                corporate_actions[symbol].append(
+                    CorporateAction(
+                        symbol=symbol,
+                        effective_date=date.fromisoformat(str(row["effective_date"])),
+                        kind=str(row["kind"]),
+                        ratio_from=int(row["ratio_from"]),
+                        ratio_to=int(row["ratio_to"]),
+                        source=str(row.get("source") or "snapshot"),
+                        raw_hash=(
+                            str(row["raw_hash"]) if row.get("raw_hash") is not None else None
+                        ),
+                    )
+                )
+                corporate_action_rows += 1
+    if corporate_action_rows != manifest.corporate_actions_rows:
+        raise ValueError(
+            "corporate actions row count mismatch: "
+            f"expected {manifest.corporate_actions_rows}, got {corporate_action_rows}"
+        )
     return LoadedSnapshot(
         manifest=manifest,
         series=dict(series),
         fundamentals=dict(fundamentals),
+        corporate_actions=dict(corporate_actions),
     )
 
 
@@ -473,6 +574,7 @@ async def _run_export(args: argparse.Namespace) -> None:
             storage,
             dataset=args.dataset,
             output_dir=args.output,
+            price_adjustment=args.price_adjustment,
         )
     finally:
         await storage.close()
@@ -485,6 +587,12 @@ def main(argv: list[str] | None = None) -> None:
     export = subparsers.add_parser("export")
     export.add_argument("--dataset", choices=("cse", "hybrid"), default="hybrid")
     export.add_argument("--output", type=Path, required=True)
+    export.add_argument(
+        "--price-adjustment",
+        choices=("none", "split"),
+        default="none",
+        help="sample-building price adjustment contract to record in the snapshot",
+    )
     inspect = subparsers.add_parser("inspect")
     inspect.add_argument("--snapshot", type=Path, required=True)
     args = parser.parse_args(argv)

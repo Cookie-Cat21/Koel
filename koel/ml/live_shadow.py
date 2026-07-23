@@ -149,6 +149,8 @@ def _training_samples(loaded: LoadedSnapshot) -> list[Sample]:
         min_history=252,
         max_abs_return=0.35,
         include_flat=True,
+        price_adjustment=loaded.manifest.price_adjustment,
+        corporate_actions=loaded.corporate_actions,
     )
     samples = enrich_research_quality(samples, metadata)
     samples = enrich_fundamentals(samples, loaded.fundamentals)

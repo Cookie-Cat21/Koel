@@ -81,6 +81,8 @@ def _prepare_samples(
         min_history=min_history,
         max_abs_return=max_abs_return,
         include_flat=target == "absolute",
+        price_adjustment=loaded.manifest.price_adjustment,
+        corporate_actions=loaded.corporate_actions,
     )
     research = enrich_research_quality(base, metadata)
     research = enrich_fundamentals(research, loaded.fundamentals)

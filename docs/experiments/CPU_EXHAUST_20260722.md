@@ -1,7 +1,9 @@
 # CPU exhaust ladder — 2026-07-22/23
 
-Status: **relative/h1 complete (family + nested + 10 000 LGB);
-absolute/h1 nested complete; 6×1000 improvement loops running**.
+Status: **relative/h1 + absolute/h1 nested complete; 10 000 LGB done;
+cost-engineering flipped net@112bps positive offline; selective gates
+and ensembles exhausted; 6×1000 improve loops still running; split
+adjustment path landed (needs re-score).**
 
 ## Goal
 

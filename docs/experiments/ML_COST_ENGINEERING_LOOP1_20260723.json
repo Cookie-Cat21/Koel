@@ -1,0 +1,68 @@
+{
+  "cost_bps": 112.0,
+  "input_dir": "/tmp/cpu-exhaust-rel-h1/nested",
+  "output_dir": "/tmp/cpu-cost-eng",
+  "partition": "test",
+  "overall_best": {
+    "model": "double_ensemble_native",
+    "variant": "persistence_exit_10_top_bottom_05",
+    "rank_ic": 0.2566437510536177,
+    "mean_gross_return": 0.03739519554216048,
+    "mean_net_return": 0.0036174177643827072,
+    "mean_one_way_turnover": 1.507936507936508,
+    "sessions": 117
+  },
+  "models": {
+    "xgb_two_stage": {
+      "baseline_daily_top_bottom_10": {
+        "rank_ic": 0.28612534061984274,
+        "mean_gross_return": 0.029082810208520223,
+        "mean_net_return": -0.007805351088871844,
+        "mean_one_way_turnover": 1.6467929150621456,
+        "sessions": 117
+      },
+      "best": {
+        "variant": "persistence_exit_10_top_bottom_05",
+        "rank_ic": 0.28612534061984274,
+        "mean_gross_return": 0.035241117454274246,
+        "mean_net_return": 0.00006163027478706814,
+        "mean_one_way_turnover": 1.5705128205128205,
+        "sessions": 117
+      }
+    },
+    "double_ensemble_native": {
+      "baseline_daily_top_bottom_10": {
+        "rank_ic": 0.2566437510536177,
+        "mean_gross_return": 0.03201647064457763,
+        "mean_net_return": -0.004372545353669138,
+        "mean_one_way_turnover": 1.6245096427788737,
+        "sessions": 117
+      },
+      "best": {
+        "variant": "persistence_exit_10_top_bottom_05",
+        "rank_ic": 0.2566437510536177,
+        "mean_gross_return": 0.03739519554216048,
+        "mean_net_return": 0.0036174177643827072,
+        "mean_one_way_turnover": 1.507936507936508,
+        "sessions": 117
+      }
+    },
+    "hgb_two_stage": {
+      "baseline_daily_top_bottom_10": {
+        "rank_ic": 0.28162883327742366,
+        "mean_gross_return": 0.028507046835083892,
+        "mean_net_return": -0.008819545319200569,
+        "mean_one_way_turnover": 1.6663657211734135,
+        "sessions": 117
+      },
+      "best": {
+        "variant": "persistence_exit_10_top_bottom_05",
+        "rank_ic": 0.28162883327742366,
+        "mean_gross_return": 0.035567050881885824,
+        "mean_net_return": 0.0002690451838801335,
+        "mean_one_way_turnover": 1.5758038258038258,
+        "sessions": 117
+      }
+    }
+  }
+}

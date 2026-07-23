@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, date, datetime, timedelta
 
+import pytest
+
+from koel.corporate_actions import CorporateAction
 from koel.domain import DailyBar
-from koel.ml.dataset import build_samples
+from koel.ml.dataset import build_samples, feature_names
 from koel.ml.features import labels_at, path_features
+
+
+def _assert_feature_tuple_equal(left: tuple[float, ...], right: tuple[float, ...]) -> None:
+    assert len(left) == len(right)
+    for left_value, right_value in zip(left, right, strict=True):
+        if math.isnan(left_value) or math.isnan(right_value):
+            assert math.isnan(left_value) and math.isnan(right_value)
+        else:
+            assert left_value == pytest.approx(right_value)
 
 
 def _bars(prices: list[float], *, start: date | None = None) -> list[DailyBar]:
@@ -118,6 +131,113 @@ def test_build_samples_can_retain_flat_outcomes() -> None:
     assert retained
     assert all(sample.y_dir == 0 for sample in retained)
     assert all(sample.target_date > sample.as_of for sample in retained)
+
+
+def test_split_after_as_of_does_not_adjust_label() -> None:
+    bars = _bars([10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 5.0, 5.5])
+    action = CorporateAction(
+        symbol="TEST.N0000",
+        effective_date=bars[6].trade_date,
+        kind="split",
+        ratio_from=1,
+        ratio_to=2,
+    )
+    samples = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=6,
+        include_flat=True,
+        price_adjustment="split",
+        corporate_actions={"TEST.N0000": [action]},
+    )
+    before_split = next(sample for sample in samples if sample.as_of == bars[5].trade_date)
+    assert before_split.y_ret == pytest.approx(-0.5)
+
+
+def test_split_before_as_of_adjusts_feature_window() -> None:
+    bars = _bars([10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 5.0, 5.5])
+    action = CorporateAction(
+        symbol="TEST.N0000",
+        effective_date=bars[6].trade_date,
+        kind="split",
+        ratio_from=1,
+        ratio_to=2,
+    )
+    samples = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=6,
+        include_flat=True,
+        price_adjustment="split",
+        corporate_actions={"TEST.N0000": [action]},
+    )
+    ret_5d = feature_names().index("ret_5d")
+    after_split = next(sample for sample in samples if sample.as_of == bars[6].trade_date)
+    assert after_split.x[ret_5d] == pytest.approx(0.0)
+
+    bounded = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=6,
+        max_abs_return=0.35,
+        include_flat=True,
+        price_adjustment="split",
+        corporate_actions={"TEST.N0000": [action]},
+    )
+    bounded_dates = {sample.as_of for sample in bounded}
+    assert bars[5].trade_date not in bounded_dates
+    assert bars[6].trade_date in bounded_dates
+
+
+def test_no_lookahead_across_as_of_for_future_split_features() -> None:
+    bars = _bars([10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 7.5, 8.0])
+    action = CorporateAction(
+        symbol="TEST.N0000",
+        effective_date=bars[6].trade_date,
+        kind="split",
+        ratio_from=1,
+        ratio_to=2,
+    )
+    adjusted = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=6,
+        include_flat=True,
+        price_adjustment="split",
+        corporate_actions={"TEST.N0000": [action]},
+    )
+    raw = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=6,
+        include_flat=True,
+    )
+    as_of = bars[5].trade_date
+    adjusted_before_split = next(sample for sample in adjusted if sample.as_of == as_of)
+    raw_before_split = next(sample for sample in raw if sample.as_of == as_of)
+    _assert_feature_tuple_equal(adjusted_before_split.x, raw_before_split.x)
+
+
+def test_unadjusted_mode_keeps_raw_split_cliff() -> None:
+    bars = _bars([10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 5.0, 5.5])
+    action = CorporateAction(
+        symbol="TEST.N0000",
+        effective_date=bars[6].trade_date,
+        kind="split",
+        ratio_from=1,
+        ratio_to=2,
+    )
+    samples = build_samples(
+        {"TEST.N0000": bars},
+        horizon=1,
+        min_history=6,
+        include_flat=True,
+        price_adjustment="none",
+        corporate_actions={"TEST.N0000": [action]},
+    )
+    ret_5d = feature_names().index("ret_5d")
+    after_split = next(sample for sample in samples if sample.as_of == bars[6].trade_date)
+    assert after_split.x[ret_5d] == pytest.approx(-0.5)
 
 
 def test_sklearn_available_helper() -> None:
