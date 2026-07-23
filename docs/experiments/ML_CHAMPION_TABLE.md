@@ -30,6 +30,8 @@ Source artifacts:
 - `docs/experiments/UNIVERSE_FILTER_LIQ_V3_SPEC.md`
 - `docs/experiments/UNIVERSE_FILTER_LIQ_V3_NESTED_20260723.md`
 - `docs/experiments/cpu_exhaust_rel_h1_liqv3_summary.json`
+- `docs/experiments/SELECTIVE_GATES_H3_HGB_WIDE_20260723.md`
+- `docs/experiments/selective_gates_h3_hgb_wide_20260723.json`
 - `docs/runbooks/ML_LIVE_SHADOW.md`
 
 ## Current champions (score quality)
@@ -209,6 +211,10 @@ Relative/h3 nested on split snapshot: RankIC champ `xgb_two_stage` **0.2285**
 (−0.0576 vs h1 0.2861). Selective: hgb near-miss 91 emits / LCB 0.597 — **contract
 unmet**. Best cost: DE `weekly_5_sessions_top_bottom_05` **+0.27%** net@112 on h3
 horizon only. See `CPU_EXHAUST_REL_H3_20260723.md`.
+
+Follow-up h3 hgb wide absolute-score selective grid reproduced the same no-unlock
+near-miss: 91 emits / precision 0.681 / LCB 0.597 / coverage 0.00493, contract
+false. See `SELECTIVE_GATES_H3_HGB_WIDE_20260723.md`.
 
 ## Next concrete actions
 

@@ -242,6 +242,17 @@ W3 h5 nested artifacts before W5 search.
   flat_fraction alone collapses hybrid history
 - Champions unchanged; SuccessContract **still unmet**
 
+### Cycle — Goal A h3 hgb wider selective grid (2026-07-23)
+
+- Evidence: `SELECTIVE_GATES_H3_HGB_WIDE_20260723.md`,
+  `selective_gates_h3_hgb_wide_20260723.json`
+- Command: `python3 -m koel.ml.selective_gates` on
+  `/tmp/cpu-exhaust-rel-h3/nested/*-hgb_two_stage.predictions.jsonl.gz` with
+  wider `--abs-score-grid`
+- Result: 91 emits / 62 hits / precision 0.6813 / LCB 0.5967 / coverage 0.00493
+- Verdict: no Goal A unlock; all SuccessContract checks remain false
+- Champions unchanged; SuccessContract **still unmet**
+
 
 ## Status block — W0–W4 ledger (2026-07-23 evening)
 
