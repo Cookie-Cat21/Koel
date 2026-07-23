@@ -146,6 +146,9 @@ Sample: [`sample_responses/marketStatus.json`](sample_responses/marketStatus.jso
 
 ## Announcements / disclosures (found)
 
+**Product coverage (what koel stores vs the CSE board):** see [`CSE_ANNOUNCEMENTS_VS_KOEL.md`](CSE_ANNOUNCEMENTS_VS_KOEL.md).  
+**External live catalog:** [Cookie-Cat21/cse-api-docs](https://github.com/Cookie-Cat21/cse-api-docs) (announcement endpoints + samples).
+
 ### Primary market-wide feed: `POST /api/approvedAnnouncement`
 
 | | |
