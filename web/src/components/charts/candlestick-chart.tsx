@@ -196,7 +196,7 @@ export function CandlestickChart({
   const PACK_SLOT = 11;
   // When fitWidth divides a wide card by a short series (e.g. 8 intraday
   // ticks), candles become fat blocks. Cap pitch and center instead.
-  const MAX_COMFORT_SLOT = 14;
+  const MAX_COMFORT_SLOT = 12;
   const frameW = Math.max(padL + padR + 40, frame.w);
   const innerW = frameW - padL - padR;
   const slotCap =

@@ -16,10 +16,9 @@ def test_candlestick_auto_comfort_caps_wide_slots() -> None:
     assert "filledSlot" in src
 
 
-def test_hero_packs_sparse_intraday() -> None:
+def test_hero_caps_slot_for_sparse_intraday() -> None:
     src = (
         WEB / "src" / "components" / "charts" / "expandable-price-chart.tsx"
     ).read_text(encoding="utf-8")
-    assert "pack={" in src
-    assert "compactDaily" in src
-    assert "compactBars.length < 24" in src
+    assert "maxSlot={12}" in src
+    assert "fitWidth" in src
