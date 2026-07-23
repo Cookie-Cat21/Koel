@@ -826,6 +826,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
           "CSE announcement JSON the poller stores (preferred: per-company feed for watchlist symbols; also market-wide approved announcements). Titles, URLs/PDFs, and published times are what koel shows on symbol pages and in alert pushes. Title links go to a safe PDF or announcement URL when koel has one.",
       },
       {
+        question: "Does koel show everything on cse.lk/announcements?",
+        answer:
+          "No. CSE’s announcements page is the full market board. koel only stores filings for symbols on someone’s watchlist (plus names with a disclosure or share-split alert). Unwatched issuers never appear.\n\nYou will see stored filings on the company page timeline, Context (disclosure-first strip), Activity, and Telegram when you set /alert SYMBOL disclosure. Watching alone does not ping every filing.\n\nSpecialty CSE boards (circulars, directives, COVID, new-listing notice feeds) are not mirrored into koel’s disclosure list. Buy-in / non-compliance / halt notices use a separate notices path.\n\nMaintainer map: docs/CSE_ANNOUNCEMENTS_VS_KOEL.md · endpoint catalog: github.com/Cookie-Cat21/cse-api-docs.",
+      },
+      {
         question: "What about AI briefs?",
         answer:
           "Some deployments attach a short filing brief. On the company page, a ready brief can appear in Latest brief and under timeline rows; · processing means the drain is still working. Live AI generation is flag- and key-gated and may be off by default.\n\nA missing brief is normal — the source PDF/link remains the authority. See also Filing metrics.",
