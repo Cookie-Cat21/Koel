@@ -1,6 +1,6 @@
 # Optional market appetite daily series backfill (CSE path → appetite).
 # Requires repo secret: DATABASE_URL. Prefer after path-backfill has bars.
-# Daily after CSE close. Optional pause: vars.KOEL_DAILY_OPS=0.
+# Daily after CSE close. Optional pause: vars.KOEL_OPS_PAUSE=1 (legacy KOEL_DAILY_OPS=0 no longer blocks cake jobs).
 #
 # Research meter only — not financial advice.
 
@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 90
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.KOEL_DAILY_OPS != '0'
+      vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

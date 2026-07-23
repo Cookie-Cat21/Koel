@@ -1,6 +1,6 @@
 # Optional CSE daily path backfill — seeds daily_bars for charts / Signal Board.
 # Requires repo secret: DATABASE_URL.
-# Daily polite top-up (limit 40 on schedule). Optional pause: vars.KOEL_DAILY_OPS=0.
+# Daily polite top-up (limit 40 on schedule). Optional pause: vars.KOEL_OPS_PAUSE=1 (legacy KOEL_DAILY_OPS=0 no longer blocks cake jobs).
 #
 # Polite CSE JSON only — not financial advice.
 
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 120
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.KOEL_DAILY_OPS != '0'
+      vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

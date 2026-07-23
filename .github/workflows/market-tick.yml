@@ -1,8 +1,9 @@
-# Daily CSE market tick — prices, disclosures, share-split detection / alerts.
+# CSE market tick — prices, disclosures, book sample, share-split / alerts.
 # Requires repo secrets: DATABASE_URL, TELEGRAM_BOT_TOKEN.
-# Optional pause: vars.KOEL_DAILY_OPS=0.
+# Optional pause: vars.KOEL_OPS_PAUSE=1 (legacy KOEL_DAILY_OPS=0 no longer blocks cake jobs).
 #
-# Uses --force so the tick runs outside market hours (EOD catch-up).
+# Uses --force so the tick runs outside market hours (EOD catch-up) and on the
+# intraday cadence (Vercel has no long-lived poller; this is the board writer).
 # Not financial advice.
 
 name: market-tick
@@ -10,6 +11,9 @@ name: market-tick
 on:
   workflow_dispatch:
   schedule:
+    # Intraday board refresh during CSE hours (09:30–14:30 SLT ≈ 04:00–09:00 UTC),
+    # weekdays — keeps Overview / Book Pressure / quotes fresh without a VM poller.
+    - cron: "*/15 4-9 * * 1-5"
     # Daily ~15:00 Asia/Colombo (09:30 UTC) — after CSE close (14:30 SLT).
     - cron: "30 9 * * *"
 
@@ -23,7 +27,7 @@ jobs:
     timeout-minutes: 45
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      vars.KOEL_DAILY_OPS != '0'
+      vars.KOEL_OPS_PAUSE != '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,4 +57,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CSE_MIN_INTERVAL_SECONDS: "0.15"
+          ORDER_BOOK_SAMPLE_SIZE: "15"
         run: python -m koel tick --force

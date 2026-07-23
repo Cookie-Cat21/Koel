@@ -136,7 +136,7 @@ const SCHEDULED_JOBS: ReadonlyArray<{
     id: "market-tick",
     label: "market-tick",
     match: "market-tick",
-    cadence: "daily ~15:00 SLT",
+    cadence: "every 15m in session + daily ~15:00 SLT",
   },
   {
     id: "score-signals",
@@ -962,6 +962,10 @@ export default async function HealthPage() {
                       cron API). ✓ success/in-progress · ! seen but
                       skipped/failed · — not in the recent-runs window (weekly
                       jobs often look empty mid-week). Cached up to ~60s.
+                      Cake schedules pause only when repo var{" "}
+                      <span className="font-mono">KOEL_OPS_PAUSE=1</span>; ML
+                      self-learn still uses{" "}
+                      <span className="font-mono">KOEL_DAILY_OPS=0</span>.
                     </p>
                     <ul className="mt-3 divide-y divide-border/60 rounded-xl border border-border">
                       {SCHEDULED_JOBS.map((job) => {

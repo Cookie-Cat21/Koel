@@ -24,10 +24,10 @@ jobs:
   tick:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Schedule always runs unless MACRO_TICK=0 or KOEL_DAILY_OPS=0.
+    # Schedule always runs unless MACRO_TICK=0 or KOEL_OPS_PAUSE=1.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (vars.MACRO_TICK != '0' && vars.KOEL_DAILY_OPS != '0')
+      (vars.MACRO_TICK != '0' && vars.KOEL_OPS_PAUSE != '1')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
