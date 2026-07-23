@@ -25,6 +25,14 @@ export type BookPressure = {
   label: "bid_heavy" | "ask_heavy" | "balanced" | "unknown";
 };
 
+/** One market-wide book sample window for the Book detail page spark. */
+export type BookSamplePoint = {
+  as_of: string;
+  sample_n: number;
+  bid_share_pct: number;
+  imbalance_pct: number;
+};
+
 export type TapePulse = {
   foreign: ForeignDay | null;
   foreign_history: ForeignDay[];
@@ -159,4 +167,78 @@ export async function queryTapePulse(
       label: bookLabel(imbalance_pct),
     },
   };
+}
+
+/**
+ * Bucket recent public book totals into ~15m windows (asc) for Book detail.
+ * Fail-soft — empty when no usable samples.
+ */
+export async function queryBookPressureSeries(
+  pool: Pool,
+  opts?: { lookbackMinutes?: number; maxPoints?: number },
+): Promise<BookSamplePoint[]> {
+  const bookLookback = Math.min(
+    Math.max(opts?.lookbackMinutes ?? 24 * 60, 30),
+    7 * 24 * 60,
+  );
+  const maxPoints = Math.min(Math.max(opts?.maxPoints ?? 48, 4), 120);
+
+  const bookRes = await pool.query(
+    `SELECT total_bids, total_asks, ts
+     FROM order_book_snapshots
+     WHERE ts >= now() - ($1::text || ' minutes')::interval
+     ORDER BY ts ASC
+     LIMIT 2000`,
+    [String(bookLookback)],
+  );
+
+  type Bucket = {
+    key: number;
+    as_of: string;
+    sumBids: number;
+    sumAsks: number;
+    sample_n: number;
+  };
+  const buckets = new Map<number, Bucket>();
+  const BUCKET_MS = 15 * 60 * 1000;
+
+  for (const row of bookRes.rows) {
+    const bids = toFiniteNumber(row.total_bids);
+    const asks = toFiniteNumber(row.total_asks);
+    if (bids == null || asks == null || bids <= 0 || asks <= 0) continue;
+    const iso = toIso(row.ts);
+    if (!iso) continue;
+    const ms = Date.parse(iso);
+    if (!Number.isFinite(ms)) continue;
+    const key = Math.floor(ms / BUCKET_MS) * BUCKET_MS;
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.sumBids += bids;
+      existing.sumAsks += asks;
+      existing.sample_n += 1;
+      existing.as_of = iso;
+    } else {
+      buckets.set(key, {
+        key,
+        as_of: iso,
+        sumBids: bids,
+        sumAsks: asks,
+        sample_n: 1,
+      });
+    }
+  }
+
+  const points: BookSamplePoint[] = [];
+  for (const b of [...buckets.values()].sort((a, c) => a.key - c.key)) {
+    const total = b.sumBids + b.sumAsks;
+    if (!(total > 0) || b.sample_n < 1) continue;
+    points.push({
+      as_of: b.as_of,
+      sample_n: b.sample_n,
+      bid_share_pct: (b.sumBids / total) * 100,
+      imbalance_pct: ((b.sumBids - b.sumAsks) / total) * 100,
+    });
+  }
+  if (points.length <= maxPoints) return points;
+  return points.slice(points.length - maxPoints);
 }

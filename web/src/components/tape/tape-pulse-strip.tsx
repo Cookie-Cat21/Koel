@@ -39,6 +39,7 @@ function Chip({
   status,
   children,
   spark,
+  href,
   className,
 }: {
   label: string;
@@ -49,34 +50,41 @@ function Chip({
   status?: ReactNode;
   children?: ReactNode;
   spark?: ReactNode;
+  /** When set, the whole chip navigates to a detail page. */
+  href?: string;
   className?: string;
 }) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-[11.5rem] min-w-0 flex-1 flex-col rounded-lg border border-border/70 bg-background px-3.5 py-3.5 shadow-[0_1px_0_oklch(0.9_0.006_250_/_0.6)]",
-        className,
-      )}
-    >
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {label}
         </p>
-        {delta ? (
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] tabular-nums",
-              deltaTone === "up" &&
-                "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-              deltaTone === "down" &&
-                "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
-              (deltaTone === "flat" || !deltaTone) &&
-                "bg-muted text-muted-foreground",
-            )}
-          >
-            {delta}
-          </span>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {delta ? (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] tabular-nums",
+                deltaTone === "up" &&
+                  "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+                deltaTone === "down" &&
+                  "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
+                (deltaTone === "flat" || !deltaTone) &&
+                  "bg-muted text-muted-foreground",
+              )}
+            >
+              {delta}
+            </span>
+          ) : null}
+          {href ? (
+            <span
+              aria-hidden
+              className="text-[10px] font-medium text-muted-foreground transition-colors group-hover:text-foreground"
+            >
+              →
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -97,8 +105,29 @@ function Chip({
       ) : (
         <div className="mt-auto" />
       )}
-    </div>
+    </>
   );
+
+  const shell = cn(
+    "group flex min-h-[11.5rem] min-w-0 flex-1 flex-col rounded-lg border border-border/70 bg-background px-3.5 py-3.5 shadow-[0_1px_0_oklch(0.9_0.006_250_/_0.6)]",
+    href &&
+      "transition-colors hover:border-foreground/30 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    className,
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={shell}
+        aria-label={`${label} — open detail`}
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={shell}>{body}</div>;
 }
 
 function BookPressureBar({ book }: { book: BookPressure }) {
@@ -220,7 +249,7 @@ export function TapePulseStrip({
             >
               How tape pulse works
             </Link>
-            .
+            . Tap a card for detail.
           </p>
         </div>
         <Link
@@ -233,6 +262,7 @@ export function TapePulseStrip({
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <Chip
+          href="/appetite"
           label="Market Appetite"
           value={
             appetiteLatest ? String(Math.round(appetiteLatest.score)) : "—"
@@ -266,7 +296,6 @@ export function TapePulseStrip({
                 tone="neutral"
                 heightClass="h-14"
                 ariaLabel="Appetite score spark, last 60 sessions"
-                interactive
               />
             ) : null
           }
@@ -281,6 +310,7 @@ export function TapePulseStrip({
         </Chip>
 
         <Chip
+          href="/foreign"
           label="Foreign net"
           value={fmtLkr(foreignNet)}
           detail={
@@ -323,13 +353,13 @@ export function TapePulseStrip({
                 labels={foreignHistory.map((d) => d.trade_date)}
                 heightClass="h-14"
                 ariaLabel="Foreign net spark"
-                interactive
               />
             ) : null
           }
         />
 
         <Chip
+          href="/book"
           label="Book pressure"
           value={bookValue}
           detail={bookDetail(book)}
@@ -356,7 +386,19 @@ export function TapePulseStrip({
             href="/appetite"
             className="font-medium underline-offset-4 hover:underline"
           >
-            Appetite history
+            Appetite
+          </Link>
+          <Link
+            href="/foreign"
+            className="font-medium underline-offset-4 hover:underline"
+          >
+            Foreign
+          </Link>
+          <Link
+            href="/book"
+            className="font-medium underline-offset-4 hover:underline"
+          >
+            Book
           </Link>
           <Link
             href="/alerts"
