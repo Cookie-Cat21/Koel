@@ -189,6 +189,10 @@ class Settings:
     # ML_LTR_SERVE=1 — prefer LTR+vol unified modes (gated_ltr /
     # hpe_with_ltr_fallback) for ops serve after ship.
     ml_ltr_serve: bool = False
+    # ORDER_BOOK_SAMPLE_SIZE — public /orderBook sample per poll tick for the
+    # Overview Book Pressure chip (top volume ∪ watchlist ∪ bid/ask rules).
+    # Default 25; 0 disables market sample (alert-rule symbols still polled).
+    order_book_sample_size: int = 25
     # Tier B macro adapters (default off — see docs/THIRD_PARTY_DATA.md).
     cbsl_fx_enabled: bool = False
     eia_oil_enabled: bool = False
@@ -296,6 +300,10 @@ class Settings:
             ml_hpe_enabled=ml_hpe_raw.strip() == "1",
             ml_loop_enabled=ml_loop_raw.strip() == "1",
             ml_ltr_serve=ml_ltr_raw.strip() == "1",
+            # Cap 50 so a mis-set env cannot hammer /orderBook each tick.
+            order_book_sample_size=min(
+                50, max(0, _int("ORDER_BOOK_SAMPLE_SIZE", 25))
+            ),
             cbsl_fx_enabled=cbsl_fx_raw.strip() == "1",
             eia_oil_enabled=eia_oil_raw.strip() == "1",
             sltda_tourism_enabled=sltda_raw.strip() == "1",

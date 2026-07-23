@@ -1308,14 +1308,17 @@ class Storage:
         return out
 
     async def list_latest_price_snapshots(self) -> list[PriceSnapshot]:
-        """Latest poller snapshot per symbol (for live appetite path)."""
+        """Latest live snapshot per symbol (for live appetite path).
+
+        Prefers the freshest row among HTTP ``poller`` and STOMP ``cse_ws``.
+        """
         async with self._pool.connection() as conn:
             rows = await (
                 await conn.execute(
                     """
                     SELECT DISTINCT ON (symbol) *
                     FROM price_snapshots
-                    WHERE source = 'poller'
+                    WHERE source IN ('poller', 'cse_ws')
                       AND symbol <> 'MARKET'
                     ORDER BY symbol ASC, ts DESC, id DESC
                     """
@@ -1330,6 +1333,66 @@ class Storage:
             if snap is None:
                 continue
             out.append(snap)
+        return out
+
+    async def top_symbols_by_recent_volume(self, *, limit: int = 25) -> list[str]:
+        """Highest-volume symbols from latest live snapshots, else daily_bars.
+
+        Used to keep a stable market sample for public order-book pressure
+        (Overview tape) without requiring bid_heavy / ask_heavy alert rules.
+        """
+        if (
+            not isinstance(limit, int)
+            or isinstance(limit, bool)
+            or limit < 1
+        ):
+            limit = 25
+        limit = min(limit, 100)
+        async with self._pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    WITH latest AS (
+                        SELECT DISTINCT ON (symbol)
+                            symbol, volume, ts
+                        FROM price_snapshots
+                        WHERE source IN ('poller', 'cse_ws')
+                          AND symbol NOT IN ('ASPI', 'SNP_SL20', 'MARKET')
+                          AND volume IS NOT NULL
+                          AND volume > 0
+                        ORDER BY symbol ASC, ts DESC, id DESC
+                    )
+                    SELECT symbol
+                    FROM latest
+                    ORDER BY volume DESC NULLS LAST, symbol ASC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+            ).fetchall()
+            if not rows:
+                rows = await (
+                    await conn.execute(
+                        """
+                        SELECT symbol FROM daily_bars
+                        WHERE trade_date = (
+                            SELECT MAX(trade_date) FROM daily_bars
+                        )
+                          AND volume IS NOT NULL
+                          AND volume > 0
+                          AND symbol NOT IN ('ASPI', 'SNP_SL20', 'MARKET')
+                        ORDER BY volume DESC NULLS LAST, symbol ASC
+                        LIMIT %s
+                        """,
+                        (limit,),
+                    )
+                ).fetchall()
+        out: list[str] = []
+        for row in _as_rows(rows):
+            sym = row.get("symbol")
+            if not isinstance(sym, str) or not sym.strip():
+                continue
+            out.append(sym.strip().upper())
         return out
 
     async def upsert_market_appetite_daily(self, row: Any) -> None:
