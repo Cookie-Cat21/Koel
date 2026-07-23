@@ -1,6 +1,6 @@
 # ML champion table
 
-Updated: 2026-07-23 (Loop 1 verification complete)
+Updated: 2026-07-23 (Loop 1 verification complete; W0 DE-persist wired)
 
 Source artifacts:
 
@@ -15,6 +15,8 @@ Source artifacts:
 - `docs/experiments/cpu_improve_6k_harvest.json`
 - `docs/experiments/SELECTIVE_GATES_20260723.md`
 - `docs/experiments/ENSEMBLE_STACK_20260723.md`
+- `docs/factory/ML_EXHAUST_TO_CONTRACT_MASTER_PLAN.md`
+- `docs/runbooks/ML_LIVE_SHADOW.md`
 
 ## Current champions (score quality)
 
@@ -81,9 +83,15 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
   without persistence construction.
 - Split-adjusted persistence +net@112 **confirmed** for
   `double_ensemble_native` / `persistence_exit_10_top_bottom_05` (+0.49%) —
-  **review-eligible** Loop 0 shadow policy packet only; not live promotion.
-- Proposed review ID: `shadow_policy_rank_de_persist_v1` — **not wired**
-  into `live_shadow.py` (relative+persistence emit path not built).
+  **review-eligible** Loop 0 shadow ledger only; not live promotion.
+- Policy ID `shadow_policy_rank_de_persist_v1` — **wired for Loop 0 ledger**
+  in `koel/ml/live_shadow.py` (`live_shadow` emits persistence book legs only
+  to `forecast_outcomes`; gates `shadow_persist_book` /
+  `shadow_partial_persist_book`). Still **not user-facing**; SuccessContract
+  **still unmet** (selective 90%, global hard gates). See
+  `docs/factory/ML_EXHAUST_TO_CONTRACT_MASTER_PLAN.md` §W0; runbook
+  `docs/runbooks/ML_LIVE_SHADOW.md`. Prospective receipts pending (≥60 scored
+  sessions not yet accumulated).
 - No `forecast_points`, Signal Board, or Telegram promotion from these
   results.
 
@@ -95,15 +103,16 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
 | 2 | Cost/turnover engineering | **+net@112 verified (split-adjusted)** | DE `persistence_exit_10_top_bottom_05` +0.49%; xgb +0.05%; hgb −0.13% |
 | 3 | Selective gate mining | **exhausted** | 90% contract unreachable offline |
 | 4 | Ensembles/stacking | **exhausted** | best RankIC 0.2858 (−0.0003 vs champion); no net gain |
-| 5 | New features | **next** | after Loop 0 policy packet |
-| 6 | Horizons/targets | absolute/h1 done; h5 pending | |
+| 5 | New features | **started (W1 skeleton)** | `feature_pack_v1` spec + stub helpers; not in snapshot/train yet |
+| 6 | Horizons/targets | absolute/h1 done; **h5 nested started (W3)** | no `cpu_exhaust_rel_h5_summary.json` yet |
 | — | Improve-loop 6×1000 | **exhausted** | best RankIC 0.2746; no pos112 |
 
 ## Next concrete actions
 
-1. Loop 0: open review packet for `shadow_policy_rank_de_persist_v1` (DE persist,
-   split-adjusted +0.49%); do not wire `live_shadow.py` until emit path exists.
-2. Loop 2 or lever 5 (features): only path left to global promotion gates —
-   selective 90% still not met.
+1. Loop 0: accumulate prospective receipts for wired
+   `shadow_policy_rank_de_persist_v1` (DE persist, split-adjusted +0.49%
+   offline); monitor `live_shadow_report` — contract unchanged.
+2. W1 feature pack + W3 h5 nested (parallel): only offline paths left toward
+   global promotion gates — selective 90% still not met.
 3. Keep RankIC champion (`xgb_two_stage` 0.2861) as research score only until
    contract + post-cost gates pass without persistence-only construction.

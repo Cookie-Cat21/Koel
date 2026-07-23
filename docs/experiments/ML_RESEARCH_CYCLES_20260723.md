@@ -50,8 +50,9 @@ Research only - not financial advice.
 | 3 Selective gates | **Exhausted** | Best LCB 0.681 / 74 emits — 90% contract unreachable on current scores |
 | 4 Ensembles/stacking | **Exhausted** | Best RankIC 0.2858 (−0.0003 vs champion); no cost improvement |
 
-Next: Loop 0 review packet for `shadow_policy_rank_de_persist_v1`; features
-(lever 5) or horizons (lever 6). Split re-score **done** — see cycles below.
+Next: Loop 0 shadow receipts for wired `shadow_policy_rank_de_persist_v1`;
+features (lever 5) or horizons (lever 6). Split re-score **done** — see cycles
+below.
 
 
 ## Cycle: cost engineering — +net@112 flip (unadjusted)
@@ -134,7 +135,36 @@ Decision:
 - Cost-engineering gate `persistence_exit_10_top_bottom_05` @112bps:
   DE unadj +0.36% → split **+0.49%** — **PASS**; xgb +0.05%; hgb flipped
   to −0.13%.
-- Proposed Loop 0 review ID: `shadow_policy_rank_de_persist_v1` — review
-  packet only; **not wired** into `live_shadow.py`.
+- Loop 0 policy ID `shadow_policy_rank_de_persist_v1` — offline reference
+  +0.49%; wiring completed in later W0 cycle (see below).
 - Selective 90% contract still **not met**; no `forecast_points` / Telegram /
   Signal Board promotion.
+
+
+## Cycle: W0 wired + W1/W3 started (2026-07-23)
+
+Status: Loop 0 shadow ledger extended; offline search continues; **promotion
+still blocked**.
+
+Evidence:
+
+- `docs/factory/ML_EXHAUST_TO_CONTRACT_MASTER_PLAN.md`
+- `koel/ml/live_shadow.py`, `docs/runbooks/ML_LIVE_SHADOW.md`
+- `docs/experiments/FEATURE_PACK_V1_SPEC.md`, `koel/ml/feature_pack_v1.py`
+
+Decision:
+
+- **W0 done (wiring):** `shadow_policy_rank_de_persist_v1` registered in
+  `live_shadow.py` — relative/h1 `double_ensemble_native` +
+  `persistence_exit_10_top_bottom_05` book; emits book legs only to
+  `forecast_outcomes` (gates `shadow_persist_book` /
+  `shadow_partial_persist_book`). Still **not user-facing**; SuccessContract
+  **still unmet**; prospective receipts not yet at ≥60 scored sessions.
+- **W1 started (skeleton):** `feature_pack_v1` column manifest +
+  stub helpers (`fp_adv20`, `fp_vol20`); not integrated into snapshot,
+  dataset, or training.
+- **W3 started:** relative/h5 nested baseline trio launched on current matrix
+  (mirrors h1 exhaust protocol); no `cpu_exhaust_rel_h5_summary.json` yet.
+
+Next: Loop 0 daily receipts for DE-persist shadow; complete W1 integration +
+W3 h5 nested artifacts before W5 search.

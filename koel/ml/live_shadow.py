@@ -17,9 +17,16 @@ from zoneinfo import ZoneInfo
 
 from koel.adapters.cse import CSEClient
 from koel.domain import DailyBar, PriceSnapshot
+from koel.ml.cost_engineering import (
+    BookState,
+    PERSIST_EXIT_10_TOP_BOTTOM_05,
+    book_state_from_signed_scores,
+    construct_session_book,
+)
 from koel.ml.dataset import Sample, build_samples
 from koel.ml.distributed_worker import _fit_predict_average
 from koel.ml.features import path_features
+from koel.ml.harden import _demean_by_day
 from koel.ml.iterate import _enrich_cross_section
 from koel.ml.outcomes import OutcomeEmit, emit_shadow_outcome_rows
 from koel.ml.research_features import (
@@ -43,6 +50,9 @@ POLICY_MODELS = {
 }
 POLICY_SELECTIVE = "shadow_policy_abs_xgb2_p005_v1"
 POLICY_PRESSURE = "shadow_policy_abs_xgb2_pressure_v1"
+POLICY_RANK_DE_PERSIST = "shadow_policy_rank_de_persist_v1"
+POLICY_RANK_DE_MODEL = "double_ensemble_native"
+POLICY_RANK_DE_VARIANT = PERSIST_EXIT_10_TOP_BOTTOM_05
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +166,95 @@ def _training_samples(loaded: LoadedSnapshot) -> list[Sample]:
     samples = enrich_fundamentals(samples, loaded.fundamentals)
     samples = enrich_market_context(samples)
     return _enrich_cross_section(samples)
+
+
+def _relative_training_samples(loaded: LoadedSnapshot) -> list[Sample]:
+    """Relative/h1 panel matching offline DE-persist champion training."""
+    metadata = build_research_bar_metadata(
+        loaded.series,
+        dataset=loaded.manifest.dataset,
+    )
+    samples = build_samples(
+        loaded.series,
+        horizon=1,
+        min_history=252,
+        max_abs_return=0.35,
+        include_flat=False,
+        price_adjustment=loaded.manifest.price_adjustment,
+        corporate_actions=loaded.corporate_actions,
+    )
+    samples = _demean_by_day(samples)
+    samples = enrich_research_quality(samples, metadata)
+    samples = enrich_fundamentals(samples, loaded.fundamentals)
+    samples = enrich_market_context(samples)
+    return _enrich_cross_section(samples)
+
+
+def _parse_holding_age(regime_tag: str | None) -> int:
+    if not regime_tag:
+        return 1
+    for part in regime_tag.split("|"):
+        if part.startswith("age="):
+            try:
+                age = int(part.removeprefix("age="))
+            except ValueError:
+                return 1
+            return max(1, age)
+    return 1
+
+
+async def load_prior_persist_book(
+    storage: Storage,
+    *,
+    policy_id: str,
+    before: date,
+) -> BookState | None:
+    """Rebuild prior-session book state from immutable shadow ledger rows."""
+    async with storage._pool.connection() as conn:
+        prior_session = await (
+            await conn.execute(
+                """
+                SELECT MAX(issued_at) AS issued_at
+                FROM forecast_outcomes
+                WHERE model_id = %s
+                  AND issued_at < %s
+                  AND gate LIKE 'shadow%%persist%%'
+                  AND COALESCE(gate, '') NOT LIKE '%%partial%%'
+                """,
+                (policy_id, before),
+            )
+        ).fetchone()
+        if prior_session is None or prior_session["issued_at"] is None:
+            return None
+        rows = await (
+            await conn.execute(
+                """
+                SELECT symbol, y_pred, regime_tag
+                FROM forecast_outcomes
+                WHERE model_id = %s
+                  AND issued_at = %s
+                  AND gate LIKE 'shadow%%persist%%'
+                ORDER BY symbol
+                """,
+                (policy_id, prior_session["issued_at"]),
+            )
+        ).fetchall()
+    if not rows:
+        return None
+    signed = {
+        str(row["symbol"]).strip().upper(): float(row["y_pred"])
+        for row in rows
+        if row["y_pred"] is not None and math.isfinite(float(row["y_pred"]))
+    }
+    ages = {
+        str(row["symbol"]).strip().upper(): _parse_holding_age(
+            str(row["regime_tag"]) if row["regime_tag"] is not None else None
+        )
+        for row in rows
+    }
+    if not signed:
+        return None
+    return book_state_from_signed_scores(signed, previous_ages=ages)
 
 
 def summarize_pressure_factors(
@@ -442,6 +541,80 @@ async def run_live_shadow(
             )
         )
     pressure_count = await emit_shadow_outcome_rows(storage, pressure_rows)
+
+    # Loop-0 relative DE + persistence book (ledger only; never forecast_points).
+    relative_train = _relative_training_samples(loaded)
+    de_persist_count = 0
+    if len(relative_train) >= 100:
+        relative_scores = _fit_predict_average(
+            model=POLICY_RANK_DE_MODEL,
+            train=relative_train,
+            test=latest,
+            seeds=(0,),
+        )
+        relative_by_symbol = {
+            sample.symbol: score
+            for sample, score in zip(latest, relative_scores, strict=True)
+            if score != 0 and math.isfinite(score)
+        }
+        previous_book = await load_prior_persist_book(
+            storage,
+            policy_id=POLICY_RANK_DE_PERSIST,
+            before=now.date(),
+        )
+        book = construct_session_book(
+            relative_by_symbol,
+            variant=POLICY_RANK_DE_VARIANT,
+            previous=previous_book,
+        )
+        de_version = policy_instance_version(
+            policy_id=POLICY_RANK_DE_PERSIST,
+            snapshot_sha256=snapshot_sha,
+            issue_session=now.date(),
+            revision=revision,
+            partial=partial,
+        )
+        instance_versions[POLICY_RANK_DE_PERSIST] = de_version
+        if book is not None and book.weights:
+            de_rows: list[OutcomeEmit] = []
+            for symbol, weight in sorted(book.weights.items()):
+                if symbol not in relative_by_symbol:
+                    continue
+                raw_score = relative_by_symbol[symbol]
+                # Sign follows book side (persistence may keep a name after score flips).
+                y_pred = math.copysign(
+                    abs(raw_score) if raw_score != 0 else abs(weight),
+                    weight,
+                )
+                de_rows.append(
+                    OutcomeEmit(
+                        model_id=POLICY_RANK_DE_PERSIST,
+                        model_version=de_version,
+                        symbol=symbol,
+                        issued_at=now.date(),
+                        horizon_days=1,
+                        y_pred=y_pred,
+                        confidence=_confidence(raw_score),
+                        gate=(
+                            "shadow_partial_persist_book"
+                            if partial
+                            else "shadow_persist_book"
+                        ),
+                        regime_tag=(
+                            f"live_shadow|policy={POLICY_RANK_DE_PERSIST}"
+                            f"|variant={POLICY_RANK_DE_VARIANT.name}"
+                            f"|side={'long' if weight > 0 else 'short'}"
+                            f"|age={book.holding_ages.get(symbol, 1)}"
+                            f"|w={weight:.6f}"
+                            f"|raw={raw_score:.6f}"
+                            f"|partial={int(partial)}"
+                            f"|snapshot={snapshot_sha[:12]}"
+                        ),
+                    )
+                )
+            de_persist_count = await emit_shadow_outcome_rows(storage, de_rows)
+        policy_emits[POLICY_RANK_DE_PERSIST] = de_persist_count
+
     return LiveShadowResult(
         issued_at=now.date().isoformat(),
         partial_session=partial,

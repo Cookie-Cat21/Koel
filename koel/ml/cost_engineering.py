@@ -60,6 +60,19 @@ class PortfolioVariant:
             raise ValueError("min_names must be >= 2")
 
 
+PERSIST_EXIT_10_TOP_BOTTOM_05 = PortfolioVariant(
+    "persistence_exit_10_top_bottom_05",
+    fraction=0.05,
+    persistence_exit_fraction=0.10,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BookState:
+    weights: dict[str, float]
+    holding_ages: dict[str, int]
+
+
 @dataclass(frozen=True, slots=True)
 class PortfolioResult:
     sessions: int
@@ -97,11 +110,7 @@ def default_variants() -> list[PortfolioVariant]:
             fraction=0.10,
             persistence_exit_fraction=0.20,
         ),
-        PortfolioVariant(
-            "persistence_exit_10_top_bottom_05",
-            fraction=0.05,
-            persistence_exit_fraction=0.10,
-        ),
+        PERSIST_EXIT_10_TOP_BOTTOM_05,
         PortfolioVariant("min_hold_3_top_bottom_10", fraction=0.10, min_holding_period=3),
         PortfolioVariant("min_hold_5_top_bottom_10", fraction=0.10, min_holding_period=5),
         PortfolioVariant(
@@ -118,6 +127,60 @@ def default_variants() -> list[PortfolioVariant]:
             rebalance_delay=1,
         ),
     ]
+
+
+def construct_session_book(
+    scores: dict[str, float],
+    *,
+    variant: PortfolioVariant = PERSIST_EXIT_10_TOP_BOTTOM_05,
+    previous: BookState | None = None,
+) -> BookState | None:
+    """Build one session's dollar-neutral top/bottom book with optional persistence.
+
+    ``scores`` maps symbol -> model score (higher = more bullish).
+    Returns None if ranking fails min_names / tie / empty leg rules (same as offline).
+    """
+    ranked = _ranked_rows(
+        [(symbol, score, 0.0) for symbol, score in scores.items()],
+        variant,
+    )
+    if ranked is None:
+        return None
+
+    previous_weights = previous.weights if previous is not None else {}
+    previous_ages = previous.holding_ages if previous is not None else {}
+    weights = _construct_weights(
+        ranked,
+        variant,
+        previous_weights=previous_weights,
+        holding_ages=previous_ages,
+    )
+    return BookState(
+        weights=weights,
+        holding_ages=_next_holding_ages(weights, previous_weights, previous_ages),
+    )
+
+
+def book_state_from_signed_scores(
+    signed: dict[str, float],
+    *,
+    previous_ages: dict[str, int] | None = None,
+) -> BookState:
+    """Rebuild BookState from prior emitted y_pred signs.
+
+    Nonzero weights are equal-weight per side.
+    """
+    longs = [symbol for symbol, score in signed.items() if score > 0]
+    shorts = [symbol for symbol, score in signed.items() if score < 0]
+    weights = {
+        **{symbol: -1.0 / len(shorts) for symbol in shorts},
+        **{symbol: 1.0 / len(longs) for symbol in longs},
+    }
+    ages = {
+        symbol: previous_ages.get(symbol, 1) if previous_ages is not None else 1
+        for symbol in weights
+    }
+    return BookState(weights=weights, holding_ages=ages)
 
 
 def evaluate_portfolio_variant(

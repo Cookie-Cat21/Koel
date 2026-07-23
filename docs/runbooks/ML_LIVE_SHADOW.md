@@ -83,6 +83,13 @@ Current base policies:
 - `shadow_policy_abs_xgb2_v1`
 - `shadow_policy_abs_hgb2_v1`
 - `shadow_policy_abs_xgb_domain_v1`
+- `shadow_policy_abs_xgb2_p005_v1` (selective top 0.5% of abs xgb)
+- `shadow_policy_abs_xgb2_pressure_v1` (book/pressure overlay)
+- `shadow_policy_rank_de_persist_v1` (Loop 0 only: relative
+  `double_ensemble_native` + `persistence_exit_10_top_bottom_05` book;
+  emits book legs only with gates `shadow_persist_book` /
+  `shadow_partial_persist_book`; offline split-adjusted reference
+  +0.49% net@112bps — not user-facing)
 
 The report compares policies automatically. Passing a standard only makes a
 policy review-eligible; it does not write `forecast_points` or send alerts.

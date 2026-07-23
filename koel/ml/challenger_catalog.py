@@ -153,6 +153,22 @@ CHALLENGERS: tuple[ChallengerSpec, ...] = (
         status="blocked",
         blocker="CSE public feed lacks multi-level event book data",
     ),
+    ChallengerSpec(
+        key="de_persist_native",
+        family="Native DoubleEnsemble + persistence book",
+        repository="https://github.com/ArdenoStudio/Koel",
+        revision="7ac28d6a4e3b101d5750609c42649d29fc85d6a3",
+        license=None,
+        compute="cpu",
+        target="rank_return",
+        policy_id="shadow_policy_rank_de_persist_v1",
+        status="loop0_shadow_wired",
+        blocker=(
+            "Loop-0 ledger only: relative/h1 double_ensemble_native with "
+            "persistence_exit_10_top_bottom_05; offline split-adjusted "
+            "net@112bps +0.49%; not user-facing until global gates pass"
+        ),
+    ),
 )
 
 

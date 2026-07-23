@@ -7,6 +7,7 @@ import pytest
 from koel.ml.cost_engineering import (
     PortfolioVariant,
     ScoreRow,
+    construct_session_book,
     evaluate_portfolio_variant,
 )
 from koel.ml.metrics import cost_adjusted_top_bottom_spread
@@ -183,3 +184,58 @@ def test_delayed_rebalance_applies_prior_session_scores() -> None:
     assert result.sessions == 1
     assert result.mean_gross_return == pytest.approx(0.04)
     assert result.mean_one_way_turnover == pytest.approx(1.0)
+
+
+def test_construct_session_book_starts_top_5_bottom_5_book() -> None:
+    scores = {f"S{index:02d}": float(index) for index in range(20)}
+
+    book = construct_session_book(scores)
+
+    assert book is not None
+    assert book.weights == {"S00": pytest.approx(-1.0), "S19": pytest.approx(1.0)}
+    assert book.holding_ages == {"S00": 1, "S19": 1}
+
+
+def test_construct_session_book_persistence_keeps_prior_long_in_exit_band() -> None:
+    first_scores = {f"S{index:02d}": float(index) for index in range(20)}
+    previous = construct_session_book(first_scores)
+    second_scores = {
+        symbol: score
+        for score, symbol in enumerate(
+            [
+                "S00",
+                "S01",
+                "S02",
+                "S03",
+                "S04",
+                "S05",
+                "S06",
+                "S07",
+                "S08",
+                "S09",
+                "S10",
+                "S11",
+                "S12",
+                "S13",
+                "S14",
+                "S15",
+                "S16",
+                "S17",
+                "S19",
+                "S18",
+            ]
+        )
+    }
+
+    assert previous is not None
+    book = construct_session_book(second_scores, previous=previous)
+
+    assert book is not None
+    assert book.weights["S19"] == pytest.approx(1.0)
+    assert book.holding_ages["S19"] == 2
+
+
+def test_construct_session_book_returns_none_when_too_few_names() -> None:
+    scores = {f"S{index:02d}": float(index) for index in range(19)}
+
+    assert construct_session_book(scores) is None

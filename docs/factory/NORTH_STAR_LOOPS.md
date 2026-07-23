@@ -71,6 +71,12 @@ Hard gates:
 - Current champion status must distinguish nested results from one-fold screens.
 - Promotion stays blocked while contract or post-cost gates fail.
 
+**Loop 0 shadow (2026-07-23):** includes DE-persist policy
+`shadow_policy_rank_de_persist_v1` — wired in `live_shadow.py` for prospective
+ledger emits (book legs only; not user-facing). SuccessContract still unmet.
+See `docs/factory/ML_EXHAUST_TO_CONTRACT_MASTER_PLAN.md` §W0 and
+`docs/runbooks/ML_LIVE_SHADOW.md`.
+
 Kill criteria:
 
 - Stop the cycle if source artifacts are missing, ambiguous, or still in
@@ -119,10 +125,12 @@ Kill criteria:
 **done + verified** — snapshot + nested re-score complete; (2) cost/turnover
 **+net@112 verified on split-adjusted bars** (DE persist +0.49%); (3) selective
 gates **exhausted**; (4) ensembles **exhausted**; improve-loop 6×1000
-**exhausted** (best RankIC 0.2746). Proposed Loop 0 review-only shadow ID:
-`shadow_policy_rank_de_persist_v1` — not wired into `live_shadow.py`.
-Next levers: Loop 0 policy packet, then features (5) or horizons (6). Loop 0
-(evidence refresh) continues daily. See `docs/experiments/ML_CHAMPION_TABLE.md`.
+**exhausted** (best RankIC 0.2746). Loop 0 DE-persist shadow
+`shadow_policy_rank_de_persist_v1` **wired** (`live_shadow.py`; book legs
+only; not user-facing). Next levers: W1 feature pack, W3 h5 nested (in flight).
+Loop 0 (evidence refresh + shadow receipts) continues daily. See
+`docs/experiments/ML_CHAMPION_TABLE.md`,
+`docs/factory/ML_EXHAUST_TO_CONTRACT_MASTER_PLAN.md`.
 
 ## Loop 2 - Promotion
 
