@@ -92,8 +92,9 @@ queued messages from downtime are discarded on restart (avoids replaying stale
 
 Alert **claim → Telegram send** is instrumented (`alert_latency_ms`) and targeted
 at p95 &lt; 5s. End-to-end CSE print → Telegram is bounded by
-`POLL_INTERVAL_SECONDS` (default 15s, with jitter) — the honest product SLO is
-“within one poll cycle during market hours,” not sub-5s from the exchange tick.
+`POLL_INTERVAL_SECONDS` (default 5s, with small jitter) — the honest product SLO
+is “within one poll cycle during market hours.” CSE has no public quote
+WebSocket; koel cannot do exchange co-lo / tick-stream real-time.
 
 When `bot`, `poller`, or `both` is running:
 

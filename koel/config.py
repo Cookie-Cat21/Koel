@@ -127,8 +127,10 @@ class Settings:
     telegram_bot_token: str
     database_url: str
     cse_base_url: str = "https://www.cse.lk/api"
-    poll_interval_seconds: float = 15.0
-    poll_jitter_seconds: float = 5.0
+    # Floor is 5s — CSE has no public quote WebSocket; this is near-realtime
+    # via bulk tradeSummary (one HTTP call / tick), not order-book hammering.
+    poll_interval_seconds: float = 5.0
+    poll_jitter_seconds: float = 1.0
     http_timeout_seconds: float = 15.0
     circuit_fail_max: int = 5
     circuit_reset_seconds: float = 60.0
@@ -265,9 +267,9 @@ class Settings:
             cse_base_url=cse_base.rstrip("/"),
             # ≤0 or <5s poll interval → IntervalTrigger hammer; reject.
             poll_interval_seconds=_positive_float_at_least(
-                "POLL_INTERVAL_SECONDS", 15.0, _MIN_POLL_INTERVAL_SECONDS
+                "POLL_INTERVAL_SECONDS", 5.0, _MIN_POLL_INTERVAL_SECONDS
             ),
-            poll_jitter_seconds=_nonneg_float("POLL_JITTER_SECONDS", 5.0),
+            poll_jitter_seconds=_nonneg_float("POLL_JITTER_SECONDS", 1.0),
             http_timeout_seconds=_positive_float_at_least(
                 "HTTP_TIMEOUT_SECONDS", 15.0, _MIN_HTTP_TIMEOUT_SECONDS
             ),

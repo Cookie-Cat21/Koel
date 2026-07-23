@@ -45,7 +45,7 @@ def test_float_env_blank_falls_back_to_default(
     _base_env(monkeypatch)
     monkeypatch.setenv("POLL_INTERVAL_SECONDS", "   ")
     settings = Settings.from_env(require_token=True)
-    assert settings.poll_interval_seconds == 15.0
+    assert settings.poll_interval_seconds == 5.0
 
 
 class _FakeCursor:

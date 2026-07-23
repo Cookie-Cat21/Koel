@@ -136,7 +136,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "What do Just updated / Updated / Stale mean on Refresh?",
         answer:
-          "On Overview, Browse, Watchlist, and company pages, PriceRefresh soft-reloads about every 15 seconds and ages the newest snapshot: Just updated → Updated Ns / Xm ago. Around 3+ minutes the chip uses a stale tone (“Updated Xm ago”); the word Stale / Down-style aging kicks in around 15+ minutes while the session looks open. Closed · Xm appears when the clock fence says closed.\n\nThat chip is not the same as the 24h “· stale” on the last-price eyebrow.",
+          "On Overview, Browse, Watchlist, and company pages, PriceRefresh soft-reloads about every 5 seconds and ages the newest snapshot: Just updated → Updated Ns / Xm ago. Around 3+ minutes the chip uses a stale tone (“Updated Xm ago”); the word Stale / Down-style aging kicks in around 15+ minutes while the session looks open. Closed · Xm appears when the clock fence says closed.\n\nThat chip is not the same as the 24h “· stale” on the last-price eyebrow.",
       },
       {
         question: "Why don’t Context / Appetite show a refresh chip?",
@@ -200,7 +200,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "When is 1D Intraday vs Daily?",
         answer:
-          "1D prefers today’s Colombo ticks when there are enough prints to build candles (koel looks for a richer tick set, otherwise shows “Few ticks · showing recent daily”). A Live badge can poll ticks every ~20s when the session looks open and the mode is intraday.",
+          "1D prefers today’s Colombo ticks when there are enough prints to build candles (koel looks for a richer tick set, otherwise shows “Few ticks · showing recent daily”). A Live badge can poll ticks every ~5s when the session looks open and the mode is intraday.",
       },
       {
         question: "Are dialog Open / High / Low / Close / Vol the day quote?",
@@ -909,7 +909,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       {
         question: "Near-realtime — how fresh is “fresh”?",
         answer:
-          "koel is poll-interval near-realtime, not exchange co-lo. Expect updates on the order of the poller interval during the session, then quiet after the close until the next open (unless someone forces a tick).",
+          "koel is poll-interval near-realtime (~5s bulk tradeSummary by default), not exchange co-lo or a quote WebSocket. Expect updates on the order of the poller interval during the session, then quiet after the close until the next open (unless someone forces a tick).",
       },
       {
         question: "Snapshot age vs tick age?",

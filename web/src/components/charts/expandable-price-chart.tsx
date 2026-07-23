@@ -61,7 +61,8 @@ import { formatCompactNumber, formatNumber, formatPct } from "@/lib/format";
 type Point = { ts: string | null; price: number | null | undefined };
 
 const RANGES: ChartRangeKey[] = ["1D", "1M", "3M", "6M", "1Y"];
-const REALTIME_MS = 20_000;
+/** Intraday tick soft-poll — aligned with near-realtime poller floor. */
+const REALTIME_MS = 5_000;
 
 /**
  * Compact candlesticks (daily path) + expand → full range dialog.

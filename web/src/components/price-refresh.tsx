@@ -8,7 +8,8 @@ import { isMarketSessionOpen } from "@/lib/market-session";
 
 /** Soft-cap refresh interval — never hammer the dash SSR path. */
 export const MIN_PRICE_REFRESH_MS = 5_000;
-export const DEFAULT_PRICE_REFRESH_MS = 15_000;
+/** Match poller floor (``POLL_INTERVAL_SECONDS`` default 5). */
+export const DEFAULT_PRICE_REFRESH_MS = 5_000;
 export const MAX_PRICE_REFRESH_MS = 120_000;
 
 /** Snapshot age → “stale” chip / overview banner (market open only). */
