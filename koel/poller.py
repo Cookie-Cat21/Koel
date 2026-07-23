@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -377,6 +377,8 @@ class Poller:
             print_events, print_ok = await self._poll_big_prints()
             notice_events, notice_ok = await self._poll_market_notices()
             book_events, book_ok = await self._poll_order_books()
+            # Foreign + live Appetite accrual (fail-soft — never degrade tick).
+            await self._poll_tape_accrual()
             # Postgres-only MARKET tape/context regime (fail-soft).
             regime_events, _regime_ok = await self._poll_market_regime()
             xd_events, _xd_ok = await self._poll_dividend_xd()
@@ -852,10 +854,12 @@ class Poller:
         share_split_rules = [
             r for r in rules if getattr(r.type, "value", r.type) == "share_split"
         ]
-        # Hit CSE announcements for disclosure rules and share_split rules
-        # (price-only watchlist symbols still skip — rate-limit priority).
+        # Persist announcements for the whole watchlist (Context feed + calendar).
+        # Telegram still only fires for disclosure / share_split rules.
+        # Prefer bulk when covering many names so we do not N× hammer cse.lk.
         disclosure_symbols = sorted(
-            {r.symbol for r in disclosure_rules}
+            {s for s in symbols if isinstance(s, str) and s.strip()}
+            | {r.symbol for r in disclosure_rules}
             | {r.symbol for r in share_split_rules}
         )
         if not disclosure_symbols:
@@ -870,12 +874,13 @@ class Poller:
         # Fetch all first (no inter-symbol sleep under lock — CORE-004).
         # Sequential HTTP provides natural spacing; rate-limit sleeps belong
         # outside the advisory lock if reintroduced.
-        # Optional bulk path (DISCLOSURE_BULK_FEED=1): one market-wide call +
+        # Bulk path (flag or auto when watchlist-wide): one market-wide call +
         # stocks name→symbol map; fail-soft to per-symbol for uncovered
         # tickers or when the bulk feed errors.
         fetched: dict[str, list[Disclosure]] = {}
         remaining = list(disclosure_symbols)
-        if self.settings.disclosure_bulk_feed:
+        use_bulk = self.settings.disclosure_bulk_feed or len(disclosure_symbols) >= 3
+        if use_bulk:
             bulk_fetched, bulk_covered, bulk_ok = await self._fetch_disclosures_bulk(
                 disclosure_symbols
             )
@@ -1319,23 +1324,142 @@ class Poller:
             log.info("dividend_xd_fired", count=len(fired))
         return fired, ok
 
+    async def _order_book_sample_symbols(
+        self, *, priority: set[str], limit: int
+    ) -> list[str]:
+        """Stable market sample: alert symbols ∪ watchlist ∪ top volume.
+
+        Rotates the non-priority pool each minute so a larger board accrues
+        history without exceeding ``limit`` HTTP calls per tick (M0.2).
+        Priority (bid_heavy / ask_heavy) symbols are always included.
+        """
+        if (
+            not isinstance(limit, int)
+            or isinstance(limit, bool)
+            or limit < 1
+        ):
+            return sorted(s for s in priority if isinstance(s, str) and s.strip())
+
+        must: list[str] = []
+        seen: set[str] = set()
+        for raw in sorted(priority):
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            sym = raw.strip().upper()
+            if sym in seen or sym in {"ASPI", "SNP_SL20", "MARKET"}:
+                continue
+            seen.add(sym)
+            must.append(sym)
+
+        pool: list[str] = []
+        try:
+            watched = await self.storage.watched_symbols()
+        except Exception as exc:
+            log.warning("order_book_watchlist_failed", error=str(exc))
+            watched = []
+        try:
+            top = await self.storage.top_symbols_by_recent_volume(
+                limit=max(limit * 3, 50)
+            )
+        except Exception as exc:
+            log.warning("order_book_top_volume_failed", error=str(exc))
+            top = []
+        for raw in [*watched, *top]:
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            sym = raw.strip().upper()
+            if sym in seen or sym in {"ASPI", "SNP_SL20", "MARKET"}:
+                continue
+            seen.add(sym)
+            pool.append(sym)
+
+        # Keep alert symbols even when they exceed the sample cap.
+        if len(must) >= limit:
+            return must
+
+        slots = limit - len(must)
+        if not pool or slots <= 0:
+            return must
+        # Rotate by Colombo minute so consecutive ticks walk the pool.
+        tz_name = getattr(self.settings, "market_tz", "Asia/Colombo")
+        if not isinstance(tz_name, str) or not tz_name.strip():
+            tz_name = "Asia/Colombo"
+        try:
+            tz = ZoneInfo(tz_name.strip())
+        except ZoneInfoNotFoundError:
+            tz = ZoneInfo("Asia/Colombo")
+        offset = datetime.now(tz).minute % len(pool)
+        rotated = pool[offset:] + pool[:offset]
+        return must + rotated[:slots]
+
+    async def _poll_tape_accrual(self) -> None:
+        """Accrue foreign (dailyMarketSummery) + live Appetite from snapshots.
+
+        Fail-soft: tape chips stay stale rather than failing the tick. Runs
+        every poll so Overview/Context do not depend on ML_LOOP_ENABLED nightly.
+        """
+        try:
+            rows = await self.cse.fetch_daily_market_summary()
+            n = await self.storage.upsert_market_daily_summary(rows)
+            log.info("tape_market_summary_upserted", rows=n)
+        except Exception as exc:
+            log.warning("tape_market_summary_failed", error=str(exc))
+
+        try:
+            from koel.appetite import compute_from_snapshots
+
+            result = await compute_from_snapshots(self.storage)
+            if result is not None:
+                log.info(
+                    "tape_appetite_live",
+                    trade_date=str(result.trade_date),
+                    score=result.score,
+                    universe_n=result.universe_n,
+                )
+        except Exception as exc:
+            log.warning("tape_appetite_live_failed", error=str(exc))
+
     async def _poll_order_books(self) -> tuple[list[AlertEvent], bool]:
-        """Poll public order-book totals for bid_heavy / ask_heavy rules."""
-        symbols = await self.storage.watched_symbols()
-        if not symbols:
-            return [], True
-        rules = await self.storage.active_rules_for_symbols(symbols)
+        """Poll public order-book totals for Book Pressure + bid/ask rules.
+
+        Market sample (top volume ∪ watchlist) keeps Overview tape pressure
+        fresh without requiring armed bid_heavy / ask_heavy alerts. Rule
+        evaluation stays scoped to those alert types only.
+        """
+        watched: list[str] = []
+        try:
+            watched = await self.storage.watched_symbols()
+        except Exception as exc:
+            log.warning("order_book_watched_failed", error=str(exc))
+
+        rules: list[AlertRule] = []
+        if watched:
+            try:
+                rules = await self.storage.active_rules_for_symbols(watched)
+            except Exception as exc:
+                log.warning("order_book_rules_failed", error=str(exc))
+                rules = []
         book_rules = [
             r
             for r in rules
             if getattr(r.type, "value", r.type) in {"bid_heavy", "ask_heavy"}
         ]
-        book_symbols = sorted({r.symbol for r in book_rules})
+        rule_symbols = {
+            r.symbol.strip().upper()
+            for r in book_rules
+            if isinstance(r.symbol, str) and r.symbol.strip()
+        }
+        sample_limit = int(getattr(self.settings, "order_book_sample_size", 25) or 0)
+        book_symbols = await self._order_book_sample_symbols(
+            priority=rule_symbols,
+            limit=sample_limit if sample_limit > 0 else len(rule_symbols),
+        )
         if not book_symbols:
             return [], True
 
         any_failure = False
         fired: list[AlertEvent] = []
+        persisted = 0
         for symbol in book_symbols:
             try:
                 book = await self.cse.fetch_order_book(symbol)
@@ -1347,6 +1471,7 @@ class Poller:
                 continue
             try:
                 stored = await self.storage.persist_order_book(book)
+                persisted += 1
             except Exception as exc:
                 any_failure = True
                 log.exception(
@@ -1354,6 +1479,8 @@ class Poller:
                     symbol=symbol,
                     error=str(exc),
                 )
+                continue
+            if symbol not in rule_symbols:
                 continue
             try:
                 fired_keys = await self.storage.order_book_fired_keys(symbol)
@@ -1373,6 +1500,12 @@ class Poller:
                 claimed = await self._claim_and_send(event)
                 if claimed:
                     fired.append(event)
+        log.info(
+            "order_book_sample_done",
+            requested=len(book_symbols),
+            persisted=persisted,
+            rule_symbols=len(rule_symbols),
+        )
         return fired, not any_failure
 
     async def _fetch_disclosures_bulk(
