@@ -1,6 +1,6 @@
 # ML champion table
 
-Updated: 2026-07-24 (serial queue complete: fpv2 nested + abs/h3 + W5 hyper)
+Updated: 2026-07-24 (advw nested exhausted; abs/h1 split + fpv2+advw in flight)
 
 Source artifacts:
 
@@ -31,6 +31,10 @@ Source artifacts:
 - `docs/experiments/cpu_w5_fpv2_2k_summary.json`
 - `docs/experiments/FEATURE_PACK_V2_NESTED_20260724.md`
 - `docs/experiments/cpu_exhaust_rel_h1_fpv2_summary.json`
+- `docs/experiments/SAMPLE_WEIGHT_ADV20_NESTED_20260724.md`
+- `docs/experiments/cpu_exhaust_rel_h1_advw_summary.json`
+- `docs/experiments/SELECTIVE_DENSE_FPV2_20260724.md`
+- `docs/experiments/SELECTIVE_DISAGREEMENT_20260724.md`
 - `docs/experiments/UNIVERSE_FILTER_LIQ_V3_SPEC.md`
 - `docs/experiments/UNIVERSE_FILTER_LIQ_V3_NESTED_20260723.md`
 - `docs/experiments/cpu_exhaust_rel_h1_liqv3_summary.json`
@@ -130,6 +134,8 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
 | 3 | Selective gate mining | **exhausted** | 90% contract unreachable offline |
 | 4 | Ensembles/stacking | **exhausted** | best RankIC 0.2858 (−0.0003 vs champion); no net gain |
 | 5 | New features | **fpv1 + fpv2 nested done — no materiality** | fpv1 Δ −0.0007; fpv2 xgb +0.0004; W1 thresholds **not fired** |
+| 5c | Sample weight adv20 | **exhausted** | xgb +0.0001 RankIC; selective regresses (xgb 0 emits); DE +0.45% vs +0.49% |
+| 5d | Selective denser + disagreement (fpv2) | **exhausted** | best 0.779/0.693/77 emits; contract **false** |
 | 5b | Universe filter W2 | **exhausted/killed — universe collapse** | v1 −93.5%; v2 35,328 rows; v3 35,377 rows; 0 selective emits; flat-only filter still <100k |
 | 6 | Horizons/targets | absolute/h1 done; rel/h3 + abs/h3 + h5 exhausted | rel/h3 0.2285; **abs/h3 0.2061**; h5 0.1735; no Goal A/B unlock |
 | — | Improve-loop 6×1000 | **exhausted** | best RankIC 0.2746; no pos112 |

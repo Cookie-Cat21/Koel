@@ -21,7 +21,9 @@ needed**).
 | **W4** CSE-only ablation | **Killed** | ~1y CSE history insufficient for nested splits (`CSE_ONLY_NESTED_20260723.md`) |
 | **W5** bounded search | **Blocked** | Do not start until a new `matrix_id` shows W1/W3 materiality |
 | **W2** liq_v3 flat-only universe filter | **Killed / exhausted** | 35,377 samples (<100k), best RankIC 0.2227, 0 selective emits; flat_fraction alone collapses hybrid history (`UNIVERSE_FILTER_LIQ_V3_NESTED_20260723.md`) |
-| **In flight** | Goal A selective-90% chase on any matrix that improves |
+| **W1b** adv20 sample-weight | **Killed (no materiality)** | Nested xgb +0.0001 RankIC; selective regresses; DE +0.45% vs +0.49% (`SAMPLE_WEIGHT_ADV20_NESTED_20260724.md`) |
+| **Goal A** selective denser + disagreement (fpv2) | **Killed** | Best 0.779/0.693/77 emits; contract false (`SELECTIVE_DISAGREEMENT_20260724.md`, `SELECTIVE_DENSE_FPV2_20260724.md`) |
+| **In flight** | abs/h1 split nested; fpv2+adv20 combo; E7 shadow after 14:35 Colombo |
 
 **Champions unchanged:** RankIC `xgb_two_stage` rel/h1 **0.2861**; cost DE persist split **+0.49%** @112; selective near-miss **0.770 / 0.681 / 74 emits**.
 
@@ -371,7 +373,7 @@ Prospective shadow uses the same numeric thresholds for **standards reporting**;
 
 Exhaustion is claimed **only** when **every** item below is true. Otherwise keep running W0–W5.
 
-**Checklist status (2026-07-23):** 7/10 evidenced — **not truly exhausted** (E7–E8 open: need ≥60 non-partial shadow sessions; E10 dossier pending). abs/h5 done; W5 fpv1-2k + abs/h3 in flight.
+**Checklist status (2026-07-24):** 7/10 evidenced — **not truly exhausted** (E7–E8 open: need ≥60 non-partial shadow sessions; E10 dossier pending). adv20 + selective denser/disagreement **killed**; abs/h1 split + fpv2+adv20 + E7 in flight.
 
 | # | Done | Condition | Evidence artifact |
 |---|:---:|---|---|

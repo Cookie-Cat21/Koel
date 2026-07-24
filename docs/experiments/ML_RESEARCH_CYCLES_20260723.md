@@ -356,3 +356,24 @@ Interventions during babysit:
 - Re-ran step 2 serially after queue; no parallel `cpu_exhaust`.
 - Load max observed: **3.90**; no renice/kill required.
 
+## Cycle — adv20 sample-weight nested complete (2026-07-24)
+
+Status: **exhausted** — no W1 materiality; selective regresses; champions retained.
+
+Evidence: `SAMPLE_WEIGHT_ADV20_NESTED_20260724.md`, `cpu_exhaust_rel_h1_advw_summary.json`
+
+Decision:
+
+- adv20 nested xgb RankIC **0.2862** vs frozen **0.2861** (+0.0001) — below +0.005.
+- Selective: xgb **0** emits (was 74); hgb 85 / LCB 0.619 (was 86 / 0.676).
+- DE persist **+0.45%** vs frozen **+0.49%** (−0.04 pp).
+- Denser selective + disagreement on fpv2 already tried — contract **still false**.
+- Lever **exhausted**; frozen champions retained.
+
+Next (serial): abs/h1 split nested → absolute selective denser grids →
+fpv2+adv20 combo nested → E7 non-partial shadow after 14:35 Asia/Colombo.
+
+Interventions:
+
+- advw load max **3.83**; watchdog OK; single `cpu_exhaust` only.
+
