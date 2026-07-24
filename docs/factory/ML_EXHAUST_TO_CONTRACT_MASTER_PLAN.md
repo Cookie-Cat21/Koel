@@ -380,7 +380,7 @@ Prospective shadow uses the same numeric thresholds for **standards reporting**;
 
 Exhaustion is claimed **only** when **every** item below is true. Otherwise keep running W0–W5.
 
-**Checklist status (2026-07-24):** 7/10 evidenced — **not truly exhausted** (E7 1/60 non-partial sessions; E8 DE non-partial scored 0; E10 living draft only). Offline serial levers including fpv2 full family sweep + **fpv3** + disagreement **complete without unlock**; Mon 2026-07-27 non-partial shadow scheduled. **In flight:** Goal A wave2 skip-day + h3 horizon-agree (`GOAL_A_SKIPDAY_HORIZON_AGREE_20260724.md`); hist DE replay (`--as-of`, `…_hist_v1`) for research cost evidence — **not** E7-eligible.
+**Checklist status (2026-07-24):** 7/10 evidenced — **not truly exhausted** (E7 1/60 non-partial sessions; E8 DE non-partial scored 0; E10 living draft only). Offline serial levers including fpv2 full family sweep + **fpv3** + disagreement **complete without unlock**; Mon 2026-07-27 non-partial shadow scheduled. **Near-miss on fpv2+liq_v4 nested** (no unlock; see `NEARMISS_FPV2_LIQV4_NESTED_20260724.md`). **In flight:** Goal A wave2 skip-day + h3 horizon-agree (`GOAL_A_SKIPDAY_HORIZON_AGREE_20260724.md`); hist DE replay (`--as-of`, `…_hist_v1`) for research cost evidence — **not** E7-eligible.
 
 | # | Done | Condition | Evidence artifact |
 |---|:---:|---|---|
