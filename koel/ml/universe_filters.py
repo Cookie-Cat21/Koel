@@ -45,6 +45,17 @@ LIQ_FILTER_V3 = FilterManifest(
     version="v3",
 )
 
+# Soft ADV-only gate: no CSE-session floor (v1–v3 collapsed hybrid history via
+# CSE/flat constraints). Keeps Yahoo pretrain depth while dropping illiquid
+# names at decision time.
+LIQ_FILTER_V4 = FilterManifest(
+    name="liq_v4",
+    min_adv20=500.0,
+    max_flat_fraction_60=1.0,
+    min_cse_sessions_60=0,
+    version="v4",
+)
+
 _CSE_FRACTION_60_INDEX = RESEARCH_FEATURE_NAMES.index("cse_fraction_60")
 
 
@@ -90,6 +101,21 @@ def passes_liq_filter_v3(
         bars_up_to_as_of,
         metadata_row=metadata_row,
         manifest=LIQ_FILTER_V3,
+    )
+
+
+def passes_liq_filter_v4(
+    symbol: str,
+    bars_up_to_as_of: list[DailyBar],
+    *,
+    metadata_row: ResearchBarMetadata | None = None,
+) -> bool:
+    """Return whether ``symbol`` passes LIQ_FILTER_V4 using visible bars only."""
+    return _passes_filter(
+        symbol,
+        bars_up_to_as_of,
+        metadata_row=metadata_row,
+        manifest=LIQ_FILTER_V4,
     )
 
 

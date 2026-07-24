@@ -13,10 +13,12 @@ from koel.ml.universe_filters import (
     LIQ_FILTER_V1,
     LIQ_FILTER_V2,
     LIQ_FILTER_V3,
+    LIQ_FILTER_V4,
     filter_samples,
     passes_liq_filter_v1,
     passes_liq_filter_v2,
     passes_liq_filter_v3,
+    passes_liq_filter_v4,
 )
 
 
@@ -163,3 +165,23 @@ def test_passes_liq_filter_v1_uses_optional_metadata_flat_fraction() -> None:
         bars,
         metadata_row=metadata_row,
     )
+
+
+def test_liq_filter_v4_manifest_is_adv_only() -> None:
+    assert LIQ_FILTER_V4.name == "liq_v4"
+    assert LIQ_FILTER_V4.version == "v4"
+    assert LIQ_FILTER_V4.min_adv20 == pytest.approx(500.0)
+    assert LIQ_FILTER_V4.max_flat_fraction_60 == pytest.approx(1.0)
+    assert LIQ_FILTER_V4.min_cse_sessions_60 == 0
+
+
+def test_passes_liq_filter_v4_accepts_yahoo_heavy_history_with_adv() -> None:
+    # All Yahoo source_period=4 would fail v1 CSE floor; v4 ignores CSE floor.
+    bars = _bars(count=60, volumes=[600.0] * 60, source_periods=[4] * 60)
+    assert passes_liq_filter_v4("TEST.N0000", bars)
+    assert not passes_liq_filter_v1("TEST.N0000", bars)
+
+
+def test_passes_liq_filter_v4_rejects_below_adv_floor() -> None:
+    bars = _bars(count=60, volumes=[499.0] * 60, source_periods=[4] * 60)
+    assert not passes_liq_filter_v4("TEST.N0000", bars)

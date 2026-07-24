@@ -58,8 +58,12 @@ jobs:
           DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
-          python -m koel ml-score-outcomes \
+          # Shadow-first so older non-shadow rows cannot starve E7/E8 ledgers.
+          python -m koel ml-score-outcomes --model-prefix shadow --limit 20000 \
             | tee artifacts/ml-live-shadow/scoring.log
+          # Also drain a general batch after shadow-priority pass.
+          python -m koel ml-score-outcomes --limit 5000 \
+            | tee -a artifacts/ml-live-shadow/scoring.log
 
       - name: Freeze post-close training snapshot
         env:
@@ -81,6 +85,23 @@ jobs:
             --min-history 60 \
             --max-flat-fraction 0.40 \
             | tee artifacts/ml-live-shadow/shadow.json
+
+      - name: Refresh recent CSE bars for realization
+        env:
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+          PATH_BACKFILL_ENABLED: "1"
+        run: |
+          set -euo pipefail
+          python -m koel path-backfill --force --period 2 --limit 0 --no-seed \
+            | tee artifacts/ml-live-shadow/path-backfill.log
+
+      - name: Re-score shadows after bar refresh
+        env:
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m koel ml-score-outcomes --model-prefix shadow --limit 20000 \
+            | tee artifacts/ml-live-shadow/scoring-post.log
 
       - name: Evaluate prospective standards
         env:
