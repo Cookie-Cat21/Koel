@@ -39,6 +39,11 @@ Research only — not financial advice. SuccessContract **still unmet**.
 | net@112 +0.10pp | `0.006001380813429479` | True |
 | Selective 2× | emits **106** | False |
 
-**Verdict: MATERIALITY MET — unblock W5.**
+**Verdict: MATERIALITY MET on net@112 — unblock W5.**
+
+Cost gate fired: DE `persistence_exit_10_top_bottom_05` net **+0.60%** vs frozen
+champion **+0.49%** (**+0.11 pp** ≥ +0.10 pp). RankIC and selective emits did
+**not** fire. SuccessContract still **NOT MET**. Proceed to capped W5 search on
+this `matrix_id` only.
 
 Research only — not financial advice.

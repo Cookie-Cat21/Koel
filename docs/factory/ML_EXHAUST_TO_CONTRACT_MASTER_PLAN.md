@@ -19,7 +19,7 @@ needed**).
 | **W2+W1** fp+liq combo | **Killed** | Same 32 535-row ceiling; DE partial RankIC 0.1779; retired with liq_v1 (`FEATURE_PACK_LIQ_V1_NESTED_20260723.md`) |
 | **W3** relative/h5 | **Done — no unlock** | RankIC ~**0.17** (xgb 0.1735); selective **0** emits; cost still negative (`CPU_EXHAUST_REL_H5_20260723.md`) |
 | **W4** CSE-only ablation | **Killed** | ~1y CSE history insufficient for nested splits (`CSE_ONLY_NESTED_20260723.md`) |
-| **W5** bounded search | **Blocked** | Do not start until a new `matrix_id` shows W1/W3 materiality |
+| **W5** bounded search | **Unblocked (fpv2+liq_v4)** | Cost materiality +0.11pp; capped ≤2k in flight |
 | **W2** liq_v3 flat-only universe filter | **Killed / exhausted** | 35,377 samples (<100k), best RankIC 0.2227, 0 selective emits; flat_fraction alone collapses hybrid history (`UNIVERSE_FILTER_LIQ_V3_NESTED_20260723.md`) |
 | **W1b** adv20 sample-weight | **Killed (no materiality)** | Nested xgb +0.0001 RankIC; selective regresses; DE +0.45% vs +0.49% (`SAMPLE_WEIGHT_ADV20_NESTED_20260724.md`) |
 | **Goal A** selective denser + disagreement (fpv2) | **Killed** | Best 0.779/0.693/77 emits; contract false (`SELECTIVE_DISAGREEMENT_20260724.md`, `SELECTIVE_DENSE_FPV2_20260724.md`) |
@@ -29,8 +29,8 @@ needed**).
 | **W1e** near-miss disagreement | **Killed** | best 0.883/0.798/60 (`NEARMISS_DISAGREEMENT_20260724.md`) |
 | **W1f** feature_pack_v3 | **Killed (no materiality)** | best `xgb_two_stage` 0.2843 (-0.0018); emits 92 (`FEATURE_PACK_V3_NESTED_20260724.md`) |
 | **W2b** liq_v4 ADV-only | **Killed (no materiality)** | 439k samples; RankIC 0.2842; emits 97 (`UNIVERSE_FILTER_LIQ_V4_NESTED_20260724.md`) |
-| **W2c** fpv2+liq_v4 combo | **Open** | best `xgb_two_stage` 0.2835; emits 106 (`FEATURE_PACK_V2_LIQ_V4_NESTED_20260724.md`) |
-| **In flight** | 60-day shadow loop (`scripts/ml_daily_shadow.sh --loop 60 --wait`) |
+| **W2c** fpv2+liq_v4 combo | **Material (cost) — W5 unblocked** | net@112 **+0.60%** (+0.11pp); RankIC 0.2835; emits 106 (`FEATURE_PACK_V2_LIQ_V4_NESTED_20260724.md`) |
+| **In flight** | W5 ≤2k on fpv2+liq_v4; 60-day shadow loop armed |
 
 **Champions unchanged:** RankIC `xgb_two_stage` rel/h1 **0.2861**; cost DE persist split **+0.49%** @112; selective near-miss **0.770 / 0.681 / 74 emits**.
 
