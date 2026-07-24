@@ -470,6 +470,15 @@ def main(argv: list[str] | None = None) -> None:
         help="For path-backfill: CSE chart period 2–5 (default PATH_BACKFILL_PERIOD/5)",
     )
     parser.add_argument(
+        "--model-prefix",
+        type=str,
+        default=None,
+        help=(
+            "For ml-score-outcomes: only score forecast_outcomes whose model_id "
+            "starts with this prefix (e.g. shadow)"
+        ),
+    )
+    parser.add_argument(
         "--no-seed",
         action="store_true",
         help="For path-backfill / intraday-backfill: skip tradeSummary id seed",
@@ -1576,11 +1585,29 @@ def main(argv: list[str] | None = None) -> None:
             storage = Storage(settings.database_url)
             await storage.open()
             try:
-                result = await score_due_outcomes(storage)
+                # Default CLI --limit is 20 (drain-* oriented). Treat that as
+                # "unspecified" for scoring and use the scorer default (5000).
+                score_limit = (
+                    args.limit
+                    if isinstance(args.limit, int)
+                    and not isinstance(args.limit, bool)
+                    and args.limit > 20
+                    else 5000
+                )
+                result = await score_due_outcomes(
+                    storage,
+                    limit=score_limit,
+                    model_id_prefix=args.model_prefix,
+                )
                 print(
                     "ml-score-outcomes: "
                     f"examined={result.examined} scored={result.scored} "
                     f"skipped={result.skipped}"
+                    + (
+                        f" prefix={args.model_prefix}"
+                        if args.model_prefix
+                        else ""
+                    )
                 )
             finally:
                 await storage.close()

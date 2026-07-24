@@ -1,0 +1,198 @@
+{
+  "harvested_at": "2026-07-23T04:19:03.655267+00:00",
+  "cycles_completed": 6,
+  "cycles_expected": 6,
+  "complete": true,
+  "total_configs_screened": 6000,
+  "snapshot_sha": "fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae",
+  "champion_baseline": {
+    "model": "xgb_two_stage",
+    "test_ic": 0.2861
+  },
+  "cost_benchmark": {
+    "model": "persistence_de",
+    "net112": 0.0036
+  },
+  "per_cycle_best_by_test_ic": [
+    {
+      "cycle": 0,
+      "theme": "lgb",
+      "file": "/tmp/cpu-improve-6k/cycle_00.json",
+      "fingerprint": "lgb_9faa353fb4",
+      "test_ic": 0.27461166442870927,
+      "net112": -0.008959401650360358,
+      "pos112": false,
+      "beats_champion": false,
+      "config": {
+        "kind": "lgb",
+        "learning_rate": 0.05,
+        "max_depth": 9,
+        "num_leaves": 95,
+        "subsample": 0.85,
+        "colsample_bytree": 0.9,
+        "reg_lambda": 400.0
+      }
+    },
+    {
+      "cycle": 1,
+      "theme": "xgb",
+      "file": "/tmp/cpu-improve-6k/cycle_01.json",
+      "fingerprint": "lgb_c19dfe5dcf",
+      "test_ic": 0.24481666223207904,
+      "net112": -0.009859546996767535,
+      "pos112": false,
+      "beats_champion": false,
+      "config": {
+        "kind": "xgb",
+        "learning_rate": 0.02,
+        "max_depth": 4,
+        "subsample": 0.85,
+        "colsample_bytree": 0.95,
+        "reg_lambda": 0.5,
+        "min_child_weight": 10.0
+      }
+    },
+    {
+      "cycle": 2,
+      "theme": "blend",
+      "file": "/tmp/cpu-improve-6k/cycle_02.json",
+      "fingerprint": "lgb_d4a94e57dd",
+      "test_ic": 0.2608148243763402,
+      "net112": -0.008060202250694969,
+      "pos112": false,
+      "beats_champion": false,
+      "config": {
+        "kind": "blend",
+        "model_a": "lgb",
+        "model_b": "xgb_deep",
+        "weight_a": 0.75,
+        "seed": 1
+      }
+    },
+    {
+      "cycle": 3,
+      "theme": "lgb",
+      "file": "/tmp/cpu-improve-6k/cycle_03.json",
+      "fingerprint": "lgb_eceff7b641",
+      "test_ic": 0.26165048162573323,
+      "net112": -0.00668684814050271,
+      "pos112": false,
+      "beats_champion": false,
+      "config": {
+        "kind": "lgb",
+        "learning_rate": 0.08,
+        "max_depth": 7,
+        "num_leaves": 63,
+        "subsample": 0.8,
+        "colsample_bytree": 0.85,
+        "reg_lambda": 200.0
+      }
+    },
+    {
+      "cycle": 4,
+      "theme": "lgb_shaped",
+      "file": "/tmp/cpu-improve-6k/cycle_04.json",
+      "fingerprint": "lgb_477e6c53a4",
+      "test_ic": 0.26477748509152543,
+      "net112": -0.006999044836772732,
+      "pos112": false,
+      "beats_champion": false,
+      "config": {
+        "kind": "lgb_shaped",
+        "shrink": 0.25,
+        "clip": 0.05,
+        "learning_rate": 0.04,
+        "max_depth": 8,
+        "num_leaves": 95,
+        "subsample": 0.9,
+        "colsample_bytree": 0.95,
+        "reg_lambda": 20.0
+      }
+    },
+    {
+      "cycle": 5,
+      "theme": "lgb",
+      "file": "/tmp/cpu-improve-6k/cycle_05.json",
+      "fingerprint": "lgb_12d504f0f9",
+      "test_ic": 0.2580494241334145,
+      "net112": -0.007819373871120573,
+      "pos112": false,
+      "beats_champion": false,
+      "config": {
+        "kind": "blend",
+        "model_a": "lgb",
+        "model_b": "xgb",
+        "weight_a": 0.4,
+        "seed": 1
+      }
+    }
+  ],
+  "best_overall_test_ic": {
+    "cycle": 0,
+    "theme": "lgb",
+    "fingerprint": "lgb_9faa353fb4",
+    "test_ic": 0.27461166442870927,
+    "net112": -0.008959401650360358,
+    "pos112": false,
+    "beats_champion": false,
+    "config": {
+      "kind": "lgb",
+      "learning_rate": 0.05,
+      "max_depth": 9,
+      "num_leaves": 95,
+      "subsample": 0.85,
+      "colsample_bytree": 0.9,
+      "reg_lambda": 400.0
+    }
+  },
+  "best_overall_net112": {
+    "cycle": 3,
+    "theme": "lgb",
+    "fingerprint": "lgb_9ff04b8c4d",
+    "test_ic": 0.2592055491977735,
+    "net112": -0.004863134044108859,
+    "pos112": false,
+    "beats_champion": false,
+    "config": {
+      "kind": "lgb",
+      "learning_rate": 0.09,
+      "max_depth": 9,
+      "num_leaves": 95,
+      "subsample": 0.7,
+      "colsample_bytree": 0.75,
+      "reg_lambda": 200.0
+    }
+  },
+  "upstream_best_overall": {
+    "fingerprint": "lgb_9ff04b8c4d",
+    "config": {
+      "kind": "lgb",
+      "learning_rate": 0.09,
+      "max_depth": 9,
+      "num_leaves": 95,
+      "subsample": 0.7,
+      "colsample_bytree": 0.75,
+      "reg_lambda": 200.0
+    },
+    "test": {
+      "rank_ic": 0.2592055491977735,
+      "balanced_accuracy": 0.5851174962927987,
+      "mcc": 0.17019839045497126,
+      "n_rows": 5876,
+      "n_sessions": 39,
+      "spread_112": -0.004863134044108859,
+      "spread_30": 0.02156609672512191
+    },
+    "beats_baseline": true,
+    "beats_champion": false,
+    "positive_net_112": false,
+    "cycle": 3
+  },
+  "any_beats_champion": false,
+  "any_positive_net_112": false,
+  "verdict": {
+    "beats_xgb_two_stage_0_2861": false,
+    "any_pos112": false,
+    "notes": "No config beat nested xgb_two_stage RankIC 0.2861; all net@112 spreads negative (best -0.49% vs persistence DE +0.36%)."
+  }
+}

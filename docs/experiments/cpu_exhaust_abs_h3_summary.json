@@ -1,0 +1,77 @@
+{
+  "run_id": "cpu-exhaust-1784858446",
+  "snapshot_sha": "fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae",
+  "target": "absolute",
+  "horizon": 3,
+  "evaluation_domain": "cse",
+  "feature_pack": "",
+  "universe_filter": "",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "hgb_bagged",
+      "cal_rank_ic": 0.19774293464561454,
+      "test_rank_ic": 0.19487370594621387,
+      "error": null
+    },
+    {
+      "model": "hgb_two_stage",
+      "cal_rank_ic": 0.18920595678006447,
+      "test_rank_ic": 0.184112536142394,
+      "error": null
+    },
+    {
+      "model": "xgb_two_stage",
+      "cal_rank_ic": 0.18340460952095758,
+      "test_rank_ic": 0.2043312949326338,
+      "error": null
+    }
+  ],
+  "nested_per_model": {
+    "hgb_bagged": {
+      "rank_ic": 0.20608224647105525,
+      "sessions": 111,
+      "n_rows": 19555,
+      "balanced_accuracy": 0.570602260042194,
+      "mcc": 0.14450728003941637,
+      "spread_112": -0.012106615491010225,
+      "spread_30": 0.010871539134203223,
+      "beats_baseline": false
+    },
+    "hgb_two_stage": {
+      "rank_ic": 0.19119374704635933,
+      "sessions": 111,
+      "n_rows": 19555,
+      "balanced_accuracy": 0.553529824501478,
+      "mcc": 0.10658049893678899,
+      "spread_112": -0.010219909927406708,
+      "spread_30": 0.011034641683027256,
+      "beats_baseline": false
+    },
+    "xgb_two_stage": {
+      "rank_ic": 0.20142435580904766,
+      "sessions": 111,
+      "n_rows": 19555,
+      "balanced_accuracy": 0.5614226740029442,
+      "mcc": 0.12224592008598602,
+      "spread_112": -0.010557196556591038,
+      "spread_30": 0.010858199722040532,
+      "beats_baseline": false
+    },
+    "double_ensemble_native": {
+      "rank_ic": 0.17898080398749153,
+      "sessions": 111,
+      "n_rows": 19555,
+      "balanced_accuracy": 0.5456324977548543,
+      "mcc": 0.09386725387126071,
+      "spread_112": -0.0018008774925669495,
+      "spread_30": 0.01827483056843523,
+      "beats_baseline": false
+    }
+  },
+  "nested_contract_met": false,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": false
+}

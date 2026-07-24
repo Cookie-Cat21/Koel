@@ -1,0 +1,47 @@
+{
+  "run_id": "cpu-exhaust-1784792069",
+  "snapshot_sha": "bb49b183b83585a2aa7db51cd0a29cb668d42f0e26a63d542998e91091396dd0",
+  "target": "relative",
+  "horizon": 1,
+  "evaluation_domain": "cse",
+  "feature_pack": "v1",
+  "universe_filter": "liq_v1",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "xgb_two_stage",
+      "cal_rank_ic": null,
+      "test_rank_ic": null,
+      "error": "ValueError: insufficient train/test samples"
+    },
+    {
+      "model": "double_ensemble_native",
+      "cal_rank_ic": null,
+      "test_rank_ic": null,
+      "error": "IndexError: tuple index out of range"
+    },
+    {
+      "model": "hgb_two_stage",
+      "cal_rank_ic": null,
+      "test_rank_ic": null,
+      "error": "ValueError: insufficient train/test samples"
+    }
+  ],
+  "nested_per_model": {
+    "double_ensemble_native": {
+      "rank_ic": 0.17787489575683627,
+      "sessions": 78,
+      "n_rows": 11813,
+      "balanced_accuracy": 0.5661465435437432,
+      "mcc": 0.1315369704135391,
+      "spread_112": -0.016487608895250055,
+      "spread_30": 0.010817069017335096,
+      "beats_baseline": false
+    }
+  },
+  "nested_contract_met": false,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": false
+}

@@ -1,0 +1,134 @@
+[
+  {
+    "model": "hgb_bagged",
+    "calibration_rank_ic": 0.2402283287412517,
+    "test_rank_ic": 0.2621525438519736,
+    "error": null
+  },
+  {
+    "model": "hgb_deep",
+    "calibration_rank_ic": 0.23966180141443363,
+    "test_rank_ic": 0.2582223303199145,
+    "error": null
+  },
+  {
+    "model": "xgb_two_stage",
+    "calibration_rank_ic": 0.23667301310585842,
+    "test_rank_ic": 0.2563807680738678,
+    "error": null
+  },
+  {
+    "model": "hgb_weighted",
+    "calibration_rank_ic": 0.22859888463304587,
+    "test_rank_ic": 0.2452596639452434,
+    "error": null
+  },
+  {
+    "model": "hgb_two_stage",
+    "calibration_rank_ic": 0.2274084755994509,
+    "test_rank_ic": 0.2554203118072983,
+    "error": null
+  },
+  {
+    "model": "xgb_lmt",
+    "calibration_rank_ic": 0.21896184564047455,
+    "test_rank_ic": 0.2422074063010813,
+    "error": null
+  },
+  {
+    "model": "lgb_lambdarank",
+    "calibration_rank_ic": 0.21854773319104975,
+    "test_rank_ic": 0.2393043832654545,
+    "error": null
+  },
+  {
+    "model": "hgb_lmt",
+    "calibration_rank_ic": 0.21774948657217158,
+    "test_rank_ic": 0.2369306579244181,
+    "error": null
+  },
+  {
+    "model": "lgb_lmt",
+    "calibration_rank_ic": 0.2144200240666021,
+    "test_rank_ic": 0.24198039444412855,
+    "error": null
+  },
+  {
+    "model": "xgb_regressor",
+    "calibration_rank_ic": 0.2072479037159958,
+    "test_rank_ic": 0.23832158009785148,
+    "error": null
+  },
+  {
+    "model": "blend_de_lgb",
+    "calibration_rank_ic": 0.20158321665387133,
+    "test_rank_ic": 0.23768092539996738,
+    "error": null
+  },
+  {
+    "model": "hgb_regressor",
+    "calibration_rank_ic": 0.20142723036411145,
+    "test_rank_ic": 0.23895915595017855,
+    "error": null
+  },
+  {
+    "model": "double_ensemble_native",
+    "calibration_rank_ic": 0.2002982450380017,
+    "test_rank_ic": 0.24030642505480573,
+    "error": null
+  },
+  {
+    "model": "lgb_domain",
+    "calibration_rank_ic": 0.19804633847402486,
+    "test_rank_ic": 0.23295265892140818,
+    "error": null
+  },
+  {
+    "model": "xgb_domain",
+    "calibration_rank_ic": 0.195855658302328,
+    "test_rank_ic": 0.22900166116855764,
+    "error": null
+  },
+  {
+    "model": "blend_de_ridge",
+    "calibration_rank_ic": 0.19437425999561092,
+    "test_rank_ic": 0.23902230509586764,
+    "error": null
+  },
+  {
+    "model": "hgb_domain",
+    "calibration_rank_ic": 0.1928154386029603,
+    "test_rank_ic": 0.22449898733151918,
+    "error": null
+  },
+  {
+    "model": "logistic",
+    "calibration_rank_ic": 0.16025544506164352,
+    "test_rank_ic": 0.20684377692967537,
+    "error": null
+  },
+  {
+    "model": "xgb_rank_pairwise",
+    "calibration_rank_ic": 0.157986184756103,
+    "test_rank_ic": 0.1976587401980322,
+    "error": null
+  },
+  {
+    "model": "qlib_lgb_native",
+    "calibration_rank_ic": 0.14631775151606136,
+    "test_rank_ic": 0.1864666920385252,
+    "error": null
+  },
+  {
+    "model": "xgb_rank_ndcg",
+    "calibration_rank_ic": 0.1461013446615626,
+    "test_rank_ic": 0.16903030613780443,
+    "error": null
+  },
+  {
+    "model": "ridge_return",
+    "calibration_rank_ic": 0.14320022405539176,
+    "test_rank_ic": 0.20010348832268637,
+    "error": null
+  }
+]

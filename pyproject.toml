@@ -32,6 +32,9 @@ ml = [
     "xgboost>=2",
     "lightgbm>=4",
 ]
+qlib = [
+    "pyqlib==0.9.7",
+]
 hybrid = [
     "yfinance>=0.2",
     "pandas>=2",
@@ -94,7 +97,9 @@ line-length = 100
 # Align with CI (actions/setup-python 3.12); runtime still allows >=3.11.
 target-version = "py312"
 # Research harnesses / vendored Ceyfi port snapshots — not runtime package code.
-exclude = ["scripts/experiments", "docs/factory/ceyfi-market-port"]
+# koel/ml/vendor holds pinned-revision third-party model source (Kronos) kept
+# verbatim for provenance; it is not written to this repo's lint conventions.
+exclude = ["scripts/experiments", "docs/factory/ceyfi-market-port", "koel/ml/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

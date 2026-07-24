@@ -1,0 +1,78 @@
+{
+  "run_id": "cpu-exhaust-1784888328",
+  "snapshot_sha": "fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae",
+  "target": "relative",
+  "horizon": 1,
+  "evaluation_domain": "cse",
+  "feature_pack": "v2",
+  "universe_filter": "",
+  "sample_weight": "",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "xgb_two_stage",
+      "cal_rank_ic": 0.25675553288598063,
+      "test_rank_ic": 0.28089410404189435,
+      "error": null
+    },
+    {
+      "model": "hgb_lmt",
+      "cal_rank_ic": 0.2557407390214916,
+      "test_rank_ic": 0.27679989225588447,
+      "error": null
+    },
+    {
+      "model": "xgb_lmt",
+      "cal_rank_ic": 0.2507550098127727,
+      "test_rank_ic": 0.27986646103925245,
+      "error": null
+    }
+  ],
+  "nested_per_model": {
+    "xgb_two_stage": {
+      "rank_ic": 0.28653413291831203,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5856151837858727,
+      "mcc": 0.1724723522733287,
+      "spread_112": -0.0070263874402104395,
+      "spread_30": 0.020174936867290338,
+      "beats_baseline": true
+    },
+    "hgb_lmt": {
+      "rank_ic": 0.2816169567482822,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5852304043506372,
+      "mcc": 0.1772576228519141,
+      "spread_112": -0.01122943184991614,
+      "spread_30": 0.016648104361149482,
+      "beats_baseline": true
+    },
+    "xgb_lmt": {
+      "rank_ic": 0.28346614042878915,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5858573279242726,
+      "mcc": 0.17272979225525414,
+      "spread_112": -0.010512580945389795,
+      "spread_30": 0.01744340878383523,
+      "beats_baseline": true
+    },
+    "double_ensemble_native": {
+      "rank_ic": 0.25527003784782265,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5786931535328677,
+      "mcc": 0.1557269469610821,
+      "spread_112": -0.004179919238137414,
+      "spread_30": 0.02162511894807724,
+      "beats_baseline": true
+    }
+  },
+  "nested_contract_met": false,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": true
+}

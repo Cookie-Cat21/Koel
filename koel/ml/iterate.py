@@ -103,6 +103,7 @@ def _enrich_cross_section(samples: list[Sample]) -> list[Sample]:
                     y_ret=s.y_ret,
                     y_dir=s.y_dir,
                     horizon=s.horizon,
+                    target_date=s.target_date,
                 )
             )
     return out

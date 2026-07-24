@@ -1,0 +1,36 @@
+{
+  "run_id": "cpu-exhaust-1784791823",
+  "snapshot_sha": "99b7e0f45ec8798a5c8fc225a92892dfbb7cb5f92ff447a8a3013c251e434a2a",
+  "target": "relative",
+  "horizon": 1,
+  "evaluation_domain": "cse",
+  "feature_pack": "",
+  "universe_filter": "",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "xgb_two_stage",
+      "cal_rank_ic": null,
+      "test_rank_ic": null,
+      "error": "ValueError: not enough history for requested nested split"
+    },
+    {
+      "model": "double_ensemble_native",
+      "cal_rank_ic": null,
+      "test_rank_ic": null,
+      "error": "ValueError: not enough history for requested nested split"
+    },
+    {
+      "model": "hgb_two_stage",
+      "cal_rank_ic": null,
+      "test_rank_ic": null,
+      "error": "ValueError: not enough history for requested nested split"
+    }
+  ],
+  "nested_per_model": null,
+  "nested_contract_met": null,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": false
+}

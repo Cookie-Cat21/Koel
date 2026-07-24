@@ -1,0 +1,78 @@
+{
+  "run_id": "cpu-exhaust-1784869596",
+  "snapshot_sha": "fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae",
+  "target": "absolute",
+  "horizon": 1,
+  "evaluation_domain": "cse",
+  "feature_pack": "",
+  "universe_filter": "",
+  "sample_weight": "",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "hgb_bagged",
+      "cal_rank_ic": 0.2402283287412517,
+      "test_rank_ic": 0.25889798500589584,
+      "error": null
+    },
+    {
+      "model": "xgb_two_stage",
+      "cal_rank_ic": 0.23667301310585842,
+      "test_rank_ic": 0.255150862270595,
+      "error": null
+    },
+    {
+      "model": "hgb_two_stage",
+      "cal_rank_ic": 0.2274084755994509,
+      "test_rank_ic": 0.25283138697844315,
+      "error": null
+    }
+  ],
+  "nested_per_model": {
+    "hgb_bagged": {
+      "rank_ic": 0.24998039058543178,
+      "sessions": 117,
+      "n_rows": 20660,
+      "balanced_accuracy": 0.5862023125089817,
+      "mcc": 0.17721311593673963,
+      "spread_112": -0.013419293417237178,
+      "spread_30": 0.01324943039707487,
+      "beats_baseline": false
+    },
+    "xgb_two_stage": {
+      "rank_ic": 0.24569706833565516,
+      "sessions": 117,
+      "n_rows": 20660,
+      "balanced_accuracy": 0.5756039832742682,
+      "mcc": 0.15062849740930026,
+      "spread_112": -0.01252728393910744,
+      "spread_30": 0.012997454902298066,
+      "beats_baseline": false
+    },
+    "hgb_two_stage": {
+      "rank_ic": 0.24188033847455817,
+      "sessions": 117,
+      "n_rows": 20660,
+      "balanced_accuracy": 0.5796084784155315,
+      "mcc": 0.15878322355980956,
+      "spread_112": -0.012714442288055695,
+      "spread_30": 0.013144691279901399,
+      "beats_baseline": false
+    },
+    "double_ensemble_native": {
+      "rank_ic": 0.2258100302960566,
+      "sessions": 117,
+      "n_rows": 20660,
+      "balanced_accuracy": 0.5648867073160716,
+      "mcc": 0.13118623471084187,
+      "spread_112": -0.008098535239029528,
+      "spread_30": 0.016852292926994715,
+      "beats_baseline": false
+    }
+  },
+  "nested_contract_met": false,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": false
+}

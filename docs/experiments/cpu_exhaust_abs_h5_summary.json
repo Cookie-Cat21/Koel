@@ -1,0 +1,77 @@
+{
+  "run_id": "cpu-exhaust-1784797416",
+  "snapshot_sha": "fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae",
+  "target": "absolute",
+  "horizon": 5,
+  "evaluation_domain": "cse",
+  "feature_pack": "",
+  "universe_filter": "",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "hgb_bagged",
+      "cal_rank_ic": 0.17778482815027558,
+      "test_rank_ic": 0.12351031880430056,
+      "error": null
+    },
+    {
+      "model": "hgb_two_stage",
+      "cal_rank_ic": 0.16349270614530348,
+      "test_rank_ic": 0.11313359163618719,
+      "error": null
+    },
+    {
+      "model": "xgb_two_stage",
+      "cal_rank_ic": 0.14278048078944028,
+      "test_rank_ic": 0.12960399634897812,
+      "error": null
+    }
+  ],
+  "nested_per_model": {
+    "hgb_bagged": {
+      "rank_ic": 0.13795600522843487,
+      "sessions": 105,
+      "n_rows": 18455,
+      "balanced_accuracy": 0.5575256664985844,
+      "mcc": 0.11530263308202712,
+      "spread_112": -0.018196578578587853,
+      "spread_30": 0.0011132346800489332,
+      "beats_baseline": false
+    },
+    "hgb_two_stage": {
+      "rank_ic": 0.130679484061993,
+      "sessions": 105,
+      "n_rows": 18455,
+      "balanced_accuracy": 0.5556375580319777,
+      "mcc": 0.11231326337032947,
+      "spread_112": -0.016092157972903302,
+      "spread_30": 0.002449080744806001,
+      "beats_baseline": false
+    },
+    "xgb_two_stage": {
+      "rank_ic": 0.13761986590566705,
+      "sessions": 105,
+      "n_rows": 18455,
+      "balanced_accuracy": 0.5460828772038029,
+      "mcc": 0.09206959107120695,
+      "spread_112": -0.018839365646001624,
+      "spread_30": -0.0007074888953013433,
+      "beats_baseline": false
+    },
+    "double_ensemble_native": {
+      "rank_ic": 0.12368332061092084,
+      "sessions": 105,
+      "n_rows": 18455,
+      "balanced_accuracy": 0.5634960976056229,
+      "mcc": 0.14084582947323496,
+      "spread_112": -0.011879488242961431,
+      "spread_30": 0.0044514765874151645,
+      "beats_baseline": false
+    }
+  },
+  "nested_contract_met": false,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": false
+}

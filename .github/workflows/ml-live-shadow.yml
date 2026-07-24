@@ -1,0 +1,137 @@
+# Post-close prospective shadow capture and prediction. No Telegram or dashboard writes.
+name: ml-live-shadow
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 14:45 Asia/Colombo, weekdays.
+    - cron: "15 9 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-live-shadow
+  cancel-in-progress: false
+
+jobs:
+  shadow:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.ML_LIVE_SHADOW_ENABLED != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ML dependencies
+        run: pip install -e ".[ml]"
+
+      - name: Require scoped shadow-writer database secret
+        env:
+          ML_SHADOW_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${ML_SHADOW_DATABASE_URL}" ]; then
+            echo "::error::ML_SHADOW_DATABASE_URL is not set"
+            exit 1
+          fi
+
+      - name: Persist final board and live factors
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ml-live-shadow
+          python -m koel.ml.live_capture \
+            --cycles 1 \
+            --book-limit 25 \
+            --include-daily-summary \
+            | tee artifacts/ml-live-shadow/capture.jsonl
+
+      - name: Score matured prior shadow outcomes
+        env:
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          # Shadow-first so older non-shadow rows cannot starve E7/E8 ledgers.
+          python -m koel ml-score-outcomes --model-prefix shadow --limit 20000 \
+            | tee artifacts/ml-live-shadow/scoring.log
+          # Also drain a general batch after shadow-priority pass.
+          python -m koel ml-score-outcomes --limit 5000 \
+            | tee -a artifacts/ml-live-shadow/scoring.log
+
+      - name: Freeze post-close training snapshot
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m koel.ml.snapshot export \
+            --dataset hybrid \
+            --output artifacts/ml-live-shadow/snapshot \
+            | tee artifacts/ml-live-shadow/snapshot.json
+
+      - name: Emit prospective shadow rows only
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m koel.ml.live_shadow \
+            --snapshot artifacts/ml-live-shadow/snapshot \
+            --min-history 60 \
+            --max-flat-fraction 0.40 \
+            | tee artifacts/ml-live-shadow/shadow.json
+
+      - name: Refresh recent CSE bars for realization
+        env:
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+          PATH_BACKFILL_ENABLED: "1"
+        run: |
+          set -euo pipefail
+          python -m koel path-backfill --force --period 2 --limit 0 --no-seed \
+            | tee artifacts/ml-live-shadow/path-backfill.log
+
+      - name: Re-score shadows after bar refresh
+        env:
+          DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m koel ml-score-outcomes --model-prefix shadow --limit 20000 \
+            | tee artifacts/ml-live-shadow/scoring-post.log
+
+      - name: Evaluate prospective standards
+        env:
+          ML_DATABASE_URL: ${{ secrets.ML_SHADOW_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m koel.ml.live_shadow_report \
+            | tee artifacts/ml-live-shadow/standards.json
+
+      - name: Upload immutable run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-live-shadow-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ml-live-shadow/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## ML live shadow"
+            echo ""
+            for file in capture.jsonl snapshot.json shadow.json scoring.log standards.json; do
+              if [ -f "artifacts/ml-live-shadow/$file" ]; then
+                echo "### $file"
+                echo '```'
+                cat "artifacts/ml-live-shadow/$file"
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

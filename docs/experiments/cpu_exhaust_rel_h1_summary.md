@@ -1,0 +1,46 @@
+# CPU exhaust summary
+
+- run_id: `cpu-exhaust-1784744210`
+- snapshot: `fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae`
+- target/horizon/domain: `relative` / h1 / `cse`
+- baseline RankIC (DoubleEnsemble): 0.2526
+- any_beats_baseline: **True**
+- nested contract_met: `False`
+
+## Family screen (fold 0)
+
+| model | cal RankIC | test RankIC | error |
+|---|---:|---:|---|
+| hgb_two_stage | 0.25413522803428756 | 0.2788749708845223 |  |
+| hgb_lmt | 0.2520527789881898 | 0.2740368339761096 |  |
+| xgb_lmt | 0.25147672567439927 | 0.281268423962689 |  |
+| hgb_bagged | 0.2513858575255969 | 0.2722429491719544 |  |
+| hgb_deep | 0.2513626305930325 | 0.2739036252570142 |  |
+| xgb_two_stage | 0.2490826525414509 | 0.2887136651188255 |  |
+| lgb_lmt | 0.24457983081380547 | 0.2838978819567923 |  |
+| lgb_domain | 0.2337527610714704 | 0.25210464708576275 |  |
+| lgb_lambdarank | 0.23012953513867637 | 0.2634671532294634 |  |
+| xgb_regressor | 0.2279671303702539 | 0.2596390071905211 |  |
+| hgb_weighted | 0.22652130466051962 | 0.2601082413667634 |  |
+| xgb_domain | 0.22140855016391733 | 0.24621446614164313 |  |
+| hgb_regressor | 0.22066033446767666 | 0.2509084571443635 |  |
+| blend_de_lgb | 0.21699723845674052 | 0.25742629347716395 |  |
+| hgb_domain | 0.2152134441198453 | 0.24494938841551525 |  |
+
+## Nested pooled (survivors)
+
+| model | RankIC | BA | MCC | spread@112 | beats baseline |
+|---|---:|---:|---:|---:|---|
+| xgb_two_stage | 0.28612534061984274 | 0.5881527716166426 | 0.17710936483616152 | -0.007805351088871844 | True |
+| xgb_lmt | 0.2835631898576337 | 0.5857090697553355 | 0.1721258167814549 | -0.010219267946711035 | True |
+| hgb_two_stage | 0.28162883327742366 | 0.5856958758771035 | 0.17866853770799931 | -0.008819545319200569 | True |
+| hgb_lmt | 0.28055121804913574 | 0.5839918296160529 | 0.17479680486520216 | -0.011307993196409929 | True |
+| hgb_bagged | 0.2748352360643766 | 0.5760435659064758 | 0.180133048738895 | -0.010330447666141778 | True |
+| hgb_deep | 0.27475156503309517 | 0.5757495679753397 | 0.18010531070305452 | -0.010297648559137028 | True |
+| double_ensemble_native | 0.2566437510536177 | 0.5777122421944139 | 0.15375862902562826 | -0.004372545353669138 | True |
+
+## 10k LightGBM winners (test once)
+
+- `lgb_c34120c27d` cal=0.2515785183390195 test=0.26399181422446283 beats=True config=`{'learning_rate': 0.06, 'max_depth': 8, 'num_leaves': 63, 'subsample': 0.9, 'colsample_bytree': 0.95, 'reg_lambda': 100.0}`
+- `lgb_628154612f` cal=0.2514662342178555 test=0.25603258025884146 beats=True config=`{'learning_rate': 0.12, 'max_depth': 7, 'num_leaves': 63, 'subsample': 0.9, 'colsample_bytree': 0.95, 'reg_lambda': 100.0}`
+- `lgb_c0adfff6c1` cal=0.2514662342178555 test=0.2585040412400951 beats=True config=`{'learning_rate': 0.12, 'max_depth': 7, 'num_leaves': 95, 'subsample': 0.9, 'colsample_bytree': 0.95, 'reg_lambda': 100.0}`

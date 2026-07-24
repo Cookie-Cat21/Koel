@@ -127,6 +127,61 @@ async def emit_outcome_rows(
     return len(rows_out)
 
 
+async def emit_shadow_outcome_rows(
+    storage: Storage,
+    emits: list[OutcomeEmit],
+) -> int:
+    """Insert immutable prospective shadows; conflicts never rewrite evidence."""
+    if not emits:
+        return 0
+    if any(not str(emit.gate or "").startswith("shadow_") for emit in emits):
+        raise ValueError("shadow outcome gates must start with 'shadow_'")
+    calendar = await market_calendar(storage)
+    inserted = 0
+    async with storage._pool.connection() as conn:
+        for emit in emits:
+            if (
+                not isinstance(emit.symbol, str)
+                or not emit.symbol.strip()
+                or emit.horizon_days < 1
+                or not math.isfinite(emit.y_pred)
+            ):
+                continue
+            realized = _add_trading_days(
+                emit.issued_at,
+                emit.horizon_days,
+                calendar,
+            )
+            row = await (
+                await conn.execute(
+                    """
+                    INSERT INTO forecast_outcomes (
+                        model_id, model_version, symbol, issued_at, horizon_days,
+                        y_pred, confidence, gate, realized_at, regime_tag
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (
+                        model_version, symbol, issued_at, horizon_days
+                    ) DO NOTHING
+                    RETURNING id
+                    """,
+                    (
+                        emit.model_id,
+                        emit.model_version,
+                        emit.symbol.strip().upper(),
+                        emit.issued_at,
+                        int(emit.horizon_days),
+                        float(emit.y_pred),
+                        emit.confidence,
+                        emit.gate,
+                        realized,
+                        emit.regime_tag,
+                    ),
+                )
+            ).fetchone()
+            inserted += int(row is not None)
+    return inserted
+
+
 def _nth_session_after(
     start: date, n: int, dates_sorted: list[date]
 ) -> date | None:
@@ -148,13 +203,23 @@ def _nth_session_after(
     return dates_sorted[j]
 
 
-async def score_due_outcomes(storage: Storage, *, limit: int = 5000) -> ScoreOutcomesResult:
+async def score_due_outcomes(
+    storage: Storage,
+    *,
+    limit: int = 5000,
+    model_id_prefix: str | None = None,
+) -> ScoreOutcomesResult:
     """Fill y_real/hit when the horizon's session exists in daily_bars.
 
     Also backfills ``realized_at`` from each symbol's own calendar when null
     (global calendar often has no *future* sessions at emit time).
+
+    ``model_id_prefix`` (e.g. ``shadow``) prioritizes research/shadow rows so
+    the default 5000-row FIFO cannot starve Loop-0 ledgers behind older
+    non-shadow outcomes.
     """
     lim = max(1, min(int(limit), 50_000))
+    prefix = (model_id_prefix or "").strip()
     # Only consider rows that could already have a next session in daily_bars.
     async with storage._pool.connection() as conn:
         max_bar = await (
@@ -163,19 +228,35 @@ async def score_due_outcomes(storage: Storage, *, limit: int = 5000) -> ScoreOut
         max_d = dict(max_bar).get("d") if max_bar else None
         if not isinstance(max_d, date):
             return ScoreOutcomesResult(0, 0, 0)
-        rows = await (
-            await conn.execute(
-                """
-                SELECT id, symbol, issued_at, horizon_days, y_pred, realized_at
-                FROM forecast_outcomes
-                WHERE scored = FALSE
-                  AND issued_at < %s
-                ORDER BY issued_at ASC, id ASC
-                LIMIT %s
-                """,
-                (max_d, lim),
-            )
-        ).fetchall()
+        if prefix:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT id, symbol, issued_at, horizon_days, y_pred, realized_at
+                    FROM forecast_outcomes
+                    WHERE scored = FALSE
+                      AND issued_at < %s
+                      AND model_id LIKE %s
+                    ORDER BY issued_at ASC, id ASC
+                    LIMIT %s
+                    """,
+                    (max_d, f"{prefix}%", lim),
+                )
+            ).fetchall()
+        else:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT id, symbol, issued_at, horizon_days, y_pred, realized_at
+                    FROM forecast_outcomes
+                    WHERE scored = FALSE
+                      AND issued_at < %s
+                    ORDER BY issued_at ASC, id ASC
+                    LIMIT %s
+                    """,
+                    (max_d, lim),
+                )
+            ).fetchall()
 
     examined = scored = skipped = 0
     bar_cache: dict[str, tuple[dict[date, float], list[date]]] = {}

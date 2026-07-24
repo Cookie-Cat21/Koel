@@ -108,6 +108,7 @@ def _demean_by_day(samples: list[Sample]) -> list[Sample]:
                     y_ret=demeaned,
                     y_dir=direction,
                     horizon=s.horizon,
+                    target_date=s.target_date,
                 )
             )
     return out

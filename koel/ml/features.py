@@ -185,15 +185,28 @@ def labels_at(
     *,
     index: int,
     horizon: int,
+    include_flat: bool = False,
+    skip: int = 0,
 ) -> tuple[float, float] | None:
-    """Return (ret, dir) for horizon from ``index``; dir is -1 or +1."""
-    if horizon < 1 or index < 0 or index + horizon >= len(prices):
+    """Return horizon (return, direction); flat is optional and encoded as 0.
+
+    ``skip`` shifts the label window forward by that many sessions after the
+    feature ``as_of`` index (execution lag / skip-day labels). Features stay at
+    ``index``; the return is measured from ``index+skip`` to ``index+skip+horizon``.
+    """
+    if horizon < 1 or skip < 0 or index < 0:
         return None
-    p0, p1 = prices[index], prices[index + horizon]
+    start = index + skip
+    end = start + horizon
+    if end >= len(prices):
+        return None
+    p0, p1 = prices[start], prices[end]
     if p0 == 0 or not math.isfinite(p0) or not math.isfinite(p1):
         return None
     ret = (p1 / p0) - 1.0
-    if ret == 0 or not math.isfinite(ret):
+    if not math.isfinite(ret):
         return None
+    if ret == 0:
+        return (0.0, 0.0) if include_flat else None
     direction = 1.0 if ret > 0 else -1.0
     return ret, direction
