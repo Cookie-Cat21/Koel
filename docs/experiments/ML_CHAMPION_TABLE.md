@@ -139,6 +139,7 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
 | 5f | fpv2 extra (bagged/LMT/deep) | **exhausted** | best `xgb_lmt` 0.2835 (−0.0026 vs champion); selective 46 emits / LCB 0.793 (`FEATURE_PACK_V2_EXTRA_NESTED_20260724.md`) |
 | 5g | Ranking models (LTR) | **exhausted** | best `lgb_lambdarank` 0.2647; 0 selective emits (`RANKING_MODELS_NESTED_20260724.md`) |
 | 5h | DE blends | **exhausted** | best `blend_de_lgb` 0.2557; net +0.58% cost-only; 0 selective emits (`BLEND_MODELS_NESTED_20260724.md`) |
+| 5i | Simple models (ridge/logit/reg) | **exhausted** | best `xgb_regressor` 0.2625 (−0.0236); selective 0; cost +0.51% (`SIMPLE_MODELS_NESTED_20260724.md`) |
 | 5d | Selective denser + disagreement (fpv2) | **exhausted** | best 0.779/0.693/77 emits; contract **false** |
 | 5b | Universe filter W2 | **exhausted/killed — universe collapse** | v1 −93.5%; v2 35,328 rows; v3 35,377 rows; 0 selective emits; flat-only filter still <100k |
 | 6 | Horizons/targets | absolute/h1 done; abs/h1 split selective **exhausted (0 emits)**; rel/h3 + abs/h3 + h5 exhausted | rel/h3 0.2285; **abs/h3 0.2061**; h5 0.1735; no Goal A/B unlock |
@@ -290,3 +291,13 @@ Nested relative/h1 with `--feature-pack v2` (`FEATURE_PACK_V2_NESTED_20260724.md
 
 W1 materiality **not fired**. Selective 90% contract **still unmet** (honest).
 **Champions retained:** RankIC `xgb_two_stage` 0.2861; cost DE persist +0.49%.
+
+## Cycle — 2026-07-24 simple models (fpv2)
+
+- Matrix: `feature_pack_v2` / relative / h1 — models `ridge_return`, `logistic`,
+  `xgb_regressor`, `hgb_regressor` (+ DE survivor).
+- Best nested RankIC: `xgb_regressor` **0.2625** (−0.0236 vs frozen 0.2861).
+- Selective: **0 emits** all models; SuccessContract **NOT MET**.
+- Evidence: `SIMPLE_MODELS_NESTED_20260724.md`, `cpu_exhaust_rel_h1_simple_summary.json`.
+- Next serial (in flight): remaining families `hgb_weighted,hgb_domain,xgb_domain,lgb_lmt,lgb_domain,qlib_lgb_native` then near-miss disagreement trio.
+

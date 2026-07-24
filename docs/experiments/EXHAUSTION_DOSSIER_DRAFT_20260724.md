@@ -41,6 +41,14 @@ E7 requires ≥60 **non-partial scored** sessions — **1/60** after post-close 
 
 Same-matrix hypers, ensembles, selective grids, fpv1/v2, fpv2 extra (bagged/LMT/deep), ranking models (LTR), DE blends, liq filters v1–v3, horizons h3/h5, CSE-only short history, ADV sample weights, disagreement selective.
 
+## 2026-07-24 addendum — simple models
+
+- fpv2 simple nest exhausted: best `xgb_regressor` RankIC **0.2625** (no materiality).
+- Selective 0 emits; contract false.
+- Path-backfill forced (period=2) brought `daily_bars` through **2026-07-24** (~77+ symbols mid-run).
+- DE-persist **non-partial scored sessions still 0** (Jul-24 h1 needs Jul-25 close); partial Jul-23 scored 6/22 legs.
+- Monday 2026-07-27 14:40 SLT non-partial shadow scheduled (`koel-shadow-mon` tmux).
+
 ## Still open
 
 - E7 non-partial shadow receipts (**1/60** sessions; daily accumulation)
