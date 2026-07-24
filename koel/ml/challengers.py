@@ -41,11 +41,23 @@ def _chronological_fit_valid_indices(samples: list[Sample]) -> tuple[list[int], 
     return fit, valid
 
 
+def _as_sample_weight(sample_weight: object | None, expected: int) -> object | None:
+    if sample_weight is None:
+        return None
+    import numpy as np
+
+    weights = np.asarray(sample_weight, dtype=float)
+    if weights.shape != (expected,):
+        raise ValueError("sample_weight must align to train samples")
+    return weights
+
+
 def predict_qlib_lightgbm(
     train: list[Sample],
     test: list[Sample],
     *,
     seed: int,
+    sample_weight: object | None = None,
 ) -> list[float]:
     """Qlib-parameter-style LightGBM return regression baseline."""
     import lightgbm as lgb
@@ -54,6 +66,7 @@ def predict_qlib_lightgbm(
 
     x_train, x_test, y_train = _matrices(train, test)
     fit_indices, valid_indices = _chronological_fit_valid_indices(train)
+    weights = _as_sample_weight(sample_weight, len(train))
     model = LGBMRegressor(
         objective="regression",
         n_estimators=1000,
@@ -81,6 +94,9 @@ def predict_qlib_lightgbm(
     model.fit(
         x_train[np.asarray(fit_indices)],
         y_train[np.asarray(fit_indices)],
+        sample_weight=(
+            None if weights is None else weights[np.asarray(fit_indices)]
+        ),
         **fit_kwargs,
     )
     return [float(value) for value in model.predict(x_test)]
@@ -91,6 +107,7 @@ def predict_native_double_ensemble(
     test: list[Sample],
     *,
     seed: int,
+    sample_weight: object | None = None,
 ) -> list[float]:
     """Deterministic native approximation of Qlib's DoubleEnsemble concept.
 
@@ -100,6 +117,10 @@ def predict_native_double_ensemble(
     from lightgbm import LGBMRegressor
 
     x_train, x_test, y_train = _matrices(train, test)
+    base_weight = _as_sample_weight(sample_weight, len(train))
+    if base_weight is None:
+        base_weight = np.ones(len(train), dtype=float)
+    base_weight = base_weight / float(np.mean(base_weight))
     feature_count = x_train.shape[1]
     correlations = []
     y_std = float(np.std(y_train))
@@ -112,7 +133,7 @@ def predict_native_double_ensemble(
             correlations.append(abs(value) if math.isfinite(value) else 0.0)
     ranked_features = np.argsort(np.asarray(correlations))[::-1]
 
-    sample_weight = np.ones(len(train), dtype=float)
+    fit_weight = base_weight.copy()
     predictions = []
     for model_index, ratio in enumerate((1.0, 0.8, 0.6)):
         selected_n = max(1, math.ceil(feature_count * ratio))
@@ -136,14 +157,15 @@ def predict_native_double_ensemble(
         model.fit(
             x_train[:, selected],
             y_train,
-            sample_weight=sample_weight,
+            sample_weight=fit_weight,
         )
         train_prediction = model.predict(x_train[:, selected])
         error = np.abs(y_train - train_prediction)
         scale = float(np.median(error))
         if scale > 0:
-            sample_weight = np.clip(1.0 + error / scale, 1.0, 5.0)
-            sample_weight /= float(np.mean(sample_weight))
+            dynamic_weight = np.clip(1.0 + error / scale, 1.0, 5.0)
+            fit_weight = base_weight * dynamic_weight
+            fit_weight /= float(np.mean(fit_weight))
         predictions.append(model.predict(x_test[:, selected]))
     mean_prediction = np.mean(np.asarray(predictions), axis=0)
     return [float(value) for value in mean_prediction]

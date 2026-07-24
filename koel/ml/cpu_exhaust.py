@@ -37,8 +37,10 @@ from koel.ml.distributed import (
     write_prediction_artifact,
 )
 from koel.ml.distributed_worker import (
+    SAMPLE_WEIGHT_CHOICES,
     _fit_predict_average,
     _rows_for_dates,
+    _weights_for_rows,
     build_outer_split,
 )
 from koel.ml.feature_pack_v1 import enrich_feature_pack_v1 as _enrich_feature_pack_v1
@@ -57,6 +59,7 @@ from koel.ml.research_features import (
     enrich_research_quality,
 )
 from koel.ml.research_fundamentals import enrich_fundamentals
+from koel.ml.sample_weights import adv20_sample_weights
 from koel.ml.snapshot import load_bar_snapshot
 from koel.ml.universe_filters import (
     LIQ_FILTER_V1,
@@ -84,7 +87,10 @@ def _prepare_samples(
     max_abs_return: float = 0.35,
     feature_pack: str = "",
     universe_filter: str = "",
-) -> tuple[list[Sample], dict, list[date], str]:
+    sample_weight: str = "",
+) -> tuple[list[Sample], dict, list[date], str, list[float] | None]:
+    if sample_weight not in SAMPLE_WEIGHT_CHOICES:
+        raise ValueError("sample_weight must be '' or 'adv20'")
     loaded = load_bar_snapshot(snapshot_dir)
     metadata = build_research_bar_metadata(
         loaded.series,
@@ -124,6 +130,11 @@ def _prepare_samples(
     if target == "relative":
         research = _demean_by_day(research)
     samples = _enrich_cross_section(research)
+    sample_weights = (
+        adv20_sample_weights(samples, loaded.series)
+        if sample_weight == "adv20"
+        else None
+    )
     dates = sorted(
         {
             bar.trade_date
@@ -142,7 +153,7 @@ def _prepare_samples(
             )
         ).encode("utf-8")
     ).hexdigest()
-    return samples, metadata, dates, composite
+    return samples, metadata, dates, composite, sample_weights
 
 
 def _resolve_universe_filter(value: str) -> FilterManifest | None:
@@ -209,6 +220,7 @@ def _run_one_model_fold(
     snapshot_sha: str,
     run_id: str,
     output_dir: Path,
+    sample_weight: object | None,
 ) -> dict[str, Any]:
     if model not in ALLOWED_MODELS:
         raise ValueError(f"unsupported model {model}")
@@ -245,8 +257,13 @@ def _run_one_model_fold(
     started = time.perf_counter()
     # Match distributed_worker: one fit on calibration_train, score cal+test.
     evaluation_rows = calibration + test
+    train_weight = _weights_for_rows(samples, sample_weight, train)
     evaluation_scores = _fit_predict_average(
-        model=model, train=train, test=evaluation_rows, seeds=seeds
+        model=model,
+        train=train,
+        test=evaluation_rows,
+        seeds=seeds,
+        sample_weight=train_weight,
     )
     cal_scores = evaluation_scores[: len(calibration)]
     test_scores = evaluation_scores[len(calibration) :]
@@ -324,6 +341,7 @@ def phase_family_screen(
     evaluation_domain: str,
     max_flat_fraction: float,
     workers: int,
+    sample_weight: object | None,
 ) -> list[dict[str, Any]]:
     """Fold-0 screen of every CPU family (calibration RankIC ranks survivors)."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -348,6 +366,7 @@ def phase_family_screen(
                 snapshot_sha=snapshot_sha,
                 run_id=run_id,
                 output_dir=output_dir / "screen",
+                sample_weight=sample_weight,
             )
             results.append(result)
             print(
@@ -390,6 +409,7 @@ def phase_nested_deep(
     max_flat_fraction: float,
     outer_folds: int,
     seeds: tuple[int, ...],
+    sample_weight: object | None,
 ) -> dict[str, Any]:
     shards_dir = output_dir / "nested"
     shards_dir.mkdir(parents=True, exist_ok=True)
@@ -412,6 +432,7 @@ def phase_nested_deep(
                     snapshot_sha=snapshot_sha,
                     run_id=run_id,
                     output_dir=shards_dir,
+                    sample_weight=sample_weight,
                 )
                 fold_rows.append(result)
                 print(
@@ -515,11 +536,18 @@ def _lgb_screen_worker(payload: dict[str, Any]) -> dict[str, Any]:
     calibration: list[Sample] = payload["calibration"]
     config: dict[str, float | int] = payload["config"]
     seed: int = payload["seed"]
+    sample_weight = payload.get("sample_weight")
     # Fast screen estimators; winners are re-fit with full budget below.
     screen_config = {**config, "n_estimators": int(payload.get("n_estimators", 120))}
     started = time.perf_counter()
     try:
-        scores = predict_lgb_tuned(train, calibration, seed=seed, **screen_config)
+        scores = predict_lgb_tuned(
+            train,
+            calibration,
+            seed=seed,
+            sample_weight=sample_weight,
+            **screen_config,
+        )
         metrics = _partition_metrics(calibration, scores)
         return {
             "config": config,
@@ -552,6 +580,7 @@ def phase_lgb_10k_screen(
     seed: int,
     top_k: int,
     output_dir: Path,
+    sample_weight: object | None,
 ) -> dict[str, Any]:
     """Run up to ``limit`` LightGBM configs; rank by calibration RankIC only."""
     split = build_outer_split(
@@ -593,6 +622,8 @@ def phase_lgb_10k_screen(
         train_screen = ordered[-screen_train_cap:]
     else:
         train_screen = train_full
+    train_screen_weight = _weights_for_rows(samples, sample_weight, train_screen)
+    train_full_weight = _weights_for_rows(samples, sample_weight, train_full)
     grid = lgb_hyperparam_grid(limit=limit)
     output_dir.mkdir(parents=True, exist_ok=True)
     print(
@@ -608,6 +639,7 @@ def phase_lgb_10k_screen(
             "config": config,
             "seed": seed,
             "n_estimators": 80,
+            "sample_weight": train_screen_weight,
         }
         for config in grid
     ]
@@ -676,6 +708,7 @@ def phase_lgb_10k_screen(
                 evaluation_rows,
                 seed=seed,
                 n_estimators=600,
+                sample_weight=train_full_weight,
                 **config,
             )
             test_scores = scores[len(calibration) :]
@@ -826,23 +859,29 @@ def run_exhaust(
     resume: bool = False,
     feature_pack: str = "",
     universe_filter: str = "",
+    sample_weight: str = "",
 ) -> dict[str, Any]:
+    if sample_weight not in SAMPLE_WEIGHT_CHOICES:
+        raise ValueError("sample_weight must be '' or 'adv20'")
     output_dir.mkdir(parents=True, exist_ok=True)
     run_id = f"cpu-exhaust-{int(time.time())}"
     print(f"[exhaust] loading snapshot from {snapshot_dir}", flush=True)
-    samples, metadata, dates, snapshot_sha = _prepare_samples(
+    samples, metadata, dates, snapshot_sha, sample_weights = _prepare_samples(
         snapshot_dir,
         horizon=horizon,
         target=target,
         feature_pack=feature_pack,
         universe_filter=universe_filter,
+        sample_weight=sample_weight,
     )
     pack_tag = feature_pack.strip() or "none"
     universe_tag = universe_filter.strip() or "none"
+    sample_weight_tag = sample_weight.strip() or "none"
     print(
         f"[exhaust] samples={len(samples)} dates={len(dates)} "
         f"sha={snapshot_sha[:16]}… target={target} h={horizon} "
-        f"feature_pack={pack_tag} universe_filter={universe_tag}",
+        f"feature_pack={pack_tag} universe_filter={universe_tag} "
+        f"sample_weight={sample_weight_tag}",
         flush=True,
     )
     chosen_models = models or CPU_EXHAUST_MODELS
@@ -881,6 +920,7 @@ def run_exhaust(
             evaluation_domain=evaluation_domain,
             max_flat_fraction=max_flat_fraction,
             workers=4,
+            sample_weight=sample_weights,
         )
         screen_path.write_text(
             json.dumps(screen, indent=2, default=str) + "\n",
@@ -910,6 +950,7 @@ def run_exhaust(
             max_flat_fraction=max_flat_fraction,
             outer_folds=nested_folds,
             seeds=nested_seeds,
+            sample_weight=sample_weights,
         )
     (output_dir / "phase_nested_deep.json").write_text(
         json.dumps(nested, indent=2, default=str) + "\n",
@@ -931,6 +972,7 @@ def run_exhaust(
             seed=0,
             top_k=hyper_top_k,
             output_dir=output_dir / "hyper",
+            sample_weight=sample_weights,
         )
 
     summary = {
@@ -941,6 +983,7 @@ def run_exhaust(
         "evaluation_domain": evaluation_domain,
         "feature_pack": feature_pack,
         "universe_filter": universe_filter,
+        "sample_weight": sample_weight,
         "baseline_rank_ic": BASELINE_RANK_IC,
         "screen_top": [
             {
@@ -989,6 +1032,7 @@ def _write_markdown(summary: dict[str, Any], path: Path) -> None:
         f"- baseline RankIC (DoubleEnsemble): {summary['baseline_rank_ic']}",
         f"- feature_pack: `{summary.get('feature_pack') or 'none'}`",
         f"- universe_filter: `{summary.get('universe_filter') or 'none'}`",
+        f"- sample_weight: `{summary.get('sample_weight') or 'none'}`",
         f"- any_beats_baseline: **{summary['any_beats_baseline']}**",
         f"- nested contract_met: `{summary.get('nested_contract_met')}`",
         "",
@@ -1075,6 +1119,12 @@ def main(argv: list[str] | None = None) -> int:
         choices=("", "liq_v1", "liq_v2", "liq_v3"),
         help="Optional training universe filter; default keeps frozen champion matrix",
     )
+    parser.add_argument(
+        "--sample-weight",
+        default="",
+        choices=SAMPLE_WEIGHT_CHOICES,
+        help="Optional train-row sample weights; default keeps frozen fits",
+    )
     args = parser.parse_args(argv)
     models = (
         tuple(part.strip() for part in args.models.split(",") if part.strip())
@@ -1101,6 +1151,7 @@ def main(argv: list[str] | None = None) -> int:
         resume=args.resume,
         feature_pack=args.feature_pack,
         universe_filter=args.universe_filter,
+        sample_weight=args.sample_weight,
     )
     return 0
 

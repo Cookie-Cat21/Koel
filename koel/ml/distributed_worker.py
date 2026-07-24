@@ -32,9 +32,11 @@ from koel.ml.research_features import (
     sample_domain,
 )
 from koel.ml.research_fundamentals import enrich_fundamentals
+from koel.ml.sample_weights import adv20_sample_weights
 from koel.ml.snapshot import load_bar_snapshot
 
 SOURCE_IS_CSE_INDEX = len(FEATURE_NAMES)
+SAMPLE_WEIGHT_CHOICES = ("", "adv20")
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,6 +159,55 @@ def _class_ratio(labels: object) -> float:
     return negatives / positives if positives else 1.0
 
 
+def _as_sample_weight(sample_weight: object | None, expected: int) -> object | None:
+    if sample_weight is None:
+        return None
+    import numpy as np
+
+    weights = np.asarray(sample_weight, dtype=float)
+    if weights.shape != (expected,):
+        raise ValueError("sample_weight must align to train samples")
+    return weights
+
+
+def _weights_for_rows(
+    source: list[Sample],
+    source_weight: object | None,
+    rows: list[Sample],
+) -> object | None:
+    if source_weight is None:
+        return None
+    import numpy as np
+
+    weights_by_id = {
+        id(sample): float(weight)
+        for sample, weight in zip(source, source_weight, strict=True)
+    }
+    return np.asarray([weights_by_id[id(sample)] for sample in rows], dtype=float)
+
+
+def _fit_estimator(
+    estimator: object,
+    x_train: object,
+    y_train: object,
+    *,
+    sample_weight: object | None,
+) -> None:
+    if sample_weight is None:
+        estimator.fit(x_train, y_train)
+        return
+    steps = getattr(estimator, "steps", None)
+    if steps:
+        final_step = steps[-1][0]
+        estimator.fit(
+            x_train,
+            y_train,
+            **{f"{final_step}__sample_weight": sample_weight},
+        )
+        return
+    estimator.fit(x_train, y_train, sample_weight=sample_weight)
+
+
 def _domain_weights(samples: list[Sample]) -> object:
     """Upweight official-CSE and recent training rows without future inputs."""
     import numpy as np
@@ -183,6 +234,7 @@ def _fit_predict_two_stage(
     train: list[Sample],
     test: list[Sample],
     seed: int,
+    sample_weight: object | None = None,
 ) -> list[float]:
     """Predict material-move probability, then conditional direction."""
     import numpy as np
@@ -197,6 +249,10 @@ def _fit_predict_two_stage(
     x_train, x_test = _feature_matrices(train, test)
     train_index = {id(sample): index for index, sample in enumerate(train)}
     direction_indices = [train_index[id(sample)] for sample in direction_rows]
+    train_weight = _as_sample_weight(sample_weight, len(train))
+    direction_weight = (
+        None if train_weight is None else train_weight[direction_indices]
+    )
     y_direction = np.asarray(
         [1 if sample.y_dir > 0 else 0 for sample in direction_rows],
         dtype=int,
@@ -234,8 +290,18 @@ def _fit_predict_two_stage(
             seed=seed + 10_000,
             positive_weight=_class_ratio(y_material),
         )
-    direction_model.fit(x_train[direction_indices], y_direction)
-    material_model.fit(x_train, y_material)
+    _fit_estimator(
+        direction_model,
+        x_train[direction_indices],
+        y_direction,
+        sample_weight=direction_weight,
+    )
+    _fit_estimator(
+        material_model,
+        x_train,
+        y_material,
+        sample_weight=train_weight,
+    )
     direction_margin = direction_model.predict_proba(x_test)[:, 1] - 0.5
     material_probability = material_model.predict_proba(x_test)[:, 1]
     return [
@@ -254,43 +320,85 @@ def _fit_predict_one(
     train: list[Sample],
     test: list[Sample],
     seed: int,
+    sample_weight: object | None = None,
 ) -> list[float]:
     import numpy as np
 
     if model not in ALLOWED_MODELS:
         raise ValueError(f"unsupported model {model}")
+    train_weight = _as_sample_weight(sample_weight, len(train))
     if model == "qlib_lgb_native":
         from koel.ml.challengers import predict_qlib_lightgbm
 
-        return predict_qlib_lightgbm(train, test, seed=seed)
+        return predict_qlib_lightgbm(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "double_ensemble_native":
         from koel.ml.challengers import predict_native_double_ensemble
 
-        return predict_native_double_ensemble(train, test, seed=seed)
+        return predict_native_double_ensemble(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "ridge_return":
         from koel.ml.cpu_challengers import predict_ridge_return
 
-        return predict_ridge_return(train, test, seed=seed)
+        return predict_ridge_return(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "hgb_regressor":
         from koel.ml.cpu_challengers import predict_hgb_regressor
 
-        return predict_hgb_regressor(train, test, seed=seed)
+        return predict_hgb_regressor(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "xgb_regressor":
         from koel.ml.cpu_challengers import predict_xgb_regressor
 
-        return predict_xgb_regressor(train, test, seed=seed)
+        return predict_xgb_regressor(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "hgb_bagged":
         from koel.ml.cpu_challengers import predict_hgb_bagged
 
-        return predict_hgb_bagged(train, test, seed=seed)
+        return predict_hgb_bagged(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "hgb_deep":
         from koel.ml.cpu_challengers import predict_hgb_deep
 
-        return predict_hgb_deep(train, test, seed=seed)
+        return predict_hgb_deep(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "hgb_weighted":
         from koel.ml.cpu_challengers import predict_hgb_weighted
 
-        return predict_hgb_weighted(train, test, seed=seed)
+        return predict_hgb_weighted(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "xgb_rank_pairwise":
         from koel.ml.cpu_challengers import predict_xgb_rank_pairwise
 
@@ -306,11 +414,21 @@ def _fit_predict_one(
     if model == "blend_de_lgb":
         from koel.ml.cpu_challengers import predict_blend_de_lgb
 
-        return predict_blend_de_lgb(train, test, seed=seed)
+        return predict_blend_de_lgb(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model == "blend_de_ridge":
         from koel.ml.cpu_challengers import predict_blend_de_ridge
 
-        return predict_blend_de_ridge(train, test, seed=seed)
+        return predict_blend_de_ridge(
+            train,
+            test,
+            seed=seed,
+            sample_weight=train_weight,
+        )
     if model in {"qlib_lgb_exact", "qlib_double_ensemble_exact"}:
         from koel.ml.qlib_exact import predict_exact_qlib
 
@@ -342,6 +460,7 @@ def _fit_predict_one(
             train=train,
             test=test,
             seed=seed,
+            sample_weight=train_weight,
         )
     selected = [sample for sample in train if sample.y_dir != 0]
     domain_weighted = model.endswith("_domain")
@@ -408,11 +527,20 @@ def _fit_predict_one(
             seed=seed,
             positive_weight=_class_ratio(y_train),
         )
-    sample_weight = _domain_weights(selected) if domain_weighted else None
-    if sample_weight is None:
-        classifier.fit(x_train, y_train)
-    else:
-        classifier.fit(x_train, y_train, sample_weight=sample_weight)
+    selected_weight = _weights_for_rows(train, train_weight, selected)
+    if domain_weighted:
+        domain_weight = _domain_weights(selected)
+        selected_weight = (
+            domain_weight
+            if selected_weight is None
+            else selected_weight * domain_weight
+        )
+    _fit_estimator(
+        classifier,
+        x_train,
+        y_train,
+        sample_weight=selected_weight,
+    )
     probabilities = classifier.predict_proba(x_test)[:, 1]
     return [float(probability - 0.5) for probability in probabilities]
 
@@ -423,11 +551,18 @@ def _fit_predict_average(
     train: list[Sample],
     test: list[Sample],
     seeds: tuple[int, ...],
+    sample_weight: object | None = None,
 ) -> list[float]:
     import numpy as np
 
     predictions = [
-        _fit_predict_one(model=model, train=train, test=test, seed=seed)
+        _fit_predict_one(
+            model=model,
+            train=train,
+            test=test,
+            seed=seed,
+            sample_weight=sample_weight,
+        )
         for seed in seeds
     ]
     matrix = np.asarray(predictions, dtype=float)
@@ -450,12 +585,15 @@ def run_worker(
     evaluation_domain: str,
     max_flat_fraction: float,
     feature_pack: str = "",
+    sample_weight: str = "",
 ) -> dict[str, int | str]:
     """Train calibration/test fits for one matrix shard and write predictions."""
     if evaluation_domain not in {"all", "cse", "yahoo"}:
         raise ValueError("evaluation_domain must be all, cse, or yahoo")
     if not 0 <= max_flat_fraction <= 1:
         raise ValueError("max_flat_fraction must be between 0 and 1")
+    if sample_weight not in SAMPLE_WEIGHT_CHOICES:
+        raise ValueError("sample_weight must be '' or 'adv20'")
     domain_filter = None if evaluation_domain == "all" else evaluation_domain
     loaded = load_bar_snapshot(snapshot_dir)
     metadata = build_research_bar_metadata(
@@ -532,11 +670,17 @@ def run_worker(
         max_flat_fraction=max_flat_fraction,
     )
     evaluation_rows = calibration + test
+    train_weight = (
+        adv20_sample_weights(calibration_train, loaded.series)
+        if sample_weight == "adv20"
+        else None
+    )
     evaluation_scores = _fit_predict_average(
         model=spec.model,
         train=calibration_train,
         test=evaluation_rows,
         seeds=spec.seeds,
+        sample_weight=train_weight,
     )
     calibration_scores = evaluation_scores[: len(calibration)]
     test_scores = evaluation_scores[len(calibration) :]
@@ -582,6 +726,7 @@ def run_worker(
         "target": spec.target,
         "evaluation_domain": evaluation_domain,
         "max_flat_fraction": max_flat_fraction,
+        "sample_weight": sample_weight,
         "calibration_rows": len(calibration),
         "test_rows": len(test),
         "lockbox_days": len(split.lockbox_dates),
@@ -618,6 +763,12 @@ def main(argv: list[str] | None = None) -> None:
         choices=("", "v1", "feature_pack_v1", "v2", "feature_pack_v2"),
         help="Optional research feature pack; default keeps frozen matrix",
     )
+    parser.add_argument(
+        "--sample-weight",
+        default="",
+        choices=SAMPLE_WEIGHT_CHOICES,
+        help="Optional train-row sample weights; default keeps frozen fits",
+    )
     args = parser.parse_args(argv)
     spec = ShardSpec(
         shard_id=args.shard_id,
@@ -642,6 +793,7 @@ def main(argv: list[str] | None = None) -> None:
         evaluation_domain=args.evaluation_domain,
         max_flat_fraction=args.max_flat_fraction,
         feature_pack=args.feature_pack,
+        sample_weight=args.sample_weight,
     )
     print(json.dumps(result, sort_keys=True))
 
