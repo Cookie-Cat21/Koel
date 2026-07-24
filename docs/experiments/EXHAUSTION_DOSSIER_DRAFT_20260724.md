@@ -16,6 +16,8 @@ Best near-misses (relative/h1 unless noted):
 | Frozen selective | 0.770 / 0.681 / 74 | baseline |
 | fpv2 denser | 0.762 / 0.688 / 105 | more emits, still ≪0.90 |
 | Disagreement xgb+hgb | 0.779 / 0.693 / 77 | best LCB so far |
+| fpv2 extra xgb_lmt | 0.891 / 0.793 / 46 | high point prec; emits ≪500 |
+| fpv2 extra hgb_lmt | 0.852 / 0.776 / 81 | still ≪0.90 LCB floor |
 | adv20 weights | xgb 0 emits selective | RankIC flat |
 | fpv2+adv20 | 0.76-ish / 0.685 / 104 | no unlock |
 | Absolute denser | 0 emits | |
@@ -34,12 +36,13 @@ E7 requires ≥60 **non-partial scored** sessions — scheduled final emit after
 
 ## Levers exhausted offline
 
-Same-matrix hypers, ensembles, selective grids, fpv1/v2, liq filters v1–v3, horizons h3/h5, CSE-only short history, ADV sample weights, disagreement selective.
+Same-matrix hypers, ensembles, selective grids, fpv1/v2, fpv2 extra (bagged/LMT/deep), liq filters v1–v3, horizons h3/h5, CSE-only short history, ADV sample weights, disagreement selective.
 
 ## Still open
 
 - E7 non-partial shadow receipts
 - E8 prospective vs offline
 - E10 finalize this dossier
+- Ranking models + DE blends (in flight)
 - Optional: further feature hypotheses if any material signal appears
 

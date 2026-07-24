@@ -1,0 +1,94 @@
+{
+  "run_id": "cpu-exhaust-1784873875",
+  "snapshot_sha": "fc4d730527d4821f331369640f9113e8e035171ab1a04e085aed3843650e56ae",
+  "target": "relative",
+  "horizon": 1,
+  "evaluation_domain": "cse",
+  "feature_pack": "v2",
+  "universe_filter": "",
+  "sample_weight": "",
+  "baseline_rank_ic": 0.2526,
+  "screen_top": [
+    {
+      "model": "hgb_lmt",
+      "cal_rank_ic": 0.2557407390214916,
+      "test_rank_ic": 0.27679989225588447,
+      "error": null
+    },
+    {
+      "model": "hgb_bagged",
+      "cal_rank_ic": 0.2549507829883952,
+      "test_rank_ic": 0.2751612511982984,
+      "error": null
+    },
+    {
+      "model": "xgb_lmt",
+      "cal_rank_ic": 0.2507550098127727,
+      "test_rank_ic": 0.27986646103925245,
+      "error": null
+    },
+    {
+      "model": "hgb_deep",
+      "cal_rank_ic": 0.2473044283068872,
+      "test_rank_ic": 0.27657116282982397,
+      "error": null
+    }
+  ],
+  "nested_per_model": {
+    "hgb_lmt": {
+      "rank_ic": 0.2816169567482822,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5852304043506372,
+      "mcc": 0.1772576228519141,
+      "spread_112": -0.01122943184991614,
+      "spread_30": 0.016648104361149482,
+      "beats_baseline": true
+    },
+    "hgb_bagged": {
+      "rank_ic": 0.2742031130572183,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5773643311848495,
+      "mcc": 0.18527895280650034,
+      "spread_112": -0.010587057509410034,
+      "spread_30": 0.017563203449674453,
+      "beats_baseline": true
+    },
+    "xgb_lmt": {
+      "rank_ic": 0.28346614042878915,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5858573279242726,
+      "mcc": 0.17272979225525414,
+      "spread_112": -0.010512580945389795,
+      "spread_30": 0.01744340878383523,
+      "beats_baseline": true
+    },
+    "hgb_deep": {
+      "rank_ic": 0.27085249004700196,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5751399046120214,
+      "mcc": 0.1778763268518119,
+      "spread_112": -0.011024361274770448,
+      "spread_30": 0.01753055493102811,
+      "beats_baseline": true
+    },
+    "double_ensemble_native": {
+      "rank_ic": 0.25527003784782265,
+      "sessions": 117,
+      "n_rows": 18215,
+      "balanced_accuracy": 0.5786931535328677,
+      "mcc": 0.1557269469610821,
+      "spread_112": -0.004179919238137414,
+      "spread_30": 0.02162511894807724,
+      "beats_baseline": true
+    }
+  },
+  "nested_contract_met": false,
+  "hyper_best_test": [
+    null
+  ],
+  "any_beats_baseline": true
+}

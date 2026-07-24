@@ -418,3 +418,25 @@ Result:
 - `partial_session=true`; excluded from E7/E8 qualification counts
 - Non-partial post-close run required after 14:35 Asia/Colombo
 
+## Cycle — fpv2 extra challengers nested complete (2026-07-24)
+
+Status: **exhausted** — no W1 materiality; contract false; champions retained.
+
+Evidence: `FEATURE_PACK_V2_EXTRA_NESTED_20260724.md`, `cpu_exhaust_rel_h1_fpv2_extra_summary.json`
+
+Decision:
+
+- Best extra RankIC `xgb_lmt` **0.2835** vs frozen `xgb_two_stage` **0.2861**
+  (−0.0026) — below +0.005 threshold.
+- Selective: `xgb_lmt` 46 emits / LCB 0.793 (high point prec 0.891 but ≪500
+  emits); `hgb_lmt` 81 / 0.776 — contract **still false**.
+- DE persist +0.41% — no net unlock vs frozen +0.49%.
+- Lever **exhausted**; frozen champions retained.
+
+Next (serial): ranking models (`xgb_rank_ndcg`, `xgb_rank_pairwise`,
+`lgb_lambdarank`) → blends → E7 non-partial shadow after 14:35 SLT.
+
+Interventions:
+
+- fpv2-extra load max ~3.0; watchdog OK; ~40 min wall time.
+
