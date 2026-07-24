@@ -29,7 +29,8 @@ needed**).
 | **W1e** near-miss disagreement | **Killed** | best 0.883/0.798/60 (`NEARMISS_DISAGREEMENT_20260724.md`) |
 | **W1f** feature_pack_v3 | **Killed (no materiality)** | best `xgb_two_stage` 0.2843 (-0.0018); emits 92 (`FEATURE_PACK_V3_NESTED_20260724.md`) |
 | **W2b** liq_v4 ADV-only | **Killed (no materiality)** | 439k samples; RankIC 0.2842; emits 97 (`UNIVERSE_FILTER_LIQ_V4_NESTED_20260724.md`) |
-| **In flight** | fpv2+liq_v4 combo nested; 60-day shadow loop armed |
+| **W2c** fpv2+liq_v4 combo | **Open** | best `xgb_two_stage` 0.2835; emits 106 (`FEATURE_PACK_V2_LIQ_V4_NESTED_20260724.md`) |
+| **In flight** | 60-day shadow loop (`scripts/ml_daily_shadow.sh --loop 60 --wait`) |
 
 **Champions unchanged:** RankIC `xgb_two_stage` rel/h1 **0.2861**; cost DE persist split **+0.49%** @112; selective near-miss **0.770 / 0.681 / 74 emits**.
 

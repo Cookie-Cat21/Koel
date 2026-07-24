@@ -142,9 +142,9 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
 | 5i | Simple models (ridge/logit/reg) | **exhausted** | best `xgb_regressor` 0.2625 (−0.0236); selective 0; cost +0.51% (`SIMPLE_MODELS_NESTED_20260724.md`) |
 | 5j | Remaining families (domain/LGB/weighted) | **exhausted** | best `lgb_lmt` 0.2814 (−0.0047); selective best 0.738/0.636/61 (`REMAINING_FAMILIES_NESTED_20260724.md`) |
 | 5k | Near-miss disagreement trio | **exhausted** | best 0.883/0.798/60 emits; contract false (`NEARMISS_DISAGREEMENT_20260724.md`) |
-| 5l | Feature pack v3 | **exhausted** |
+| 5l | Feature pack v3 | **exhausted** | best `xgb_two_stage` 0.2843 (−0.0018); emits 92; no materiality (`FEATURE_PACK_V3_NESTED_20260724.md`) |
 | 5m | Universe filter liq_v4 | **exhausted** | 439k samples retained; best RankIC 0.2842 (−0.0019); emits 97; cost +0.54% (`UNIVERSE_FILTER_LIQ_V4_NESTED_20260724.md`) |
-| 5n | fpv2+liq_v4 combo | **in flight** | new matrix after v4 sample-floor pass | best `xgb_two_stage` 0.2843 (-0.0018); emits 92; Killed — no materiality (`FEATURE_PACK_V3_NESTED_20260724.md`) |
+| 5n | fpv2+liq_v4 combo | **exhausted** | best `xgb_two_stage` 0.2835 (-0.0026); emits 106; MATERIALITY MET — unblock W5 (`FEATURE_PACK_V2_LIQ_V4_NESTED_20260724.md`) |
 | 5d | Selective denser + disagreement (fpv2) | **exhausted** | best 0.779/0.693/77 emits; contract **false** |
 | 5b | Universe filter W2 | **exhausted/killed — universe collapse** | v1 −93.5%; v2 35,328 rows; v3 35,377 rows; 0 selective emits; flat-only filter still <100k |
 | 6 | Horizons/targets | absolute/h1 done; abs/h1 split selective **exhausted (0 emits)**; rel/h3 + abs/h3 + h5 exhausted | rel/h3 0.2285; **abs/h3 0.2061**; h5 0.1735; no Goal A/B unlock |
@@ -333,4 +333,10 @@ W1 materiality **not fired**. Selective 90% contract **still unmet** (honest).
 - Best RankIC `xgb_two_stage` **0.2842** (-0.0019); selective best emits 97; cost +0.54%.
 - Materiality **not fired**. SuccessContract **NOT MET**.
 - Next: fpv2+liq_v4 combo nested.
+
+## Cycle — 2026-07-24 fpv2+liq_v4
+
+- Best RankIC `xgb_two_stage` **0.2835** (-0.0026).
+- Selective best emits **106**; cost net `0.006001380813429479`.
+- Materiality: **fired**. SuccessContract **NOT MET**.
 
