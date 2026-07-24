@@ -19,9 +19,15 @@
 
 No RankIC materiality (+0.005). Cost spreads @112 remain negative on this nest.
 
-## Selective (postprocess / ultra-dense)
+## Selective
 
-Best observed in continue-queue log before f5 start: **precision ≈ 0.789 / LCB ≈ 0.713 / emits = 95**, `stable_folds=0`. SuccessContract **NOT MET**.
+| Artifact | Model | Precision | LCB | Emits | Contract |
+|---|---|---:|---:|---:|:---:|
+| ultra-dense / gates | `xgb_lmt` | 0.8793 | 0.7916 | 58 | no |
+| disagreement (primary xgb_lmt) | `xgb_lmt` | 0.8793 | 0.7916 | 58 | no |
+| disagreement (primary xgb2) | `xgb_two_stage` | 0.7895 | 0.7131 | 95 | no |
+
+Still short on emits (≥500), LCB (≥0.90), fold stability. SuccessContract **NOT MET**.
 
 ## Verdict
 
