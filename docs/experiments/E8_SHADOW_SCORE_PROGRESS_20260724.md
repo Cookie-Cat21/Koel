@@ -18,7 +18,8 @@ Research only — not financial advice. **E7/E8 still open.**
 | Direct shadow score pass #1 | 178 scored / 2416 skipped (pre Jul-24 bars) |
 | `path-backfill --force --period 2 --limit 80` | 80 ok; `daily_bars` max → **2026-07-24** |
 | Direct shadow score pass #2 | +383 scored |
-| Full-universe period-2 backfill | in flight (`/tmp/path-backfill-all.log`) |
+| Full-universe period-2 backfill | **done** — 295/296 ok; Jul 20–24 ~287 symbols/day |
+| Direct shadow score pass #3 | +914 scored |
 
 ## DE-persist / h3-weekly (E7/E8 gates)
 

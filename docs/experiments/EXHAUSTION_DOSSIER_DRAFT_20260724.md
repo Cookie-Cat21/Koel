@@ -49,6 +49,13 @@ Same-matrix hypers, ensembles, selective grids, fpv1/v2, fpv2 extra (bagged/LMT/
 - DE-persist **non-partial scored sessions still 0** (Jul-24 h1 needs Jul-25 close); partial Jul-23 scored 6/22 legs.
 - Monday 2026-07-27 14:40 SLT non-partial shadow scheduled (`koel-shadow-mon` tmux).
 
+## 2026-07-24 addendum — remaining families
+
+- fpv2 remain nest exhausted: best `lgb_lmt` RankIC **0.2814** (no materiality).
+- Selective best `hgb_weighted` 0.738/0.636/61 — still far from 0.90/500.
+- Full CSE path-backfill period=2: `daily_bars` ~287 symbols for Jul 20–24.
+- Shadow score pass #3: +914 legs; DE non-partial scored sessions still **0** (Jul-24 h1 awaits Jul-25).
+
 ## Still open
 
 - E7 non-partial shadow receipts (**1/60** sessions; daily accumulation)
