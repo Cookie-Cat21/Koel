@@ -353,3 +353,17 @@ W1 materiality **not fired**. Selective 90% contract **still unmet** (honest).
 - No RankIC beat of frozen 0.2861; SuccessContract **NOT MET**.
 - Cost materiality on matrix retained; live_shadow policies unchanged.
 
+## material_median research track (2026-07-24)
+
+New label policy (not frozen h1). Relative/h1 + fpv2+liq_v4:
+
+| Model | Nested RankIC | vs frozen 0.2861 |
+|---|---:|---:|
+| xgb_two_stage | **0.3017** | **+0.0156** |
+| xgb_lmt | 0.3015 | +0.0154 |
+| W5 best hyper test | ~0.3057 | +0.0196 |
+
+Selective SuccessContract **still NOT MET** (best ~0.83/0.77/109 or 0.80/0.76/232).
+Frozen RankIC champion for default labels remains `xgb_two_stage` 0.2861.
+No promotion / no forecast_points.
+
