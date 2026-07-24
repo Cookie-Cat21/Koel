@@ -373,7 +373,7 @@ Prospective shadow uses the same numeric thresholds for **standards reporting**;
 
 Exhaustion is claimed **only** when **every** item below is true. Otherwise keep running W0–W5.
 
-**Checklist status (2026-07-24):** 7/10 evidenced — **not truly exhausted** (E7–E8 open). All offline serial levers for session **complete** (fpv2 extra, rankers, blends killed); E7 non-partial shadow scheduled 14:35 SLT; E10 dossier pending.
+**Checklist status (2026-07-24):** 7/10 evidenced — **not truly exhausted** (E7 1/60 sessions; E8 scored_legs 0; E10 dossier pending). All offline serial levers **complete**; first non-partial shadow receipt logged.
 
 | # | Done | Condition | Evidence artifact |
 |---|:---:|---|---|
@@ -383,7 +383,7 @@ Exhaustion is claimed **only** when **every** item below is true. Otherwise keep
 | E4 | [x] | Universe/liquidity filters tested | `UNIVERSE_FILTER_LIQ_V1_NESTED_20260723.md`, `FEATURE_PACK_LIQ_V1_NESTED_20260723.md` — **liq_v1 killed**; liq_v1–v3 **killed** (flat collapse) |
 | E5 | [ ] | Relative **h5** nested complete (h3 optional) | [x] h5: `cpu_exhaust_rel_h5_summary.json`; [x] h3 nested complete (`CPU_EXHAUST_REL_H3_*`) |
 | E6 | [x] | Data enrichment re-score complete or backlog waived in writing | Split re-score done; CSE-only ablation **killed** (`CSE_ONLY_NESTED_20260723.md`) |
-| E7 | [ ] | DE-persist shadow wired with ≥60 scored prospective sessions | Wired + partial canary 14 legs; **non-partial receipts pending** |
+| E7 | [ ] | DE-persist shadow wired with ≥60 scored prospective sessions | Wired; **1 non-partial session** (16 legs/policy) post 14:35 SLT 2026-07-24; partial canaries excluded |
 | E8 | [ ] | No candidate meets SuccessContract offline **and** prospective precision/LCB within 10pp of offline at matched coverage | Offline: no contract met; prospective aggregate **insufficient** |
 | E9 | [x] | No policy ID approved for `forecast_points` / Telegram / Signal Board | Loop 2 kill criteria satisfied |
 | E10 | [ ] | Human-readable dossier checked in | W6 branch 6b **not started** |

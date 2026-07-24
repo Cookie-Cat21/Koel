@@ -34,7 +34,8 @@ RankIC champion unchanged: `xgb_two_stage` ~0.2861–0.2867 (noise).
 | `shadow_policy_rank_de_persist_v1` | +0.49% (split) | wired; partial canaries only |
 | `shadow_policy_rank_de_h3_weekly_v1` | +0.27–0.69% | wired; partial canaries only |
 
-E7 requires ≥60 **non-partial scored** sessions — scheduled final emit after 14:35 SLT.
+E7 requires ≥60 **non-partial scored** sessions — **1/60** after post-close run
+2026-07-24 (16 legs/policy).
 
 ## Levers exhausted offline
 
@@ -42,9 +43,8 @@ Same-matrix hypers, ensembles, selective grids, fpv1/v2, fpv2 extra (bagged/LMT/
 
 ## Still open
 
-- E7 non-partial shadow receipts
-- E8 prospective vs offline
+- E7 non-partial shadow receipts (**1/60** sessions; daily accumulation)
+- E8 prospective vs offline (scored_legs 0)
 - E10 finalize this dossier
-- DE blends (in flight)
 - Optional: further feature hypotheses if any material signal appears
 

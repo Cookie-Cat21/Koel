@@ -469,3 +469,19 @@ Decision:
 All serial offline exhaust for 2026-07-24 **complete**. E7 non-partial shadow
 scheduled ~14:35 Asia/Colombo.
 
+## Cycle — E7 non-partial shadow post-close (2026-07-24 ~14:46 SLT)
+
+Status: **first non-partial receipt OK** — E7 target ≥60 sessions **not met**.
+
+Evidence: `E7_NON_PARTIAL_SHADOW_20260724.md`, `/tmp/shadow-final.log`
+
+Result:
+
+- `partial_session=false` confirmed
+- `shadow_policy_rank_de_persist_v1`: **16** legs / **1** session (`shadow_persist_book`)
+- `shadow_policy_rank_de_h3_weekly_v1`: **16** legs / **1** session (`shadow_h3_weekly_book`)
+- Neon scored_legs: **0** (realized returns pending)
+- Partial canaries (38+32 legs) excluded from E7 qualification
+
+E7 still open (1/60 sessions). E8 insufficient. SuccessContract **still unmet**.
+
