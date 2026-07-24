@@ -298,7 +298,7 @@ Research only — not financial advice.
 
 ## Cycle — serial ML queue 2026-07-24
 
-Status: in flight (step 4 W5 hyper running).
+Status: **complete** (all steps + recovery).
 
 Evidence:
 
@@ -333,4 +333,26 @@ Decision:
 - Champions retained; SuccessContract **still unmet**.
 
 Next: fpv2 step-2-only nested recovery (`/tmp/koel-recovery-step2.sh`).
+
+## Cycle — fpv2 nested complete (2026-07-24)
+
+Status: **exhausted** — no W1 materiality; champions retained.
+
+Evidence: `FEATURE_PACK_V2_NESTED_20260724.md`, `cpu_exhaust_rel_h1_fpv2_summary.json`
+
+Decision:
+
+- fpv2 nested xgb RankIC **0.2865** vs frozen **0.2861** (+0.0004) — below
+  +0.005 threshold.
+- Selective: xgb 105 emits / LCB 0.688 vs frozen 74 / 0.681 — contract
+  **still false** (honest reporting).
+- DE persist +0.41% vs frozen +0.49%.
+- Serial queue **complete** (all 4 steps + step-2 recovery).
+
+Interventions during babysit:
+
+- Installed `scikit-learn`, `xgboost`, `lightgbm` after step-2 initial fail.
+- Fixed `/tmp/postprocess_nested.sh` heredoc quoting bug.
+- Re-ran step 2 serially after queue; no parallel `cpu_exhaust`.
+- Load max observed: **3.90**; no renice/kill required.
 

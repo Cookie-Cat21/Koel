@@ -1,6 +1,6 @@
 # ML champion table
 
-Updated: 2026-07-24 (serial queue: abs/h3 landed; fpv2 + W5 hyper in flight)
+Updated: 2026-07-24 (serial queue complete: fpv2 nested + abs/h3 + W5 hyper)
 
 Source artifacts:
 
@@ -29,7 +29,8 @@ Source artifacts:
 - `docs/experiments/cpu_exhaust_rel_h3_summary.json`
 - `docs/experiments/CPU_EXHAUST_ABS_H3_20260724.md`
 - `docs/experiments/cpu_w5_fpv2_2k_summary.json`
-- `docs/experiments/CPU_W5_FPV2_2K_20260724.md`
+- `docs/experiments/FEATURE_PACK_V2_NESTED_20260724.md`
+- `docs/experiments/cpu_exhaust_rel_h1_fpv2_summary.json`
 - `docs/experiments/UNIVERSE_FILTER_LIQ_V3_SPEC.md`
 - `docs/experiments/UNIVERSE_FILTER_LIQ_V3_NESTED_20260723.md`
 - `docs/experiments/cpu_exhaust_rel_h1_liqv3_summary.json`
@@ -128,7 +129,7 @@ cycle 0) < champion 0.2861; best net@112 −0.49%; **no pos112**. See
 | 2 | Cost/turnover engineering | **+net@112 verified (split-adjusted)** | DE `persistence_exit_10_top_bottom_05` +0.49%; xgb +0.05%; hgb −0.13% |
 | 3 | Selective gate mining | **exhausted** | 90% contract unreachable offline |
 | 4 | Ensembles/stacking | **exhausted** | best RankIC 0.2858 (−0.0003 vs champion); no net gain |
-| 5 | New features | **fpv1 nested done — no materiality** | RankIC Δ −0.0007 best; W1 thresholds **not fired** |
+| 5 | New features | **fpv1 + fpv2 nested done — no materiality** | fpv1 Δ −0.0007; fpv2 xgb +0.0004; W1 thresholds **not fired** |
 | 5b | Universe filter W2 | **exhausted/killed — universe collapse** | v1 −93.5%; v2 35,328 rows; v3 35,377 rows; 0 selective emits; flat-only filter still <100k |
 | 6 | Horizons/targets | absolute/h1 done; rel/h3 + abs/h3 + h5 exhausted | rel/h3 0.2285; **abs/h3 0.2061**; h5 0.1735; no Goal A/B unlock |
 | — | Improve-loop 6×1000 | **exhausted** | best RankIC 0.2746; no pos112 |
@@ -264,16 +265,17 @@ Nested absolute/h3 on split snapshot (`CPU_EXHAUST_ABS_H3_20260724.md`):
 Below abs/h1 champion 0.2546 and rel/h3 0.2285. Selective 90% **unmet**.
 Champions unchanged.
 
-## W1 feature pack v2 (2026-07-24) — no materiality (W5 run)
+## W1 feature pack v2 (2026-07-24) — exhausted, no materiality
 
-W5 nested+2k hyper on fpv2 matrix (`CPU_W5_FPV2_2K_20260724.md`,
-`cpu_w5_fpv2_2k_summary.json`). Clean step-2-only nested recovery in flight.
+Nested relative/h1 with `--feature-pack v2` (`FEATURE_PACK_V2_NESTED_20260724.md`,
+`cpu_exhaust_rel_h1_fpv2_summary.json`). W5 2k hyper on same matrix in
+`CPU_W5_FPV2_2K_20260724.md` — hyper exhausted.
 
-| Model | Frozen RankIC | fpv2 RankIC | Δ | Selective emits | Best net@112 |
-|---|---:|---:|---:|---:|---:|
-| `xgb_two_stage` | 0.2861 | 0.2865 | +0.0004 | 105 (vs 74) | −0.70% |
-| `hgb_two_stage` | 0.2816 | 0.2836 | +0.0020 | 73 (vs 86) | −0.87% |
-| `double_ensemble_native` | 0.2566 | 0.2553 | −0.0013 | 0 | +0.41% persist |
+| Model | Frozen RankIC | fpv2 RankIC | Δ | Selective (xgb) | DE persist net@112 |
+|---|---:|---:|---:|---|---:|
+| `xgb_two_stage` | **0.2861** | 0.2865 | +0.0004 | 105 / LCB 0.688 | — |
+| `hgb_two_stage` | 0.2816 | 0.2836 | +0.0020 | 73 / LCB 0.662 | — |
+| `double_ensemble_native` | 0.2566 | 0.2553 | −0.0013 | 0 emits | +0.41% (vs +0.49%) |
 
-Hyper 2k best test RankIC 0.2675 — exhausted. W1 thresholds **not fired**.
-Selective 90% contract **still unmet** (xgb LCB 0.688). Champions retained.
+W1 materiality **not fired**. Selective 90% contract **still unmet** (honest).
+**Champions retained:** RankIC `xgb_two_stage` 0.2861; cost DE persist +0.49%.
